@@ -1,7 +1,7 @@
-'use client';
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import Modal from './Modal';
+"use client";
+import { useState } from "react";
+import { supabase } from "@/lib/supabase";
+import Modal from "./Modal";
 
 type Item = {
   id: string;
@@ -20,14 +20,18 @@ type ItemCardProps = {
   onEditClick: (item: Item) => void;
 };
 
-export default function ItemCard({ item, onRefresh, onEditClick }: ItemCardProps) {
+export default function ItemCard({
+  item,
+  onRefresh,
+  onEditClick,
+}: ItemCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleDelete = async () => {
-    const { error } = await supabase.from('items').delete().eq('id', item.id);
+    const { error } = await supabase.from("items").delete().eq("id", item.id);
     if (error) {
       console.error(error);
-      alert('Erreur suppression');
+      alert("Erreur suppression");
     } else {
       onRefresh();
       setShowDeleteConfirm(false);
@@ -54,7 +58,9 @@ export default function ItemCard({ item, onRefresh, onEditClick }: ItemCardProps
         </div>
       </div>
 
-      {item.description && <p className="text-gray-300 mb-3">{item.description}</p>}
+      {item.description && (
+        <p className="text-gray-300 mb-3">{item.description}</p>
+      )}
 
       <div className="flex flex-wrap gap-2 text-sm">
         {item.category && (
@@ -79,8 +85,9 @@ export default function ItemCard({ item, onRefresh, onEditClick }: ItemCardProps
         title="Confirmer la suppression"
       >
         <p className="mb-6">
-          Êtes-vous sûr de vouloir supprimer <strong>&quot;{item.title}&quot;</strong> ?  
-          Cette action est irréversible.
+          Êtes-vous sûr de vouloir supprimer{" "}
+          <strong>&quot;{item.title}&quot;</strong> ? Cette action est
+          irréversible.
         </p>
         <div className="flex gap-4">
           <button

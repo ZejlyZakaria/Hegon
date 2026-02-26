@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { MediaCarousel } from "@/components/MediaCarousel";
+import { MediaCarousel } from "@/components/watching/MediaCarousel";
 import type { WatchItem } from "@/lib/watching-data";
 
 type WantToWatchProps = {
@@ -36,10 +36,10 @@ export default function WantToWatch({
           .select("*")
           .eq("user_id", user.id)
           .eq("want_to_watch", true)
-          .eq("watched", false) 
+          .eq("watched", false)
           .eq("type", "film")
-          .is("watched_at", null) 
-          .order("priority", { ascending: true }) 
+          .is("watched_at", null)
+          .order("priority", { ascending: true })
           .limit(10);
 
         if (fetchError) throw fetchError;

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Portal from '../ui/portal/Portal';
-import { cn } from '../lib/utils';
+import Portal from '../../ui/portal/Portal';
+import { cn } from '../../lib/utils';
 
 interface SidebarMenuItem {
   label: string;

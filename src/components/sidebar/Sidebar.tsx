@@ -1,23 +1,28 @@
-'use client';
+"use client";
 
-import { JSX, useState, useRef } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { JSX, useState, useRef } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 
 import {
-  Popcorn, BookOpen, Dumbbell, Target, Briefcase,
+  Popcorn,
+  BookOpen,
+  Dumbbell,
+  Target,
+  Briefcase,
   Heart,
-  Cpu, Search,
+  Cpu,
+  Search,
   Settings,
   LayoutGrid,
   ChevronDown,
   ArrowLeftFromLine,
   ArrowRightFromLine,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { cn } from '../lib/utils';
-import SidebarMenu from '../components/SidebarMenu';
-import OverflowTooltipWrapper from '../ui/tootip/OverflowTooltipWrapper';
+import { cn } from "../../lib/utils";
+import SidebarMenu from "./SidebarMenu";
+import OverflowTooltipWrapper from "../../ui/tootip/OverflowTooltipWrapper";
 
 interface SidebarItem {
   id: string;
@@ -28,106 +33,106 @@ interface SidebarItem {
 
 const sidebarItems: SidebarItem[] = [
   {
-    id: 'overview',
+    id: "overview",
     label: "Aperçu",
     icon: <LayoutGrid size={15} className="text-white" />,
   },
 
   // Section Perso
   {
-    id: 'perso',
-    label: 'Perso',
+    id: "perso",
+    label: "Perso",
     icon: <Heart size={15} className="text-pink-600" />,
     subItems: [
-      { label: 'Watching', path: 'watching' },
-      { label: 'Books', path: 'books' },
-      { label: 'Sport', path: 'sport' },
+      { label: "Watching", path: "watching" },
+      { label: "Books", path: "books" },
+      { label: "Sport", path: "sport" },
     ],
   },
   // Sous-menus détaillés pour Watching (expandable)
   {
-    id: 'watching',
-    label: 'Watching',
+    id: "watching",
+    label: "Watching",
     icon: <Popcorn size={15} className="text-red-500" />,
     subItems: [
-      { label: 'Films', path: 'watching/films' },
-      { label: 'Séries', path: 'watching/series' },
-      { label: 'Animes', path: 'watching/animes' },
-      { label: 'Watchlist', path: 'watching/watchlist' },
+      { label: "Films", path: "watching/films" },
+      { label: "Séries", path: "watching/series" },
+      { label: "Animes", path: "watching/animes" },
+      { label: "Watchlist", path: "watching/watchlist" },
     ],
   },
   {
-    id: 'books',
-    label: 'Books',
+    id: "books",
+    label: "Books",
     icon: <BookOpen size={15} className="text-amber-600" />,
     subItems: [
-      { label: 'À lire', path: 'books/a-lire' },
-      { label: 'Lus', path: 'books/lus' },
-      { label: 'Favoris', path: 'books/favoris' },
+      { label: "À lire", path: "books/a-lire" },
+      { label: "Lus", path: "books/lus" },
+      { label: "Favoris", path: "books/favoris" },
     ],
   },
   {
-    id: 'sport',
-    label: 'Sport',
+    id: "sport",
+    label: "Sport",
     icon: <Dumbbell size={15} className="text-green-600" />,
     subItems: [
-      { label: 'Habitudes', path: 'sport/habitudes' },
-      { label: 'Goals', path: 'sport/goals' },
-      { label: 'Stats', path: 'sport/stats' },
+      { label: "Habitudes", path: "sport/habitudes" },
+      { label: "Goals", path: "sport/goals" },
+      { label: "Stats", path: "sport/stats" },
     ],
   },
 
   // Section Pro
   {
-    id: 'pro',
-    label: 'Pro',
+    id: "pro",
+    label: "Pro",
     icon: <Briefcase size={15} className="text-blue-600" />,
     subItems: [
-      { label: 'Tech', path: 'tech' },
-      { label: 'Goals', path: 'goals' },
-      { label: 'Job Hunt', path: 'job-hunt' },
+      { label: "Tech", path: "tech" },
+      { label: "Goals", path: "goals" },
+      { label: "Job Hunt", path: "job-hunt" },
     ],
   },
   {
-    id: 'tech',
-    label: 'Tech',
+    id: "tech",
+    label: "Tech",
     icon: <Cpu size={15} className="text-cyan-600" />,
     subItems: [
-      { label: 'Notes', path: 'tech/notes' },
-      { label: 'Repos', path: 'tech/repos' },
-      { label: 'Upskilling', path: 'tech/upskilling' },
+      { label: "Notes", path: "tech/notes" },
+      { label: "Repos", path: "tech/repos" },
+      { label: "Upskilling", path: "tech/upskilling" },
     ],
   },
   {
-    id: 'goals',
-    label: 'Goals',
+    id: "goals",
+    label: "Goals",
     icon: <Target size={15} className="text-purple-600" />,
     subItems: [
-      { label: 'Court terme', path: 'goals/court' },
-      { label: 'Long terme', path: 'goals/long' },
-      { label: 'Priorités', path: 'goals/priorites' },
+      { label: "Court terme", path: "goals/court" },
+      { label: "Long terme", path: "goals/long" },
+      { label: "Priorités", path: "goals/priorites" },
     ],
   },
   {
-    id: 'job-hunt',
-    label: 'Job Hunt',
+    id: "job-hunt",
+    label: "Job Hunt",
     icon: <Search size={15} className="text-orange-600" />,
     subItems: [
-      { label: 'Candidatures', path: 'job-hunt/candidatures' },
-      { label: 'Follow-ups', path: 'job-hunt/followups' },
-      { label: 'Prep interviews', path: 'job-hunt/prep' },
+      { label: "Candidatures", path: "job-hunt/candidatures" },
+      { label: "Follow-ups", path: "job-hunt/followups" },
+      { label: "Prep interviews", path: "job-hunt/prep" },
     ],
   },
 
   // Settings en bas
   {
-    id: 'settings',
-    label: 'Paramètres',
+    id: "settings",
+    label: "Paramètres",
     icon: <Settings size={15} className="text-white" />,
     subItems: [
-      { label: 'Thèmes', path: 'settings/themes' },
-      { label: 'Export data', path: 'settings/export' },
-      { label: 'Privacy', path: 'settings/privacy' },
+      { label: "Thèmes", path: "settings/themes" },
+      { label: "Export data", path: "settings/export" },
+      { label: "Privacy", path: "settings/privacy" },
     ],
   },
 ];
@@ -142,7 +147,9 @@ const Sidebar = () => {
   // ✅ Utilise une fonction initializer pour setState
   // Cela s'exécute UNIQUEMENT côté client et évite le mismatch d'hydratation
   const [isExpanded, setIsExpanded] = useState(() => true);
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => ({}));
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(
+    () => ({}),
+  );
   const [showFooterText, setShowFooterText] = useState(() => true);
   const [delayedExpand, setDelayedExpand] = useState(() => true);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -169,18 +176,23 @@ const Sidebar = () => {
   return (
     <div
       className={cn(
-        'bg-gray-900 text-xs flex flex-col justify-between transition-all duration-300 ease-in-out text-white',
-        isExpanded ? 'w-57.5' : 'w-12.5',
+        "bg-gray-900 text-xs flex flex-col justify-between transition-all duration-300 ease-in-out text-white",
+        isExpanded ? "w-57.5" : "w-12.5",
       )}
     >
       {/* Scrollable menu */}
-      <div ref={contentRef} className="flex-1 overflow-y-auto p-2 custom-scrollbar-hide">
+      <div
+        ref={contentRef}
+        className="flex-1 overflow-y-auto p-2 custom-scrollbar-hide"
+      >
         {sidebarItems.map(({ id, label, icon, subItems }) => {
           const showContext = !isExpanded && hoveredItem === id && !!subItems;
 
           const isParentActive =
             !subItems &&
-            (id === 'overview' ? pathname === '/' : pathname.startsWith(`/${id}`));
+            (id === "overview"
+              ? pathname === "/"
+              : pathname.startsWith(`/${id}`));
 
           return (
             <div
@@ -212,8 +224,8 @@ const Sidebar = () => {
                     {delayedExpand && (
                       <span
                         className={cn(
-                          'font-medium text-white',
-                          pathname.startsWith(`/${id}/`) && 'text-blue-500',
+                          "font-medium text-white",
+                          pathname.startsWith(`/${id}/`) && "text-blue-500",
                         )}
                       >
                         {label}
@@ -224,23 +236,25 @@ const Sidebar = () => {
                   {delayedExpand && (
                     <ChevronDown
                       className={cn(
-                        'h-4 w-4 text-white transition-transform duration-200',
-                        openMenus[id] ? 'rotate-180' : 'rotate-0',
+                        "h-4 w-4 text-white transition-transform duration-200",
+                        openMenus[id] ? "rotate-180" : "rotate-0",
                       )}
                     />
                   )}
                 </div>
               ) : (
                 <Link
-                  href={id === 'overview' ? '/' : `/${id}`}
+                  href={id === "overview" ? "/" : `/${id}`}
                   className={cn(
-                    'flex items-center justify-between cursor-pointer px-2 py-2 rounded hover:bg-gray-400',
-                    isParentActive && 'text-blue-500',
+                    "flex items-center justify-between cursor-pointer px-2 py-2 rounded hover:bg-gray-400",
+                    isParentActive && "text-blue-500",
                   )}
                 >
                   <div className="flex items-center gap-3 h-4">
                     {icon}
-                    {delayedExpand && <span className="text-white font-medium">{label}</span>}
+                    {delayedExpand && (
+                      <span className="text-white font-medium">{label}</span>
+                    )}
                   </div>
                 </Link>
               )}
@@ -248,22 +262,25 @@ const Sidebar = () => {
               {subItems && (
                 <div
                   className={cn(
-                    'mt-1 flex flex-col space-y-1 text-white transition-all duration-300 overflow-hidden',
+                    "mt-1 flex flex-col space-y-1 text-white transition-all duration-300 overflow-hidden",
                     openMenus[id] && delayedExpand
-                      ? 'max-h-50 opacity-100'
-                      : 'max-h-0 opacity-0',
+                      ? "max-h-50 opacity-100"
+                      : "max-h-0 opacity-0",
                   )}
                 >
                   {subItems.map(({ label, path }) => {
                     const isSubActive = pathname === `/${id}/${path}`;
 
                     return (
-                      <OverflowTooltipWrapper key={`${id}-${path}`} text={label}>
+                      <OverflowTooltipWrapper
+                        key={`${id}-${path}`}
+                        text={label}
+                      >
                         <Link
                           href={`/${id}/${path}`}
                           className={cn(
-                            'px-9 group hover:bg-gray-400 hover:text-blue-600 w-full block rounded-sm py-2 truncate',
-                            isSubActive && 'text-blue-500',
+                            "px-9 group hover:bg-gray-400 hover:text-blue-600 w-full block rounded-sm py-2 truncate",
+                            isSubActive && "text-blue-500",
                           )}
                         >
                           {label}
@@ -301,7 +318,11 @@ const Sidebar = () => {
         onClick={toggleSidebar}
       >
         <button className="p-1 rounded hover:bg-gray-400 text-white transition mr-2">
-          {isExpanded ? <ArrowLeftFromLine size={16} /> : <ArrowRightFromLine size={16} />}
+          {isExpanded ? (
+            <ArrowLeftFromLine size={16} />
+          ) : (
+            <ArrowRightFromLine size={16} />
+          )}
         </button>
 
         {isExpanded && showFooterText && (

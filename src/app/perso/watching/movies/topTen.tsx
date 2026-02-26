@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MediaCarousel } from "@/components/MediaCarousel";
+import { MediaCarousel } from "@/components/watching/MediaCarousel";
 import { supabase } from "@/lib/supabase";
 import type { WatchItem } from "@/lib/watching-data";
 

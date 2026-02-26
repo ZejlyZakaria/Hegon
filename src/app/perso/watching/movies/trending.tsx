@@ -84,8 +84,9 @@ const Trending = () => {
 
   if (error || !trendingMovie) {
     return (
-      <div className="min-h-[50vh] w-full rounded-xl bg-gray-200 flex items-center justify-center text-red-600">
-        {error || "Aucun film disponible"}
+      <div className="min-h-[50vh] w-full rounded-xl bg-zinc-900 flex items-center justify-center text-red-600">
+        {/* {error || "Aucun film disponible"} */}
+        {error}
       </div>
     );
   }

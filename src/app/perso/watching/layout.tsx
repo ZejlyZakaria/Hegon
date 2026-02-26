@@ -3,13 +3,13 @@ import React from "react";
 import Link from "next/link"; // Pour navigation sans reload
 import { usePathname } from "next/navigation"; // Pour détecter tab actif via URL
 
-type Tab = "movies" | "tv-shows" | "animes" | "watchlist"; // Ajusté pour matcher dossiers (avec tirets)
+type Tab = "movies" | "tv-shows" | "animes" | "library"; // Ajusté pour matcher dossiers (avec tirets)
 
 const tabs: { label: string; value: Tab }[] = [
   { label: "Movies", value: "movies" },
   { label: "Tv Shows", value: "tv-shows" },
   { label: "Animes", value: "animes" },
-  { label: "WatchList", value: "watchlist" },
+  { label: "Library", value: "library" },
 ];
 
 export default function WatchingLayout({

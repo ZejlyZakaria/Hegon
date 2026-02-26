@@ -4,7 +4,7 @@ import Trending from "./trending";
 import Recent from "./recent";
 import TopTen from "./topTen";
 import RecentlyWatched from "./recentlyWatched";
-import AddMediaModal from "@/components/AddMediaModal";
+import AddMediaModal from "@/components/watching/AddMediaModal";
 import { useState } from "react";
 import WantToWatch from "./wantToWatch";
 

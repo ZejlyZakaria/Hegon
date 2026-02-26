@@ -2,25 +2,33 @@ export type Category = "movies" | "tvshows" | "anime";
 
 export type WatchItem = {
   id: string;
+  type: "film" | "serie" | "anime";
   title: string;
   original_title: string;
   description: string;
   poster_url: string;
   backdrop_url: string;
   year: number;
+  runtime: number | null;
+  episode_runtime?: number;
+  seasons?: number;
+  episodes?: number;
+  current_episode?: number;
   rating: number;
   user_rating: number;
-  tags: string[];
-  priority: number;
-  want_to_watch: boolean;
-  type: "film" | "series";
-  favorite: boolean;
   watched: boolean;
+  want_to_watch: boolean;
+  favorite: boolean;
   watched_at: string | null;
+  priority: number;
+  tmdb_id: number;
+  notes: string;
+  tags: string[];
+  directors?: { name: string; profile_url?: string }[]; // plusieurs réalisateurs possibles
+  studio?: string; // compagnie principale
+  status?: "ended" | "ongoing"; 
   created_at: string;
 };
-
-
 
 export const genreColors: Record<string, string> = {
   "Sci-Fi": "bg-cyan-500/15 text-cyan-400",

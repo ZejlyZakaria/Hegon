@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { MediaCarousel } from "@/components/MediaCarousel";
+import { MediaCarousel } from "@/components/watching/MediaCarousel";
 import type { WatchItem } from "@/lib/watching-data";
 
 type RecentlyWatchedBaseProps = {
@@ -83,9 +83,7 @@ export default function RecentlyWatchedBase({
   }
 
   const title =
-    variant === "tv"
-      ? "Séries vues récemment"
-      : "Animes vus récemment";
+    variant === "tv" ? "Séries vues récemment" : "Animes vus récemment";
 
   const subtitle =
     variant === "tv"

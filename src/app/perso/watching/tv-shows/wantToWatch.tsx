@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { MediaCarousel } from "@/components/MediaCarousel";
+import { MediaCarousel } from "@/components/watching/MediaCarousel";
 import type { WatchItem } from "@/lib/watching-data";
 
 type WantToWatchBaseProps = {
@@ -83,10 +83,7 @@ export default function WantToWatchBase({
     return <div className="text-center py-8 text-red-400">{error}</div>;
   }
 
-  const title =
-    variant === "tv"
-      ? "Séries à voir"
-      : "Animes à voir";
+  const title = variant === "tv" ? "Séries à voir" : "Animes à voir";
 
   const subtitle =
     variant === "tv"

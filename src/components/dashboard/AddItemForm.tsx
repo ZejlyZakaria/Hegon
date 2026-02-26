@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 import { useState, useEffect } from 'react';
-import ClientOnly from './ClientOnly';
+import ClientOnly from '../ClientOnly';
 
 type ItemFormData = {
   title: string;

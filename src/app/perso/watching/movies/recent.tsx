@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import MediaSmallCard from "@/components/MediaSmallCard";
+import MediaSmallCard from "@/components/watching/MediaSmallCard";
 
 //  Types
 interface TMDBMovie {

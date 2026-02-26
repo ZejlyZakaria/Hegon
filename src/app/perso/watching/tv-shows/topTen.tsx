@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MediaCarousel } from "@/components/MediaCarousel";
+import { MediaCarousel } from "@/components/watching/MediaCarousel";
 import { supabase } from "@/lib/supabase";
 import type { WatchItem } from "@/lib/watching-data";
 
@@ -82,10 +82,7 @@ export default function TopTenBase({
     return <div className="text-center py-8 text-red-400">{error}</div>;
   }
 
-  const title =
-    variant === "tv"
-      ? "My Top 10 TV Shows"
-      : "My Top 10 Anime";
+  const title = variant === "tv" ? "My Top 10 TV Shows" : "My Top 10 Anime";
 
   const subtitle =
     variant === "tv"

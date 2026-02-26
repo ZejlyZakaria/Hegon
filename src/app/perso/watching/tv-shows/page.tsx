@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import AddMediaModal from "@/components/AddMediaModal";
+import AddMediaModal from "@/components/watching/AddMediaModal";
 import RecentBase from "./recent";
 import TrendingBase from "./trending";
 import TopTenBase from "./topTen";

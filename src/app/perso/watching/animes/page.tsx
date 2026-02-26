@@ -4,7 +4,7 @@ import { useState } from "react";
 import RecentBase from "../tv-shows/recent";
 import TrendingBase from "../tv-shows/trending";
 import TopTenBase from "../tv-shows/topTen";
-import AddMediaModal from "@/components/AddMediaModal";
+import AddMediaModal from "@/components/watching/AddMediaModal";
 import RecentlyWatchedBase from "../tv-shows/recentlyWatched";
 import WantToWatchBase from "../tv-shows/wantToWatch";
 
