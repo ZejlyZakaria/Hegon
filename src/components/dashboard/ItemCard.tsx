@@ -1,7 +1,10 @@
 "use client";
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+// import { supabase } from "@/lib/supabase/client";
 import Modal from "./Modal";
+
+import { createClient } from '@/lib/supabase/client';
+const supabase = createClient();
 
 type Item = {
   id: string;

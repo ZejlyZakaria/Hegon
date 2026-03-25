@@ -1,5 +1,4 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-// src/components/ClientOnly.tsx
 'use client';
 import { ReactNode, useState, useEffect } from 'react';
 
