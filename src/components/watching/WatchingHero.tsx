@@ -151,8 +151,8 @@ export default async function WatchingHero({ config }: { config: WatchingConfig 
                         backdrop-blur-sm px-2.5 py-1 md:px-3 rounded-full text-[10px] md:text-xs font-semibold text-white">
           <TrendingUp size={11} className="md:hidden" />
           <TrendingUp size={12} className="hidden md:block" />
-          <span className="hidden sm:inline">Tendance cette semaine</span>
-          <span className="sm:hidden">Tendance</span>
+          <span className="hidden sm:inline">Trend this week</span>
+          <span className="sm:hidden">Trend</span>
         </div>
 
         <div className="absolute bottom-0 inset-x-0 p-4 md:p-5">
@@ -186,7 +186,7 @@ export default async function WatchingHero({ config }: { config: WatchingConfig 
         <div className="flex items-center gap-2">
           <Sparkles size={13} className="text-violet-400 md:w-3.5 md:h-3.5" />
           <h3 className="text-xs md:text-sm font-semibold text-zinc-300">
-            À ne pas manquer
+            Don&apos;t Miss
           </h3>
         </div>
 

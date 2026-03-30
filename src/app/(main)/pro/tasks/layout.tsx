@@ -13,7 +13,7 @@ export default function TasksLayout({
 }) {
   return (
     <TasksProvider>
-      <div className="flex h-screen w-full overflow-hidden">{children}
+      <div className="flex h-screen w-full overflow-hidden max-w-8xl mx-auto">{children}
         <Toaster position="top-right" />
       </div>
     </TasksProvider>
