@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
-import { SURFACE_CONFIGS, type Surface } from "@/lib/utils/tennis-helpers";
+import { SURFACE_CONFIGS, type Surface } from "@/lib/utils/tennis-surface";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

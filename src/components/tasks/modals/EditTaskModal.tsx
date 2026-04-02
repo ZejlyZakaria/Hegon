@@ -51,7 +51,6 @@ import { useUpdateTask } from "@/lib/tasks/queries/useTasks";
 import { useStatuses } from "@/lib/tasks/queries/useStatuses";
 import type {
   Task,
-  UpdateTaskInput,
   Priority,
 } from "@/lib/tasks/types/tasks.types";
 

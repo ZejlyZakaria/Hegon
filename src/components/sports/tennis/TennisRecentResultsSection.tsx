@@ -14,7 +14,7 @@ export default async function TennisRecentResultsSection({
 }) {
   const supabase = await createServerClient();
 
-  const players = await getTennisPlayers(supabase, userId);
+  const players = await getTennisPlayers(userId);
   const { favoritePlayers, favoritePlayerIds, mainPlayerId } = players;
 
   if (!favoritePlayerIds.length) return null;

@@ -13,7 +13,7 @@ export default async function TennisRankingsSection({
 }) {
   const supabase = await createServerClient();
 
-  const players = await getTennisPlayers(supabase, userId);
+  const players = await getTennisPlayers(userId);
   const { favoritePlayerIds } = players;
 
   // ✅ Query avec les bonnes colonnes

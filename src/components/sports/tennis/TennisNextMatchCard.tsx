@@ -3,7 +3,7 @@
 
 import { motion } from "framer-motion";
 import { Calendar, MapPin } from "lucide-react";
-import { getSurface, SURFACE_CONFIGS } from "@/lib/utils/tennis-helpers";
+import { getSurface, SURFACE_CONFIGS } from "@/lib/utils/tennis-surface";
 
 interface TennisNextMatchCardProps {
   match: {

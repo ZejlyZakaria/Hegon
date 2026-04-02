@@ -4,8 +4,6 @@ import { useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, EffectFade } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
-import "swiper/css";
-import "swiper/css/effect-fade";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, Trophy, Plus, X } from "lucide-react";

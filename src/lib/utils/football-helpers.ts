@@ -2,6 +2,7 @@
 // lib/utils/football-helpers.ts
 // shared helpers for football server components
 
+import { cache } from "react";
 import { createServerClient } from "@/lib/supabase/server";
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -16,49 +17,47 @@ export interface FootballTeams {
 
 
 
-export async function getFootballTeams(userId: string) {
+export const getFootballTeams = cache(async (userId: string) => {
   const supabase = await createServerClient();
 
-  // main team
-  const { data: settings } = await supabase
-    .schema("sport").from("football_user_settings")
-    .select("main_team_id").eq("user_id", userId).maybeSingle();
+  // Run settings + favorites in parallel
+  const [{ data: settings }, { data: favorites }] = await Promise.all([
+    supabase.schema("sport").from("football_user_settings")
+      .select("main_team_id").eq("user_id", userId).maybeSingle(),
+    supabase.schema("sport").from("user_favorites")
+      .select("entity_id").eq("user_id", userId).eq("entity_type", "football_team"),
+  ]);
 
   const mainTeamId = settings?.main_team_id ?? null;
-  let mainTeam = null;
-  if (mainTeamId) {
-    const { data } = await supabase.schema("sport").from("football_teams")
-      .select("id, name, crest_url, api_external_id").eq("id", mainTeamId).maybeSingle();
-    mainTeam = data ?? null;
-  }
-
-  // favorites
-  const { data: favorites } = await supabase.schema("sport").from("user_favorites")
-    .select("entity_id").eq("user_id", userId).eq("entity_type", "football_team");
-
   const favoriteIds = favorites?.map((f: any) => f.entity_id) ?? [];
   const otherFavoriteIds = mainTeamId
     ? favoriteIds.filter((id: string) => id !== mainTeamId)
     : favoriteIds;
 
-  let otherFavoriteTeams: any[] = [];
-  if (otherFavoriteIds.length) {
-    const { data } = await supabase.schema("sport").from("football_teams")
-      .select("id, name, crest_url, api_external_id").in("id", otherFavoriteIds);
-    otherFavoriteTeams = data ?? [];
-  }
+  // Run main team + other teams in parallel
+  const [mainTeamRes, otherTeamsRes] = await Promise.all([
+    mainTeamId
+      ? supabase.schema("sport").from("football_teams")
+          .select("id, name, crest_url, api_external_id").eq("id", mainTeamId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    otherFavoriteIds.length
+      ? supabase.schema("sport").from("football_teams")
+          .select("id, name, crest_url, api_external_id").in("id", otherFavoriteIds)
+      : Promise.resolve({ data: [] }),
+  ]);
 
+  const mainTeam = mainTeamRes.data ?? null;
+  const otherFavoriteTeams: any[] = otherTeamsRes.data ?? [];
   const allFavoriteTeamIds: string[] = [
     ...(mainTeamId ? [mainTeamId] : []),
     ...otherFavoriteIds,
   ];
-
   const allTeams: Record<string, any> = {};
   if (mainTeam) allTeams[mainTeam.id] = mainTeam;
   for (const t of otherFavoriteTeams) allTeams[t.id] = t;
 
   return { mainTeam, mainTeamId, otherFavoriteTeams, allFavoriteTeamIds, allTeams };
-}
+});
 
 export async function getCrestsByExternalIds(externalIds: string[]) {
   if (!externalIds.length) return {};

@@ -125,7 +125,7 @@ function WorkspaceItem({ workspace, isExpanded, onToggle }: WorkspaceItemProps) 
 
 export function TasksSidebar() {
   const { isSidebarCollapsed, toggleSidebar } = useTasksStore();
-  const { data: workspaces, isLoading: workspacesLoading } = useWorkspaces();
+  const { data: workspaces } = useWorkspaces();
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(new Set());
 
   // Auto-expand first workspace when it appears
@@ -191,7 +191,7 @@ export function TasksSidebar() {
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-1">
-          {workspacesLoading && <SidebarNavSkeleton />}
+          {/* {workspacesLoading && <SidebarNavSkeleton />} */}
 
           {workspaces?.map((workspace) => (
             <WorkspaceItem

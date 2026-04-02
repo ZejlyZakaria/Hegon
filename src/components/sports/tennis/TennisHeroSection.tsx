@@ -2,6 +2,7 @@
 // components/sports/tennis/TennisHeroSection.tsx
 import { createServerClient } from "@/lib/supabase/server";
 import { getTennisPlayers } from "@/lib/utils/tennis-helpers";
+
 import TennisHero from "@/components/sports/TennisHero";
 import type { PlayerHero } from "@/components/sports/TennisHero";
 
@@ -31,8 +32,8 @@ export default async function TennisHeroSection({
   userId: string;
 }) {
   const supabase = await createServerClient();
-  
-  const players = await getTennisPlayers(supabase, userId);
+
+  const players = await getTennisPlayers(userId);
   const { favoritePlayers, favoritePlayerIds, mainPlayerId } = players;
 
   const [rankingsRes, ...nextMatches] = await Promise.all([

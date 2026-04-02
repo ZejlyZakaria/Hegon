@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactCompiler: true,
+  transpilePackages: ["swiper"],
 
   images: {
     remotePatterns: [
@@ -15,7 +15,6 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "**",
       },
-      { protocol: "https", hostname: "crests.football-data.org" },
     ],
   },
 };

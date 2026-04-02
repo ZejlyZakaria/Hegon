@@ -11,8 +11,8 @@ export default async function TennisUpcomingSection({
   userId: string;
 }) {
   const supabase = await createServerClient();
-  
-  const players = await getTennisPlayers(supabase, userId);
+
+  const players = await getTennisPlayers(userId);
   const { favoritePlayers, favoritePlayerIds } = players;
   const now = new Date().toISOString();
 
