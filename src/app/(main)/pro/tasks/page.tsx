@@ -1,25 +1,39 @@
 "use client";
 
-import { TasksLayout } from "@/components/tasks/layout/TasksLayout";
-import { KanbanBoard } from "@/components/tasks/kanban/KanbanBoard";
-import { CalendarView } from "@/components/tasks/calendar/CalendarView";
-import { ListView } from "@/components/tasks/list";
-import { TasksEmptyState } from "@/components/tasks/TasksEmptyState";
-import { TasksSkeleton } from "@/components/tasks/TasksSkeletons";
-import { useTasksStore } from "@/lib/tasks/stores/tasksStore";
-import { useWorkspaces } from "@/lib/tasks/queries/useWorkspaces";
-import { useProjects } from "@/lib/tasks/queries/useProjects";
+import { ErrorBoundary } from "react-error-boundary";
+import { TasksLayout } from "@/modules/tasks/components/layout/TasksLayout";
+import { KanbanBoard } from "@/modules/tasks/components/kanban/KanbanBoard";
+import { CalendarView } from "@/modules/tasks/components/calendar/CalendarView";
+import { ListView } from "@/modules/tasks/components/list";
+import { TasksEmptyState } from "@/modules/tasks/components/TasksEmptyState";
+import { TasksSkeleton } from "@/modules/tasks/components/TasksSkeletons";
+import { TasksError } from "@/modules/tasks/components/TasksError";
+import { useTasksStore } from "@/modules/tasks/store";
+import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
+import { useProjects } from "@/modules/tasks/hooks/useProjects";
+import { createClient } from "@/infrastructure/supabase/client";
+import { useEffect, useState } from "react";
 
-export default function TasksPage() {
+function TasksPageContent() {
   const { viewMode } = useTasksStore();
-  const { data: workspaces, isLoading: workspacesLoading } = useWorkspaces();
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Get user ID
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id || null);
+    });
+  }, []);
+
+  const { data: workspaces, isLoading: workspacesLoading } = useWorkspaces(userId || "");
 
   const firstWorkspaceId = workspaces?.[0]?.id ?? null;
-  // Only runs when a workspace exists
   const { data: projects, isLoading: projectsLoading } = useProjects(firstWorkspaceId);
 
-  // Still resolving
+  // Still resolving (including userId)
   const isLoading =
+    !userId ||
     workspacesLoading ||
     (!!firstWorkspaceId && projectsLoading);
 
@@ -36,5 +50,16 @@ export default function TasksPage() {
       {viewMode === "list" && <ListView />}
       {viewMode === "calendar" && <CalendarView />}
     </TasksLayout>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <ErrorBoundary
+      FallbackComponent={TasksError}
+      onReset={() => window.location.reload()}
+    >
+      <TasksPageContent />
+    </ErrorBoundary>
   );
 }

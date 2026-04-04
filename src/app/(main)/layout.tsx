@@ -1,6 +1,6 @@
 // app/(main)/layout.tsx
 // all protected routes live under this layout — sidebar always present
-import Sidebar from "@/components/layout/Sidebar";
+import Sidebar from "@/shared/components/layout/Sidebar";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -1,5 +1,6 @@
 // app/perso/sports/football/page.tsx
-import FootballPageWrapper from "@/components/sports/football/FootballPageWrapper";
+
+import FootballPageWrapper from "@/modules/sports/football/components/FootballPageWrapper";
 
 export default function FootballPage() {
   return <FootballPageWrapper />;

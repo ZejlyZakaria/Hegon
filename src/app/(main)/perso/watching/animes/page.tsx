@@ -1,5 +1,4 @@
-// app/perso/watching/animes/page.tsx
-import WatchingPageWrapper from "@/components/watching/WatchingPageWrapper";
+import WatchingPageWrapper from "@/modules/watching/components/WatchingPageWrapper";
 
 export default function AnimesPage() {
   return <WatchingPageWrapper type="anime" />;

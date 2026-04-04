@@ -1,6 +1,6 @@
 // app/perso/watching/layout.tsx
 import { Tv } from "lucide-react";
-import SectionHeader from "@/components/shared/SectionHeader";
+import SectionHeader from "@/shared/components/layout/SectionHeader"
 
 const TABS = [
   { label: "Movies",   href: "/perso/watching/movies" },

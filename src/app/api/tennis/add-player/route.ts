@@ -2,7 +2,7 @@
 // app/api/tennis/add-player/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/infrastructure/supabase/server"
 import { createClient } from "@supabase/supabase-js";
 
 // ── Helper pour extraire le nom de famille ────────────────────────────────

@@ -1,6 +1,6 @@
 // app/perso/sports/layout.tsx
 import { Trophy } from "lucide-react";
-import SectionHeader from "@/components/shared/SectionHeader";
+import SectionHeader from "@/shared/components/layout/SectionHeader"
 
 const TABS = [
   { label: "Football", href: "/perso/sports/football" },

@@ -1,5 +1,4 @@
-// app/perso/watching/movies/page.tsx
-import WatchingPageWrapper from "@/components/watching/WatchingPageWrapper";
+import WatchingPageWrapper from "@/modules/watching/components/WatchingPageWrapper";
 
 export default function MoviesPage() {
   return <WatchingPageWrapper type="film" />;

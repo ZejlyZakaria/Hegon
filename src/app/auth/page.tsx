@@ -15,10 +15,10 @@ import {
   Target,
   Brain,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { createClient } from "@/infrastructure/supabase/client"
+import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -104,7 +104,7 @@ function FeatureCard({
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5, delay, ease: [0.4, 0, 0.2, 1] }}
-      className="flex items-start gap-3 p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.05] transition-colors duration-200"
+      className="flex items-start gap-3 p-4 rounded-xl bg-white/3 border border-white/5 hover:bg-white/5 transition-colors duration-200"
     >
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -165,7 +165,7 @@ function RightPanel() {
         transition={{ duration: 0.5 }}
         className="flex items-center gap-3 mb-12"
       >
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
+        <div className="w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
           <Brain size={20} className="text-white" />
         </div>
         <span className="text-lg font-bold text-white tracking-tight">
@@ -182,7 +182,7 @@ function RightPanel() {
         <h2 className="text-3xl font-bold text-white leading-tight mb-3">
           Tout ce qui compte,
           <br />
-          <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
+          <span className="bg-linear-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
             au même endroit.
           </span>
         </h2>
@@ -289,7 +289,7 @@ export default function AuthPage() {
       <div className="flex flex-col justify-center px-8 sm:px-14 py-12 min-h-screen lg:min-h-0">
         {/* mobile logo */}
         <div className="flex items-center gap-2.5 mb-10 lg:hidden">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl bg-linear-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
             <Brain size={16} className="text-white" />
           </div>
           <span className="text-sm font-bold text-white">Second Brain</span>
@@ -430,7 +430,7 @@ export default function AuthPage() {
             <Button
               type="submit"
               disabled={loading || googleLoading || !email || !password}
-              className="w-full mt-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-lg shadow-violet-500/20 font-semibold transition-all duration-150"
+              className="w-full mt-1 bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-lg shadow-violet-500/20 font-semibold transition-all duration-150"
             >
               {loading && <Loader2 size={15} className="animate-spin mr-2" />}
               {mode === "login" ? "Se connecter" : "Créer mon compte"}

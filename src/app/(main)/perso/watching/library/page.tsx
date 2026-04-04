@@ -1,6 +1,6 @@
 // app/perso/watching/library/page.tsx
-import { createServerClient } from "@/lib/supabase/server";
-import LibraryClient from "@/components/watching/LibraryClient";
+import { createServerClient } from "@/infrastructure/supabase/server";
+import LibraryClient from "@/modules/watching/components/library/LibraryClient";
 
 export default async function LibraryPage() {
   const supabase = await createServerClient();

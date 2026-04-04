@@ -1,4 +1,4 @@
-import { TasksProvider } from "@/components/tasks/TasksProvider";
+import { TasksProvider } from "@/modules/tasks/provider";
 import { Toaster } from "sonner";
 
 // =====================================================
