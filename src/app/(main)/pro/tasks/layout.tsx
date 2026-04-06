@@ -1,5 +1,4 @@
 import { TasksProvider } from "@/modules/tasks/provider";
-import { Toaster } from "sonner";
 
 // =====================================================
 // TASKS LAYOUT
@@ -13,9 +12,7 @@ export default function TasksLayout({
 }) {
   return (
     <TasksProvider>
-      <div className="flex h-screen w-full overflow-hidden max-w-8xl mx-auto">{children}
-        <Toaster position="top-right" />
-      </div>
+      <div className="flex h-screen w-full overflow-hidden max-w-8xl mx-auto">{children}</div>
     </TasksProvider>
   );
 }

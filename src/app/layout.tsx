@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "@/shared/providers/QueryProvider";
+import { Toaster } from "sonner";
 // @ts-expect-error: side-effect CSS import type declaration missing in this project setup
 import "./globals.css";
 
@@ -27,6 +28,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <QueryProvider>
             {children}
+            <Toaster
+              position="bottom-right"
+              theme="dark"
+              toastOptions={{
+                classNames: {
+                  title: "!font-medium",
+                  description: "!text-zinc-400",
+                },
+              }}
+            />
           </QueryProvider>
         </ThemeProvider>
       </body>

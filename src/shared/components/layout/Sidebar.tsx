@@ -515,7 +515,7 @@ export default function Sidebar() {
         >
           {!collapsed && (
             <div className="flex items-center overflow-hidden">
-              <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 relative">
+              <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 relative mr-2">
                 <Image
                   src="/logo/Hegon_black_logo2.png"
                   alt="HEGON"
