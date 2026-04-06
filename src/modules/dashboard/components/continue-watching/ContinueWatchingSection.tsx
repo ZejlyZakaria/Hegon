@@ -134,7 +134,7 @@ export default function ContinueWatchingSection({ mediaList }: Props) {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-0.5 h-3.5 rounded-full bg-violet-400" />
-            <h2 className="text-base font-semibold text-white tracking-tight">Continue Watching</h2>
+            <h2 className="text-base font-semibold text-white tracking-tight">Currently Watching</h2>
           </div>
           <Link href="/perso/watching" className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors">
             View all →
@@ -156,7 +156,7 @@ export default function ContinueWatchingSection({ mediaList }: Props) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2.5">
           <div className="w-0.5 h-3.5 rounded-full bg-violet-400" />
-          <h2 className="text-base font-semibold text-white tracking-tight">Continue Watching</h2>
+          <h2 className="text-base font-semibold text-white tracking-tight">Currently Watching</h2>
           <span className="text-xs text-zinc-500 italic">· pick up where you left off</span>
         </div>
         <Link href="/perso/watching" className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors">

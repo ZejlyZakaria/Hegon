@@ -21,7 +21,10 @@ HEGON is a personal productivity platform built for a single user. It brings tog
 ## Screenshots
 
 ### Dashboard
-> *Screenshot coming soon*
+
+<div align="center">
+  <img src="public/screenshots/Hegon_linkedin_dashboard.png" alt="Kanban Board" width="90%" />
+</div>
 
 ---
 

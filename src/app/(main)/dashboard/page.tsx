@@ -34,16 +34,40 @@ export default async function DashboardPage() {
     if (newWorkspace) {
       const { data: project } = await supabase
         .from("projects")
-        .insert({ name: "My First Project", workspace_id: newWorkspace.id, color: "#3b82f6" })
+        .insert({
+          name: "My First Project",
+          workspace_id: newWorkspace.id,
+          color: "#3b82f6",
+        })
         .select("id")
         .single();
 
       if (project) {
         await supabase.from("statuses").insert([
-          { name: "Backlog",     color: "#6b7280", position: 0, project_id: project.id },
-          { name: "To Do",       color: "#6b7280", position: 1, project_id: project.id },
-          { name: "In Progress", color: "#f59e0b", position: 2, project_id: project.id },
-          { name: "Done",        color: "#3b82f6", position: 3, project_id: project.id },
+          {
+            name: "Backlog",
+            color: "#6b7280",
+            position: 0,
+            project_id: project.id,
+          },
+          {
+            name: "To Do",
+            color: "#6b7280",
+            position: 1,
+            project_id: project.id,
+          },
+          {
+            name: "In Progress",
+            color: "#f59e0b",
+            position: 2,
+            project_id: project.id,
+          },
+          {
+            name: "Done",
+            color: "#3b82f6",
+            position: 3,
+            project_id: project.id,
+          },
         ]);
       }
     }
@@ -71,7 +95,8 @@ export default async function DashboardPage() {
         <TodaySection data={data} />
 
         {/* Continue Watching + Upcoming in Sports — side by side */}
-        {(data.inProgressMediaList.length > 0 || data.sportEvents.length > 0) && (
+        {(data.inProgressMediaList.length > 0 ||
+          data.sportEvents.length > 0) && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <ContinueWatchingSection mediaList={data.inProgressMediaList} />
             <UpcomingSportsSection events={data.sportEvents} />
