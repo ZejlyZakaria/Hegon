@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Save } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/shared/utils/toast";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { useUpdateMedia } from "@/modules/watching/hooks/useUpdateMedia";
@@ -75,7 +75,7 @@ export default function TopTenSectionClient({ initialItems, userId, config }: Pr
         notes: updated.notes,
       });
     } catch {
-      toast.error("Erreur lors de la mise à jour.");
+      toast.error("Error occurred while updating.");
     }
   };
 
@@ -97,13 +97,13 @@ export default function TopTenSectionClient({ initialItems, userId, config }: Pr
             className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
           >
             <Save size={14} />
-            {updatePrioritiesMutation.isPending ? "Sauvegarde..." : "Sauvegarder le classement"}
+            {updatePrioritiesMutation.isPending ? "Saving..." : "Save ranking"}
           </button>
         </div>
       )}
       <MediaCarousel
         title={`My Top 10 ${label}`}
-        subtitle={`Your 10 ${config.labelPlural} incontournables`}
+        subtitle={`Your 10 must-see ${config.labelPlural}`}
         items={localItems}
         onAddClick={localItems.length < 10 ? () => openModal("topTen") : undefined}
         draggable

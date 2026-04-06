@@ -80,7 +80,7 @@ export async function updateMediaItem(
   const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
-    .update(updates)
+    .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();
@@ -149,7 +149,7 @@ export async function getExistingMediaItem(
   const { data } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("id, favorite, priority, recently_watched, watched_at, in_progress, want_to_watch")
+    .select("id, favorite, priority, recently_watched, watched_at, in_progress, want_to_watch, current_episode, current_season")
     .eq("user_id", userId)
     .eq("type", type)
     .eq("tmdb_id", tmdbId)
@@ -177,7 +177,7 @@ export async function updateMediaItemById(
   const { data: result, error } = await supabase
     .schema("watching")
     .from("media_items")
-    .update(data)
+    .update({ ...data, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();

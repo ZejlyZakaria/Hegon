@@ -108,6 +108,12 @@ export function useAddMedia() {
         priority_level: listContext === "wantToWatch" ? priorityLevel : null,
         seasons:
           defaultType === "serie" || defaultType === "anime" ? seasons : null,
+        season_episodes:
+          (defaultType === "serie" || defaultType === "anime") && Array.isArray(selectedItem.seasons)
+            ? selectedItem.seasons
+                .filter((s: any) => s.season_number > 0)
+                .map((s: any) => s.episode_count as number)
+            : null,
         current_episode: listContext === "inProgress" ? currentEpisode : null,
         current_season: listContext === "inProgress" ? currentSeason : null,
         in_progress: listContext === "inProgress",
@@ -124,10 +130,22 @@ export function useAddMedia() {
       const existing = await getExistingMediaItem(userId, defaultType, selectedItem.id);
 
       if (existing?.id) {
+        // BLOCK: in_progress → want_to_watch (can't go backwards)
+        if (listContext === "wantToWatch" && existing.in_progress) {
+          throw new Error('Ce média est "En cours". Cette transition n\'est pas autorisée.');
+        }
+
+        // in_progress: clear want_to_watch, preserve top10 fields
         if (listContext === "inProgress") {
           return updateMediaItemById(existing.id, {
             current_episode: currentEpisode,
             current_season: currentSeason,
+            season_episodes:
+              (defaultType === "serie" || defaultType === "anime") && Array.isArray(selectedItem.seasons)
+                ? selectedItem.seasons
+                    .filter((s: any) => s.season_number > 0)
+                    .map((s: any) => s.episode_count as number)
+                : undefined,
             in_progress: true,
             watched: false,
             recently_watched: false,
@@ -136,12 +154,30 @@ export function useAddMedia() {
           });
         }
 
+        // topTen: update top10 fields only, preserve in_progress state entirely
+        if (listContext === "topTen") {
+          return updateMediaItemById(existing.id, {
+            watched: true,
+            recently_watched: existing.recently_watched,
+            watched_at: existing.watched_at ?? new Date().toISOString(),
+            favorite: true,
+            priority,
+            user_rating: userRating > 0 ? userRating : null,
+            rating: selectedItem.vote_average,
+            want_to_watch: false,
+            in_progress: existing.in_progress ?? false,
+            current_episode: existing.current_episode ?? null,
+            current_season: existing.current_season ?? null,
+          });
+        }
+
+        // Other contexts (recentlyWatched, library, wantToWatch)
         const updateData: any = { ...insertData };
-        if (listContext !== "topTen" && existing.priority != null) {
+        if (existing.priority != null) {
           updateData.priority = existing.priority;
           updateData.favorite = true;
         }
-        if (listContext === "topTen" && existing.recently_watched) {
+        if (existing.recently_watched) {
           updateData.recently_watched = true;
           updateData.watched_at = existing.watched_at;
         }

@@ -140,7 +140,7 @@ export default async function WatchingHero({ config }: { config: WatchingConfig 
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-2">
 
       {/* ── trending hero — 2/3 sur desktop, full sur mobile ── */}
-      <div className="lg:col-span-2 relative rounded-2xl overflow-hidden bg-zinc-900 min-h-70 lg:min-h-80">
+      <div className="lg:col-span-2 relative rounded-2xl overflow-hidden bg-zinc-900 min-h-56 lg:min-h-64">
         {backdropUrl && (
           <Image src={backdropUrl} alt={title ?? "Trending"} fill
             className="object-cover" sizes="(max-width: 1024px) 100vw, 66vw" priority />
@@ -155,7 +155,7 @@ export default async function WatchingHero({ config }: { config: WatchingConfig 
           <span className="sm:hidden">Trend</span>
         </div>
 
-        <div className="absolute bottom-0 inset-x-0 p-4 md:p-5">
+        <div className="absolute bottom-0 inset-x-0 p-4">
           <div className="flex gap-2 mb-2 flex-wrap">
             {genres.slice(0, 3).map(g => (
               <span key={g} className="text-[9px] md:text-[10px] px-2 py-0.5 bg-white/10 rounded-full text-zinc-300">
@@ -182,7 +182,7 @@ export default async function WatchingHero({ config }: { config: WatchingConfig 
       </div>
 
       {/* ── recommendations — 1/3 sur desktop, full sur mobile ── */}
-      <div className="lg:col-span-1 rounded-2xl bg-zinc-900/60 border border-zinc-800/50 p-4 md:p-5 flex flex-col gap-3 md:gap-4 min-h-50 lg:min-h-0">
+      <div className="lg:col-span-1 rounded-2xl bg-zinc-900/60 border border-zinc-800/50 p-4 flex flex-col gap-3 min-h-50 lg:min-h-0">
         <div className="flex items-center gap-2">
           <Sparkles size={13} className="text-violet-400 md:w-3.5 md:h-3.5" />
           <h3 className="text-xs md:text-sm font-semibold text-zinc-300">
@@ -199,7 +199,7 @@ export default async function WatchingHero({ config }: { config: WatchingConfig 
         ) : (
           <div className="flex items-center justify-center flex-1">
             <p className="text-[10px] md:text-xs text-zinc-600">
-              Aucune recommandation
+              No recommendations
             </p>
           </div>
         )}

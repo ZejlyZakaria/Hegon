@@ -1,6 +1,6 @@
 "use client";
 
-import { toast } from "sonner";
+import { toast } from "@/shared/utils/toast";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { useUpdateMedia } from "@/modules/watching/hooks/useUpdateMedia";

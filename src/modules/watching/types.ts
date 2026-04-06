@@ -19,6 +19,7 @@ export interface WatchingMedia {
   episode_runtime?: number;
   seasons?: number;
   episodes?: number;
+  season_episodes?: number[] | null;
   current_episode?: number;
   current_season?: number;
   rating: number;

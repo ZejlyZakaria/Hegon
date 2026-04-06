@@ -1,6 +1,6 @@
 "use client";
 
-import { toast } from "sonner";
+import { toast } from "@/shared/utils/toast";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { useUpdateMedia } from "@/modules/watching/hooks/useUpdateMedia";
@@ -35,18 +35,18 @@ export default function WantToWatchSectionClient({ initialItems, userId, config 
     try {
       const updated = await markAsWatchedMutation.mutateAsync(itemId);
       notifyMoved("wantToWatch", updated);
-      toast.success("Marqué comme vu !");
+      toast.success("Marked as watched!");
     } catch {
-      toast.error("Erreur lors de la mise à jour.");
+      toast.error("Error occurred while updating.");
     }
   };
 
   const handleDelete = async (itemId: string) => {
     try {
       await deleteMediaMutation.mutateAsync(itemId);
-      toast.success("Supprimé de la watchlist.");
+      toast.success("Removed from watchlist.");
     } catch {
-      toast.error("Erreur lors de la suppression.");
+      toast.error("Error occurred while deleting.");
     }
   };
 
@@ -59,7 +59,7 @@ export default function WantToWatchSectionClient({ initialItems, userId, config 
         priority_level: updated.priority_level,
       });
     } catch {
-      toast.error("Erreur lors de la mise à jour.");
+      toast.error("Error occurred while updating.");
     }
   };
 

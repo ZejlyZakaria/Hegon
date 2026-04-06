@@ -22,9 +22,9 @@ export default function DeleteConfirmModal({
   onClose,
   onConfirm,
   title,
-  description = "Cette action est irréversible.",
-  confirmText = "Supprimer",
-  cancelText = "Annuler",
+  description = "This action cannot be undone.",
+  confirmText = "Delete",
+  cancelText = "Cancel",
   isDeleting = false,
 }: DeleteConfirmModalProps) {
   return (
@@ -83,7 +83,7 @@ export default function DeleteConfirmModal({
                   disabled={isDeleting}
                   className="flex-1 bg-red-600 hover:bg-red-500 text-white"
                 >
-                  {isDeleting ? "Suppression..." : confirmText}
+                  {isDeleting ? "Deleting..." : confirmText}
                 </Button>
               </div>
             </Dialog.Panel>

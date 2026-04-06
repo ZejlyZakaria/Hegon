@@ -1,6 +1,6 @@
 "use client";
 
-import { toast } from "sonner";
+import { toast } from "@/shared/utils/toast";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { useUpdateMedia } from "@/modules/watching/hooks/useUpdateMedia";
@@ -33,9 +33,9 @@ export default function RecentlyWatchedSectionClient({ initialItems, userId, con
     try {
       await deleteMediaMutation.mutateAsync(itemId);
       notifyDeleted(itemId);
-      toast.success("Supprimé.");
+      toast.success("Deleted.");
     } catch {
-      toast.error("Erreur lors de la suppression.");
+      toast.error("Error occurred while deleting.");
     }
   };
 
@@ -47,7 +47,7 @@ export default function RecentlyWatchedSectionClient({ initialItems, userId, con
         notes: updated.notes,
       });
     } catch {
-      toast.error("Erreur lors de la mise à jour.");
+      toast.error("Error occurred while updating.");
     }
   };
 

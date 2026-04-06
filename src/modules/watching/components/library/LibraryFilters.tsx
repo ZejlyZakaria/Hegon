@@ -81,7 +81,7 @@ export default function LibraryFilters({ onFilterChange }: Props) {
           <SelectTrigger
             className="w-40 h-9 bg-zinc-900 border-zinc-800 text-zinc-300 text-sm hover:border-zinc-600 focus:ring-0 focus:ring-offset-0 transition-colors"
           >
-            <SelectValue placeholder="Trier par..." />
+            <SelectValue placeholder="Sort by..." />
           </SelectTrigger>
           <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300">
             {SORT_OPTIONS.map(({ value, label }) => (

@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, createContext, useContext, useCallback, useRef } from "react";
-import { Toaster } from "sonner";
+
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import type { WatchingConfig, MediaType, WatchingMedia } from "@/modules/watching/types";
 
@@ -144,8 +144,6 @@ export default function WatchingClient({ config, children }: Props) {
       <section className="max-w-7xl mx-auto p-6 space-y-2">
         {children}
       </section>
-
-      <Toaster theme="dark" position="bottom-right" />
 
       <AddMediaModal
         isOpen={activeModal === "topTen"}

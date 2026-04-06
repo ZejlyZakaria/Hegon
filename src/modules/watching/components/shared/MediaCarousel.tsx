@@ -46,15 +46,15 @@ function PriorityBadge({ level }: { level: string | null | undefined }) {
   const config =
     {
       high: {
-        label: "Haute",
+        label: "High",
         className: "bg-red-500/20 text-red-400 border-red-500/30",
       },
       medium: {
-        label: "Moyenne",
+        label: "Medium",
         className: "bg-amber-500/20 text-amber-400 border-amber-500/30",
       },
       low: {
-        label: "Basse",
+        label: "Low",
         className: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
       },
     }[level] ?? null;
@@ -135,7 +135,7 @@ function CardMenu({
                   size={13}
                   className="text-zinc-500 group-hover:text-zinc-300"
                 />
-                Voir / Modifier
+                View / Edit
               </button>
 
               {onMarkWatched && !item.watched && (
@@ -151,7 +151,7 @@ function CardMenu({
                     size={13}
                     className="text-zinc-500 group-hover:text-emerald-400"
                   />
-                  {item.in_progress ? "Marquer comme terminé" : "Marquer comme vu"}
+                  {item.in_progress ? "Mark as finished" : "Mark as watched"}
                 </button>
               )}
 
@@ -168,7 +168,7 @@ function CardMenu({
                     size={13}
                     className="text-red-400/70 group-hover:text-red-400"
                   />
-                  Supprimer
+                  Delete
                 </button>
               )}
             </div>
@@ -181,8 +181,8 @@ function CardMenu({
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleConfirmDelete}
-        title={`Supprimer "${item.title}" ?`}
-        description="Ce média sera définitivement supprimé de ta collection."
+        title={`Delete "${item.title}"?`}
+        description="This media will be permanently deleted from your collection."
         isDeleting={isDeleting}
       />
     </>
@@ -381,7 +381,7 @@ export function MediaCarousel({
       router.refresh();
     } catch (err) {
       console.error("❌ Erreur mark as watched:", err);
-      alert("Erreur lors du marquage");
+      alert("Error while marking as watched");
     }
   };
 
@@ -418,11 +418,39 @@ export function MediaCarousel({
     </div>
   ) : null;
 
+  if (localItems.length === 0) {
+    return (
+      <section className="mb-3">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-semibold text-white tracking-tight">{title}</h3>
+            {subtitle && <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>}
+          </div>
+        </div>
+        <div
+          className="rounded-xl border border-white/5 bg-zinc-950/40 flex flex-col items-center justify-center gap-3 py-12 cursor-pointer group hover:border-white/10 transition-colors"
+          onClick={onAddClick}
+        >
+          {onAddClick ? (
+            <>
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/5 group-hover:bg-white/10 transition-colors">
+                <Plus size={22} className="text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+              </div>
+              <p className="text-sm text-zinc-500 group-hover:text-zinc-400 transition-colors">Add your first item</p>
+            </>
+          ) : (
+            <p className="text-sm text-zinc-500">Nothing here yet</p>
+          )}
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="mb-6">
-      <div className="mb-5 flex items-center justify-between">
+    <section className="mb-3">
+      <div className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-white">{title}</h3>
+          <h3 className="text-base font-semibold text-white tracking-tight">{title}</h3>
           {subtitle && <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>}
         </div>
         <div className="flex gap-2">
@@ -434,7 +462,7 @@ export function MediaCarousel({
                 ? "text-zinc-400 hover:bg-white/10 hover:text-white cursor-pointer"
                 : "text-zinc-400/20 border-white/5 cursor-not-allowed opacity-50",
             )}
-            aria-label="Précédent"
+            aria-label="Previous"
           >
             <ChevronLeft size={16} />
           </button>
@@ -446,7 +474,7 @@ export function MediaCarousel({
                 ? "text-zinc-400 hover:bg-white/10 hover:text-white cursor-pointer"
                 : "text-zinc-400/20 border-white/5 cursor-not-allowed opacity-50",
             )}
-            aria-label="Suivant"
+            aria-label="Next"
           >
             <ChevronRight size={16} />
           </button>
