@@ -31,9 +31,11 @@ export interface DashboardMedia {
   title: string;
   type: "film" | "serie" | "anime";
   poster_url: string | null;
+  backdrop_url: string | null;
   current_episode?: number | null;
   current_season?: number | null;
   episodes?: number | null;
+  season_episodes?: number[] | null;
 }
 
 export interface DashboardTask {
@@ -50,7 +52,9 @@ export interface DashboardTask {
 export interface DashboardData {
   tasks: DashboardTask[];
   inProgressMedia: DashboardMedia | null;
-  sportEvents: DashboardSportEvent[];
+  inProgressMediaList: DashboardMedia[];
+  todaySportEvents: DashboardSportEvent[];   // matches happening today
+  sportEvents: DashboardSportEvent[];         // matches after today (for Upcoming section)
   upNextEvent: DashboardSportEvent | null;
   priorityTask: DashboardTask | null;
 }

@@ -4,7 +4,7 @@ import { Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { createFirstProject } from "@/modules/tasks/actions/onboarding";
 import { useTasksStore } from "@/modules/tasks/store"
-import { toast } from "sonner";
+import { toast } from "@/shared/utils/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/shared/utils/utils"
 

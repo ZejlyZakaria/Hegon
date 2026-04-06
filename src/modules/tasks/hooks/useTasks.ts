@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as TaskService from "../service";
 import { TASK_KEYS } from "./query-keys";
 import type { MoveTaskInput } from "../types";
-import { toast } from "sonner";
+import { toast } from "@/shared/utils/toast";
 
 // =====================================================
 // HOOK: useTasks (fetch)

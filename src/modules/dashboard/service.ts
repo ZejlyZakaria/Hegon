@@ -83,20 +83,21 @@ export const getTodayTasksServer = cache(async (userId: string): Promise<Dashboa
 
 // ─── In-progress media (server-side) ──────────────────────────────────────────
 
-export const getInProgressMediaServer = cache(async (userId: string): Promise<DashboardMedia | null> => {
+export const getInProgressMediaServer = cache(async (userId: string): Promise<DashboardMedia[]> => {
   const supabase = await createServerClient();
 
   const { data } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("id, title, type, poster_url, current_episode, current_season, episodes")
+    .select("id, title, type, poster_url, backdrop_url, current_episode, current_season, episodes, season_episodes")
     .eq("user_id", userId)
     .eq("in_progress", true)
     .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(10);
 
-  return data ?? null;
+  if (!data?.length) return [];
+
+  return data.slice(0, 3);
 });
 
 // ─── Sport events (server-side) ───────────────────────────────────────────────
@@ -171,7 +172,7 @@ export const getNextTennisEvent = cache(async (): Promise<DashboardSportEvent | 
     .schema("sport")
     .from("tennis_tournaments")
     .select("id, name, surface, start_date, end_date, country")
-    .or(`start_date.gt.${now},and(start_date.lte.${now},end_date.gte.${now})`)
+    .gte("end_date", now.slice(0, 10))
     .order("start_date", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -194,7 +195,7 @@ export const getNextTennisEvent = cache(async (): Promise<DashboardSportEvent | 
 // ─── Main aggregator ──────────────────────────────────────────────────────────
 
 export const getDashboardData = cache(async (userId: string): Promise<DashboardData> => {
-  const [tasks, inProgressMedia, footballEvents, f1Event, tennisEvent] = await Promise.all([
+  const [tasks, inProgressMediaList, footballEvents, f1Event, tennisEvent] = await Promise.all([
     getTodayTasksServer(userId),
     getInProgressMediaServer(userId),
     getNextFootballEvents(userId),
@@ -210,11 +211,29 @@ export const getDashboardData = cache(async (userId: string): Promise<DashboardD
     .filter((e): e is DashboardSportEvent => e !== null)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const todaySportEvents = allEvents.filter((e) => {
+    const d = new Date(e.date);
+    return d >= todayStart && d <= todayEnd;
+  });
+
+  const futureEvents = allEvents.filter((e) => {
+    // For multi-day events (tennis), use endDate to keep ongoing tournaments visible
+    const relevant = e.endDate ? new Date(e.endDate) : new Date(e.date);
+    return relevant >= todayStart;
+  });
+
   return {
     tasks,
-    inProgressMedia,
-    sportEvents: allEvents,
-    upNextEvent: allEvents[0] ?? null,
+    inProgressMedia: inProgressMediaList[0] ?? null,
+    inProgressMediaList,
+    todaySportEvents,
+    sportEvents: futureEvents,
+    upNextEvent: futureEvents[0] ?? null,
     priorityTask: pickPriorityTask(tasks),
   };
 });
