@@ -56,9 +56,9 @@ function formatDate(dateStr: string) {
   const now = new Date();
   const tomorrow = new Date();
   tomorrow.setDate(now.getDate() + 1);
-  if (date.toDateString() === now.toDateString()) return "Aujourd'hui";
-  if (date.toDateString() === tomorrow.toDateString()) return "Demain";
-  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  if (date.toDateString() === now.toDateString()) return "Today";
+  if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow";
+  return date.toLocaleDateString("en-US", { day: "numeric", month: "long" });
 }
 
 // ─── Progress Bars ────────────────────────────────────────────────────────────

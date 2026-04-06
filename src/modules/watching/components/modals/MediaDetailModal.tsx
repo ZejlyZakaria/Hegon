@@ -9,6 +9,7 @@ import { Star, Heart, X, Info } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
+import { toast } from "@/shared/utils/toast";
 import { useUpdateMedia } from "@/modules/watching/hooks/useUpdateMedia";
 import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfirmModal";
 
@@ -37,8 +38,10 @@ export default function MediaDetailModal({
     item.priority_level ?? "medium",
   );
   const [favorite, setFavorite] = useState(item.favorite);
-  const [currentSeason, setCurrentSeason] = useState(item.current_season || 1);
-  const [currentEpisode, setCurrentEpisode] = useState(item.current_episode || 1);
+  const [seasonInput, setSeasonInput] = useState<string>(String(item.current_season || 1));
+  const [episodeInput, setEpisodeInput] = useState<string>(String(item.current_episode || 1));
+  const [seasonError, setSeasonError] = useState<string | null>(null);
+  const [episodeError, setEpisodeError] = useState<string | null>(null);
   const [similarTitles, setSimilarTitles] = useState<any[]>([]);
   
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -57,8 +60,10 @@ export default function MediaDetailModal({
       setFavorite(item.favorite);
       setUserRating(item.user_rating || 0);
       setPriorityLevel(item.priority_level ?? "medium");
-      setCurrentSeason(item.current_season || 1);
-      setCurrentEpisode(item.current_episode || 1);
+      setSeasonInput(String(item.current_season || 1));
+      setEpisodeInput(String(item.current_episode || 1));
+      setSeasonError(null);
+      setEpisodeError(null);
     }
   }, [isOpen, item]);
 
@@ -90,7 +95,72 @@ export default function MediaDetailModal({
     fetchSimilar();
   }, [item, isOpen]);
 
+  // ─── Season / episode validation ──────────────────────────────────────────
+
+  const maxSeason = item.seasons ?? null;
+
+  const getMaxEpisode = (season: number): number | null =>
+    item.season_episodes?.[season - 1] ?? null;
+
+  const handleSeasonChange = (val: string) => {
+    if (val !== "" && !/^\d+$/.test(val)) return;
+    setSeasonInput(val);
+    setSeasonError(null);
+    if (val === "") return;
+    const num = parseInt(val);
+    if (num < 1) {
+      setSeasonError("Min: 1");
+    } else if (maxSeason && num > maxSeason) {
+      setSeasonError(`Max: ${maxSeason} season${maxSeason > 1 ? "s" : ""}`);
+    } else {
+      // Re-validate episode against the new season
+      const ep = parseInt(episodeInput);
+      const maxEp = getMaxEpisode(num);
+      if (!isNaN(ep) && maxEp && ep > maxEp) {
+        setEpisodeError(`Max: ${maxEp} ep in S${num}`);
+      } else {
+        setEpisodeError(null);
+      }
+    }
+  };
+
+  const handleSeasonBlur = () => {
+    const num = parseInt(seasonInput);
+    if (seasonInput === "" || isNaN(num) || num < 1) {
+      setSeasonInput(String(item.current_season || 1));
+      setSeasonError(null);
+    }
+  };
+
+  const handleEpisodeChange = (val: string) => {
+    if (val !== "" && !/^\d+$/.test(val)) return;
+    setEpisodeInput(val);
+    setEpisodeError(null);
+    if (val === "") return;
+    const num = parseInt(val);
+    const season = parseInt(seasonInput) || 1;
+    const maxEp = getMaxEpisode(season);
+    if (num < 1) {
+      setEpisodeError("Min: 1");
+    } else if (maxEp && num > maxEp) {
+      setEpisodeError(`Max: ${maxEp} ep in S${season}`);
+    }
+  };
+
+  const handleEpisodeBlur = () => {
+    const num = parseInt(episodeInput);
+    if (episodeInput === "" || isNaN(num) || num < 1) {
+      setEpisodeInput(String(item.current_episode || 1));
+      setEpisodeError(null);
+    }
+  };
+
+  const hasProgressError = !!(seasonError || episodeError);
+
+  // ─── Save ──────────────────────────────────────────────────────────────────
+
   const handleSave = async () => {
+    if (item.in_progress && hasProgressError) return;
     try {
       const updateData: any = {
         id: item.id,
@@ -99,22 +169,25 @@ export default function MediaDetailModal({
         user_rating: userRating > 0 ? userRating : null,
       };
 
-      // Ajouter priority_level seulement pour want_to_watch
       if (item.want_to_watch) {
         updateData.priority_level = priorityLevel;
       }
 
-      // Ajouter saison/épisode seulement pour in_progress
       if (item.in_progress) {
-        updateData.current_season = currentSeason;
-        updateData.current_episode = currentEpisode;
+        const season = parseInt(seasonInput);
+        const episode = parseInt(episodeInput);
+        if (isNaN(season) || isNaN(episode)) return;
+        updateData.current_season = season;
+        updateData.current_episode = episode;
       }
 
       const updated = await updateMediaMutation.mutateAsync(updateData);
+      toast("Changes saved.");
       onUpdate?.(updated);
       onClose();
     } catch (err) {
       console.error("Erreur sauvegarde:", err);
+      toast.error("Failed to save changes.");
     }
   };
 
@@ -308,7 +381,7 @@ export default function MediaDetailModal({
                       <textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Tes impressions..."
+                        placeholder="Your thoughts..."
                         className="mt-2 w-full p-4 bg-zinc-800/50 border border-white/5 rounded-2xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-24 resize-none transition-all"
                       />
                     </div>
@@ -373,10 +446,10 @@ export default function MediaDetailModal({
                               )}
                             >
                               {level === "high"
-                                ? "Haute"
+                                ? "High"
                                 : level === "medium"
-                                  ? "Moyenne"
-                                  : "Basse"}
+                                  ? "Medium"
+                                  : "Low"}
                             </button>
                           ))}
                         </div>
@@ -427,28 +500,46 @@ export default function MediaDetailModal({
                           <span className="text-zinc-500">Progression:</span>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
-                              <span className="text-xs text-zinc-600">Season</span>
+                              <span className="text-xs text-zinc-600">
+                                Season{maxSeason ? ` (max ${maxSeason})` : ""}
+                              </span>
                               <input
-                                type="number"
-                                min={1}
-                                value={currentSeason}
-                                onChange={(e) =>
-                                  setCurrentSeason(Math.max(1, parseInt(e.target.value) || 1))
-                                }
-                                className="w-full bg-zinc-800/50 border border-white/5 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                                type="text"
+                                inputMode="numeric"
+                                value={seasonInput}
+                                onChange={(e) => handleSeasonChange(e.target.value)}
+                                onBlur={handleSeasonBlur}
+                                className={cn(
+                                  "w-full bg-zinc-800/50 border rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1",
+                                  seasonError
+                                    ? "border-red-500/60 focus:ring-red-500/50"
+                                    : "border-white/5 focus:ring-blue-500/50",
+                                )}
                               />
+                              {seasonError && (
+                                <p className="text-[11px] text-red-400 leading-tight">{seasonError}</p>
+                              )}
                             </div>
                             <div className="space-y-1">
-                              <span className="text-xs text-zinc-600">Episode</span>
+                              <span className="text-xs text-zinc-600">
+                                Episode{getMaxEpisode(parseInt(seasonInput) || 1) ? ` (max ${getMaxEpisode(parseInt(seasonInput) || 1)})` : ""}
+                              </span>
                               <input
-                                type="number"
-                                min={1}
-                                value={currentEpisode}
-                                onChange={(e) =>
-                                  setCurrentEpisode(Math.max(1, parseInt(e.target.value) || 1))
-                                }
-                                className="w-full bg-zinc-800/50 border border-white/5 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                                type="text"
+                                inputMode="numeric"
+                                value={episodeInput}
+                                onChange={(e) => handleEpisodeChange(e.target.value)}
+                                onBlur={handleEpisodeBlur}
+                                className={cn(
+                                  "w-full bg-zinc-800/50 border rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1",
+                                  episodeError
+                                    ? "border-red-500/60 focus:ring-red-500/50"
+                                    : "border-white/5 focus:ring-blue-500/50",
+                                )}
                               />
+                              {episodeError && (
+                                <p className="text-[11px] text-red-400 leading-tight">{episodeError}</p>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -504,8 +595,8 @@ export default function MediaDetailModal({
                   )}
                   <Button
                     onClick={handleSave}
-                    disabled={updateMediaMutation.isPending}
-                    className="ml-auto bg-zinc-100 text-black hover:bg-white"
+                    disabled={updateMediaMutation.isPending || (item.in_progress && hasProgressError)}
+                    className="ml-auto bg-zinc-100 text-black hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {updateMediaMutation.isPending ? "Saving..." : "Save Changes"}
                   </Button>

@@ -157,7 +157,7 @@ function ResultCard({ match, index }: { match: PastMatch; index: number }) {
               <span className="text-2xl font-black tabular-nums tracking-tight">{match.away_score}</span>
             </div>
             <span className="text-zinc-600 text-[9px] uppercase tracking-widest font-semibold">
-              {isHome ? "Dom." : "Ext."}
+              {isHome ? "Home" : "Away"}
             </span>
           </div>
 

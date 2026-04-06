@@ -61,7 +61,7 @@ export function MoviesHeroSkeleton() {
 
 export function CarouselSkeleton({ cards = 4 }: { cards?: number }) {
   return (
-    <div className="mb-6">
+    <div className="mb-3">
       <div className="flex items-center justify-between mb-5">
         <div className="space-y-2">
           <Pulse className="h-5 w-40 bg-zinc-800" />
@@ -85,14 +85,40 @@ export function CarouselSkeleton({ cards = 4 }: { cards?: number }) {
 
 export function LibrarySkeleton() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-      {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="animate-pulse space-y-2">
-          <Pulse className="aspect-2/3 w-full bg-zinc-800" />
-          <Pulse className="h-3 w-3/4 bg-zinc-800" />
-          <Pulse className="h-3 w-1/2 bg-zinc-800" />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <Pulse className="h-6 w-32 bg-zinc-800" />
+          <Pulse className="h-3.5 w-20 bg-zinc-800" />
         </div>
-      ))}
+        <div className="flex items-center gap-3">
+          <Pulse className="h-9 w-64 rounded-xl bg-zinc-800" />
+          <Pulse className="h-9 w-20 rounded-lg bg-zinc-800" />
+        </div>
+      </div>
+
+      {/* Filters — 4 chips + sort select */}
+      <div className="flex items-center gap-3">
+        <div className="flex gap-2">
+          <Pulse className="h-8 w-10 rounded-full bg-zinc-800" />
+          <Pulse className="h-8 w-14 rounded-full bg-zinc-800" />
+          <Pulse className="h-8 w-16 rounded-full bg-zinc-800" />
+          <Pulse className="h-8 w-16 rounded-full bg-zinc-800" />
+        </div>
+        <Pulse className="h-9 w-40 rounded-lg bg-zinc-800 ml-auto" />
+      </div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6">
+        {Array.from({ length: 16 }).map((_, i) => (
+          <div key={i} className="animate-pulse space-y-2">
+            <Pulse className="aspect-2/3 w-full bg-zinc-800 rounded-xl" />
+            <Pulse className="h-3 w-3/4 bg-zinc-800" />
+            <Pulse className="h-3 w-1/2 bg-zinc-800" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

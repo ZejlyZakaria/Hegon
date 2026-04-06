@@ -23,6 +23,7 @@ import {
   Play,
   AlertCircle,
 } from "lucide-react";
+import { toast } from "@/shared/utils/toast";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
 import { useAddMedia } from "@/modules/watching/hooks/useAddMedia";
 import { cn } from "@/shared/utils/utils";
@@ -78,8 +79,10 @@ export default function AddMediaModal({
 
   const [seasons, setSeasons] = useState<number | null>(null);
   const [episodes, setEpisodes] = useState<number | null>(null);
-  const [currentSeason, setCurrentSeason] = useState<number>(1);
-  const [currentEpisode, setCurrentEpisode] = useState<number>(1);
+  const [seasonInput, setSeasonInput] = useState<string>("1");
+  const [episodeInput, setEpisodeInput] = useState<string>("1");
+  const [seasonError, setSeasonError] = useState<string | null>(null);
+  const [episodeError, setEpisodeError] = useState<string | null>(null);
   const [runtime, setRuntime] = useState<number | null>(null);
   const [directors, setDirectors] = useState<
     { name: string; profile_url: string | null }[] | null
@@ -123,8 +126,10 @@ export default function AddMediaModal({
         setNotes("");
         setFavorite(false);
         setPriority(null);
-        setCurrentSeason(1);
-        setCurrentEpisode(1);
+        setSeasonInput("1");
+        setEpisodeInput("1");
+        setSeasonError(null);
+        setEpisodeError(null);
         setConflict(null);
         setPriorityLevel("medium");
       }, 300);
@@ -286,8 +291,8 @@ export default function AddMediaModal({
           setFavorite(existing.favorite ?? false);
 
           if (listContext === "inProgress") {
-            setCurrentSeason(existing.current_season ?? 1);
-            setCurrentEpisode(existing.current_episode ?? 1);
+            setSeasonInput(String(existing.current_season ?? 1));
+            setEpisodeInput(String(existing.current_episode ?? 1));
           }
 
           // ✅ DÉTECTER OÙ EST LE MÉDIA ACTUELLEMENT
@@ -303,9 +308,9 @@ export default function AddMediaModal({
           // ✅ CONSTRUIRE LA LISTE DES EMPLACEMENTS
           const existingLists: string[] = [];
           if (isInTopTen) existingLists.push("Top 10");
-          if (isInProgress) existingLists.push("En cours");
-          if (isInWantToWatch) existingLists.push("À voir");
-          if (isInRecentlyWatched) existingLists.push("Vu récemment");
+          if (isInProgress) existingLists.push("In Progress");
+          if (isInWantToWatch) existingLists.push("Want to Watch");
+          if (isInRecentlyWatched) existingLists.push("Recently Watched");
           if (isInLibrary) existingLists.push("Library");
 
           // ✅ VÉRIFIER SI DÉJÀ DANS LA LISTE CIBLE (DOUBLON)
@@ -319,15 +324,15 @@ export default function AddMediaModal({
           if (isAlreadyInTargetList) {
             const listNames = {
               library: "Library",
-              recentlyWatched: "Vu récemment",
+              recentlyWatched: "Recently Watched",
               topTen: "Top 10",
-              inProgress: "En cours",
-              wantToWatch: "À voir",
+              inProgress: "In Progress",
+              wantToWatch: "Want to Watch",
             };
             setConflict({
               existingLists,
               canAdd: false,
-              message: `Ce média est déjà dans "${listNames[listContext]}". Tu ne peux pas l'ajouter à nouveau.`,
+              message: `This media is already in "${listNames[listContext]}". You can't add it again.`,
             });
             return;
           }
@@ -338,9 +343,9 @@ export default function AddMediaModal({
             listContext === "library" && isInRecentlyWatched,
             // Top 10 → Library (déjà dedans automatiquement)
             listContext === "library" && isInTopTen,
-            // Library/Vu Récemment/Top 10 → À Voir (incohérent)
+            // Library/Vu Récemment/Top 10/En cours → À Voir (incohérent)
             listContext === "wantToWatch" &&
-              (isInLibrary || isInRecentlyWatched || isInTopTen),
+              (isInLibrary || isInRecentlyWatched || isInTopTen || isInProgress),
             // En cours → Library (incohérent)
             listContext === "library" && isInProgress,
             // À Voir → Vu Récemment (doit utiliser le bouton "Marquer comme vu")
@@ -355,31 +360,31 @@ export default function AddMediaModal({
 
           if (listContext === "topTen") {
             if (isInLibrary) {
-              contextualMessage = `Ce média est dans ta Library${ratingText}. Il sera ajouté au Top 10 — vérifie ta note.`;
+              contextualMessage = `This media is in your Library${ratingText}. It will be added to your Top 10 — check your rating.`;
             } else if (isInWantToWatch) {
-              contextualMessage = `Tu vas marquer ce média comme vu ET le classer dans ton Top 10.`;
+              contextualMessage = `You're marking this media as watched AND ranking it in your Top 10.`;
             } else if (isInProgress) {
-              contextualMessage = `Tu as fini ce média ! Il sera classé dans ton Top 10.`;
+              contextualMessage = `You finished this one! It will be ranked in your Top 10.`;
             } else if (isInRecentlyWatched) {
-              contextualMessage = `Ce média vu récemment sera classé dans ton Top 10.`;
+              contextualMessage = `This recently watched media will be ranked in your Top 10.`;
             }
           } else if (listContext === "recentlyWatched") {
             if (isInLibrary) {
-              contextualMessage = `Ce média est dans ta Library${ratingText}. Il sera ajouté à Vu récemment avec la date d'aujourd'hui.`;
+              contextualMessage = `This media is in your Library${ratingText}. It will be added to Recently Watched with today's date.`;
             } else if (isInTopTen) {
-              contextualMessage = `Ce média de ton Top 10 sera ajouté à Vu récemment (il reste dans ton Top 10).`;
+              contextualMessage = `This Top 10 media will be added to Recently Watched (it stays in your Top 10).`;
             } else if (isInProgress) {
-              contextualMessage = `Tu as fini ce média ! Il sera ajouté à Vu récemment.`;
+              contextualMessage = `You finished this one! It will be added to Recently Watched.`;
             }
           } else if (listContext === "inProgress") {
             if (isInLibrary) {
-              contextualMessage = `Ce média est dans ta Library. Il sera déplacé vers En cours et ne sera plus visible dans Library (sauf s'il est aussi dans ton Top 10).`;
+              contextualMessage = `This media is in your Library. It will be moved to In Progress and won't appear in Library anymore (unless it's also in your Top 10).`;
             } else if (isInRecentlyWatched) {
-              contextualMessage = `Ce média vu récemment sera marqué comme "En cours" — indique où tu en es.`;
+              contextualMessage = `This recently watched media will be marked as "In Progress" — set where you are.`;
             } else if (isInTopTen) {
-              contextualMessage = `Ce média de ton Top 10 sera marqué comme "En cours" — indique où tu en es.`;
+              contextualMessage = `This Top 10 media will be marked as "In Progress" — set where you are.`;
             } else if (isInWantToWatch) {
-              contextualMessage = `Tu commences ce média — indique à quel épisode tu es.`;
+              contextualMessage = `You're starting this one — set which episode you're on.`;
             }
           }
 
@@ -394,12 +399,22 @@ export default function AddMediaModal({
           }
 
           // ✅ VÉRIFIER LES TRANSITIONS INTERDITES
+          // Message spécifique pour En cours → À Voir
+          if (listContext === "wantToWatch" && isInProgress) {
+            setConflict({
+              existingLists,
+              canAdd: false,
+              message: `This media is "In Progress". You can't move it to Want to Watch.`,
+            });
+            return;
+          }
+
           // Message spécifique pour À Voir → Vu Récemment
           if (listContext === "recentlyWatched" && isInWantToWatch) {
             setConflict({
               existingLists,
               canAdd: false,
-              message: `Utilise le bouton "Marquer comme vu" depuis ta liste À Voir.`,
+              message: `Use the "Mark as watched" button from your Want to Watch list.`,
             });
             return;
           }
@@ -409,7 +424,7 @@ export default function AddMediaModal({
             setConflict({
               existingLists,
               canAdd: false,
-              message: `Ce média est dans "${existingLists.join(", ")}". Cette transition n'est pas autorisée.`,
+              message: `This media is in "${existingLists.join(", ")}". This transition is not allowed.`,
             });
             return;
           }
@@ -433,9 +448,58 @@ export default function AddMediaModal({
     }
   };
 
+  // ─── Season / episode validation (inProgress only) ────────────────────────
+
+  const maxSeason = seasons ?? null;
+
+  const getMaxEpisodeAdd = (season: number): number | null => {
+    if (!selectedItem?.seasons || !Array.isArray(selectedItem.seasons)) return null;
+    const s = selectedItem.seasons.find((s: any) => s.season_number === season);
+    return s?.episode_count ?? null;
+  };
+
+  const handleSeasonChangeAdd = (val: string) => {
+    if (val !== "" && !/^\d+$/.test(val)) return;
+    setSeasonInput(val);
+    setSeasonError(null);
+    if (val === "") return;
+    const num = parseInt(val);
+    if (num < 1) {
+      setSeasonError("Min: 1");
+    } else if (maxSeason && num > maxSeason) {
+      setSeasonError(`Max: ${maxSeason} season${maxSeason > 1 ? "s" : ""}`);
+    } else {
+      const ep = parseInt(episodeInput);
+      const maxEp = getMaxEpisodeAdd(num);
+      if (!isNaN(ep) && maxEp && ep > maxEp) {
+        setEpisodeError(`Max: ${maxEp} ep in S${num}`);
+      } else {
+        setEpisodeError(null);
+      }
+    }
+  };
+
+  const handleEpisodeChangeAdd = (val: string) => {
+    if (val !== "" && !/^\d+$/.test(val)) return;
+    setEpisodeInput(val);
+    setEpisodeError(null);
+    if (val === "") return;
+    const num = parseInt(val);
+    const season = parseInt(seasonInput) || 1;
+    const maxEp = getMaxEpisodeAdd(season);
+    if (num < 1) {
+      setEpisodeError("Min: 1");
+    } else if (maxEp && num > maxEp) {
+      setEpisodeError(`Max: ${maxEp} ep in S${season}`);
+    }
+  };
+
+  // ─── Submit ────────────────────────────────────────────────────────────────
+
   const handleSubmit = async () => {
     if (!selectedItem) return;
     if (listContext === "topTen" && priority === null) return;
+    if (listContext === "inProgress" && (seasonError || episodeError)) return;
 
     setLoading(true);
 
@@ -471,8 +535,8 @@ export default function AddMediaModal({
         favorite,
         priority,
         priorityLevel,
-        currentSeason,
-        currentEpisode,
+        currentSeason: parseInt(seasonInput) || 1,
+        currentEpisode: parseInt(episodeInput) || 1,
         seasons,
         episodes,
         runtime,
@@ -483,11 +547,12 @@ export default function AddMediaModal({
         genres: mapTmdbGenres(selectedItem.genre_ids),
       });
 
+      toast.success("Added to your collection.");
       onAdded(result);
       onClose();
     } catch (err) {
       console.error(err);
-      alert("Erreur lors de l'ajout.");
+      toast.error("Failed to add media.");
     } finally {
       setLoading(false);
     }
@@ -496,45 +561,45 @@ export default function AddMediaModal({
   const getHeaderInfo = () => {
     const typeLabel =
       defaultType === "film"
-        ? "un Film"
+        ? "a Movie"
         : defaultType === "serie"
-          ? "une Série"
-          : "un Anime";
+          ? "a Series"
+          : "an Anime";
     switch (listContext) {
       case "topTen":
         return {
-          title: `Ajouter ${typeLabel} au Top 10`,
-          desc: "Sélectionnez l'élite de votre collection.",
+          title: `Add ${typeLabel} to Top 10`,
+          desc: "Select the elite of your collection.",
           icon: <Trophy className="text-amber-500" size={20} />,
         };
       case "inProgress":
         return {
-          title: `Ajouter ${typeLabel} En Cours`,
-          desc: "Précise où tu en es dans ton visionnage.",
+          title: `Add ${typeLabel} to In Progress`,
+          desc: "Set where you are in your progress.",
           icon: <Play className="text-blue-500" size={20} />,
         };
       case "recentlyWatched":
         return {
-          title: `Ajouter ${typeLabel} aux Vus`,
-          desc: "Gardez une trace de vos visionnages récents.",
+          title: `Add ${typeLabel} to Recently Watched`,
+          desc: "Keep track of your recent watches.",
           icon: <History className="text-blue-500" size={20} />,
         };
       case "wantToWatch":
         return {
-          title: `Ajouter ${typeLabel} à Voir`,
-          desc: "Planifiez vos futures découvertes.",
+          title: `Add ${typeLabel} to Want to Watch`,
+          desc: "Plan your future discoveries.",
           icon: <Bookmark className="text-emerald-500" size={20} />,
         };
       case "library":
         return {
-          title: `Ajouter à ma Bibliothèque`,
-          desc: "Archive ce média dans ta collection personnelle.",
+          title: `Add to my Library`,
+          desc: "Archive this media in your personal collection.",
           icon: <Film className="text-violet-400" size={20} />,
         };
       default:
         return {
-          title: "Ajouter un média",
-          desc: "Enrichissez votre Second Brain.",
+          title: "Add Media",
+          desc: "Enrich your collection.",
           icon: <Plus className="text-blue-500" size={20} />,
         };
     }
@@ -608,7 +673,7 @@ export default function AddMediaModal({
                     />
                     <input
                       type="text"
-                      placeholder={`Rechercher ${defaultType === "film" ? "un film" : defaultType === "serie" ? "une série" : "un anime"}...`}
+                      placeholder={`Search for ${defaultType === "film" ? "a movie" : defaultType === "serie" ? "a series" : "an anime"}...`}
                       className="w-full pl-12 pr-4 py-3.5 bg-zinc-800/50 border border-white/5 rounded-2xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-sm"
                       value={searchQuery}
                       onChange={(e) => {
@@ -768,7 +833,7 @@ export default function AddMediaModal({
                               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3 flex items-center justify-between">
                                 <span className="flex items-center gap-2">
                                   <Star size={14} className="text-blue-500" />{" "}
-                                  Votre note
+                                  Your Rating
                                 </span>
                                 <span className="text-blue-500 font-black text-base">
                                   {userRating > 0
@@ -795,7 +860,7 @@ export default function AddMediaModal({
                           <div>
                             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-2">
                               <Trophy size={14} className="text-amber-500" />{" "}
-                              Classement Top 10
+                              Top 10 Ranking
                             </label>
                             <div className="flex justify-between gap-1">
                               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
@@ -824,10 +889,10 @@ export default function AddMediaModal({
 
                         <div className="space-y-2">
                           <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                            Notes personnelles
+                            Personal Notes
                           </label>
                           <textarea
-                            placeholder="Vos impressions..."
+                            placeholder="Your thoughts..."
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             className="w-full p-4 bg-zinc-800/50 border border-white/5 rounded-2xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-24 resize-none transition-all"
@@ -838,7 +903,7 @@ export default function AddMediaModal({
                       {/* Options Section */}
                       <div className="space-y-4">
                         <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                          Statut & Options
+                          Status & Options
                         </label>
 
                         <div className="space-y-3">
@@ -849,9 +914,9 @@ export default function AddMediaModal({
                                 size={18}
                               />
                               <p className="text-[11px] text-amber-200/60 leading-relaxed">
-                                Ce média sera ajouté à votre{" "}
-                                <strong>Top 10</strong>. Il est automatiquement
-                                marqué comme favori et vu.
+                                This media will be added to your{" "}
+                                <strong>Top 10</strong>. It is automatically
+                                marked as favorite and watched.
                               </p>
                             </div>
                           )}
@@ -873,7 +938,7 @@ export default function AddMediaModal({
                                     className={favorite ? "fill-rose-500" : ""}
                                   />
                                   <span className="text-sm font-medium">
-                                    Ajouter aux favoris
+                                    Add to Favorites
                                   </span>
                                 </div>
                                 <div
@@ -892,7 +957,7 @@ export default function AddMediaModal({
                               <div className="p-3 bg-blue-500/5 rounded-xl border border-blue-500/10 flex items-center gap-2">
                                 <Eye size={14} className="text-blue-400" />
                                 <p className="text-[10px] text-blue-400/70">
-                                  Sera marqué comme vu aujourd hui.
+                                  Will be marked as watched today.
                                 </p>
                               </div>
                             </>
@@ -901,53 +966,68 @@ export default function AddMediaModal({
                           {listContext === "inProgress" && (
                             <div className="space-y-4">
                               <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10 flex items-start gap-3">
-                                <Play
-                                  className="text-blue-400 shrink-0"
-                                  size={18}
-                                />
-                                <p className="text-[11px] text-blue-200/60 leading-relaxed">
-                                  Précise où tu en es pour suivre ta
-                                  progression.
-                                </p>
+                                <Play className="text-blue-400 shrink-0" size={18} />
+                                <div className="space-y-1">
+                                  <p className="text-[11px] text-blue-200/60 leading-relaxed">
+                                    Set where you are to track your progress.
+                                  </p>
+                                  <p className="text-[10px] text-zinc-600 leading-relaxed">
+                                    Note: season/episode breakdown follows TMDB structure, which may differ from broadcast seasons (especially for anime).
+                                  </p>
+                                </div>
                               </div>
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                    Saison
+                                    Season{maxSeason ? ` (max ${maxSeason})` : ""}
                                   </label>
                                   <input
-                                    type="number"
-                                    min={1}
-                                    value={currentSeason}
-                                    onChange={(e) =>
-                                      setCurrentSeason(
-                                        Math.max(
-                                          1,
-                                          parseInt(e.target.value) || 1,
-                                        ),
-                                      )
-                                    }
-                                    className="w-full bg-zinc-800/50 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={seasonInput}
+                                    onChange={(e) => handleSeasonChangeAdd(e.target.value)}
+                                    onBlur={() => {
+                                      if (!seasonInput || parseInt(seasonInput) < 1) {
+                                        setSeasonInput("1");
+                                        setSeasonError(null);
+                                      }
+                                    }}
+                                    className={cn(
+                                      "w-full bg-zinc-800/50 border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1",
+                                      seasonError
+                                        ? "border-red-500/60 focus:ring-red-500/50"
+                                        : "border-white/5 focus:ring-blue-500/50",
+                                    )}
                                   />
+                                  {seasonError && (
+                                    <p className="text-[10px] text-red-400">{seasonError}</p>
+                                  )}
                                 </div>
                                 <div className="space-y-1.5">
                                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                    Épisode
+                                    Episode{getMaxEpisodeAdd(parseInt(seasonInput) || 1) ? ` (max ${getMaxEpisodeAdd(parseInt(seasonInput) || 1)})` : ""}
                                   </label>
                                   <input
-                                    type="number"
-                                    min={1}
-                                    value={currentEpisode}
-                                    onChange={(e) =>
-                                      setCurrentEpisode(
-                                        Math.max(
-                                          1,
-                                          parseInt(e.target.value) || 1,
-                                        ),
-                                      )
-                                    }
-                                    className="w-full bg-zinc-800/50 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={episodeInput}
+                                    onChange={(e) => handleEpisodeChangeAdd(e.target.value)}
+                                    onBlur={() => {
+                                      if (!episodeInput || parseInt(episodeInput) < 1) {
+                                        setEpisodeInput("1");
+                                        setEpisodeError(null);
+                                      }
+                                    }}
+                                    className={cn(
+                                      "w-full bg-zinc-800/50 border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1",
+                                      episodeError
+                                        ? "border-red-500/60 focus:ring-red-500/50"
+                                        : "border-white/5 focus:ring-blue-500/50",
+                                    )}
                                   />
+                                  {episodeError && (
+                                    <p className="text-[10px] text-red-400">{episodeError}</p>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -961,16 +1041,16 @@ export default function AddMediaModal({
                                   size={18}
                                 />
                                 <p className="text-[11px] text-emerald-200/60 leading-relaxed">
-                                  Ajouté à votre liste{" "}
-                                  <strong>À regarder</strong>. La note et les
-                                  favoris sont désactivés car vous ne
-                                  l&apos;avez pas encore vu.
+                                  Added to your{" "}
+                                  <strong>Want to Watch</strong> list. Rating and
+                                  favorites are disabled since you
+                                  haven&apos;t watched it yet.
                                 </p>
                               </div>
 
                               <div>
                                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 block">
-                                  Priorité
+                                  Priority
                                 </label>
                                 <div className="flex gap-2">
                                   {(["high", "medium", "low"] as const).map(
@@ -991,10 +1071,10 @@ export default function AddMediaModal({
                                         )}
                                       >
                                         {level === "high"
-                                          ? "🔴 Haute"
+                                          ? "🔴 High"
                                           : level === "medium"
-                                            ? "🟡 Moyenne"
-                                            : "⚪ Basse"}
+                                            ? "🟡 Medium"
+                                            : "⚪ Low"}
                                       </button>
                                     ),
                                   )}
@@ -1020,7 +1100,7 @@ export default function AddMediaModal({
                                     className={favorite ? "fill-rose-500" : ""}
                                   />
                                   <span className="text-sm font-medium">
-                                    Ajouter aux favoris
+                                    Add to Favorites
                                   </span>
                                 </div>
                                 <div
@@ -1039,7 +1119,7 @@ export default function AddMediaModal({
                               <div className="p-3 bg-violet-500/5 rounded-xl border border-violet-500/10 flex items-center gap-2">
                                 <Film size={14} className="text-violet-400" />
                                 <p className="text-[10px] text-violet-400/70">
-                                  Sera archivé dans ta bibliothèque.
+                                  Will be archived in your library.
                                 </p>
                               </div>
                             </>
@@ -1055,15 +1135,15 @@ export default function AddMediaModal({
                     </div>
                     <div>
                       <h4 className="text-base font-medium text-white">
-                        Trouver{" "}
+                        Find{" "}
                         {defaultType === "film"
-                          ? "un film"
+                          ? "a movie"
                           : defaultType === "serie"
-                            ? "une série"
-                            : "un anime"}
+                            ? "a series"
+                            : "an anime"}
                       </h4>
                       <p className="text-xs text-zinc-500 mt-1">
-                        Recherchez pour importer les données TMDB.
+                        Search to import data from TMDB.
                       </p>
                     </div>
                   </div>
@@ -1077,7 +1157,7 @@ export default function AddMediaModal({
                   onClick={onClose}
                   className="text-zinc-400"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button
                   onClick={handleSubmit}
@@ -1095,7 +1175,7 @@ export default function AddMediaModal({
                   ) : (
                     <Plus size={15} />
                   )}
-                  Ajouter
+                  Add
                 </Button>
               </div>
             </Dialog.Panel>

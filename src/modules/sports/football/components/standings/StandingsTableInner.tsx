@@ -182,7 +182,7 @@ function Legend({ isChampionsLeague }: { isChampionsLeague: boolean }) {
       </div>
       <div className="flex items-center gap-1.5">
         <span className="inline-block w-1 h-3 rounded-full bg-red-500" />
-        <span className="text-zinc-600 text-[11px]">Relégation</span>
+        <span className="text-zinc-600 text-[11px]">Relegation</span>
       </div>
     </div>
   );

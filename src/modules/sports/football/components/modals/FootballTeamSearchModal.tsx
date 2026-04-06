@@ -71,7 +71,7 @@ export default function FootballTeamSearchModal({
         if (err) throw err;
         setResults(data ?? []);
       } catch {
-        setError("Erreur lors de la recherche.");
+        setError("Search error.");
         setResults([]);
       } finally {
         setLoading(false);
@@ -103,7 +103,7 @@ export default function FootballTeamSearchModal({
       setAddedIds((prev) => new Set([...prev, team.id]));
       onTeamAdded(team);
     } catch (err: any) {
-      setError(err.message ?? "Une erreur est survenue");
+      setError(err.message ?? "An error occurred");
     } finally {
       setAddingId(null);
     }
@@ -146,10 +146,10 @@ export default function FootballTeamSearchModal({
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-white">
-                      Ajouter une équipe
+                      Add a Team
                     </h2>
                     <p className="text-[11px] text-zinc-500">
-                      Recherche une équipe favorite
+                      Search for a favorite team
                     </p>
                   </div>
                 </div>
@@ -206,7 +206,7 @@ export default function FootballTeamSearchModal({
                     >
                       <Shield size={28} className="text-zinc-700" />
                       <p className="text-zinc-600 text-sm">
-                        Tape le nom d une équipe
+                        Type a team name
                       </p>
                     </motion.div>
                   )}
@@ -217,7 +217,7 @@ export default function FootballTeamSearchModal({
                       className="flex flex-col items-center gap-3 py-10 text-center"
                     >
                       <p className="text-zinc-500 text-sm">
-                        Aucune équipe trouvée pour {query}
+                        No team found for {query}
                       </p>
                     </motion.div>
                   )}
@@ -305,7 +305,7 @@ export default function FootballTeamSearchModal({
                   onClick={onClose}
                   className="text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700"
                 >
-                  Fermer
+                  Close
                 </Button>
               </div>
             </div>

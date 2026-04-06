@@ -10,7 +10,7 @@ import type { WatchingMedia } from "@/modules/watching/types";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Button } from "@/shared/components/ui/button";
 import { createClient } from "@/infrastructure/supabase/client"
-import { toast } from "sonner";
+import { toast } from "@/shared/utils/toast";
 
 const supabase = createClient();
 const ITEMS_PER_PAGE = 32;
@@ -94,10 +94,10 @@ export default function LibraryClient({ initialItems }: Props) {
       if (error) throw error;
 
       setAllItems(prev => prev.filter(i => i.id !== itemId));
-      toast.success("Média supprimé de la bibliothèque.");
+      toast.success("Removed from library.");
     } catch (err) {
       console.error("Erreur suppression:", err);
-      toast.error("Erreur lors de la suppression.");
+      toast.error("Failed to delete item.");
     }
   }, []);
 

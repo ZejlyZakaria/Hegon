@@ -22,6 +22,7 @@ import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
 import { useProjects } from "@/modules/tasks/hooks/useProjects";
 import type { Task } from "@/modules/tasks/types";
 import { TasksSkeleton } from "../TasksSkeletons";
+import { TasksEmptyState } from "../TasksEmptyState";
 
 // =====================================================
 // KANBAN BOARD COMPONENT
@@ -178,6 +179,10 @@ export function KanbanBoard() {
     tasksLoading
   ) {
     return <TasksSkeleton />;
+  }
+
+  if (!hasProjects) {
+    return <TasksEmptyState />;
   }
 
   return (

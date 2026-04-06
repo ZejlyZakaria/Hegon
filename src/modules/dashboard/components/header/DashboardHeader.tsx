@@ -1,0 +1,48 @@
+"use client";
+
+import { useMemo } from "react";
+
+interface DashboardHeaderProps {
+  userName: string;
+  hasTask: boolean;
+  hasMatch: boolean;
+}
+
+function getGreeting(hour: number): string {
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 18) return "Good afternoon";
+  if (hour >= 18 && hour < 22) return "Good evening";
+  return "Good night";
+}
+
+function getSubtitle(hasTask: boolean, hasMatch: boolean): string {
+  if (hasTask && hasMatch) return "Your day is packed — let's make it count.";
+  if (hasTask) return "One thing to conquer today.";
+  if (hasMatch) return "Light day — enjoy the game tonight.";
+  return "Nothing urgent today. Make it yours.";
+}
+
+function formatDate(): string {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+export default function DashboardHeader({ userName, hasTask, hasMatch }: DashboardHeaderProps) {
+  const hour = new Date().getHours();
+  const greeting = useMemo(() => getGreeting(hour), [hour]);
+  const subtitle = useMemo(() => getSubtitle(hasTask, hasMatch), [hasTask, hasMatch]);
+
+  return (
+    <div>
+      <h1 className="text-xl font-semibold text-white tracking-tight">
+        {formatDate()}
+      </h1>
+      <p className="text-xs text-zinc-500 mt-0.5">
+        {greeting}, {userName}&nbsp;&nbsp;·&nbsp;&nbsp;{subtitle}
+      </p>
+    </div>
+  );
+}

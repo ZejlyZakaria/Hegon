@@ -119,7 +119,7 @@ export default function TennisPlayerSearchModal({
         .slice(0, 8);
       setResults(players);
     } catch {
-      setError("Erreur lors de la recherche. Réessaie.");
+      setError("Search error. Please try again.");
       setResults([]);
     } finally {
       setLoading(false);
@@ -159,7 +159,7 @@ export default function TennisPlayerSearchModal({
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error ?? "Une erreur est survenue");
+      if (!res.ok) throw new Error(data.error ?? "An error occurred");
 
       setAddedIds((prev) => new Set([...prev, player.idPlayer]));
       setExistingApiIds((prev) => new Set([...prev, player.idPlayer]));
@@ -174,7 +174,7 @@ export default function TennisPlayerSearchModal({
       });
     } catch (err: unknown) {
       const errorMessage =
-        err instanceof Error ? err.message : "Une erreur est survenue";
+        err instanceof Error ? err.message : "An error occurred";
       setError(errorMessage);
     } finally {
       setAddingId(null);
@@ -218,10 +218,10 @@ export default function TennisPlayerSearchModal({
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-white">
-                      Ajouter un joueur
+                      Add a Player
                     </h2>
                     <p className="text-[11px] text-zinc-500">
-                      Recherche un joueur ATP
+                      Search for an ATP player
                     </p>
                   </div>
                 </div>
@@ -276,7 +276,7 @@ export default function TennisPlayerSearchModal({
                     >
                       <div className="text-3xl">🎾</div>
                       <p className="text-zinc-600 text-sm">
-                        Tape le nom d un joueur ATP
+                        Type an ATP player name
                       </p>
                     </motion.div>
                   )}
@@ -288,7 +288,7 @@ export default function TennisPlayerSearchModal({
                     >
                       <div className="text-3xl">🔍</div>
                       <p className="text-zinc-500 text-sm">
-                        Aucun joueur trouvé pour {query}
+                        No player found for {query}
                       </p>
                     </motion.div>
                   )}
@@ -342,7 +342,7 @@ export default function TennisPlayerSearchModal({
                                 <p className="text-[11px] text-zinc-500 flex items-center gap-1">
                                   <span>{getFlagEmoji(player.strNationality)}</span>
                                   <span>
-                                    {player.strNationality ?? "Nationalité inconnue"}
+                                    {player.strNationality ?? "Unknown nationality"}
                                   </span>
                                 </p>
                               </div>
@@ -384,12 +384,12 @@ export default function TennisPlayerSearchModal({
 
               {/* Footer */}
               <div className="px-4 py-3 border-t border-zinc-800/60 flex items-center justify-between">
-                <p className="text-[11px] text-zinc-600">Données via TheSportsDB</p>
+                <p className="text-[11px] text-zinc-600">Data via TheSportsDB</p>
                 <button
                   onClick={onClose}
                   className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors"
                 >
-                  Fermer
+                  Close
                 </button>
               </div>
             </div>

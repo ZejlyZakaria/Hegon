@@ -124,7 +124,7 @@ function MatchCard({ match, index }: { match: UpcomingMatch; index: number }) {
               {match.home_team_name}
             </span>
             {isHome && (
-              <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest -mt-1">Dom.</span>
+              <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest -mt-1">Home</span>
             )}
           </div>
 
@@ -137,7 +137,7 @@ function MatchCard({ match, index }: { match: UpcomingMatch; index: number }) {
             </div>
             <div className="flex items-center gap-1 text-zinc-600 text-[10px]">
               <MapPin size={8} />
-              <span>{isHome ? "Dom" : "Ext"}</span>
+              <span>{isHome ? "Home" : "Away"}</span>
             </div>
           </div>
 
@@ -157,7 +157,7 @@ function MatchCard({ match, index }: { match: UpcomingMatch; index: number }) {
               {match.away_team_name}
             </span>
             {!isHome && (
-              <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest -mt-1">Ext.</span>
+              <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest -mt-1">Away</span>
             )}
           </div>
         </div>

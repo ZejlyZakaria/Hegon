@@ -93,7 +93,7 @@ function EmptyHero({ onAdd }: { onAdd: () => void }) {
         className="object-cover opacity-30" quality={75} />
       <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent" />
       <div className="absolute top-4 left-4 z-10">
-        <span className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Équipes favorites</span>
+        <span className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Favorite Teams</span>
       </div>
       <div className="absolute inset-0 flex items-center justify-center z-10">
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}

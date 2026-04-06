@@ -156,11 +156,11 @@ export default function F1ConstructorsStandings({
   if (!standings.length) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="h-1 w-12 rounded-full bg-linear-to-r from-red-600 to-red-400" />
-        <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+        <h2 className="text-base font-semibold text-white tracking-tight">
           Constructor Standings
         </h2>
         <div className="flex-1 h-px bg-zinc-800" />

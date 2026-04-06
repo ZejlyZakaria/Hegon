@@ -64,10 +64,10 @@ export default function FootballRemoveConfirmModal({
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-white">
-                    Retirer des favoris
+                    Remove from Favorites
                   </h2>
                   <p className="text-[11px] text-zinc-500">
-                    Cette action est réversible
+                    This action is reversible
                   </p>
                 </div>
               </div>
@@ -79,7 +79,7 @@ export default function FootballRemoveConfirmModal({
                     {team.name}
                   </p>
                   <p className="text-zinc-500 text-xs mt-0.5">
-                    Retirer cette équipe de tes favoris ?
+                    Remove this team from your favorites?
                   </p>
                 </div>
               </div>
@@ -93,7 +93,7 @@ export default function FootballRemoveConfirmModal({
                   disabled={loading}
                   className="border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
                 >
-                  Annuler
+                  Cancel
                 </Button>
                 <Button
                   size="sm"
@@ -104,7 +104,7 @@ export default function FootballRemoveConfirmModal({
                   {loading ? (
                     <Loader2 size={13} className="animate-spin mr-1.5" />
                   ) : null}
-                  Retirer
+                  Remove
                 </Button>
               </div>
             </div>
