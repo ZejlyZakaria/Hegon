@@ -44,3 +44,5 @@ next-env.d.ts
 /CLAUDE.md
 /MASTER_PLAN.md
 /PROGRESS.md
+/hegon-tasks-seed.sql
+/.claude-chat-context.md

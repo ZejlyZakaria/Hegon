@@ -7,14 +7,29 @@ import {
   Folder,
   MoreHorizontal,
   PanelLeftClose,
+  Pencil,
+  Trash2,
+  Tag,
 } from "lucide-react";
-import { useTasksStore } from "@/modules/tasks/store"
+import { useTasksStore } from "@/modules/tasks/store";
 import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
 import { useProjects } from "@/modules/tasks/hooks/useProjects";
 import { TASKS_SIDEBAR_GLASS } from "@/shared/constants/sidebar-colors";
-import { cn } from "@/shared/utils/utils"
+import { cn } from "@/shared/utils/utils";
 import { motion } from "framer-motion";
-import type { Workspace } from "@/modules/tasks/types"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+import { WorkspaceModal } from "@/modules/tasks/components/modals/WorkspaceModal";
+import { ProjectModal } from "@/modules/tasks/components/modals/ProjectModal";
+import { DeleteWorkspaceModal } from "@/modules/tasks/components/modals/DeleteWorkspaceModal";
+import { DeleteProjectModal } from "@/modules/tasks/components/modals/DeleteProjectModal";
+import { ManageTagsModal } from "@/modules/tasks/components/modals/ManageTagsModal";
+import type { Workspace, Project } from "@/modules/tasks/types";
 
 // =====================================================
 // WORKSPACE ITEM — fetches its own projects
@@ -26,9 +41,20 @@ interface WorkspaceItemProps {
   onToggle: () => void;
 }
 
-function WorkspaceItem({ workspace, isExpanded, onToggle }: WorkspaceItemProps) {
+function WorkspaceItem({
+  workspace,
+  isExpanded,
+  onToggle,
+}: WorkspaceItemProps) {
   const { selectedProjectId, setSelectedProjectId } = useTasksStore();
   const { data: projects, isLoading } = useProjects(workspace.id);
+
+  // Modal state
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
 
   // Auto-select first project if none selected and projects exist
   useEffect(() => {
@@ -40,32 +66,66 @@ function WorkspaceItem({ workspace, isExpanded, onToggle }: WorkspaceItemProps) 
   return (
     <div className="space-y-0.5">
       {/* Workspace Header */}
-      <button
-        type="button"
-        onClick={onToggle}
+      <div
         className={cn(
           "w-full h-8 px-2 rounded-lg flex items-center gap-2",
           "text-zinc-400 hover:text-zinc-200 hover:bg-white/4",
           "transition-all group",
         )}
       >
-        <ChevronRight
-          size={14}
-          className={cn(
-            "text-zinc-600 transition-transform duration-150",
-            isExpanded && "rotate-90",
-          )}
-        />
-        <span className="text-xs font-semibold uppercase tracking-wider flex-1 text-left truncate">
-          {workspace.name}
-        </span>
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/8 rounded transition-all cursor-pointer"
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex items-center gap-2 flex-1 min-w-0"
         >
-          <MoreHorizontal size={12} />
-        </div>
-      </button>
+          <ChevronRight
+            size={14}
+            className={cn(
+              "text-zinc-600 transition-transform duration-150 shrink-0",
+              isExpanded && "rotate-90",
+            )}
+          />
+          <span className="text-xs font-semibold uppercase tracking-wider flex-1 text-left truncate">
+            {workspace.name}
+          </span>
+        </button>
+
+        {/* Workspace dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/8 rounded transition-all cursor-pointer shrink-0">
+              <MoreHorizontal size={12} />
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-44 bg-zinc-900 border-zinc-800 text-zinc-300"
+          >
+            <DropdownMenuItem
+              onClick={() => setCreateProjectOpen(true)}
+              className="gap-2 text-xs cursor-pointer hover:bg-white/5 focus:bg-white/5"
+            >
+              <Plus size={13} className="text-zinc-500" />
+              New project
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-zinc-800" />
+            <DropdownMenuItem
+              onClick={() => setRenameOpen(true)}
+              className="gap-2 text-xs cursor-pointer hover:bg-white/5 focus:bg-white/5"
+            >
+              <Pencil size={13} className="text-zinc-500" />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setDeleteOpen(true)}
+              className="gap-2 text-xs cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400"
+            >
+              <Trash2 size={13}/>
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {/* Projects List */}
       {isExpanded && (
@@ -75,10 +135,8 @@ function WorkspaceItem({ workspace, isExpanded, onToggle }: WorkspaceItemProps) 
           )}
 
           {projects?.map((project) => (
-            <button
-              type="button"
+            <div
               key={project.id}
-              onClick={() => setSelectedProjectId(project.id)}
               className={cn(
                 "w-full h-8 px-2 rounded-lg flex items-center gap-2 group",
                 "transition-all text-sm",
@@ -87,22 +145,64 @@ function WorkspaceItem({ workspace, isExpanded, onToggle }: WorkspaceItemProps) 
                   : "text-zinc-500 hover:text-zinc-200 hover:bg-white/4",
               )}
             >
-              <Folder
-                size={14}
-                className={cn(
-                  selectedProjectId === project.id ? "text-zinc-400" : "text-zinc-600",
+              <button
+                type="button"
+                onClick={() => setSelectedProjectId(project.id)}
+                className="flex items-center gap-2 flex-1 min-w-0"
+              >
+                <Folder
+                  size={14}
+                  className={cn(
+                    "shrink-0",
+                    selectedProjectId === project.id
+                      ? "text-zinc-400"
+                      : "text-zinc-600",
+                  )}
+                />
+                <span className="flex-1 text-left truncate">
+                  {project.name}
+                </span>
+              </button>
+
+              <div className="flex items-center gap-1 shrink-0">
+                {/* Project dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/8 rounded transition-all cursor-pointer">
+                      <MoreHorizontal size={11} />
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-40 bg-zinc-900 border-zinc-800 text-zinc-300"
+                  >
+                    <DropdownMenuItem
+                      onClick={() => setEditingProject(project)}
+                      className="gap-2 text-xs cursor-pointer hover:bg-white/5 focus:bg-white/5"
+                    >
+                      <Pencil size={13} className="text-zinc-500" />
+                      Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setDeletingProject(project)}
+                      className="gap-2 text-xs cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400"
+                    >
+                      <Trash2 size={13} />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {selectedProjectId === project.id && (
+                  <span className="w-1 h-3 rounded-full bg-zinc-400" />
                 )}
-              />
-              <span className="flex-1 text-left truncate">{project.name}</span>
-              {selectedProjectId === project.id && (
-                <span className="w-1 h-3 rounded-full bg-zinc-400 shrink-0" />
-              )}
-            </button>
+              </div>
+            </div>
           ))}
 
           {/* New Project Button */}
           <button
             type="button"
+            onClick={() => setCreateProjectOpen(true)}
             className={cn(
               "w-full h-8 px-2 rounded-lg flex items-center gap-2",
               "text-zinc-600 hover:text-zinc-400 hover:bg-white/4",
@@ -113,6 +213,49 @@ function WorkspaceItem({ workspace, isExpanded, onToggle }: WorkspaceItemProps) 
             <span>New Project</span>
           </button>
         </div>
+      )}
+
+      {/* Workspace modals */}
+      <WorkspaceModal
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+        workspace={workspace}
+      />
+      <DeleteWorkspaceModal
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        workspace={workspace}
+        onDeleted={() => setSelectedProjectId(null)}
+      />
+
+      {/* Project modals */}
+      <ProjectModal
+        open={createProjectOpen}
+        onOpenChange={setCreateProjectOpen}
+        workspaceId={workspace.id}
+      />
+      {editingProject && (
+        <ProjectModal
+          open={!!editingProject}
+          onOpenChange={(open) => {
+            if (!open) setEditingProject(null);
+          }}
+          workspaceId={workspace.id}
+          project={editingProject}
+        />
+      )}
+      {deletingProject && (
+        <DeleteProjectModal
+          open={!!deletingProject}
+          onOpenChange={(open) => {
+            if (!open) setDeletingProject(null);
+          }}
+          project={deletingProject}
+          onDeleted={() => {
+            if (selectedProjectId === deletingProject.id)
+              setSelectedProjectId(null);
+          }}
+        />
       )}
     </div>
   );
@@ -125,7 +268,11 @@ function WorkspaceItem({ workspace, isExpanded, onToggle }: WorkspaceItemProps) 
 export function TasksSidebar() {
   const { isSidebarCollapsed, toggleSidebar } = useTasksStore();
   const { data: workspaces } = useWorkspaces();
-  const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(new Set());
+  const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(
+    new Set(),
+  );
+  const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
+  const [manageTagsOpen, setManageTagsOpen] = useState(false);
 
   // Auto-expand first workspace when it appears
   useEffect(() => {
@@ -133,7 +280,7 @@ export function TasksSidebar() {
     if (firstId && !expandedWorkspaces.has(firstId)) {
       setExpandedWorkspaces(new Set([firstId]));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaces?.[0]?.id]);
 
   const toggleWorkspace = (workspaceId: string) => {
@@ -181,6 +328,7 @@ export function TasksSidebar() {
         <div className="h-14 border-b border-white/5 flex items-center justify-between px-4 shrink-0">
           <h2 className="text-sm font-semibold text-zinc-100">Projects</h2>
           <button
+            type="button"
             onClick={toggleSidebar}
             className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
           >
@@ -190,8 +338,6 @@ export function TasksSidebar() {
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-1">
-          {/* {workspacesLoading && <SidebarNavSkeleton />} */}
-
           {workspaces?.map((workspace) => (
             <WorkspaceItem
               key={workspace.id}
@@ -203,9 +349,10 @@ export function TasksSidebar() {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-white/5 p-2 shrink-0">
+        <div className="border-t border-white/5 p-2 shrink-0 space-y-1">
           <button
             type="button"
+            onClick={() => setCreateWorkspaceOpen(true)}
             className={cn(
               "w-full h-8 px-3 rounded-lg flex items-center justify-center gap-2",
               "bg-white/4 border border-white/5",
@@ -217,8 +364,31 @@ export function TasksSidebar() {
             <Plus size={14} />
             <span>New Workspace</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setManageTagsOpen(true)}
+            className={cn(
+              "w-full h-8 px-3 rounded-lg flex items-center justify-center gap-2",
+              "text-zinc-600 text-sm",
+              "hover:bg-white/4 hover:text-zinc-400",
+              "transition-all",
+            )}
+          >
+            <Tag size={13} />
+            <span>Manage Tags</span>
+          </button>
         </div>
       </div>
+
+      {/* Modals */}
+      <WorkspaceModal
+        open={createWorkspaceOpen}
+        onOpenChange={setCreateWorkspaceOpen}
+      />
+      <ManageTagsModal
+        open={manageTagsOpen}
+        onOpenChange={setManageTagsOpen}
+      />
     </motion.aside>
   );
 }

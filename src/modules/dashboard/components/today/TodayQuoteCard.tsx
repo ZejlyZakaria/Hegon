@@ -55,7 +55,7 @@ export default function TodayQuoteCard() {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/10 flex-1 flex flex-col min-h-30">
       <Image src={bgSrc} alt="" fill unoptimized className="object-cover" />
-      <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/55 to-black/30" />
+      {/* <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/55 to-black/30" /> */}
 
       <div className="relative flex flex-col flex-1 p-3 gap-1.5 justify-between">
         <span className={`self-start text-[10px] font-bold uppercase tracking-widest ${accentClass}`}>

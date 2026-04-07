@@ -8,6 +8,7 @@ import {
   Calendar,
   X,
   PanelLeftOpen,
+  Tag,
 } from "lucide-react";
 import { useTasksStore } from "@/modules/tasks/store";
 import { cn } from "@/shared/utils/utils";
@@ -26,6 +27,7 @@ import { Button } from "@/shared/components/ui/button";
 // import { PriorityIcon } from "@/components/tasks/PriorityIcon";
 // import { StatusIcon } from "@/components/tasks/StatusIcon";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
+import { useTags } from "@/modules/tasks/hooks/useTags";
 import { StatusIcon } from "../StatusIcon";
 import { PriorityIcon } from "../PriorityIcon";
 
@@ -46,6 +48,15 @@ export function TasksTopbar() {
     toggleSidebar,
   } = useTasksStore();
   const { data: statuses } = useStatuses(selectedProjectId);
+  const { data: tags } = useTags();
+
+  const toggleTag = (tagId: string) => {
+    const current = filters.tags;
+    const updated = current.includes(tagId)
+      ? current.filter((t: string) => t !== tagId)
+      : [...current, tagId];
+    setFilters({ tags: updated });
+  };
 
   const views: { mode: ViewMode; icon: React.ReactNode; label: string }[] = [
     { mode: "kanban", icon: <LayoutGrid size={16} />, label: "Kanban" },
@@ -207,6 +218,40 @@ export function TasksTopbar() {
                 ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
+
+            {/* Tag Filter - Nested */}
+            {tags && tags.length > 0 && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="cursor-pointer focus:bg-zinc-800">
+                  <div className="flex items-center gap-2">
+                    <Tag size={14} className="text-zinc-400" />
+                    <span>Tags</span>
+                  </div>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent
+                  className="w-48 rounded-md bg-zinc-900 border-zinc-800"
+                  sideOffset={4}
+                >
+                  {tags.map((tag) => (
+                    <DropdownMenuCheckboxItem
+                      key={tag.id}
+                      checked={filters.tags.includes(tag.id)}
+                      onCheckedChange={() => toggleTag(tag.id)}
+                      onSelect={(e) => e.preventDefault()}
+                      className="cursor-pointer focus:bg-zinc-800"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: tag.color ?? "#71717a" }}
+                        />
+                        <span>{tag.name}</span>
+                      </div>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
 
             {/* Clear Filters */}
             {activeFiltersCount > 0 && (

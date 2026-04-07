@@ -92,10 +92,15 @@ export function TaskCard({ task }: TaskCardProps) {
                 {task.tags.slice(0, 2).map((tag) => (
                   <span
                     key={tag.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-800/60 border border-white/5 text-[10px] text-zinc-400 truncate"
-                    style={{ maxWidth: "80px" }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium truncate"
+                    style={{
+                      maxWidth: "80px",
+                      backgroundColor: `${tag.color ?? "#71717a"}18`,
+                      color: tag.color ?? "#71717a",
+                      border: `1px solid ${tag.color ?? "#71717a"}30`,
+                    }}
                   >
-                    <Tag size={10} />
+                    <Tag size={9} className="shrink-0" />
                     {tag.name}
                   </span>
                 ))}
@@ -128,6 +133,7 @@ export function TaskCard({ task }: TaskCardProps) {
 
         {/* Hover: More Options */}
         <button
+          type="button"
           onClick={(e) => e.stopPropagation()} // ← EMPÊCHE LE CLICK DE REMONTER
           className={cn(
             "absolute top-2 right-2 w-6 h-6 rounded-lg flex items-center justify-center",

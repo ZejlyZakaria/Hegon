@@ -25,3 +25,8 @@ export const STATUS_KEYS = {
   lists: () => [...STATUS_KEYS.all, 'list'] as const,
   byProject: (projectId: string) => [...STATUS_KEYS.all, 'project', projectId] as const,
 } as const;
+
+export const TAG_KEYS = {
+  all: ['tags'] as const,
+  lists: () => [...TAG_KEYS.all, 'list'] as const,
+} as const;

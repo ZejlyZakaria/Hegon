@@ -280,16 +280,47 @@ export async function getProjects(workspaceId: string) {
   return data as Project[];
 }
 
-export async function createProject(project: Partial<Project>) {
+export async function createProject(input: { workspace_id: string; name: string; description?: string | null }) {
   const supabase = createClient();
+
+  // Get max position in workspace
+  const { data: maxPosData } = await supabase
+    .from("projects")
+    .select("position")
+    .eq("workspace_id", input.workspace_id)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const newPosition = (maxPosData?.position || 0) + 1;
+
   const { data, error } = await supabase
     .from("projects")
-    .insert(project)
+    .insert({ ...input, position: newPosition, status: "active" })
     .select()
     .single();
 
   if (error) throw error;
   return data as Project;
+}
+
+export async function updateProject(projectId: string, updates: { name?: string; description?: string | null }) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", projectId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Project;
+}
+
+export async function deleteProject(projectId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("projects").delete().eq("id", projectId);
+  if (error) throw error;
 }
 
 // =====================================================
@@ -306,6 +337,108 @@ export async function getWorkspaces(userId: string) {
 
   if (error) throw error;
   return data as Workspace[];
+}
+
+export async function createWorkspace(name: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: maxPosData } = await supabase
+    .from("workspaces")
+    .select("position")
+    .eq("user_id", user.id)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const newPosition = (maxPosData?.position || 0) + 1;
+
+  const { data, error } = await supabase
+    .from("workspaces")
+    .insert({ name, user_id: user.id, position: newPosition })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Workspace;
+}
+
+export async function updateWorkspace(workspaceId: string, updates: { name?: string; description?: string | null }) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("workspaces")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", workspaceId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Workspace;
+}
+
+export async function deleteWorkspace(workspaceId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("workspaces").delete().eq("id", workspaceId);
+  if (error) throw error;
+}
+
+// =====================================================
+// TAGS
+// =====================================================
+
+export async function getTags() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("tags")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("name", { ascending: true });
+
+  if (error) throw error;
+  return data as import("./types").Tag[];
+}
+
+export async function createTag(name: string, color: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("tags")
+    .insert({ name: name.trim(), color, user_id: user.id })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as import("./types").Tag;
+}
+
+export async function deleteTag(tagId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("tags").delete().eq("id", tagId);
+  if (error) throw error;
+}
+
+export async function addTagToTask(taskId: string, tagId: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("task_tags")
+    .insert({ task_id: taskId, tag_id: tagId });
+  if (error) throw error;
+}
+
+export async function removeTagFromTask(taskId: string, tagId: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("task_tags")
+    .delete()
+    .eq("task_id", taskId)
+    .eq("tag_id", tagId);
+  if (error) throw error;
 }
 
 // =====================================================

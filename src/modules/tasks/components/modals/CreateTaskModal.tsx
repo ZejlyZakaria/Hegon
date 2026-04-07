@@ -40,6 +40,9 @@ import { Calendar } from "@/shared/components/ui/calendar";
 import { cn } from "@/shared/utils/utils";
 
 import { useCreateTask } from "@/modules/tasks/hooks/useTasks";
+import { useAddTagToTask } from "@/modules/tasks/hooks/useTags";
+import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
+import { PriorityIcon } from "@/modules/tasks/components/PriorityIcon";
 import type { CreateTaskInput, Priority } from "@/modules/tasks/types"
 
 // =====================================================
@@ -83,7 +86,9 @@ export function CreateTaskModal({
   statusName,
 }: CreateTaskModalProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const createTaskMutation = useCreateTask();
+  const addTagMutation = useAddTagToTask(projectId);
 
   const form = useForm<CreateTaskFormData>({
     resolver: zodResolver(createTaskSchema),
@@ -106,8 +111,13 @@ export function CreateTaskModal({
     };
 
     createTaskMutation.mutate(taskInput, {
-      onSuccess: () => {
+      onSuccess: (createdTask) => {
+        // Add selected tags after task creation
+        selectedTagIds.forEach((tagId) => {
+          addTagMutation.mutate({ taskId: createdTask.id, tagId });
+        });
         form.reset();
+        setSelectedTagIds([]);
         onOpenChange(false);
       },
     });
@@ -117,6 +127,7 @@ export function CreateTaskModal({
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset();
+      setSelectedTagIds([]);
     }
     onOpenChange(open);
   };
@@ -197,18 +208,14 @@ export function CreateTaskModal({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent variant="tasks">
-                        <SelectItem value="critical" className="text-red-400">
-                          Critical
-                        </SelectItem>
-                        <SelectItem value="high" className="text-orange-400">
-                          High
-                        </SelectItem>
-                        <SelectItem value="medium" className="text-zinc-300">
-                          Medium
-                        </SelectItem>
-                        <SelectItem value="low" className="text-zinc-500">
-                          Low
-                        </SelectItem>
+                        {(["critical", "high", "medium", "low"] as Priority[]).map((p) => (
+                          <SelectItem key={p} value={p}>
+                            <div className="flex items-center gap-2">
+                              <PriorityIcon priority={p} />
+                              <span className="capitalize">{p}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -274,6 +281,12 @@ export function CreateTaskModal({
                 )}
               />
             </div>
+
+            {/* Tags */}
+            <TagSelector
+              selectedIds={selectedTagIds}
+              onChange={setSelectedTagIds}
+            />
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-2">

@@ -50,6 +50,10 @@ import { cn } from "@/shared/utils/utils";
 
 import { useUpdateTask } from "@/modules/tasks/hooks/useTasks";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
+import { useAddTagToTask, useRemoveTagFromTask } from "@/modules/tasks/hooks/useTags";
+import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
+import { PriorityIcon } from "@/modules/tasks/components/PriorityIcon";
+import { StatusIcon } from "@/modules/tasks/components/StatusIcon";
 import type {
   Task,
   Priority,
@@ -90,6 +94,8 @@ export function EditTaskModal({
 
   const updateTaskMutation = useUpdateTask();
   const { data: statuses } = useStatuses(task.project_id);
+  const addTagMutation = useAddTagToTask(task.project_id);
+  const removeTagMutation = useRemoveTagFromTask(task.project_id);
 
   // Track last saved values to avoid duplicate/unnecessary saves
   // due_date is normalized via toISOString() to match autoSave's computed value
@@ -315,18 +321,14 @@ export function EditTaskModal({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent variant="tasks">
-                        <SelectItem value="critical" className="text-red-400">
-                          Critical
-                        </SelectItem>
-                        <SelectItem value="high" className="text-orange-400">
-                          High
-                        </SelectItem>
-                        <SelectItem value="medium" className="text-zinc-300">
-                          Medium
-                        </SelectItem>
-                        <SelectItem value="low" className="text-zinc-500">
-                          Low
-                        </SelectItem>
+                        {(["critical", "high", "medium", "low"] as Priority[]).map((p) => (
+                          <SelectItem key={p} value={p}>
+                            <div className="flex items-center gap-2">
+                              <PriorityIcon priority={p} />
+                              <span className="capitalize">{p}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -355,7 +357,10 @@ export function EditTaskModal({
                       <SelectContent variant="tasks">
                         {statuses?.map((status) => (
                           <SelectItem key={status.id} value={status.id}>
-                            {status.name}
+                            <div className="flex items-center gap-2">
+                              <StatusIcon status={status.name} size={14} />
+                              <span>{status.name}</span>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -365,6 +370,13 @@ export function EditTaskModal({
                 )}
               />
             </div>
+
+            {/* Tags — immediate mutations, outside form auto-save */}
+            <TagSelector
+              selectedTags={task.tags}
+              onAdd={(tagId) => addTagMutation.mutate({ taskId: task.id, tagId })}
+              onRemove={(tagId) => removeTagMutation.mutate({ taskId: task.id, tagId })}
+            />
 
             {/* Row 2: Due Date + Estimated Hours */}
             <div className="grid grid-cols-2 gap-3">

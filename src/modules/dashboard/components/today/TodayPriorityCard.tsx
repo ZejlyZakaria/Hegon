@@ -40,7 +40,7 @@ export default function TodayPriorityCard({ task, remaining = 0 }: Props) {
         className="object-cover"
       />
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/60 to-black/25" />
+      {/* <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/60 to-black/25" /> */}
       {/* Indigo radial glow */}
       <div
         className="absolute inset-0 pointer-events-none"
