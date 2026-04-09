@@ -17,8 +17,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Second Brain",
+  title: "HEGON",
   description: "Ton espace personnel tout-en-un",
+  icons: {
+    icon: "/logo/Hegon_white_logo.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

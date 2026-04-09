@@ -4,6 +4,7 @@ import { cache } from "react";
 import { createServerClient } from "@/infrastructure/supabase/server";
 import { getNextRace } from "@/modules/sports/f1/service";
 import { getFootballTeams, getCrestsByExternalIds } from "@/modules/sports/football/service";
+import { getTennisPlayers } from "@/modules/sports/tennis/service";
 import type { DashboardSportEvent, DashboardMedia, DashboardTask, DashboardData } from "./types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -46,13 +47,18 @@ function pickPriorityTask(tasks: DashboardTask[]): DashboardTask | null {
   })[0];
 }
 
+function getTodayRange(): { start: Date; end: Date } {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
 // ─── Today tasks (server-side) ────────────────────────────────────────────────
 
 export const getTodayTasksServer = cache(async (userId: string): Promise<DashboardTask[]> => {
   const supabase = await createServerClient();
-
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
 
   const { data } = await supabase
     .from("tasks")
@@ -63,16 +69,15 @@ export const getTodayTasksServer = cache(async (userId: string): Promise<Dashboa
     `)
     .eq("created_by", userId)
     .eq("is_archived", false)
-    .lte("due_date", todayEnd.toISOString())
-    .order("due_date", { ascending: true })
-    .limit(15);
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .limit(50);
 
   return ((data ?? []) as any[])
     .filter((t) => !t.status?.is_completed)
     .map((t) => ({
       id: t.id,
       title: t.title,
-      priority: t.priority ?? "medium",
+      priority: (t.priority ?? "medium").toLowerCase(),
       due_date: t.due_date,
       project_name: t.project?.name ?? "Unknown",
       status_name: t.status?.name ?? "",
@@ -100,7 +105,132 @@ export const getInProgressMediaServer = cache(async (userId: string): Promise<Da
   return data.slice(0, 3);
 });
 
-// ─── Sport events (server-side) ───────────────────────────────────────────────
+// ─── Today football events (main team first) ──────────────────────────────────
+
+export const getTodayFootballEvents = cache(async (userId: string): Promise<DashboardSportEvent[]> => {
+  const supabase = await createServerClient();
+  const teams = await getFootballTeams(userId);
+  const { allFavoriteTeamIds, allTeams, mainTeamId } = teams;
+
+  if (!allFavoriteTeamIds.length) return [];
+
+  const { start, end } = getTodayRange();
+
+  const { data } = await supabase
+    .schema("sport")
+    .from("football_next_matches")
+    .select("id, team_id, home_team_name, away_team_name, home_team_external_id, away_team_external_id, match_date, football_competitions(name)")
+    .in("team_id", allFavoriteTeamIds)
+    .gte("match_date", start.toISOString())
+    .lte("match_date", end.toISOString())
+    .order("match_date", { ascending: true });
+
+  if (!data?.length) return [];
+
+  // Deduplicate: same match can appear for multiple followed teams
+  const matchMap = new Map<string, { match: any; isMainTeam: boolean }>();
+  for (const m of data as any[]) {
+    const key = `${m.home_team_name}-${m.away_team_name}-${m.match_date}`;
+    if (!matchMap.has(key)) {
+      matchMap.set(key, { match: m, isMainTeam: m.team_id === mainTeamId });
+    } else if (m.team_id === mainTeamId) {
+      matchMap.get(key)!.isMainTeam = true;
+    }
+  }
+
+  const unique = [...matchMap.values()];
+
+  const externalIds = [...new Set([
+    ...unique.map(({ match: m }) => m.home_team_external_id),
+    ...unique.map(({ match: m }) => m.away_team_external_id),
+  ].filter(Boolean))];
+
+  const crestMap = await getCrestsByExternalIds(externalIds);
+
+  const events: DashboardSportEvent[] = unique.map(({ match: m, isMainTeam }) => {
+    const comp = m.football_competitions as any;
+    return {
+      type: "football" as const,
+      title: `${m.home_team_name} vs ${m.away_team_name}`,
+      subtitle: formatEventDate(m.match_date),
+      date: m.match_date,
+      badge: "FOOTBALL",
+      href: "/perso/sports/football",
+      homeTeam: m.home_team_name,
+      awayTeam: m.away_team_name,
+      homeTeamCrest: crestMap[m.home_team_external_id] ?? null,
+      awayTeamCrest: crestMap[m.away_team_external_id] ?? null,
+      competition: comp?.name ?? null,
+      isMainTeam,
+    };
+  });
+
+  // Main team always first, then by time
+  return events.sort((a, b) => {
+    if (a.isMainTeam && !b.isMainTeam) return -1;
+    if (!a.isMainTeam && b.isMainTeam) return 1;
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
+});
+
+// ─── Today tennis match events (favorite players) ─────────────────────────────
+
+export const getTodayTennisEvents = cache(async (userId: string): Promise<DashboardSportEvent[]> => {
+  const supabase = await createServerClient();
+  const { favoritePlayers, favoritePlayerIds } = await getTennisPlayers(userId);
+
+  if (!favoritePlayerIds.length) return [];
+
+  // Use date-only string (YYYY-MM-DD) to avoid timezone mismatches
+  const todayStr = new Date().toLocaleDateString("en-CA"); // "2026-04-08"
+
+  const { data: matches } = await supabase
+    .schema("sport")
+    .from("tennis_matches")
+    .select("player_id, tournament_id, match_date, opponent_name, round")
+    .in("player_id", favoritePlayerIds)
+    .eq("status", "scheduled")
+    .gte("match_date", todayStr)
+    .lte("match_date", `${todayStr}T23:59:59`)
+    .order("match_date", { ascending: true });
+
+  if (!matches?.length) return [];
+
+  // Fetch tournament names
+  const tournamentIds = [...new Set((matches as any[]).map((m) => m.tournament_id).filter(Boolean))];
+  const { data: tournaments } = tournamentIds.length
+    ? await supabase.schema("sport").from("tennis_tournaments").select("id, name, surface").in("id", tournamentIds)
+    : { data: [] };
+
+  const tournamentMap: Record<string, any> = {};
+  for (const t of tournaments ?? []) tournamentMap[t.id] = t;
+
+  const playerMap: Record<string, any> = {};
+  for (const p of favoritePlayers) playerMap[p.id] = p;
+
+  return (matches as any[])
+    .filter((m) => m.match_date && playerMap[m.player_id])
+    .map((m) => {
+      const player = playerMap[m.player_id];
+      const tournament = tournamentMap[m.tournament_id] ?? null;
+      return {
+        type: "tennis" as const,
+        title: `${player.name} vs ${m.opponent_name ?? "TBD"}`,
+        subtitle: formatEventDate(m.match_date),
+        date: m.match_date,
+        badge: "TENNIS",
+        href: "/perso/sports/tennis",
+        playerName: player.name,
+        playerPhotoUrl: player.photo_url ?? null,
+        opponentName: m.opponent_name ?? "TBD",
+        round: m.round ?? null,
+        tournamentName: tournament?.name ?? null,
+        surface: tournament?.surface ?? null,
+      };
+    });
+});
+
+// ─── Upcoming football events (for Upcoming Sports section) ───────────────────
 
 export const getNextFootballEvents = cache(async (userId: string): Promise<DashboardSportEvent[]> => {
   const supabase = await createServerClient();
@@ -109,12 +239,16 @@ export const getNextFootballEvents = cache(async (userId: string): Promise<Dashb
 
   if (!allFavoriteTeamIds.length) return [];
 
+  // Fetch matches starting tomorrow+ (today's matches are in Today section)
+  const tomorrowStart = new Date();
+  tomorrowStart.setHours(23, 59, 59, 999);
+
   const { data } = await supabase
     .schema("sport")
     .from("football_next_matches")
     .select("id, team_id, home_team_name, away_team_name, home_team_external_id, away_team_external_id, match_date, football_competitions(name)")
     .in("team_id", allFavoriteTeamIds)
-    .gt("match_date", new Date().toISOString())
+    .gt("match_date", tomorrowStart.toISOString())
     .order("match_date", { ascending: true })
     .limit(2);
 
@@ -195,45 +329,63 @@ export const getNextTennisEvent = cache(async (): Promise<DashboardSportEvent | 
 // ─── Main aggregator ──────────────────────────────────────────────────────────
 
 export const getDashboardData = cache(async (userId: string): Promise<DashboardData> => {
-  const [tasks, inProgressMediaList, footballEvents, f1Event, tennisEvent] = await Promise.all([
+  const [
+    tasks,
+    inProgressMediaList,
+    todayFootballEvents,
+    todayTennisEvents,
+    upcomingFootballEvents,
+    f1Event,
+    nextTennisEvent,
+  ] = await Promise.all([
     getTodayTasksServer(userId),
     getInProgressMediaServer(userId),
+    getTodayFootballEvents(userId),
+    getTodayTennisEvents(userId),
     getNextFootballEvents(userId),
     getNextF1Event(),
     getNextTennisEvent(),
   ]);
 
-  const allEvents: DashboardSportEvent[] = [
-    ...footballEvents,
+  const { start: todayStart, end: todayEnd } = getTodayRange();
+
+  // F1 today?
+  const todayF1Event = f1Event && new Date(f1Event.date) >= todayStart && new Date(f1Event.date) <= todayEnd
+    ? f1Event
+    : null;
+
+  // Upcoming Sports section: future events (football + f1 + tennis tournament)
+  const allUpcoming: DashboardSportEvent[] = [
+    ...upcomingFootballEvents,
     f1Event,
-    tennisEvent,
-  ]
-    .filter((e): e is DashboardSportEvent => e !== null)
+    nextTennisEvent,
+  ].filter((e): e is DashboardSportEvent => e !== null)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-
-  const todaySportEvents = allEvents.filter((e) => {
-    const d = new Date(e.date);
-    return d >= todayStart && d <= todayEnd;
+  // Exclude today's events (already shown in Today section) — keep tomorrow+
+  // Exception: tennis tournaments use endDate (multi-day), keep if still ongoing
+  const futureEvents = allUpcoming.filter((e) => {
+    if (e.endDate) return new Date(e.endDate) >= todayStart; // tennis tournament: keep if ongoing
+    return new Date(e.date) > todayEnd; // football/f1: only tomorrow+
   });
 
-  const futureEvents = allEvents.filter((e) => {
-    // For multi-day events (tennis), use endDate to keep ongoing tournaments visible
-    const relevant = e.endDate ? new Date(e.endDate) : new Date(e.date);
-    return relevant >= todayStart;
-  });
+  // todaySportEvents kept for Upcoming Sports section compat
+  const todaySportEvents: DashboardSportEvent[] = [
+    ...todayFootballEvents,
+    ...todayTennisEvents,
+    ...(todayF1Event ? [todayF1Event] : []),
+  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return {
     tasks,
+    priorityTask: pickPriorityTask(tasks),
     inProgressMedia: inProgressMediaList[0] ?? null,
     inProgressMediaList,
+    todayFootballEvents,
+    todayTennisEvents,
+    todayF1Event,
     todaySportEvents,
     sportEvents: futureEvents,
     upNextEvent: futureEvents[0] ?? null,
-    priorityTask: pickPriorityTask(tasks),
   };
 });

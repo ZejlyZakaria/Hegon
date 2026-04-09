@@ -615,7 +615,7 @@ export default function Sidebar() {
                     Zakaria
                   </p>
                   <p className="text-[11px] text-zinc-600 truncate">
-                    Mon compte
+                    MY Account
                   </p>
                 </div>
                 <ChevronUp

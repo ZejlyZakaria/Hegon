@@ -2,72 +2,26 @@ import TodayPriorityCard from "./TodayPriorityCard";
 import TodayUpNextCard from "./TodayUpNextCard";
 import TodayQuoteCard from "./TodayQuoteCard";
 import TodayWeatherCard from "./TodayWeatherCard";
-import type { DashboardData, DashboardSportEvent, DashboardTask } from "../../types";
-
-// ─── Slot components ──────────────────────────────────────────────────────────
-
-function LeftSlot({
-  task,
-  match,
-}: {
-  task: DashboardTask | null;
-  match: DashboardSportEvent | null;
-}) {
-  if (task) return <TodayPriorityCard task={task} />;
-  if (match) return <TodayUpNextCard event={match} label="Today" />;
-  return <TodayWeatherCard variant="mid" />;
-}
-
-function RightSlot({
-  task,
-  todayMatches,
-  isEmpty,
-}: {
-  task: DashboardTask | null;
-  todayMatches: DashboardSportEvent[];
-  isEmpty: boolean;
-}) {
-  // Cases with a task
-  if (task) {
-    if (todayMatches.length >= 2) {
-      // Case 3 — task + 2 sports: stacked compact cards
-      return (
-        <div className="flex flex-col gap-2 h-full">
-          <TodayUpNextCard event={todayMatches[0]} label="Today" compact />
-          <TodayUpNextCard event={todayMatches[1]} label="Today" compact />
-        </div>
-      );
-    }
-    if (todayMatches.length === 1) {
-      // Case 2 — task + 1 sport
-      return <TodayUpNextCard event={todayMatches[0]} label="Today" />;
-    }
-    // Case 1 — task only
-    return <TodayWeatherCard variant="mid" />;
-  }
-
-  // Cases without a task
-  if (todayMatches.length >= 2) {
-    // Case 5 — 2 sports, each in own column
-    return <TodayUpNextCard event={todayMatches[1]} label="Today" />;
-  }
-  if (todayMatches.length === 1) {
-    // Case 4 — 1 sport + weather
-    return <TodayWeatherCard variant="mid" />;
-  }
-  // Case 6 — empty: week forecast
-  return <TodayWeatherCard variant="week" />;
-}
-
-// ─── Main section ─────────────────────────────────────────────────────────────
+import TodayRightSlot from "./TodayRightSlot";
+import type { DashboardData } from "../../types";
 
 interface Props {
   data: DashboardData;
 }
 
 export default function TodaySection({ data }: Props) {
-  const task = data.tasks[0] ?? null;
-  const todayMatches = data.todaySportEvents.slice(0, 2);
+  const task = data.priorityTask ?? null;
+  const football = data.todayFootballEvents;
+  const tennis = data.todayTennisEvents;
+  const f1 = data.todayF1Event;
+
+  // F1 race day: move F1 to middle column (replace quote) when other sports exist
+  const hasOtherSports = football.length > 0 || tennis.length > 0;
+  const f1InMiddle = f1 !== null && hasOtherSports;
+
+  const totalEvents =
+    football.length + tennis.length + (f1 && !f1InMiddle ? 1 : 0);
+
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
@@ -84,9 +38,26 @@ export default function TodaySection({ data }: Props) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[35fr_30fr_35fr] gap-3">
-        <LeftSlot task={task} match={todayMatches[0] ?? null} />
-        <TodayQuoteCard />
-        <RightSlot task={task} todayMatches={todayMatches} isEmpty={!task && todayMatches.length === 0} />
+        {/* Left: priority task (or weather if none) */}
+        {task ? (
+          <TodayPriorityCard task={task} remaining={Math.max(0, data.tasks.length - 1)} />
+        ) : (
+          <TodayWeatherCard variant="mid" />
+        )}
+
+        {/* Middle: quote — or F1 card on race day when other sports also exist */}
+        {f1InMiddle ? (
+          <TodayUpNextCard event={f1} label="Race Day" />
+        ) : (
+          <TodayQuoteCard />
+        )}
+
+        {/* Right: sport events — all cases handled in TodayRightSlot */}
+        <TodayRightSlot
+          football={football}
+          tennis={tennis}
+          f1={f1InMiddle ? null : f1}
+        />
       </div>
     </section>
   );

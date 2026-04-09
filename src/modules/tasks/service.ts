@@ -301,6 +301,19 @@ export async function createProject(input: { workspace_id: string; name: string;
     .single();
 
   if (error) throw error;
+
+  // Auto-create default statuses for the new project
+  const defaultStatuses = [
+    { name: "Backlog",     color: "#4b5563", position: 1, is_completed: false },
+    { name: "To Do",       color: "#6b7280", position: 2, is_completed: false },
+    { name: "In Progress", color: "#f59e0b", position: 3, is_completed: false },
+    { name: "Done",        color: "#3b82f6", position: 4, is_completed: true  },
+  ];
+
+  await supabase.from("statuses").insert(
+    defaultStatuses.map((s) => ({ ...s, project_id: data.id }))
+  );
+
   return data as Project;
 }
 

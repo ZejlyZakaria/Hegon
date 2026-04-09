@@ -17,13 +17,20 @@ export interface DashboardSportEvent {
   homeTeamCrest?: string | null;
   awayTeamCrest?: string | null;
   competition?: string | null;
+  isMainTeam?: boolean;
   // F1
   circuit?: string | null;
   country?: string | null;
-  // Tennis
+  // Tennis - tournament (upcoming section)
   surface?: string | null;
   location?: string | null;
   endDate?: string | null;
+  // Tennis - match (today section)
+  playerName?: string | null;
+  playerPhotoUrl?: string | null;
+  opponentName?: string | null;
+  round?: string | null;
+  tournamentName?: string | null;
 }
 
 export interface DashboardMedia {
@@ -51,10 +58,15 @@ export interface DashboardTask {
 
 export interface DashboardData {
   tasks: DashboardTask[];
+  priorityTask: DashboardTask | null;
   inProgressMedia: DashboardMedia | null;
   inProgressMediaList: DashboardMedia[];
-  todaySportEvents: DashboardSportEvent[];   // matches happening today
-  sportEvents: DashboardSportEvent[];         // matches after today (for Upcoming section)
+  // Today's events — separated by sport for layout logic
+  todayFootballEvents: DashboardSportEvent[];
+  todayTennisEvents: DashboardSportEvent[];
+  todayF1Event: DashboardSportEvent | null;
+  todaySportEvents: DashboardSportEvent[]; // kept for UpcomingSports section compat
+  // Future events (for Upcoming Sports section)
+  sportEvents: DashboardSportEvent[];
   upNextEvent: DashboardSportEvent | null;
-  priorityTask: DashboardTask | null;
 }

@@ -15,11 +15,14 @@ const PRIORITY_COLORS: Record<string, string> = {
 function formatDueTime(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
+  const isMidnight = date.getHours() === 0 && date.getMinutes() === 0;
+
   if (date.toDateString() !== now.toDateString()) {
     const diff = Math.floor((date.getTime() - now.getTime()) / 86400000);
     if (diff < 0) return `${Math.abs(diff)}d overdue`;
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
+  if (isMidnight) return "Due today";
   return `Due ${date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
 }
 

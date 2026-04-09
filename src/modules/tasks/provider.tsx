@@ -38,9 +38,9 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       {children}
       {/* React Query Devtools (only in dev) */}
-      {process.env.NODE_ENV === "development" && (
+      {/* {process.env.NODE_ENV === "development" && (
         <ReactQueryDevtools initialIsOpen={false} position="bottom" />
-      )}
+      )} */}
     </QueryClientProvider>
   );
 }
