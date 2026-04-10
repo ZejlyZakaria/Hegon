@@ -20,38 +20,6 @@ function OverflowLink({ count, href }: { count: number; href: string }) {
   );
 }
 
-// ─── Single-sport stacked column ──────────────────────────────────────────────
-
-function FootballStack({ events }: { events: DashboardSportEvent[] }) {
-  const shown = events.slice(0, 2);
-  const overflow = events.length - 2;
-  return (
-    <div className="flex flex-col gap-2 h-full">
-      {shown.map((e, i) => (
-        <FootballCrestCard key={i} event={e} className="flex-1" />
-      ))}
-      {overflow > 0 && (
-        <OverflowLink count={overflow} href="/perso/sports/football" />
-      )}
-    </div>
-  );
-}
-
-function TennisStack({ events }: { events: DashboardSportEvent[] }) {
-  const shown = events.slice(0, 2);
-  const overflow = events.length - 2;
-  return (
-    <div className="flex flex-col gap-2 h-full">
-      {shown.map((e, i) => (
-        <TennisNarrowCard key={i} event={e} className="flex-1" />
-      ))}
-      {overflow > 0 && (
-        <OverflowLink count={overflow} href="/perso/sports/tennis" />
-      )}
-    </div>
-  );
-}
-
 // ─── Mixed sports: 2-column, 1 card max per sport ────────────────────────────
 // Height stays consistent with the priority card — never stacks vertically.
 

@@ -19,9 +19,6 @@ export default function TodaySection({ data }: Props) {
   const hasOtherSports = football.length > 0 || tennis.length > 0;
   const f1InMiddle = f1 !== null && hasOtherSports;
 
-  const totalEvents =
-    football.length + tennis.length + (f1 && !f1InMiddle ? 1 : 0);
-
   return (
     <section>
       <div className="flex items-center justify-between mb-3">

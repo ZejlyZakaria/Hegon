@@ -1,7 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-
 interface DashboardHeaderProps {
   userName: string;
   hasTask: boolean;
@@ -31,24 +29,17 @@ function formatDate(date: Date): string {
 }
 
 export default function DashboardHeader({ userName, hasTask, hasMatch }: DashboardHeaderProps) {
-  const [mounted, setMounted] = useState(false);
-  const [now, setNow] = useState<Date | null>(null);
-
-  useEffect(() => {
-    setNow(new Date());
-    setMounted(true);
-  }, []);
-
-  const greeting = now ? getGreeting(now.getHours()) : "";
+  const now = new Date();
+  const greeting = getGreeting(now.getHours());
   const subtitle = getSubtitle(hasTask, hasMatch);
 
   return (
     <div>
-      <h1 className="text-xl font-semibold text-white tracking-tight">
-        {mounted && now ? formatDate(now) : ""}
+      <h1 className="text-xl font-semibold text-white tracking-tight" suppressHydrationWarning>
+        {formatDate(now)}
       </h1>
-      <p className="text-xs text-zinc-500 mt-0.5">
-        {mounted ? `${greeting}, ${userName}` : ""}&nbsp;&nbsp;·&nbsp;&nbsp;{subtitle}
+      <p className="text-xs text-zinc-500 mt-0.5" suppressHydrationWarning>
+        {greeting}, {userName}&nbsp;&nbsp;·&nbsp;&nbsp;{subtitle}
       </p>
     </div>
   );

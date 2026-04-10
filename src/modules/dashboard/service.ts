@@ -110,7 +110,7 @@ export const getInProgressMediaServer = cache(async (userId: string): Promise<Da
 export const getTodayFootballEvents = cache(async (userId: string): Promise<DashboardSportEvent[]> => {
   const supabase = await createServerClient();
   const teams = await getFootballTeams(userId);
-  const { allFavoriteTeamIds, allTeams, mainTeamId } = teams;
+  const { allFavoriteTeamIds, mainTeamId } = teams;
 
   if (!allFavoriteTeamIds.length) return [];
 

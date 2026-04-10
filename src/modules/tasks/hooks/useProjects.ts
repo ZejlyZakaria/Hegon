@@ -34,7 +34,7 @@ export function useCreateProject() {
 export function useUpdateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, workspaceId, updates }: { projectId: string; workspaceId: string; updates: { name?: string } }) =>
+    mutationFn: ({ projectId, updates }: { projectId: string; workspaceId: string; updates: { name?: string } }) =>
       TaskService.updateProject(projectId, updates),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: PROJECT_KEYS.byWorkspace(variables.workspaceId) });
@@ -49,7 +49,7 @@ export function useUpdateProject() {
 export function useDeleteProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, workspaceId }: { projectId: string; workspaceId: string }) =>
+    mutationFn: ({ projectId }: { projectId: string; workspaceId: string }) =>
       TaskService.deleteProject(projectId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: PROJECT_KEYS.byWorkspace(variables.workspaceId) });
