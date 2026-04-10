@@ -45,3 +45,6 @@ next-env.d.ts
 /hegon-tasks-seed.sql
 /.claude-chat-context.md
 /hq/
+
+# Sentry Config File
+.env.sentry-build-plugin
