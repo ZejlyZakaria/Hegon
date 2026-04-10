@@ -363,7 +363,6 @@ function TodayVariant({ data, theme, hour }: { data: WeatherData; theme: Weather
           <span className="text-[10px] text-white/65 capitalize leading-none">{data.description}</span>
         </div>
         <div className="ml-auto flex flex-col items-end gap-0.5">
-          <span className="text-[11px] font-semibold text-white/80">H:{data.tempMax}° L:{data.tempMin}°</span>
           <span className="text-[10px] text-white/40">Feels {data.feelsLike}°</span>
         </div>
       </div>
@@ -455,7 +454,7 @@ function MidVariant({ data, theme, hour }: { data: WeatherData; theme: WeatherTh
             </div>
           </div>
           <p className="text-[9px] text-white/40">
-            H:{data.tempMax}°&nbsp;&nbsp;L:{data.tempMin}°&nbsp;&nbsp;·&nbsp;&nbsp;Feels {data.feelsLike}°
+            Feels {data.feelsLike}°
           </p>
         </div>
 
