@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Droplets, Wind, MapPin } from "lucide-react";
 
 // ─── Theme system ─────────────────────────────────────────────────────────────
@@ -304,17 +304,13 @@ interface WeatherData {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 function useWeather() {
-  const [data, setData]       = useState<WeatherData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useQuery<WeatherData>({
+    queryKey: ["weather"],
+    queryFn: () => fetch("/api/weather").then((r) => r.json()),
+    staleTime: 30 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetch("/api/weather")
-      .then((r) => r.json())
-      .then((d: WeatherData) => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
-
-  return { data, loading };
+  return { data: data ?? null, loading: isLoading };
 }
 
 // ─── Card shell ───────────────────────────────────────────────────────────────
@@ -443,7 +439,7 @@ function MidVariant({ data, theme, hour }: { data: WeatherData; theme: WeatherTh
         <span className={`text-[10px] font-bold uppercase tracking-widest ${theme.accent}`}>Weather</span>
         <div className="flex items-center gap-1">
           <MapPin size={9} className="text-white/35" />
-          <span className="text-[10px] font-medium text-white/45">{data.city}, FR</span>
+          <span className="text-[10px] font-medium text-white/45">{data.city}</span>
         </div>
       </div>
 

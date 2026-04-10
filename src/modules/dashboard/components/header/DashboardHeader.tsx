@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useEffect } from "react";
 
 interface DashboardHeaderProps {
   userName: string;
@@ -22,8 +22,8 @@ function getSubtitle(hasTask: boolean, hasMatch: boolean): string {
   return "Nothing urgent today. Make it yours.";
 }
 
-function formatDate(): string {
-  return new Date().toLocaleDateString("en-US", {
+function formatDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -31,17 +31,24 @@ function formatDate(): string {
 }
 
 export default function DashboardHeader({ userName, hasTask, hasMatch }: DashboardHeaderProps) {
-  const hour = new Date().getHours();
-  const greeting = useMemo(() => getGreeting(hour), [hour]);
-  const subtitle = useMemo(() => getSubtitle(hasTask, hasMatch), [hasTask, hasMatch]);
+  const [mounted, setMounted] = useState(false);
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+    setMounted(true);
+  }, []);
+
+  const greeting = now ? getGreeting(now.getHours()) : "";
+  const subtitle = getSubtitle(hasTask, hasMatch);
 
   return (
     <div>
       <h1 className="text-xl font-semibold text-white tracking-tight">
-        {formatDate()}
+        {mounted && now ? formatDate(now) : ""}
       </h1>
       <p className="text-xs text-zinc-500 mt-0.5">
-        {greeting}, {userName}&nbsp;&nbsp;·&nbsp;&nbsp;{subtitle}
+        {mounted ? `${greeting}, ${userName}` : ""}&nbsp;&nbsp;·&nbsp;&nbsp;{subtitle}
       </p>
     </div>
   );
