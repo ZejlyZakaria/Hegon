@@ -36,6 +36,7 @@ interface NavItem {
   href: string;
   icon: React.ReactNode;
   accent: string;
+  comingSoon?: boolean;
 }
 
 interface NavGroup {
@@ -69,6 +70,7 @@ const NAV: NavGroup[] = [
         href: "/perso/books",
         icon: <BookOpen size={15} />,
         accent: "#f97316",
+        comingSoon: true,
       },
       {
         key: "travel",
@@ -76,6 +78,7 @@ const NAV: NavGroup[] = [
         href: "/perso/travel",
         icon: <Plane size={15} />,
         accent: "#0ea5e9",
+        comingSoon: true,
       },
       {
         key: "fitness",
@@ -83,6 +86,7 @@ const NAV: NavGroup[] = [
         href: "/perso/fitness",
         icon: <Dumbbell size={15} />,
         accent: "#f43f5e",
+        comingSoon: true,
       },
     ],
   },
@@ -102,6 +106,7 @@ const NAV: NavGroup[] = [
         href: "/pro/goals",
         icon: <Target size={15} />,
         accent: "#22c55e",
+        comingSoon: true,
       },
       {
         key: "jobhunt",
@@ -109,6 +114,7 @@ const NAV: NavGroup[] = [
         href: "/pro/jobhunt",
         icon: <Briefcase size={15} />,
         accent: "#3b82f6",
+        comingSoon: true,
       },
       {
         key: "tech",
@@ -116,6 +122,7 @@ const NAV: NavGroup[] = [
         href: "/pro/tech",
         icon: <Code2 size={15} />,
         accent: "#a855f7",
+        comingSoon: true,
       },
     ],
   },
@@ -255,6 +262,7 @@ function NavItem({
   active,
   accent,
   collapsed,
+  comingSoon,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -262,18 +270,21 @@ function NavItem({
   active: boolean;
   accent: string;
   collapsed: boolean;
+  comingSoon?: boolean;
 }) {
   const inner = (
     <div
       className={cn(
-        "flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-100 cursor-pointer select-none",
-        active
-          ? "bg-white/[0.07] text-white"
-          : "text-zinc-500 hover:text-zinc-200 hover:bg-white/4",
+        "flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-100 select-none",
+        comingSoon
+          ? "text-zinc-700 cursor-default opacity-60"
+          : active
+            ? "bg-white/[0.07] text-white cursor-pointer"
+            : "text-zinc-500 hover:text-zinc-200 hover:bg-white/4 cursor-pointer",
         collapsed && "justify-center w-9 px-0 mx-auto",
       )}
     >
-      <span className="shrink-0" style={active ? { color: accent } : undefined}>
+      <span className="shrink-0" style={active && !comingSoon ? { color: accent } : undefined}>
         {icon}
       </span>
       {!collapsed && (
@@ -281,7 +292,12 @@ function NavItem({
           <span className="flex-1 text-[13px] font-medium leading-none">
             {label}
           </span>
-          {active && (
+          {comingSoon && (
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-zinc-600 bg-zinc-800/80 px-1.5 py-0.5 rounded-md">
+              Soon
+            </span>
+          )}
+          {active && !comingSoon && (
             <span
               className="w-1 h-3 rounded-full shrink-0"
               style={{ backgroundColor: accent }}
@@ -291,6 +307,14 @@ function NavItem({
       )}
     </div>
   );
+
+  if (comingSoon) {
+    return collapsed ? (
+      <Tooltip label={`${label} — bientôt`}>{inner}</Tooltip>
+    ) : (
+      <div>{inner}</div>
+    );
+  }
 
   return collapsed ? (
     <Tooltip label={label}>
@@ -586,6 +610,7 @@ export default function Sidebar() {
                     active={pathname.startsWith(item.href)}
                     accent={item.accent}
                     collapsed={collapsed}
+                    comingSoon={item.comingSoon}
                   />
                 ))}
               </div>
