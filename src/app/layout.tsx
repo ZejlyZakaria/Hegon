@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "@/shared/providers/QueryProvider";
 import { Toaster } from "sonner";
-// @ts-expect-error: side-effect CSS import type declaration missing in this project setup
 import "./globals.css";
 
 const geistSans = Geist({
