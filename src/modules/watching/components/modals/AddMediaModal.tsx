@@ -147,13 +147,9 @@ export default function AddMediaModal({
       }
       setLoading(true);
       try {
-        const endpoint =
-          defaultType === "film"
-            ? `https://api.themoviedb.org/3/search/movie`
-            : `https://api.themoviedb.org/3/search/tv`;
-
+        const tmdbEndpoint = defaultType === "film" ? "search/movie" : "search/tv";
         const res = await fetch(
-          `${endpoint}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=fr-FR&page=1`,
+          `/api/tmdb?endpoint=${tmdbEndpoint}&query=${encodeURIComponent(query)}&language=fr-FR&page=1`,
         );
         const data = await res.json();
 
@@ -186,12 +182,9 @@ export default function AddMediaModal({
         result.media_type || (result.first_air_date ? "tv" : "movie");
       const isMovie = mediaType === "movie";
 
-      const endpoint = isMovie
-        ? `https://api.themoviedb.org/3/movie/${result.id}?append_to_response=credits`
-        : `https://api.themoviedb.org/3/tv/${result.id}?append_to_response=credits`;
-
+      const tmdbEndpoint = isMovie ? `movie/${result.id}` : `tv/${result.id}`;
       const res = await fetch(
-        `${endpoint}&api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=fr-FR`,
+        `/api/tmdb?endpoint=${tmdbEndpoint}&append_to_response=credits&language=fr-FR`,
       );
       const details = await res.json();
 

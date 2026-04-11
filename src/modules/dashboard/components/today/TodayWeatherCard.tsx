@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, } from "@tanstack/react-query";
+import { useId } from "react";
 import { Droplets, Wind, MapPin } from "lucide-react";
 
 // ─── Theme system ─────────────────────────────────────────────────────────────
@@ -145,14 +146,59 @@ function SunGlow({ position }: { position: "left" | "right" }) {
   );
 }
 
-// ─── Realistic SVG cloud ──────────────────────────────────────────────────────
-// Multiple overlapping ellipses = natural cumulus puff shape
+// ─── Weather animation keyframes ─────────────────────────────────────────────
+
+const RAIN_KEYFRAMES = `
+  @keyframes hegon-rain-far {
+    0%   { transform: translate3d(12px, -24px, 0) rotate(14deg); opacity: 0; }
+    14%  { opacity: 0.16; }
+    100% { transform: translate3d(-24px, 118px, 0) rotate(14deg); opacity: 0; }
+  }
+  @keyframes hegon-rain-mid {
+    0%   { transform: translate3d(16px, -28px, 0) rotate(15deg); opacity: 0; }
+    12%  { opacity: 0.28; }
+    100% { transform: translate3d(-31px, 124px, 0) rotate(15deg); opacity: 0; }
+  }
+  @keyframes hegon-rain-near {
+    0%   { transform: translate3d(18px, -34px, 0) rotate(16deg); opacity: 0; }
+    10%  { opacity: 0.42; }
+    100% { transform: translate3d(-38px, 132px, 0) rotate(16deg); opacity: 0; }
+  }
+  @keyframes hegon-rain-shimmer {
+    0%, 100% { opacity: 0.18; }
+    50%      { opacity: 0.36; }
+  }
+  @keyframes hegon-cloud-drift-a {
+    0%   { transform: translate3d(0, 0, 0) scale(1); }
+    50%  { transform: translate3d(10px, 2px, 0) scale(1.025); }
+    100% { transform: translate3d(0, 0, 0) scale(1); }
+  }
+  @keyframes hegon-cloud-drift-b {
+    0%   { transform: translate3d(0, 0, 0) scale(1); }
+    50%  { transform: translate3d(-12px, 4px, 0) scale(1.03); }
+    100% { transform: translate3d(0, 0, 0) scale(1); }
+  }
+  @keyframes hegon-cloud-drift-c {
+    0%   { transform: translate3d(0, 0, 0) scale(1); }
+    50%  { transform: translate3d(6px, -1px, 0) scale(1.015); }
+    100% { transform: translate3d(0, 0, 0) scale(1); }
+  }
+  @keyframes hegon-cloud-pulse {
+    0%, 100% { opacity: 0.7; }
+    50%      { opacity: 1; }
+  }
+`;
+
+// ─── SVG cloud ────────────────────────────────────────────────────────────────
 
 function CloudPuff({
-  left, top, opacity, scale = 1, flipX = false,
+  left, top, opacity, scale = 1, flipX = false, fill = "white", blur = 1.5,
 }: {
-  left: string; top: string; opacity: number; scale?: number; flipX?: boolean;
+  left: string; top: string; opacity: number; scale?: number; flipX?: boolean; fill?: string; blur?: number;
 }) {
+  const uid = useId();
+  const bodyId = `hegon-cloud-body-${uid}`;
+  const highlightId = `hegon-cloud-highlight-${uid}`;
   return (
     <div
       className="absolute pointer-events-none"
@@ -160,57 +206,214 @@ function CloudPuff({
         left, top, opacity,
         transform: `scale(${scale}) ${flipX ? "scaleX(-1)" : ""}`,
         transformOrigin: "top left",
-        filter: "blur(1.5px)",
+        filter: `blur(${blur}px)`,
       }}
       aria-hidden
     >
-      <svg width="190" height="72" viewBox="0 0 190 72" fill="white">
-        {/* flat base */}
-        <ellipse cx="95" cy="62" rx="86" ry="10" />
-        {/* main body */}
-        <ellipse cx="54"  cy="48" rx="38" ry="23" />
-        <ellipse cx="100" cy="42" rx="36" ry="26" />
-        <ellipse cx="146" cy="50" rx="32" ry="20" />
-        {/* top bumps */}
-        <ellipse cx="76"  cy="30" rx="26" ry="19" />
-        <ellipse cx="116" cy="28" rx="24" ry="18" />
-        <ellipse cx="95"  cy="20" rx="18" ry="14" />
+      <svg width="250" height="100" viewBox="0 0 250 100" fill="none">
+        <defs>
+          <linearGradient id={bodyId} x1="0" y1="0" x2="0" y2="100">
+            <stop offset="0%"   stopColor={fill} stopOpacity="0.96" />
+            <stop offset="55%"  stopColor={fill} stopOpacity="0.88" />
+            <stop offset="100%" stopColor={fill} stopOpacity="0.72" />
+          </linearGradient>
+          <linearGradient id={highlightId} x1="0" y1="0" x2="0" y2="80">
+            <stop offset="0%"   stopColor="white" stopOpacity="0.34" />
+            <stop offset="45%"  stopColor="white" stopOpacity="0.08" />
+            <stop offset="100%" stopColor="white" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M20 72 C20 58,30 48,45 46 C48 29,62 18,80 18 C92 18,103 24,110 33
+             C117 22,131 14,147 14 C170 14,188 29,191 49 C205 50,217 59,223 71
+             C228 82,222 90,205 90 L42 90 C28 90,19 84,18 76 C18 75,18 74,20 72Z"
+          fill={`url(#${bodyId})`}
+        />
+        <path
+          d="M53 47 C61 32,76 24,90 24 C100 24,111 28,118 36 C126 24,141 19,154 19
+             C171 19,185 29,190 44 C175 33,158 31,143 34 C132 20,109 17,92 23
+             C76 28,62 37,53 47Z"
+          fill={`url(#${highlightId})`}
+        />
+        <ellipse cx="124" cy="88" rx="86" ry="5" fill="white" fillOpacity="0.07" />
       </svg>
     </div>
   );
 }
 
 function CloudsLight({ isNight = false }: { isNight?: boolean }) {
-  const o = isNight ? 0.11 : 0.15;
+  const o = isNight ? 0.10 : 0.14;
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
-      <CloudPuff left="-6%"  top="-32%" opacity={o}          scale={0.95} />
-      <CloudPuff left="52%"  top="-26%" opacity={o * 0.80}   scale={0.75} flipX />
+      <style>{RAIN_KEYFRAMES}</style>
+      <div style={{ animation: "hegon-cloud-drift-a 20s ease-in-out infinite" }}>
+        <CloudPuff left="-6%"  top="-32%" opacity={o}        scale={1.0}  blur={3.5} />
+        <CloudPuff left="50%"  top="-26%" opacity={o * 0.80} scale={0.80} blur={3.0} flipX />
+      </div>
     </div>
   );
 }
 
-function CloudsHeavy({ isNight = false }: { isNight?: boolean }) {
-  const o = isNight ? 0.14 : 0.19;
+function CloudsHeavy({ isNight = false, isStorm = false }: { isNight?: boolean; isStorm?: boolean }) {
+  if (isStorm) {
+    const back  = isNight ? "#1c2633" : "#243548";
+    const mid   = isNight ? "#25364a" : "#324a62";
+    const front = isNight ? "#364a63" : "#4f6986";
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+        <style>{RAIN_KEYFRAMES}</style>
+        {/* Atmospheric storm dome */}
+        <div
+          className="absolute inset-x-[-18%] top-[-30%] h-[66%]"
+          style={{
+            background: isNight
+              ? "radial-gradient(ellipse 88% 78% at 52% 42%, rgba(148,163,184,0.16), rgba(71,85,105,0.10) 45%, transparent 82%)"
+              : "radial-gradient(ellipse 88% 78% at 52% 42%, rgba(191,219,254,0.18), rgba(100,116,139,0.09) 45%, transparent 82%)",
+            filter: "blur(22px)",
+          }}
+        />
+        <div style={{ animation: "hegon-cloud-drift-a 19s ease-in-out infinite" }}>
+          <CloudPuff left="-20%" top="-28%" opacity={0.76} scale={1.62} fill={back}  blur={9.5} />
+          <CloudPuff left="16%"  top="-33%" opacity={0.72} scale={1.38} fill={back}  blur={8.8} flipX />
+          <CloudPuff left="54%"  top="-22%" opacity={0.66} scale={1.24} fill={back}  blur={8.4} />
+        </div>
+        <div style={{ animation: "hegon-cloud-drift-b 16s ease-in-out infinite" }}>
+          <CloudPuff left="-10%" top="-16%" opacity={0.54} scale={1.18} fill={mid}   blur={6.4} />
+          <CloudPuff left="32%"  top="-18%" opacity={0.50} scale={1.04} fill={mid}   blur={6.0} flipX />
+          <CloudPuff left="68%"  top="-10%" opacity={0.42} scale={0.90} fill={mid}   blur={5.8} />
+        </div>
+        <div style={{ animation: "hegon-cloud-drift-c 13s ease-in-out infinite" }}>
+          <CloudPuff left="-2%"  top="-6%"  opacity={0.30} scale={1.00} fill={front} blur={3.8} />
+          <CloudPuff left="48%"  top="-10%" opacity={0.26} scale={0.86} fill={front} blur={3.6} flipX />
+        </div>
+        {/* Cool highlight */}
+        <div
+          className="absolute inset-x-[-12%] top-[-2%] h-[26%]"
+          style={{
+            background: isNight
+              ? "linear-gradient(to bottom, rgba(165,180,252,0.09), rgba(125,211,252,0.05), transparent)"
+              : "linear-gradient(to bottom, rgba(219,234,254,0.18), rgba(147,197,253,0.06), transparent)",
+            filter: "blur(12px)",
+            mixBlendMode: "screen",
+            animation: "hegon-cloud-pulse 7s ease-in-out infinite",
+          }}
+        />
+        <div
+          className="absolute inset-x-[-10%] top-[18%] h-[20%]"
+          style={{
+            background: "linear-gradient(to bottom, rgba(148,163,184,0.08), rgba(148,163,184,0.03), transparent)",
+            filter: "blur(16px)",
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Regular overcast/rain — soft white, subtly animated
+  const back = isNight ? "#dbe4ef" : "#ffffff";
+  const mid  = isNight ? "#edf2f7" : "#ffffff";
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
-      <CloudPuff left="-8%"  top="-28%" opacity={o}          scale={1.05} />
-      <CloudPuff left="36%"  top="-22%" opacity={o * 0.88}   scale={0.90} flipX />
-      <CloudPuff left="62%"  top="-18%" opacity={o * 0.75}   scale={0.80} />
+      <style>{RAIN_KEYFRAMES}</style>
+      <div
+        className="absolute inset-x-[-16%] top-[-28%] h-[62%]"
+        style={{
+          background: isNight
+            ? "radial-gradient(ellipse 88% 78% at 50% 42%, rgba(226,232,240,0.14), rgba(148,163,184,0.05) 48%, transparent 78%)"
+            : "radial-gradient(ellipse 88% 78% at 50% 42%, rgba(255,255,255,0.20), rgba(226,232,240,0.06) 48%, transparent 78%)",
+          filter: "blur(22px)",
+        }}
+      />
+      <div style={{ animation: "hegon-cloud-drift-a 20s ease-in-out infinite" }}>
+        <CloudPuff left="-16%" top="-26%" opacity={isNight ? 0.22 : 0.26} scale={1.40} fill={back} blur={8.2} />
+        <CloudPuff left="22%"  top="-32%" opacity={isNight ? 0.18 : 0.22} scale={1.18} fill={back} blur={7.8} flipX />
+        <CloudPuff left="60%"  top="-18%" opacity={isNight ? 0.15 : 0.18} scale={1.04} fill={back} blur={7.0} />
+      </div>
+      <div style={{ animation: "hegon-cloud-drift-b 17s ease-in-out infinite" }}>
+        <CloudPuff left="-2%"  top="-10%" opacity={isNight ? 0.11 : 0.14} scale={1.00} fill={mid} blur={4.8} />
+        <CloudPuff left="50%"  top="-13%" opacity={isNight ? 0.09 : 0.12} scale={0.86} fill={mid} blur={4.4} flipX />
+      </div>
     </div>
   );
 }
 
 function RainStreaks() {
-  return (
+  const farDrops = [
+    { left: "5%",  top: "-8%",  h: 34, delay: "0.10s", duration: "1.70s", opacity: 0.10 },
+    { left: "15%", top: "-16%", h: 30, delay: "0.74s", duration: "1.84s", opacity: 0.09 },
+    { left: "27%", top: "-10%", h: 38, delay: "0.38s", duration: "1.68s", opacity: 0.10 },
+    { left: "40%", top: "-20%", h: 28, delay: "1.02s", duration: "1.88s", opacity: 0.08 },
+    { left: "54%", top: "-14%", h: 36, delay: "0.22s", duration: "1.76s", opacity: 0.10 },
+    { left: "68%", top: "-18%", h: 34, delay: "0.92s", duration: "1.82s", opacity: 0.09 },
+    { left: "81%", top: "-9%",  h: 30, delay: "0.56s", duration: "1.74s", opacity: 0.09 },
+    { left: "93%", top: "-15%", h: 32, delay: "1.18s", duration: "1.90s", opacity: 0.08 },
+  ];
+  const midDrops = [
+    { left: "9%",  top: "-14%", h: 44, delay: "0.16s", duration: "1.18s", opacity: 0.17 },
+    { left: "21%", top: "-22%", h: 48, delay: "0.78s", duration: "1.08s", opacity: 0.19 },
+    { left: "34%", top: "-16%", h: 42, delay: "0.40s", duration: "1.12s", opacity: 0.18 },
+    { left: "49%", top: "-25%", h: 50, delay: "0.98s", duration: "1.20s", opacity: 0.18 },
+    { left: "63%", top: "-18%", h: 44, delay: "0.28s", duration: "1.10s", opacity: 0.17 },
+    { left: "77%", top: "-12%", h: 46, delay: "0.88s", duration: "1.14s", opacity: 0.19 },
+    { left: "89%", top: "-18%", h: 40, delay: "0.52s", duration: "1.08s", opacity: 0.16 },
+  ];
+  const nearDrops = [
+    { left: "12%", top: "-18%", h: 60, delay: "0.30s", duration: "0.90s", opacity: 0.28 },
+    { left: "26%", top: "-28%", h: 66, delay: "0.82s", duration: "0.86s", opacity: 0.32 },
+    { left: "41%", top: "-22%", h: 62, delay: "0.14s", duration: "0.84s", opacity: 0.30 },
+    { left: "56%", top: "-30%", h: 64, delay: "1.04s", duration: "0.92s", opacity: 0.29 },
+    { left: "70%", top: "-24%", h: 68, delay: "0.46s", duration: "0.88s", opacity: 0.31 },
+    { left: "85%", top: "-20%", h: 58, delay: "0.68s", duration: "0.84s", opacity: 0.27 },
+  ];
+
+  const renderDrop = (
+    d: { left: string; top: string; h: number; delay: string; duration: string; opacity: number },
+    animation: string, width: number, blur: number, shadowOpacity: number,
+  ) => (
     <div
-      className="absolute inset-0 pointer-events-none"
-      aria-hidden
+      key={`${animation}-${d.left}`}
+      className="absolute rounded-full"
       style={{
-        background:
-          "repeating-linear-gradient(108deg, transparent, transparent 7px, rgba(147,197,253,0.055) 7px, rgba(147,197,253,0.055) 8px)",
+        left: d.left, top: d.top, width, height: d.h, opacity: d.opacity,
+        background: "linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(219,234,254,0.20) 20%, rgba(191,219,254,0.62) 48%, rgba(125,211,252,0.95) 72%, rgba(255,255,255,0.22) 100%)",
+        filter: `blur(${blur}px)`,
+        animation: `${animation} ${d.duration} linear infinite`,
+        animationDelay: d.delay,
+        boxShadow: `0 0 10px rgba(125,211,252,${shadowOpacity})`,
       }}
     />
+  );
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+      <style>{RAIN_KEYFRAMES}</style>
+      {/* Atmospheric shimmer veil */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "linear-gradient(to bottom, rgba(219,234,254,0.05), rgba(147,197,253,0.035) 30%, rgba(255,255,255,0.015) 58%, transparent)",
+          animation: "hegon-rain-shimmer 5.6s ease-in-out infinite",
+          mixBlendMode: "screen",
+        }}
+      />
+      <div className="absolute inset-0">
+        {farDrops.map((d) => renderDrop(d, "hegon-rain-far",  0.9, 1.50, 0.08))}
+      </div>
+      <div className="absolute inset-0">
+        {midDrops.map((d) => renderDrop(d, "hegon-rain-mid",  1.3, 1.00, 0.12))}
+      </div>
+      <div className="absolute inset-0">
+        {nearDrops.map((d) => renderDrop(d, "hegon-rain-near", 1.8, 0.75, 0.16))}
+      </div>
+      {/* Lower mist */}
+      <div
+        className="absolute inset-x-[-6%] bottom-0 h-[26%]"
+        style={{
+          background: "linear-gradient(to top, rgba(226,232,240,0.10), rgba(191,219,254,0.05), transparent)",
+          filter: "blur(16px)",
+        }}
+      />
+    </div>
   );
 }
 
@@ -251,8 +454,8 @@ function WeatherScene({ condition, hour }: { condition: string; hour: number }) 
   const isDawn    = hour >= 5  && hour < 7;
   const isEvening = hour >= 17 && hour < 21;
 
-  if (condition === "Thunderstorm") return <><CloudsHeavy isNight={isNight} /><RainStreaks /></>;
-  if (condition === "Rain" || condition === "Drizzle") return <><CloudsHeavy isNight={isNight} /><RainStreaks /></>;
+  if (condition === "Thunderstorm") return <><CloudsHeavy isNight={isNight} isStorm /><RainStreaks /></>;
+  if (condition === "Rain" || condition === "Drizzle") return <><CloudsHeavy isNight={isNight} isStorm /><RainStreaks /></>;
   if (condition === "Snow") return <><CloudsLight isNight={isNight} /><SnowDots /></>;
 
   if (condition === "Clouds") {
@@ -307,7 +510,7 @@ function useWeather() {
   const { data, isLoading } = useQuery<WeatherData>({
     queryKey: ["weather"],
     queryFn: () => fetch("/api/weather").then((r) => r.json()),
-    staleTime: 30 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
   });
 
   return { data: data ?? null, loading: isLoading };

@@ -854,7 +854,7 @@ function WatchingStep({
     setLoading(true);
     try {
       const res = await fetch(
-        `https://api.themoviedb.org/3/search/multi?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${encodeURIComponent(q)}&language=en-US&page=1`,
+        `/api/tmdb?endpoint=search/multi&query=${encodeURIComponent(q)}&language=en-US&page=1`,
       );
       const data = await res.json();
       setResults(

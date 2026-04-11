@@ -11,10 +11,10 @@ export async function GET() {
   try {
     const [currentRes, forecastRes] = await Promise.all([
       fetch(`https://api.openweathermap.org/data/2.5/weather?q=Paris&units=metric&appid=${key}`, {
-        next: { revalidate: 1800 },
+        next: { revalidate: 600 },
       }),
       fetch(`https://api.openweathermap.org/data/2.5/forecast?q=Paris&units=metric&cnt=40&appid=${key}`, {
-        next: { revalidate: 1800 },
+        next: { revalidate: 600 },
       }),
     ]);
 

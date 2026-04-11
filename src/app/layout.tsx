@@ -22,6 +22,12 @@ export const metadata: Metadata = {
   icons: {
     icon: "/logo/Hegon_white_logo.png",
   },
+  formatDetection: {
+    telephone: false,
+    date: false,
+    address: false,
+    email: false,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
