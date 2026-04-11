@@ -30,6 +30,7 @@ export interface PlayerInTournament {
   nextMatch: {
     match_date: string;
     opponent_name: string | null;
+    opponent_photo_url: string | null;
     round: string | null;
   } | null;
 }
@@ -349,7 +350,7 @@ function PlayerMatchCard({
       <div className="relative p-4 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           {rank && (
-            <span 
+            <span
               className="text-[9px] font-black border px-1.5 py-0.5 rounded-full"
               style={{
                 color: surfaceConfig.textAccent,
@@ -360,9 +361,11 @@ function PlayerMatchCard({
               #{rank} ATP
             </span>
           )}
-          <span className="text-zinc-500 text-[11px] font-medium uppercase tracking-wider">
-            {formatRound(nextMatch?.round ?? null)}
-          </span>
+          {nextMatch?.round && (
+            <span className="text-zinc-500 text-[11px] font-medium uppercase tracking-wider">
+              {formatRound(nextMatch.round)}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -401,7 +404,21 @@ function PlayerMatchCard({
 
           <div className="flex-1 flex flex-col items-center gap-2 text-center">
             <div className="relative w-11 h-11 rounded-full overflow-hidden bg-zinc-900 border border-zinc-700/50 flex items-center justify-center">
-              {nextMatch?.opponent_name ? (
+              {nextMatch?.opponent_photo_url ? (
+                <>
+                  <div
+                    className="absolute inset-0 rounded-full blur-xl scale-150"
+                    style={{ backgroundColor: `${surfaceConfig.accent}25` }}
+                  />
+                  <Image
+                    src={nextMatch.opponent_photo_url}
+                    alt={nextMatch.opponent_name ?? "Opponent"}
+                    fill
+                    className="object-cover object-top relative z-10"
+                    sizes="44px"
+                  />
+                </>
+              ) : nextMatch?.opponent_name ? (
                 <span className="text-zinc-300 font-black text-base">
                   {nextMatch.opponent_name.charAt(0)}
                 </span>

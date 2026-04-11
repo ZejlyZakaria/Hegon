@@ -19,12 +19,20 @@ const PRIORITY_ORDER: Record<string, number> = {
 function formatEventDate(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
-  const diff = date.getTime() - now.getTime();
-  const days = Math.floor(diff / 86400000);
   const time = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
-  if (days <= 0) return `Today · ${time}`;
-  if (days === 1) return `Tomorrow · ${time}`;
+  // Compare calendar dates (not ms diff) to avoid "Today" for tomorrow-morning events
+  const dateDay = date.toDateString();
+  const todayDay = now.toDateString();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  const tomorrowDay = tomorrow.toDateString();
+
+  if (dateDay === todayDay) return `Today · ${time}`;
+  if (dateDay === tomorrowDay) return `Tomorrow · ${time}`;
+
+  const diff = date.getTime() - now.getTime();
+  const days = Math.ceil(diff / 86400000);
   return `In ${days} days · ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 }
 
@@ -208,26 +216,42 @@ export const getTodayTennisEvents = cache(async (userId: string): Promise<Dashbo
   const playerMap: Record<string, any> = {};
   for (const p of favoritePlayers) playerMap[p.id] = p;
 
-  return (matches as any[])
-    .filter((m) => m.match_date && playerMap[m.player_id])
-    .map((m) => {
-      const player = playerMap[m.player_id];
-      const tournament = tournamentMap[m.tournament_id] ?? null;
-      return {
-        type: "tennis" as const,
-        title: `${player.name} vs ${m.opponent_name ?? "TBD"}`,
-        subtitle: formatEventDate(m.match_date),
-        date: m.match_date,
-        badge: "TENNIS",
-        href: "/perso/sports/tennis",
-        playerName: player.name,
-        playerPhotoUrl: player.photo_url ?? null,
-        opponentName: m.opponent_name ?? "TBD",
-        round: m.round ?? null,
-        tournamentName: tournament?.name ?? null,
-        surface: tournament?.surface ?? null,
-      };
+  // Deduplicate favorites duels: same match_date = same match between two favorites
+  const processedDuelKeys = new Set<string>();
+  const events: DashboardSportEvent[] = [];
+
+  for (const m of matches as any[]) {
+    if (!m.match_date || !playerMap[m.player_id]) continue;
+
+    const opponentFavorite = (matches as any[]).find(
+      (other) => other.player_id !== m.player_id && other.match_date === m.match_date
+    );
+
+    if (opponentFavorite) {
+      const duelKey = [m.player_id, opponentFavorite.player_id].sort().join(":");
+      if (processedDuelKeys.has(duelKey)) continue;
+      processedDuelKeys.add(duelKey);
+    }
+
+    const player = playerMap[m.player_id];
+    const tournament = tournamentMap[m.tournament_id] ?? null;
+    events.push({
+      type: "tennis" as const,
+      title: `${player.name} vs ${m.opponent_name ?? "TBD"}`,
+      subtitle: formatEventDate(m.match_date),
+      date: m.match_date,
+      badge: "TENNIS",
+      href: "/perso/sports/tennis",
+      playerName: player.name,
+      playerPhotoUrl: player.photo_url ?? null,
+      opponentName: m.opponent_name ?? "TBD",
+      round: m.round ?? null,
+      tournamentName: tournament?.name ?? null,
+      surface: tournament?.surface ?? null,
     });
+  }
+
+  return events;
 });
 
 // ─── Upcoming football events (for Upcoming Sports section) ───────────────────
