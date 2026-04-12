@@ -20,6 +20,7 @@ export default function FootballCrestCard({ event, className = "" }: Props) {
   const time = new Date(event.date).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Europe/Paris",
   });
 
   return (
