@@ -72,13 +72,16 @@ function formatDateRange(start: string, end: string | null) {
 
 function formatMatchDate(dateStr: string) {
   const date = new Date(dateStr);
+  // Tennis times are stored as-is (no UTC conversion needed)
   const dateFormatted = date.toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
+    timeZone: "UTC",
   });
   const timeFormatted = date.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "UTC",
   });
   return `${dateFormatted} at ${timeFormatted}`;
 }

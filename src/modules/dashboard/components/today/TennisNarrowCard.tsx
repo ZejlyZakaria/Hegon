@@ -8,10 +8,12 @@ interface Props {
 }
 
 export default function TennisNarrowCard({ event, className = "" }: Props) {
+  // Tennis times stored as-is in DB — display in UTC to avoid conversion
   const time = event.date
     ? new Date(event.date).toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: "UTC",
       })
     : null;
 

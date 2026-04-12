@@ -16,24 +16,32 @@ const PRIORITY_ORDER: Record<string, number> = {
   low: 3,
 };
 
+const PARIS_TZ = "Europe/Paris";
+
+// Returns today and tomorrow date strings (YYYY-MM-DD) in Paris timezone
+function getParisDateStrings(): { today: string; tomorrow: string } {
+  const now = new Date();
+  const today = now.toLocaleDateString("en-CA", { timeZone: PARIS_TZ });
+  const [y, m, d] = today.split("-").map(Number);
+  const tomorrow = new Date(Date.UTC(y, m - 1, d + 1))
+    .toLocaleDateString("en-CA", { timeZone: PARIS_TZ });
+  return { today, tomorrow };
+}
+
 function formatEventDate(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
-  const time = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  const time = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: PARIS_TZ });
 
-  // Compare calendar dates (not ms diff) to avoid "Today" for tomorrow-morning events
-  const dateDay = date.toDateString();
-  const todayDay = now.toDateString();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-  const tomorrowDay = tomorrow.toDateString();
+  const dateParisStr = date.toLocaleDateString("en-CA", { timeZone: PARIS_TZ });
+  const { today, tomorrow } = getParisDateStrings();
 
-  if (dateDay === todayDay) return `Today · ${time}`;
-  if (dateDay === tomorrowDay) return `Tomorrow · ${time}`;
+  if (dateParisStr === today) return `Today · ${time}`;
+  if (dateParisStr === tomorrow) return `Tomorrow · ${time}`;
 
   const diff = date.getTime() - now.getTime();
   const days = Math.ceil(diff / 86400000);
-  return `In ${days} days · ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  return `In ${days} days · ${date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: PARIS_TZ })}`;
 }
 
 function formatTournamentDate(start: string, end: string | null): string {
@@ -56,10 +64,19 @@ function pickPriorityTask(tasks: DashboardTask[]): DashboardTask | null {
 }
 
 function getTodayRange(): { start: Date; end: Date } {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
+  const now = new Date();
+  const { today } = getParisDateStrings();
+
+  // Compute Paris UTC offset in ms (handles DST automatically)
+  const parisNow = new Date(now.toLocaleString("en-US", { timeZone: PARIS_TZ }));
+  const utcNow = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
+  const offsetMs = parisNow.getTime() - utcNow.getTime();
+
+  // Midnight Paris in UTC = midnight UTC minus offset
+  const start = new Date(`${today}T00:00:00.000Z`);
+  start.setTime(start.getTime() - offsetMs);
+
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
   return { start, end };
 }
 
@@ -189,8 +206,8 @@ export const getTodayTennisEvents = cache(async (userId: string): Promise<Dashbo
 
   if (!favoritePlayerIds.length) return [];
 
-  // Use date-only string (YYYY-MM-DD) to avoid timezone mismatches
-  const todayStr = new Date().toLocaleDateString("en-CA"); // "2026-04-08"
+  // Use Paris timezone for today's date string
+  const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: PARIS_TZ });
 
   const { data: matches } = await supabase
     .schema("sport")
