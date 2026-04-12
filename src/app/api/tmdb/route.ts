@@ -7,7 +7,7 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_KEY  = process.env.TMDB_API_KEY;
 
 // Allowlist of TMDB endpoint patterns used by the app
-const ALLOWED_ENDPOINT = /^[a-z_/\-]+$/i;
+const ALLOWED_ENDPOINT = /^[a-z\d_/\-]+$/i;
 
 export async function GET(request: NextRequest) {
   const supabase = await createServerClient();

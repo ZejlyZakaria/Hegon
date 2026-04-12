@@ -121,7 +121,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── 4. Vérifier si déjà dans les favoris ──────────────────────────────
+    // ── 4. Récupérer l'org_id de l'user ──────────────────────────────────
+    const { data: membership } = await supabase
+      .from("memberships")
+      .select("org_id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single();
+
+    if (!membership?.org_id) {
+      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+    }
+
+    // ── 5. Vérifier si déjà dans les favoris ──────────────────────────────
     const { data: existing } = await adminClient
       .from("user_favorites")
       .select("id")
@@ -134,13 +146,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ playerUUID, alreadyFavorite: true });
     }
 
-    // ── 5. Ajouter aux favoris ────────────────────────────────────────────
+    // ── 6. Ajouter aux favoris ────────────────────────────────────────────
     const { error: favError } = await adminClient
       .from("user_favorites")
       .insert({
         user_id: user.id,
         entity_type: "tennis_player",
         entity_id: playerUUID,
+        org_id: membership.org_id,
         created_at: new Date().toISOString()
       });
 

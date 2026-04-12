@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from "@/infrastructure/supabase/client";
+import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type { WatchingMedia, MediaType } from "./types";
 import type { UpdateMediaInput } from "./schemas/media.schema";
 
@@ -159,10 +160,11 @@ export async function getExistingMediaItem(
 
 export async function insertMediaItem(data: Record<string, any>): Promise<WatchingMedia> {
   const supabase = createClient();
+  const orgId = await getCurrentOrgId();
   const { data: result, error } = await supabase
     .schema("watching")
     .from("media_items")
-    .insert(data)
+    .insert({ ...data, org_id: orgId })
     .select()
     .single();
   if (error) throw error;

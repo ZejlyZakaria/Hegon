@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, X, Search, Loader2, Save } from "lucide-react";
-import { createClient } from "@/infrastructure/supabase/client"
+import { createClient } from "@/infrastructure/supabase/client";
+import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import { Button } from "@/shared/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 
@@ -435,10 +436,11 @@ export default function BestXI({
   const handleSave = async () => {
     setSaving(true);
     try {
+      const orgId = await getCurrentOrgId();
       let xiId = bestXiId;
       if (!xiId) {
         const { data } = await supabase.schema("sport").from("football_best_xi")
-          .insert({ user_id: userId, formation, substitutes_count: SUBSTITUTES_COUNT })
+          .insert({ user_id: userId, org_id: orgId, formation, substitutes_count: SUBSTITUTES_COUNT })
           .select("id").single();
         xiId = data?.id ?? null;
         if (xiId) setBestXiId(xiId);
@@ -449,7 +451,7 @@ export default function BestXI({
       if (!xiId) throw new Error("No XI id");
       await supabase.schema("sport").from("football_best_xi_players").delete().eq("best_xi_id", xiId);
       const rows = Object.values(players).map(p => ({
-        best_xi_id: xiId, player_external_id: p.id, player_name: p.name,
+        best_xi_id: xiId, org_id: orgId, player_external_id: p.id, player_name: p.name,
         nationality: p.nationality, image_url: p.image_url,
         position_key: p.position_key, is_substitute: p.is_substitute,
         substitute_order: p.substitute_order ?? null,

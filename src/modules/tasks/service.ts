@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "@/infrastructure/supabase/client";
+import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type {
   Task,
   Project,
@@ -51,6 +52,8 @@ export async function createTask(input: CreateTaskInput) {
 
   if (!user) throw new Error("Not authenticated");
 
+  const orgId = await getCurrentOrgId();
+
   // Validation
   if (!input.title || input.title.trim().length === 0) {
     throw new Error("Title is required");
@@ -85,6 +88,7 @@ export async function createTask(input: CreateTaskInput) {
       created_by: user.id,
       assignee_id: user.id,
       position: newPosition,
+      org_id: orgId,
     })
     .select(
       `
@@ -282,6 +286,7 @@ export async function getProjects(workspaceId: string) {
 
 export async function createProject(input: { workspace_id: string; name: string; description?: string | null }) {
   const supabase = createClient();
+  const orgId = await getCurrentOrgId();
 
   // Get max position in workspace
   const { data: maxPosData } = await supabase
@@ -296,7 +301,7 @@ export async function createProject(input: { workspace_id: string; name: string;
 
   const { data, error } = await supabase
     .from("projects")
-    .insert({ ...input, position: newPosition, status: "active" })
+    .insert({ ...input, position: newPosition, status: "active", org_id: orgId })
     .select()
     .single();
 
@@ -311,7 +316,7 @@ export async function createProject(input: { workspace_id: string; name: string;
   ];
 
   await supabase.from("statuses").insert(
-    defaultStatuses.map((s) => ({ ...s, project_id: data.id }))
+    defaultStatuses.map((s) => ({ ...s, project_id: data.id, org_id: orgId }))
   );
 
   return data as Project;
@@ -357,6 +362,8 @@ export async function createWorkspace(name: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
+  const orgId = await getCurrentOrgId();
+
   const { data: maxPosData } = await supabase
     .from("workspaces")
     .select("position")
@@ -369,7 +376,7 @@ export async function createWorkspace(name: string) {
 
   const { data, error } = await supabase
     .from("workspaces")
-    .insert({ name, user_id: user.id, position: newPosition })
+    .insert({ name, user_id: user.id, position: newPosition, org_id: orgId })
     .select()
     .single();
 
@@ -420,9 +427,11 @@ export async function createTag(name: string, color: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
+  const orgId = await getCurrentOrgId();
+
   const { data, error } = await supabase
     .from("tags")
-    .insert({ name: name.trim(), color, user_id: user.id })
+    .insert({ name: name.trim(), color, user_id: user.id, org_id: orgId })
     .select()
     .single();
 
@@ -438,9 +447,10 @@ export async function deleteTag(tagId: string) {
 
 export async function addTagToTask(taskId: string, tagId: string) {
   const supabase = createClient();
+  const orgId = await getCurrentOrgId();
   const { error } = await supabase
     .from("task_tags")
-    .insert({ task_id: taskId, tag_id: tagId });
+    .insert({ task_id: taskId, tag_id: tagId, org_id: orgId });
   if (error) throw error;
 }
 

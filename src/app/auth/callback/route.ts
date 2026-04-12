@@ -47,31 +47,43 @@ export async function GET(request: NextRequest) {
       .limit(1);
 
     if (!existing?.length) {
-      const { data: workspace } = await supabase
-        .from("workspaces")
-        .insert({ name: "My Workspace", user_id: data.user.id })
-        .select("id")
+      // Récupérer l'org_id créé par le trigger à l'inscription
+      const { data: membership } = await supabase
+        .from("memberships")
+        .select("org_id")
+        .eq("user_id", data.user.id)
+        .limit(1)
         .single();
 
-      if (workspace) {
-        const { data: project } = await supabase
-          .from("projects")
-          .insert({ name: "My First Project", workspace_id: workspace.id, color: "#3b82f6" })
+      const orgId = membership?.org_id;
+
+      if (orgId) {
+        const { data: workspace } = await supabase
+          .from("workspaces")
+          .insert({ name: "My Workspace", user_id: data.user.id, org_id: orgId })
           .select("id")
           .single();
 
-        if (project) {
-          await supabase.from("statuses").insert([
-            { name: "Backlog",     color: "#6b7280", position: 0, project_id: project.id },
-            { name: "To Do",       color: "#6b7280", position: 1, project_id: project.id },
-            { name: "In Progress", color: "#f59e0b", position: 2, project_id: project.id },
-            { name: "Done",        color: "#3b82f6", position: 3, project_id: project.id },
-          ]);
-        }
+        if (workspace) {
+          const { data: project } = await supabase
+            .from("projects")
+            .insert({ name: "My First Project", workspace_id: workspace.id, color: "#3b82f6", org_id: orgId })
+            .select("id")
+            .single();
 
-        // New user → show onboarding
-        return NextResponse.redirect(`${origin}/onboarding`);
+          if (project) {
+            await supabase.from("statuses").insert([
+              { name: "Backlog",     color: "#6b7280", position: 0, project_id: project.id, org_id: orgId },
+              { name: "To Do",       color: "#6b7280", position: 1, project_id: project.id, org_id: orgId },
+              { name: "In Progress", color: "#f59e0b", position: 2, project_id: project.id, org_id: orgId },
+              { name: "Done",        color: "#3b82f6", position: 3, project_id: project.id, org_id: orgId },
+            ]);
+          }
+        }
       }
+
+      // New user → show onboarding
+      return NextResponse.redirect(`${origin}/onboarding`);
     }
   }
 

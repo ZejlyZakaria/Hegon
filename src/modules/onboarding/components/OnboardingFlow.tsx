@@ -20,6 +20,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { createClient } from "@/infrastructure/supabase/client";
+import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -398,10 +399,12 @@ function SportsStep({
     if (selectedTeams.find((t) => t.id === team.id)) return;
     setFbAddingId(team.id);
     try {
+      const orgId = await getCurrentOrgId();
       await supabase.schema("sport").from("user_favorites").insert({
         user_id: userId,
         entity_type: "football_team",
         entity_id: team.id,
+        org_id: orgId,
       });
       const updated = [
         ...selectedTeams,
@@ -879,8 +882,10 @@ function WatchingStep({
     setAddingId(item.id);
     const type: "film" | "serie" = item.media_type === "movie" ? "film" : "serie";
     try {
+      const orgId = await getCurrentOrgId();
       await supabase.schema("watching").from("media_items").insert({
         user_id: userId,
+        org_id: orgId,
         type,
         title: item.title || item.name,
         original_title: item.original_title || item.original_name,

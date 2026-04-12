@@ -27,6 +27,8 @@ import {
 import { cn } from "@/shared/utils/utils";
 import { useTheme } from "next-themes";
 import { signOut } from "@/infrastructure/auth/actions";
+import { useInitOrg } from "@/shared/hooks/useInitOrg";
+import { useOrgStore } from "@/shared/stores/useOrgStore";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -335,10 +337,12 @@ function ProfileMenu({
   open,
   onClose,
   anchorRef,
+  userEmail,
 }: {
   open: boolean;
   onClose: () => void;
   anchorRef: React.RefObject<HTMLDivElement | null>;
+  userEmail: string | null;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x: 0, y: 0, w: 0 });
@@ -386,7 +390,7 @@ function ProfileMenu({
                 Zakaria
               </p>
               <p className="text-[11px] text-zinc-500 truncate">
-                zakaria@example.com
+                {userEmail ?? "—"}
               </p>
             </div>
           </div>
@@ -469,8 +473,20 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(readStore);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const { from, glow, isGlass } = getSectionColor(pathname);
+  const orgName = useOrgStore((s) => s.orgName);
+
+  useInitOrg();
+
+  useEffect(() => {
+    import("@/infrastructure/supabase/client").then(({ createClient }) => {
+      createClient().auth.getUser().then(({ data }) => {
+        setUserEmail(data.user?.email ?? null);
+      });
+    });
+  }, []);
 
   // auto-collapse on resize
   useEffect(() => {
@@ -495,6 +511,7 @@ export default function Sidebar() {
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
         anchorRef={profileRef}
+        userEmail={userEmail}
       />
 
       <motion.aside
@@ -544,21 +561,17 @@ export default function Sidebar() {
                   src="/logo/Hegon_black_logo2.png"
                   alt="HEGON"
                   fill
+                  priority
                   className="object-contain"
                 />
               </div>
-
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.15, delay: 0.05 }}
-                className="text-[15px] font-bold text-white whitespace-nowrap tracking-tight"
-              >
+              <span className="text-[15px] font-bold text-white whitespace-nowrap tracking-tight">
                 HEGON
-              </motion.span>
+              </span>
             </div>
           )}
           <button
+            type="button"
             onClick={toggle}
             className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/6 transition-colors shrink-0"
           >
@@ -640,7 +653,7 @@ export default function Sidebar() {
                     Zakaria
                   </p>
                   <p className="text-[11px] text-zinc-600 truncate">
-                    MY Account
+                    {orgName ?? "My Workspace"}
                   </p>
                 </div>
                 <ChevronUp

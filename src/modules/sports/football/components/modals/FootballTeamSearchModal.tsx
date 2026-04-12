@@ -5,7 +5,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Plus, Check, Loader2, Shield } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import { createClient } from "@/infrastructure/supabase/client"
+import { createClient } from "@/infrastructure/supabase/client";
+import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,6 +92,7 @@ export default function FootballTeamSearchModal({
     setAddingId(team.id);
     setError(null);
     try {
+      const orgId = await getCurrentOrgId();
       const { error: err } = await supabase
         .schema("sport")
         .from("user_favorites")
@@ -98,6 +100,7 @@ export default function FootballTeamSearchModal({
           user_id: userId,
           entity_type: "football_team",
           entity_id: team.id,
+          org_id: orgId,
         });
       if (err) throw err;
       setAddedIds((prev) => new Set([...prev, team.id]));

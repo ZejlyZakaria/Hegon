@@ -24,54 +24,6 @@ export default async function DashboardPage() {
     .maybeSingle();
 
   if (!workspace) {
-    // Create workspace + project + statuses for email/password signups
-    const { data: newWorkspace } = await supabase
-      .from("workspaces")
-      .insert({ name: "My Workspace", user_id: user.id })
-      .select("id")
-      .single();
-
-    if (newWorkspace) {
-      const { data: project } = await supabase
-        .from("projects")
-        .insert({
-          name: "My First Project",
-          workspace_id: newWorkspace.id,
-          color: "#3b82f6",
-        })
-        .select("id")
-        .single();
-
-      if (project) {
-        await supabase.from("statuses").insert([
-          {
-            name: "Backlog",
-            color: "#6b7280",
-            position: 0,
-            project_id: project.id,
-          },
-          {
-            name: "To Do",
-            color: "#6b7280",
-            position: 1,
-            project_id: project.id,
-          },
-          {
-            name: "In Progress",
-            color: "#f59e0b",
-            position: 2,
-            project_id: project.id,
-          },
-          {
-            name: "Done",
-            color: "#3b82f6",
-            position: 3,
-            project_id: project.id,
-          },
-        ]);
-      }
-    }
-
     redirect("/onboarding");
   }
 

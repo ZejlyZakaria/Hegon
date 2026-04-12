@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, X, Search, Loader2 } from "lucide-react";
 import { createClient } from "@/infrastructure/supabase/client";
+import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -444,11 +445,13 @@ export default function FootballLegends({
       const detailData = await detailRes.json();
       const detail = detailData.players?.[0] ?? {};
 
+      const orgId = await getCurrentOrgId();
       const { data, error } = await supabase
         .schema("sport")
         .from("football_legends")
         .insert({
           user_id: userId,
+          org_id: orgId,
           player_external_id: sp.idPlayer,
           player_name: sp.strPlayer,
           nationality: sp.strNationality,

@@ -2,6 +2,7 @@
 "use server";
 
 import { createServerClient } from "@/infrastructure/supabase/server"
+import { getServerOrgId } from "@/shared/utils/getServerOrgId";
 import { revalidatePath } from "next/cache";
 
 // =====================================================
@@ -32,6 +33,8 @@ export async function createFirstProject(): Promise<SetupResult> {
     return { success: false, error: "Not authenticated" };
   }
 
+  const orgId = await getServerOrgId(user.id);
+
   try {
     // 2. Check if user already has a workspace
     console.log("📁 [AUTO-SETUP] Checking for existing workspace...");
@@ -59,6 +62,7 @@ export async function createFirstProject(): Promise<SetupResult> {
         .insert({
           name: "My Workspace",
           user_id: user.id,
+          org_id: orgId,
         })
         .select("id")
         .single();
@@ -80,7 +84,8 @@ export async function createFirstProject(): Promise<SetupResult> {
       .insert({
         name: "My First Project",
         workspace_id: workspaceId,
-        color: "#3b82f6", // Blue
+        color: "#3b82f6",
+        org_id: orgId,
       })
       .select("id")
       .single();
@@ -105,6 +110,7 @@ export async function createFirstProject(): Promise<SetupResult> {
     const statusInserts = defaultStatuses.map((status) => ({
       ...status,
       project_id: project.id,
+      org_id: orgId,
     }));
 
     const { error: statusError } = await supabase
