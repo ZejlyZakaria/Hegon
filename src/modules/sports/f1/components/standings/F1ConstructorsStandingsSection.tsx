@@ -1,12 +1,11 @@
-import { getConstructorStandings } from "@/modules/sports/f1/service";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import F1ConstructorsStandings from "./F1ConstructorsStandings";
 
-export default async function F1ConstructorsStandingsSection() {
-  const standings = await getConstructorStandings(2026);
+interface Props {
+  standings: any[];
+}
 
-  if (standings.length === 0) {
-    return null;
-  }
-
+export default function F1ConstructorsStandingsSection({ standings }: Props) {
+  if (standings.length === 0) return null;
   return <F1ConstructorsStandings standings={standings} />;
 }

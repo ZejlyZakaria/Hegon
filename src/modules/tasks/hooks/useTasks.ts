@@ -86,14 +86,17 @@ export function useMoveTask() {
 
   return useMutation({
     mutationFn: TaskService.moveTask,
-    onMutate: async ({ taskId, newStatusId, newPosition, projectId }: MoveTaskInput) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: TASK_KEYS.byProject(projectId) });
+    // Synchrone (pas d'async/await) — s'exécute dans le même tick que mutate()
+    // React batchera setActiveTask(null) + setQueryData dans le même render
+    // → zéro flash de la carte à son ancienne position
+    onMutate: ({ taskId, newStatusId, newPosition, projectId }: MoveTaskInput) => {
+      // Fire-and-forget cancel (pas d'await — évite de rendre onMutate async)
+      queryClient.cancelQueries({ queryKey: TASK_KEYS.byProject(projectId) });
 
-      // Snapshot previous value
+      // Snapshot pour rollback
       const previousTasks = queryClient.getQueryData(TASK_KEYS.byProject(projectId));
 
-      // Optimistically update
+      // Optimistic update — synchrone
       queryClient.setQueryData(TASK_KEYS.byProject(projectId), (old: any) => {
         if (!old) return old;
         return old.map((task: any) =>
@@ -106,16 +109,13 @@ export function useMoveTask() {
       return { previousTasks };
     },
     onError: (error: Error, variables, context) => {
-      // Rollback on error
+      // Rollback
       if (context?.previousTasks) {
         queryClient.setQueryData(TASK_KEYS.byProject(variables.projectId), context.previousTasks);
       }
-      toast.error(`Failed to move task: ${error.message}`);
+      toast.error(`Failed to move task`);
     },
-    onSettled: (data, error, variables) => {
-      // Refetch after error or success
-      queryClient.invalidateQueries({ queryKey: TASK_KEYS.byProject(variables.projectId) });
-    },
+    // Pas d'onSettled — pas de refetch après move = pas de second snap-back
   });
 }
 

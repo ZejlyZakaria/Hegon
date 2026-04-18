@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// components/watching/WatchingHero.tsx
+"use client";
+
 import Image from "next/image";
 import { Star, TrendingUp, Sparkles } from "lucide-react";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
+import { useWatchingHero } from "@/modules/watching/hooks/useWatchingHero";
+import { MoviesHeroSkeleton } from "@/modules/watching/components/WatchingSkeletons";
 import type { WatchingConfig } from "@/modules/watching/types";
 
-const TMDB_BASE = "https://api.themoviedb.org/3";
-const TMDB_IMG  = "https://image.tmdb.org/t/p/w500";
-
-// ─── recommendation card ──────────────────────────────────────────────────────
+const TMDB_IMG = "https://image.tmdb.org/t/p/w500";
 
 function RecoCard({ item }: { item: any }) {
   const posterUrl = item.poster_path ? `${TMDB_IMG}${item.poster_path}` : null;
@@ -39,95 +39,12 @@ function RecoCard({ item }: { item: any }) {
   );
 }
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+export default function WatchingHero({ config }: { config: WatchingConfig }) {
+  const { data, isLoading } = useWatchingHero(config.type);
 
-function buildTrendingUrl(config: WatchingConfig, key: string): string {
-  if (config.type === "anime") {
-    // trending anime — discover/tv filtré Animation + Japon
-    const p = new URLSearchParams({
-      api_key: key, language: "fr-FR",
-      sort_by: "popularity.desc",
-      with_genres: "16",
-      with_origin_country: "JP",
-      "vote_average.gte": "7",
-      "vote_count.gte": "100",
-    });
-    return `${TMDB_BASE}/discover/tv?${p}`;
-  }
-  
-  // ✅ SÉRIES : Exclure les animes (genre 16 Animation)
-  if (config.type === "serie") {
-    const p = new URLSearchParams({
-      api_key: key,
-      language: "fr-FR",
-      sort_by: "popularity.desc",
-      without_genres: "16",  // ✅ EXCLURE Animation
-      "vote_average.gte": "7",
-      "vote_count.gte": "100",
-    });
-    return `${TMDB_BASE}/discover/tv?${p}`;
-  }
-  
-  // movies — trending endpoint standard
-  const p = new URLSearchParams({ api_key: key, language: "fr-FR" });
-  return `${TMDB_BASE}/${config.tmdbTrendingEndpoint}?${p}`;
-}
+  if (isLoading || !data) return <MoviesHeroSkeleton />;
 
-function buildRecoUrl(config: WatchingConfig, key: string): string {
-  const base: Record<string, string> = {
-    api_key: key,
-    language: "fr-FR",
-    "vote_average.gte": "7.5",
-    "vote_count.gte": "50",
-    sort_by: "release_date.desc",
-    page: "1",
-  };
-
-  if (config.type === "film") {
-    const p = new URLSearchParams(base);
-    return `${TMDB_BASE}/discover/movie?${p}`;
-  }
-
-  if (config.type === "serie") {
-    // ✅ SÉRIES : Exclure les animes des recommandations aussi
-    const p = new URLSearchParams({ 
-      ...base, 
-      sort_by: "first_air_date.desc",
-      without_genres: "16"  // ✅ EXCLURE Animation
-    });
-    return `${TMDB_BASE}/discover/tv?${p}`;
-  }
-
-  // anime
-  const p = new URLSearchParams({
-    ...base,
-    sort_by: "first_air_date.desc",
-    with_genres: "16",
-    with_origin_country: "JP",
-  });
-  return `${TMDB_BASE}/discover/tv?${p}`;
-}
-
-// ─── main ─────────────────────────────────────────────────────────────────────
-
-export default async function WatchingHero({ config }: { config: WatchingConfig }) {
-  const key = process.env.TMDB_API_KEY!;
-
-  const [trendingRes, recoRes] = await Promise.all([
-    fetch(buildTrendingUrl(config, key), { next: { revalidate: 3600 } }),
-    fetch(buildRecoUrl(config, key),     { next: { revalidate: 3600 } }),
-  ]);
-
-  const trendingData = trendingRes.ok ? await trendingRes.json() : { results: [] };
-  const recoData     = recoRes.ok     ? await recoRes.json()     : { results: [] };
-
-  // pick best trending
-  const trending = (trendingData.results ?? []).find(
-    (m: any) => m.vote_average >= 7 && m.vote_count >= 100
-  ) ?? trendingData.results?.[0] ?? null;
-
-  // 3 recommendations — already filtered by URL params
-  const recommendations = (recoData.results ?? []).slice(0, 3);
+  const { trending, recommendations } = data;
 
   const title       = trending?.title || trending?.name;
   const genres      = trending ? mapTmdbGenres(trending.genre_ids ?? []) : [];
@@ -207,7 +124,3 @@ export default async function WatchingHero({ config }: { config: WatchingConfig 
     </div>
   );
 }
-
-
-
-

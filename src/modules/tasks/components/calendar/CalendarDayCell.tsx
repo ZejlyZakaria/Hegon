@@ -2,8 +2,8 @@
 
 import { format } from "date-fns";
 import { cn } from "@/shared/utils/utils"
-import { PriorityIcon } from "../PriorityIcon";
-import { StatusIcon } from "../StatusIcon";
+import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
+import { StatusIcon } from "../../../../shared/components/icons/StatusIcon";
 import type { Task } from "@/modules/tasks/types"
 
 // =====================================================

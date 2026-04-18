@@ -1,12 +1,11 @@
-import { getUpcomingRaces } from "@/modules/sports/f1/service";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import F1Calendar from "./F1Calendar";
 
-export default async function F1CalendarSection() {
-  const upcomingRaces = await getUpcomingRaces(3);
+interface Props {
+  upcomingRaces: any[];
+}
 
-  if (upcomingRaces.length === 0) {
-    return null;
-  }
-
+export default function F1CalendarSection({ upcomingRaces }: Props) {
+  if (upcomingRaces.length === 0) return null;
   return <F1Calendar races={upcomingRaces} />;
 }

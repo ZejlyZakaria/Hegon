@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
-import { cn } from "@/shared/utils/utils"
-import { StatusIcon } from "../StatusIcon";
+import { cn } from "@/shared/utils/utils";
+import { StatusIcon } from "../../../../shared/components/icons/StatusIcon";
 import { ListRow } from "./ListRow";
 import { CreateTaskModal } from "../modals/CreateTaskModal";
-import type { Status, Task } from "@/modules/tasks/types"
+import type { Status, Task } from "@/modules/tasks/types";
 
 // =====================================================
 // LIST GROUP COMPONENT — Collapsible group per status
@@ -47,10 +47,14 @@ export function ListGroup({ status, tasks, projectId }: ListGroupProps) {
           <StatusIcon status={status.name} size={14} />
 
           {/* Status Name */}
-          <span className="text-sm font-medium text-zinc-300">{status.name}</span>
+          <span className="text-sm font-medium text-zinc-300">
+            {status.name}
+          </span>
 
           {/* Count */}
-          <span className="text-xs text-zinc-600 font-medium">{tasks.length}</span>
+          <span className="text-xs text-zinc-600 font-medium">
+            {tasks.length}
+          </span>
 
           {/* Add Task Button (visible on hover) */}
           <button

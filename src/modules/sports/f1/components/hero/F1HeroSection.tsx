@@ -1,10 +1,12 @@
-import { getNextRace } from "@/modules/sports/f1/service";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import F1Hero from "./F1Hero";
 import type { F1HeroData } from "./F1Hero";
 
-export default async function F1HeroSection() {
-  const nextRace = await getNextRace();
+interface Props {
+  nextRace: any;
+}
 
+export default function F1HeroSection({ nextRace }: Props) {
   if (!nextRace) {
     return (
       <div className="p-8 text-zinc-500 text-center">

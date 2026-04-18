@@ -1,12 +1,11 @@
-import { getRecentRaces } from "@/modules/sports/f1/service";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import F1RecentResults from "./F1RecentResults";
 
-export default async function F1RecentResultsSection() {
-  const recentResults = await getRecentRaces(3);
+interface Props {
+  recentRaces: any[];
+}
 
-  if (recentResults.length === 0) {
-    return null;
-  }
-
-  return <F1RecentResults results={recentResults} />;
+export default function F1RecentResultsSection({ recentRaces }: Props) {
+  if (recentRaces.length === 0) return null;
+  return <F1RecentResults results={recentRaces} />;
 }

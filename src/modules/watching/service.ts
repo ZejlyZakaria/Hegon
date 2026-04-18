@@ -265,3 +265,33 @@ export async function getGenres(type: "movie" | "tv") {
   const data = await tmdbFetch<{ genres: { id: number; name: string }[] }>(`genre/${type}/list`);
   return data.genres;
 }
+
+// Hero data (trending + recommendations) — client-side via proxy
+export async function getWatchingHeroData(type: MediaType) {
+  const trendingEndpoint = type === "film" ? "trending/movie/week" : "discover/tv";
+  const trendingParams: Record<string, string> = type === "anime"
+    ? { sort_by: "popularity.desc", with_genres: "16", with_origin_country: "JP", "vote_average.gte": "7", "vote_count.gte": "100" }
+    : type === "serie"
+    ? { sort_by: "popularity.desc", without_genres: "16", "vote_average.gte": "7", "vote_count.gte": "100" }
+    : {};
+
+  const recoEndpoint = type === "film" ? "discover/movie" : "discover/tv";
+  const recoParams: Record<string, string> = type === "film"
+    ? { "vote_average.gte": "7.5", "vote_count.gte": "50", sort_by: "release_date.desc", page: "1" }
+    : type === "serie"
+    ? { "vote_average.gte": "7.5", "vote_count.gte": "50", sort_by: "first_air_date.desc", without_genres: "16", page: "1" }
+    : { "vote_average.gte": "7.5", "vote_count.gte": "50", sort_by: "first_air_date.desc", with_genres: "16", with_origin_country: "JP", page: "1" };
+
+  const [trendingData, recoData] = await Promise.all([
+    tmdbFetch<{ results: any[] }>(trendingEndpoint, trendingParams),
+    tmdbFetch<{ results: any[] }>(recoEndpoint, recoParams),
+  ]);
+
+  const trending = (trendingData.results ?? []).find(
+    (m: any) => m.vote_average >= 7 && m.vote_count >= 100
+  ) ?? trendingData.results?.[0] ?? null;
+
+  const recommendations = (recoData.results ?? []).slice(0, 3);
+
+  return { trending, recommendations };
+}

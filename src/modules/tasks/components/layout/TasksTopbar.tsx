@@ -28,8 +28,8 @@ import { Button } from "@/shared/components/ui/button";
 // import { StatusIcon } from "@/components/tasks/StatusIcon";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useTags } from "@/modules/tasks/hooks/useTags";
-import { StatusIcon } from "../StatusIcon";
-import { PriorityIcon } from "../PriorityIcon";
+import { StatusIcon } from "../../../../shared/components/icons/StatusIcon";
+import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
 
 // =====================================================
 // TASKS TOPBAR

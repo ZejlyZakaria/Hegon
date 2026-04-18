@@ -11,20 +11,11 @@ import { TasksError } from "@/modules/tasks/components/TasksError";
 import { useTasksStore } from "@/modules/tasks/store";
 import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
 import { useProjects } from "@/modules/tasks/hooks/useProjects";
-import { createClient } from "@/infrastructure/supabase/client";
-import { useEffect, useState } from "react";
+import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 
 function TasksPageContent() {
   const { viewMode } = useTasksStore();
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // Get user ID
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id || null);
-    });
-  }, []);
+  const userId = useCurrentUserId();
 
   const { data: workspaces, isLoading: workspacesLoading } = useWorkspaces(userId || "");
 

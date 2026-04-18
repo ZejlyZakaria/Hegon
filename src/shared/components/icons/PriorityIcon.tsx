@@ -1,9 +1,10 @@
 import { cn } from "@/shared/utils/utils"
 import { TriangleAlert } from "lucide-react";
-import type { Priority } from "@/modules/tasks/types"
+
+type PriorityLevel = "none" | "low" | "medium" | "high" | "critical";
 
 interface PriorityIconProps {
-  priority: Priority | "none";
+  priority: PriorityLevel;
   className?: string;
 }
 

@@ -24,6 +24,7 @@ const textareaVariants = cva(
           "bg-zinc-800/50",
           "text-zinc-100 placeholder:text-zinc-600",
           "resize-none",
+          "hover:bg-zinc-800/80",
           "focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700",
           "aria-invalid:border-red-500/50 aria-invalid:ring-1 aria-invalid:ring-red-500/20"
         ),

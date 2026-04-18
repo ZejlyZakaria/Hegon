@@ -1,6 +1,22 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
+const CSP = [
+  "default-src 'self'",
+  // Next.js App Router requires unsafe-inline for hydration scripts (no nonce without middleware)
+  "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://image.tmdb.org https://crests.football-data.org https://cdn.thesportsdb.com https://femvhonlpafdajyamvcu.supabase.co",
+  "font-src 'self'",
+  "connect-src 'self' https://femvhonlpafdajyamvcu.supabase.co wss://femvhonlpafdajyamvcu.supabase.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://*.ingest.sentry.io https://www.thesportsdb.com",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "upgrade-insecure-requests",
+].join("; ");
+
 const nextConfig: NextConfig = {
   devIndicators: false,
   transpilePackages: ["swiper"],
@@ -14,6 +30,7 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Content-Security-Policy", value: CSP },
         ],
       },
     ];
@@ -24,12 +41,22 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "image.tmdb.org",
-        port: "",
         pathname: "/t/p/**",
       },
       {
+        // Football team crests from football-data.org API
         protocol: "https",
-        hostname: "**",
+        hostname: "crests.football-data.org",
+      },
+      {
+        // Tennis player photos + football legends from TheSportsDB
+        protocol: "https",
+        hostname: "cdn.thesportsdb.com",
+      },
+      {
+        // Supabase storage (poster_url, backdrop_url, profile_url stored in DB)
+        protocol: "https",
+        hostname: "femvhonlpafdajyamvcu.supabase.co",
       },
     ],
   },

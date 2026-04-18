@@ -52,8 +52,8 @@ import { useUpdateTask } from "@/modules/tasks/hooks/useTasks";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useAddTagToTask, useRemoveTagFromTask } from "@/modules/tasks/hooks/useTags";
 import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
-import { PriorityIcon } from "@/modules/tasks/components/PriorityIcon";
-import { StatusIcon } from "@/modules/tasks/components/StatusIcon";
+import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
+import { StatusIcon } from "@/shared/components/icons/StatusIcon";
 import type {
   Task,
   Priority,

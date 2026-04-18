@@ -1,5 +1,6 @@
-import { Suspense } from "react";
-import { createServerClient } from "@/infrastructure/supabase/server";
+"use client";
+
+import { useF1Data } from "@/modules/sports/f1/hooks/useF1";
 import F1HeroSection from "./hero/F1HeroSection";
 import F1CalendarSection from "./calendar/F1CalendarSection";
 import F1RecentResultsSection from "./results/F1RecentResultsSection";
@@ -12,40 +13,31 @@ import F1ConstructorsStandingsSkeleton, {
   F1DriversStandingsSkeleton,
 } from "@/modules/sports/components/SportSkeletons";
 
-export default async function F1PageWrapper() {
-  const supabase = await createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export default function F1PageWrapper() {
+  const { data, isLoading } = useF1Data();
 
-  if (!user) {
+  if (isLoading || !data) {
     return (
-      <div className="p-8 text-zinc-500">
-        Connecte-toi pour voir ton hub F1.
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <F1HeroSkeleton />
+        <F1CalendarSkeleton />
+        <F1RecentResultsSkeleton />
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <F1DriversStandingsSkeleton />
+          <F1ConstructorsStandingsSkeleton />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
-      <Suspense fallback={<F1HeroSkeleton />}>
-        <F1HeroSection />
-      </Suspense>
-
-      <Suspense fallback={<F1CalendarSkeleton />}>
-        <F1CalendarSection />
-      </Suspense>
-
-      <Suspense fallback={<F1RecentResultsSkeleton />}>
-        <F1RecentResultsSection />
-      </Suspense>
-
+      <F1HeroSection nextRace={data.nextRace} />
+      <F1CalendarSection upcomingRaces={data.upcomingRaces} />
+      <F1RecentResultsSection recentRaces={data.recentRaces} />
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <Suspense fallback={<F1DriversStandingsSkeleton />}>
-          <F1DriversStandingsSection />
-        </Suspense>
-
-        <Suspense fallback={<F1ConstructorsStandingsSkeleton />}>
-          <F1ConstructorsStandingsSection />
-        </Suspense>
+        <F1DriversStandingsSection standings={data.driverStandings} />
+        <F1ConstructorsStandingsSection standings={data.constructorStandings} />
       </div>
     </div>
   );

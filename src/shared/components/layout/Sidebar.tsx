@@ -36,6 +36,7 @@ interface NavItem {
   key: string;
   label: string;
   href: string;
+  activePrefix?: string;
   icon: React.ReactNode;
   accent: string;
   comingSoon?: boolean;
@@ -50,19 +51,48 @@ interface NavGroup {
 
 const NAV: NavGroup[] = [
   {
+    label: "Life",
+    items: [
+      {
+        key: "goals",
+        label: "Goals",
+        href: "/life/goals",
+        icon: <Target size={15} />,
+        accent: "#18ad9d",
+      },
+      {
+        key: "habits",
+        label: "Habits",
+        href: "/life/habits",
+        icon: <Dumbbell size={15} />,
+        accent: "#f43f5e",
+      },
+      {
+        key: "journal",
+        label: "Journal",
+        href: "/life/journal",
+        icon: <BookOpen size={15} />,
+        accent: "#eab308",
+        comingSoon: true,
+      },
+    ],
+  },
+  {
     label: "Perso",
     items: [
       {
         key: "sport",
         label: "Sport",
-        href: "/perso/sports",
+        href: "/perso/sports/football",
+        activePrefix: "/perso/sports",
         icon: <Trophy size={15} />,
         accent: "#10b981",
       },
       {
         key: "watching",
         label: "Watching",
-        href: "/perso/watching",
+        href: "/perso/watching/movies",
+        activePrefix: "/perso/watching",
         icon: <Tv size={15} />,
         accent: "#8b5cf6",
       },
@@ -71,7 +101,7 @@ const NAV: NavGroup[] = [
         label: "Books",
         href: "/perso/books",
         icon: <BookOpen size={15} />,
-        accent: "#f97316",
+        accent: "#f59e0b",
         comingSoon: true,
       },
       {
@@ -87,7 +117,7 @@ const NAV: NavGroup[] = [
         label: "Fitness",
         href: "/perso/fitness",
         icon: <Dumbbell size={15} />,
-        accent: "#f43f5e",
+        accent: "#f97316",
         comingSoon: true,
       },
     ],
@@ -103,14 +133,6 @@ const NAV: NavGroup[] = [
         accent: "#71717a",
       },
       {
-        key: "goals",
-        label: "Goals",
-        href: "/pro/goals",
-        icon: <Target size={15} />,
-        accent: "#22c55e",
-        comingSoon: true,
-      },
-      {
         key: "jobhunt",
         label: "Job Hunt",
         href: "/pro/jobhunt",
@@ -123,7 +145,7 @@ const NAV: NavGroup[] = [
         label: "Tech",
         href: "/pro/tech",
         icon: <Code2 size={15} />,
-        accent: "#a855f7",
+        accent: "#06b6d4",
         comingSoon: true,
       },
     ],
@@ -157,8 +179,8 @@ const SECTION_COLORS: Record<
     isGlass: false,
   },
   "/perso/books": {
-    from: "rgba(249,115,22,0.08)",
-    glow: "#f97316",
+    from: "rgba(245,158,11,0.08)",
+    glow: "#f59e0b",
     isGlass: false,
   },
   "/perso/travel": {
@@ -176,9 +198,19 @@ const SECTION_COLORS: Record<
     glow: "#71717a",
     isGlass: true,
   },
-  "/pro/goals": {
-    from: "rgba(34,197,94,0.08)",
-    glow: "#22c55e",
+  "/life/goals": {
+    from: "rgba(24,173,157,0.08)",
+    glow: "#18ad9d",
+    isGlass: false,
+  },
+  "/life/habits": {
+    from: "rgba(244,63,94,0.08)",
+    glow: "#f43f5e",
+    isGlass: false,
+  },
+  "/life/journal": {
+    from: "rgba(234,179,8,0.08)",
+    glow: "#eab308",
     isGlass: false,
   },
   "/pro/jobhunt": {
@@ -620,7 +652,7 @@ export default function Sidebar() {
                     href={item.href}
                     icon={item.icon}
                     label={item.label}
-                    active={pathname.startsWith(item.href)}
+                    active={pathname.startsWith(item.activePrefix ?? item.href)}
                     accent={item.accent}
                     collapsed={collapsed}
                     comingSoon={item.comingSoon}

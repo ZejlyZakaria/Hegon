@@ -4,10 +4,10 @@ import { useSortable } from "@dnd-kit/sortable";
 import { EditTaskModal } from "../modals/EditTaskModal";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Calendar, Tag, MoreHorizontal } from "lucide-react";
-import { cn } from "@/shared/utils/utils"
-import type { Task } from "@/modules/tasks/types"
+import { cn } from "@/shared/utils/utils";
+import type { Task } from "@/modules/tasks/types";
 import { format, isPast, differenceInDays } from "date-fns";
-import { PriorityIcon } from "../PriorityIcon";
+import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
 import { useState } from "react";
 
 // =====================================================

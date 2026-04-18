@@ -1,4 +1,4 @@
-// app/perso/sports/football/page.tsx
+"use client";
 
 import FootballPageWrapper from "@/modules/sports/football/components/FootballPageWrapper";
 

@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CheckSquare, ArrowRight, Clock } from "lucide-react";
-import { PriorityIcon } from "@/modules/tasks/components/PriorityIcon";
+import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
 import type { DashboardTask } from "../../types";
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -47,7 +47,10 @@ export default function TodayPriorityCard({ task, remaining = 0 }: Props) {
       {/* Indigo radial glow */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 80% 60% at 0% 0%, rgba(99,102,241,0.22), transparent)" }}
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 60% at 0% 0%, rgba(99,102,241,0.22), transparent)",
+        }}
       />
       {/* Top specular line */}
       <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-indigo-400/40 to-transparent" />
@@ -78,7 +81,9 @@ export default function TodayPriorityCard({ task, remaining = 0 }: Props) {
               </span>
             )}
           </div>
-          <p className="text-[10px] text-zinc-500 truncate">{task.project_name}</p>
+          <p className="text-[10px] text-zinc-500 truncate">
+            {task.project_name}
+          </p>
         </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-white/5">

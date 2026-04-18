@@ -37,6 +37,10 @@ export const WATCHING_KEYS = {
     [...WATCHING_KEYS.all, type, 'top-rated'] as const,
     
   // Detail
-  detail: (id: string) => 
+  detail: (id: string) =>
     [...WATCHING_KEYS.all, 'detail', id] as const,
+
+  // Hero (TMDB trending + recommendations)
+  hero: (type: MediaType) =>
+    [...WATCHING_KEYS.all, 'hero', type] as const,
 } as const;

@@ -1,16 +1,23 @@
-// components/sports/football/FootballLegendsServer.tsx
-import { createServerClient } from "@/infrastructure/supabase/server"
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@/infrastructure/supabase/client";
 import FootballLegends from "./FootballLegends";
 
-export default async function FootballLegendsServer({ userId }: { userId: string }) {
-  const supabase = await createServerClient();
+export default function FootballLegendsServer({ userId }: { userId: string }) {
+  const [legends, setLegends] = useState<any[]>([]);
 
-  const { data } = await supabase
-    .schema("sport")
-    .from("football_legends")
-    .select("*")
-    .eq("user_id", userId)
-    .order("display_order", { ascending: true });
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .schema("sport")
+      .from("football_legends")
+      .select("*")
+      .eq("user_id", userId)
+      .order("display_order", { ascending: true })
+      .then(({ data }) => setLegends(data ?? []));
+  }, [userId]);
 
-  return <FootballLegends userId={userId} initialLegends={data ?? []} />;
+  return <FootballLegends userId={userId} initialLegends={legends} />;
 }

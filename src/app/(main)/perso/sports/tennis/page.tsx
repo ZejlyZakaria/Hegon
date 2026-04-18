@@ -1,4 +1,4 @@
-// app/perso/sports/tennis/page.tsx
+"use client";
 
 import TennisPageWrapper from "@/modules/sports/tennis/components/TennisPageWrapper";
 

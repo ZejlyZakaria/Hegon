@@ -2,6 +2,7 @@
 
 import { toast } from "@/shared/utils/toast";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
+import { CarouselSkeleton } from "@/modules/watching/components/WatchingSkeletons";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { useUpdateMedia } from "@/modules/watching/hooks/useUpdateMedia";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
@@ -12,14 +13,14 @@ import { useAnimes } from "@/modules/watching/hooks/useAnimes";
 import type { WatchingMedia, WatchingConfig } from "@/modules/watching/types";
 
 interface Props {
-  initialItems: WatchingMedia[];
+  initialItems?: WatchingMedia[];
   userId: string;
   config: WatchingConfig;
 }
 
 export default function WantToWatchSectionClient({ initialItems, userId, config }: Props) {
   const hookMap = { film: useMovies, serie: useSeries, anime: useAnimes };
-  const { data: items = [] } = hookMap[config.type]({
+  const { data: items = [], isLoading } = hookMap[config.type]({
     userId,
     wantToWatch: true,
     limit: 20,
@@ -30,6 +31,8 @@ export default function WantToWatchSectionClient({ initialItems, userId, config 
   const deleteMediaMutation = useDeleteMedia();
   const markAsWatchedMutation = useMarkAsWatched();
   const { openModal, notifyMoved } = useWatching();
+
+  if (isLoading) return <CarouselSkeleton />;
 
   const handleMarkWatched = async (itemId: string) => {
     try {

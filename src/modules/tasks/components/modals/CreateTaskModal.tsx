@@ -42,8 +42,8 @@ import { cn } from "@/shared/utils/utils";
 import { useCreateTask } from "@/modules/tasks/hooks/useTasks";
 import { useAddTagToTask } from "@/modules/tasks/hooks/useTags";
 import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
-import { PriorityIcon } from "@/modules/tasks/components/PriorityIcon";
-import type { CreateTaskInput, Priority } from "@/modules/tasks/types"
+import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
+import type { CreateTaskInput, Priority } from "@/modules/tasks/types";
 
 // =====================================================
 // VALIDATION SCHEMA
@@ -208,7 +208,9 @@ export function CreateTaskModal({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent variant="tasks">
-                        {(["critical", "high", "medium", "low"] as Priority[]).map((p) => (
+                        {(
+                          ["critical", "high", "medium", "low"] as Priority[]
+                        ).map((p) => (
                           <SelectItem key={p} value={p}>
                             <div className="flex items-center gap-2">
                               <PriorityIcon priority={p} />

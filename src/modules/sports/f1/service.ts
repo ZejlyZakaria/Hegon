@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { cache } from "react";
-import { createServerClient } from "@/infrastructure/supabase/server";
+import { createClient } from "@/infrastructure/supabase/client";
+import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import type { F1Team } from "./types";
 
 // =====================================================
 // F1 SERVICE
 // =====================================================
 
-export const getNextRace = cache(async (): Promise<any | null> => {
-  const supabase = await createServerClient();
+export async function getNextRace(): Promise<any | null> {
+  const supabase = createClient();
   const { data } = await supabase
     .schema("sport")
     .from("f1_races")
@@ -37,10 +37,10 @@ export const getNextRace = cache(async (): Promise<any | null> => {
     .maybeSingle();
 
   return data ?? null;
-});
+}
 
-export const getUpcomingRaces = cache(async (limit: number = 3): Promise<any[]> => {
-  const supabase = await createServerClient();
+export async function getUpcomingRaces(limit: number = 3): Promise<any[]> {
+  const supabase = createClient();
   const { data } = await supabase
     .schema("sport")
     .from("f1_races")
@@ -72,10 +72,10 @@ export const getUpcomingRaces = cache(async (limit: number = 3): Promise<any[]> 
     .range(1, limit);
 
   return data || [];
-});
+}
 
-export const getRecentRaces = cache(async (limit: number = 3): Promise<any[]> => {
-  const supabase = await createServerClient();
+export async function getRecentRaces(limit: number = 3): Promise<any[]> {
+  const supabase = createClient();
 
   const { data: races, error: racesError } = await supabase
     .schema("sport")
@@ -104,7 +104,6 @@ export const getRecentRaces = cache(async (limit: number = 3): Promise<any[]> =>
     return [];
   }
 
-  // Fetch podium + fastest lap for all races in parallel
   const results = await Promise.all(
     races.map(async (race) => {
       const [podiumRes, fastestLapRes] = await Promise.all([
@@ -174,10 +173,10 @@ export const getRecentRaces = cache(async (limit: number = 3): Promise<any[]> =>
   );
 
   return results.filter(Boolean);
-});
+}
 
-export const getDriverStandings = cache(async (season: number = 2026): Promise<any[]> => {
-  const supabase = await createServerClient();
+export async function getDriverStandings(season: number = 2026): Promise<any[]> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .schema("sport")
     .from("f1_driver_standings")
@@ -207,10 +206,10 @@ export const getDriverStandings = cache(async (season: number = 2026): Promise<a
   }
 
   return data || [];
-});
+}
 
-export const getConstructorStandings = cache(async (season: number = 2026): Promise<any[]> => {
-  const supabase = await createServerClient();
+export async function getConstructorStandings(season: number = 2026): Promise<any[]> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .schema("sport")
     .from("f1_constructor_standings")
@@ -235,10 +234,12 @@ export const getConstructorStandings = cache(async (season: number = 2026): Prom
   }
 
   return data || [];
-});
+}
 
-export const getUserFavoriteTeams = cache(async (userId: string): Promise<F1Team[]> => {
-  const supabase = await createServerClient();
+export async function getUserFavoriteTeams(): Promise<F1Team[]> {
+  const supabase = createClient();
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
   const { data } = await supabase
     .schema("sport")
     .from("user_favorites")
@@ -247,4 +248,27 @@ export const getUserFavoriteTeams = cache(async (userId: string): Promise<F1Team
     .eq("entity_type", "f1_team");
 
   return data?.map((f: { team: any }) => f.team) || [];
-});
+}
+
+// ─── Master page data ─────────────────────────────────────────────────────────
+
+export async function getF1PageData(): Promise<any> {
+  const [nextRace, upcomingRaces, recentRaces, driverStandings, constructorStandings, userFavoriteTeams] =
+    await Promise.all([
+      getNextRace(),
+      getUpcomingRaces(3),
+      getRecentRaces(3),
+      getDriverStandings(2026),
+      getConstructorStandings(2026),
+      getUserFavoriteTeams(),
+    ]);
+
+  return {
+    nextRace,
+    upcomingRaces,
+    recentRaces,
+    driverStandings,
+    constructorStandings,
+    userFavoriteTeams,
+  };
+}

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Save } from "lucide-react";
 import { toast } from "@/shared/utils/toast";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
+import { CarouselSkeleton } from "@/modules/watching/components/WatchingSkeletons";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { useUpdateMedia } from "@/modules/watching/hooks/useUpdateMedia";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
@@ -14,18 +15,19 @@ import { useAnimes } from "@/modules/watching/hooks/useAnimes";
 import type { WatchingMedia, WatchingConfig } from "@/modules/watching/types";
 
 interface Props {
-  initialItems: WatchingMedia[];
+  initialItems?: WatchingMedia[];
   userId: string;
   config: WatchingConfig;
 }
 
 export default function TopTenSectionClient({ initialItems, userId, config }: Props) {
   const hookMap = { film: useMovies, serie: useSeries, anime: useAnimes };
-  const { data: items = [] } = hookMap[config.type]({
+  const { data: rawData, isLoading } = hookMap[config.type]({
     userId,
     topRated: true,
     initialData: initialItems,
   });
+  const items = useMemo(() => rawData ?? [], [rawData]);
 
   const [localItems, setLocalItems] = useState(items);
   const [isDirty, setIsDirty] = useState(false);
@@ -35,14 +37,16 @@ export default function TopTenSectionClient({ initialItems, userId, config }: Pr
   const updatePrioritiesMutation = useUpdatePriorities();
   const { openModal, notifyDeleted } = useWatching();
 
-  useEffect(() => {
-    if (!isDirty) setLocalItems(items);
-  }, [items, isDirty]);
-
   const handleReorder = useCallback((reordered: WatchingMedia[]) => {
     setLocalItems(reordered.map((item, i) => ({ ...item, priority: i + 1 })));
     setIsDirty(true);
   }, []);
+
+  useEffect(() => {
+    if (!isDirty) setLocalItems(items);
+  }, [items, isDirty]);
+
+  if (isLoading) return <CarouselSkeleton />;
 
   const handleSave = async () => {
     try {

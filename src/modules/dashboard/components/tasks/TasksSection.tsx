@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import Link from "next/link";
 import { AlertTriangle, Clock, Folder, ArrowRight } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
@@ -96,12 +97,11 @@ function EmptyState({ tab }: { tab: string }) {
 const TABS = ["today", "upcoming", "completed"] as const;
 type Tab = typeof TABS[number];
 
-interface Props { userId: string }
-
-export default function TasksSection({ userId }: Props) {
+export default function TasksSection() {
+  const userId = useCurrentUserId();
   const [activeTab, setActiveTab] = useState<Tab>("today");
   const { todayTasks, upcomingTasks, completedTasks, overdueCount, weekTotal, weekCompleted, isLoading } =
-    useDashboardTasks(userId);
+    useDashboardTasks(userId ?? "");
 
   const tasksByTab: Record<Tab, DashboardTask[]> = {
     today:     todayTasks,

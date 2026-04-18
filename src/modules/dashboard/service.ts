@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { cache } from "react";
-import { createServerClient } from "@/infrastructure/supabase/server";
+import { createClient } from "@/infrastructure/supabase/client";
+import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import { getNextRace } from "@/modules/sports/f1/service";
 import { getFootballTeams, getCrestsByExternalIds } from "@/modules/sports/football/service";
 import { getTennisPlayers } from "@/modules/sports/tennis/service";
@@ -82,8 +82,8 @@ function getTodayRange(): { start: Date; end: Date } {
 
 // ─── Today tasks (server-side) ────────────────────────────────────────────────
 
-export const getTodayTasksServer = cache(async (userId: string): Promise<DashboardTask[]> => {
-  const supabase = await createServerClient();
+export async function getTodayTasks(userId: string): Promise<DashboardTask[]> {
+  const supabase = createClient();
 
   const { data } = await supabase
     .from("tasks")
@@ -109,12 +109,12 @@ export const getTodayTasksServer = cache(async (userId: string): Promise<Dashboa
       status_color: t.status?.color ?? null,
       is_completed: t.status?.is_completed ?? false,
     }));
-});
+}
 
-// ─── In-progress media (server-side) ──────────────────────────────────────────
+// ─── In-progress media ────────────────────────────────────────────────────────
 
-export const getInProgressMediaServer = cache(async (userId: string): Promise<DashboardMedia[]> => {
-  const supabase = await createServerClient();
+export async function getInProgressMedia(userId: string): Promise<DashboardMedia[]> {
+  const supabase = createClient();
 
   const { data } = await supabase
     .schema("watching")
@@ -128,12 +128,12 @@ export const getInProgressMediaServer = cache(async (userId: string): Promise<Da
   if (!data?.length) return [];
 
   return data.slice(0, 3);
-});
+}
 
 // ─── Today football events (main team first) ──────────────────────────────────
 
-export const getTodayFootballEvents = cache(async (userId: string): Promise<DashboardSportEvent[]> => {
-  const supabase = await createServerClient();
+export async function getTodayFootballEvents(userId: string): Promise<DashboardSportEvent[]> {
+  const supabase = createClient();
   const teams = await getFootballTeams(userId);
   const { allFavoriteTeamIds, mainTeamId } = teams;
 
@@ -196,12 +196,12 @@ export const getTodayFootballEvents = cache(async (userId: string): Promise<Dash
     if (!a.isMainTeam && b.isMainTeam) return 1;
     return new Date(a.date).getTime() - new Date(b.date).getTime();
   });
-});
+}
 
 // ─── Today tennis match events (favorite players) ─────────────────────────────
 
-export const getTodayTennisEvents = cache(async (userId: string): Promise<DashboardSportEvent[]> => {
-  const supabase = await createServerClient();
+export async function getTodayTennisEvents(userId: string): Promise<DashboardSportEvent[]> {
+  const supabase = createClient();
   const { favoritePlayers, favoritePlayerIds } = await getTennisPlayers(userId);
 
   if (!favoritePlayerIds.length) return [];
@@ -269,12 +269,12 @@ export const getTodayTennisEvents = cache(async (userId: string): Promise<Dashbo
   }
 
   return events;
-});
+}
 
 // ─── Upcoming football events (for Upcoming Sports section) ───────────────────
 
-export const getNextFootballEvents = cache(async (userId: string): Promise<DashboardSportEvent[]> => {
-  const supabase = await createServerClient();
+export async function getNextFootballEvents(userId: string): Promise<DashboardSportEvent[]> {
+  const supabase = createClient();
   const teams = await getFootballTeams(userId);
   const { allFavoriteTeamIds, allTeams } = teams;
 
@@ -320,9 +320,9 @@ export const getNextFootballEvents = cache(async (userId: string): Promise<Dashb
       _followedTeamName: followedTeam?.name ?? null,
     };
   });
-});
+}
 
-export const getNextF1Event = cache(async (): Promise<DashboardSportEvent | null> => {
+export async function getNextF1Event(): Promise<DashboardSportEvent | null> {
   const race = await getNextRace();
   if (!race) return null;
 
@@ -337,10 +337,10 @@ export const getNextF1Event = cache(async (): Promise<DashboardSportEvent | null
     circuit: circuit?.circuit_name ?? null,
     country: circuit?.country ?? null,
   };
-});
+}
 
-export const getNextTennisEvent = cache(async (): Promise<DashboardSportEvent | null> => {
-  const supabase = await createServerClient();
+export async function getNextTennisEvent(): Promise<DashboardSportEvent | null> {
+  const supabase = createClient();
   const now = new Date().toISOString();
 
   const { data } = await supabase
@@ -365,11 +365,14 @@ export const getNextTennisEvent = cache(async (): Promise<DashboardSportEvent | 
     location: data.country ?? null,
     endDate: data.end_date ?? null,
   };
-});
+}
 
 // ─── Main aggregator ──────────────────────────────────────────────────────────
 
-export const getDashboardData = cache(async (userId: string): Promise<DashboardData> => {
+export async function getDashboardData(): Promise<DashboardData> {
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error("Not authenticated");
+
   const [
     tasks,
     inProgressMediaList,
@@ -379,8 +382,8 @@ export const getDashboardData = cache(async (userId: string): Promise<DashboardD
     f1Event,
     nextTennisEvent,
   ] = await Promise.all([
-    getTodayTasksServer(userId),
-    getInProgressMediaServer(userId),
+    getTodayTasks(userId),
+    getInProgressMedia(userId),
     getTodayFootballEvents(userId),
     getTodayTennisEvents(userId),
     getNextFootballEvents(userId),
@@ -429,4 +432,4 @@ export const getDashboardData = cache(async (userId: string): Promise<DashboardD
     sportEvents: futureEvents,
     upNextEvent: futureEvents[0] ?? null,
   };
-});
+}

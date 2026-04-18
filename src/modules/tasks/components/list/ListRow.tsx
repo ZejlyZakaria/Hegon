@@ -4,8 +4,8 @@ import { useState } from "react";
 import { cn } from "@/shared/utils/utils"
 import { format, isPast, differenceInDays } from "date-fns";
 import { Calendar, Tag, MoreHorizontal } from "lucide-react";
-import { PriorityIcon } from "../PriorityIcon";
-import { StatusIcon } from "../StatusIcon";
+import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
+import { StatusIcon } from "../../../../shared/components/icons/StatusIcon";
 import { EditTaskModal } from "../modals/EditTaskModal";
 import type { Task } from "@/modules/tasks/types"
 

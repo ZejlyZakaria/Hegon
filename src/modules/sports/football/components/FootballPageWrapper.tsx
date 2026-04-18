@@ -1,6 +1,6 @@
-// components/sports/football/FootballPageWrapper.tsx
-import { Suspense } from "react";
-import { createServerClient } from "@/infrastructure/supabase/server";
+"use client";
+
+import { useFootballData } from "@/modules/sports/football/hooks/useFootball";
 import FootballHeroSection from "./hero/FootballHeroSection";
 import FootballUpcomingMatchesSection from "./matches/FootballUpcomingMatchesSection";
 import FootballRecentResultsSection from "./matches/FootballRecentResultsSection";
@@ -14,41 +14,54 @@ import {
   FootballBestXISkeleton,
 } from "@/modules/sports/components/SportSkeletons";
 
-export default async function FootballPageWrapper() {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function FootballPageWrapper() {
+  const { data, isLoading } = useFootballData();
 
-  if (!user) {
+  if (isLoading || !data) {
     return (
-      <div className="p-8 text-zinc-500">
-        Connecte-toi pour voir ton hub Football.
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <FootballHeroSkeleton />
+        <FootballUpcomingSkeleton />
+        <FootballRecentResultsSkeleton />
+        <FootballStandingsSkeleton />
+        <FootballBestXISkeleton />
       </div>
     );
   }
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
-      <Suspense fallback={<FootballHeroSkeleton />}>
-        <FootballHeroSection userId={user.id} />
-      </Suspense>
+      <FootballHeroSection
+        teamHeroes={data.teamHeroes}
+        userId={data.userId}
+        favoriteTeamIds={data.favoriteTeamIds}
+      />
 
-      <Suspense fallback={<FootballUpcomingSkeleton />}>
-        <FootballUpcomingMatchesSection userId={user.id} />
-      </Suspense>
+      {data.upcomingMatches.length > 0 && (
+        <FootballUpcomingMatchesSection
+          matches={data.upcomingMatches}
+          followedTeams={data.followedTeams}
+        />
+      )}
 
-      <Suspense fallback={<FootballRecentResultsSkeleton />}>
-        <FootballRecentResultsSection userId={user.id} />
-      </Suspense>
+      {data.recentMatches.length > 0 && (
+        <FootballRecentResultsSection
+          matches={data.recentMatches}
+          followedTeams={data.followedTeamResults}
+        />
+      )}
 
-      <Suspense fallback={<FootballStandingsSkeleton />}>
-        <FootballStandingsSection userId={user.id} />
-      </Suspense>
+      {data.standings.length > 0 && (
+        <FootballStandingsSection
+          standings={data.standings}
+          favoriteTeamIds={data.favoriteTeamIds}
+        />
+      )}
 
-      <Suspense fallback={<FootballBestXISkeleton />}>
-        <FootballBestXI userId={user.id} />
-      </Suspense>
+      <FootballBestXI
+        userId={data.userId}
+        bestXI={data.bestXI}
+      />
     </div>
   );
 }
