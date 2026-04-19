@@ -198,12 +198,6 @@ function AuthPageInner() {
     if (urlError === "missing_code") setError("Invalid or expired link.");
   }, [urlError]);
 
-  // Auto-navigate if session already exists (e.g. returning from OAuth callback)
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) window.location.href = next;
-    });
-  }, []);
 
   const clear = () => { setError(""); setSuccess(""); setEmail(""); setPassword(""); setName(""); };
 
