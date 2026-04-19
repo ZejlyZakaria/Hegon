@@ -6,22 +6,66 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DESIGN SYSTEM — Second Brain App
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════
+   HEGON GLOBALS
+   Source of truth:
+   - guidelines.md
+   - tokens.css
+   Dark-first base for the whole app
+   ════════════════════════════════════════════════════════════════════════ */
 
 @theme inline {
+  /* ── HEGON surfaces ─────────────────────────────────────────────────── */
+  --color-surface-0: var(--color-surface-0);
+  --color-surface-1: var(--color-surface-1);
+  --color-surface-2: var(--color-surface-2);
+  --color-surface-3: var(--color-surface-3);
+  --color-surface-overlay: var(--color-surface-overlay);
 
-  /* ── Radius ─────────────────────────────────────────────────────────────── */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  /* ── HEGON text ─────────────────────────────────────────────────────── */
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+  --color-text-disabled: var(--color-text-disabled);
 
-  /* ── shadcn/ui color mappings ────────────────────────────────────────────── */
+  /* ── HEGON borders ──────────────────────────────────────────────────── */
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-default: var(--color-border-default);
+  --color-border-strong: var(--color-border-strong);
+  --color-border-focus: var(--color-border-focus);
+
+  /* ── Module accents ─────────────────────────────────────────────────── */
+  --color-accent-goals: var(--color-accent-goals);
+  --color-accent-habits: var(--color-accent-habits);
+  --color-accent-journal: var(--color-accent-journal);
+  --color-accent-tasks: var(--color-accent-tasks);
+  --color-accent-watching: var(--color-accent-watching);
+  --color-accent-sports: var(--color-accent-sports);
+
+  /* ── Sidebar ────────────────────────────────────────────────────────── */
+  --color-sidebar-bg: var(--color-sidebar-bg);
+  --color-sidebar-active: var(--color-sidebar-active);
+
+  /* ── Radius ─────────────────────────────────────────────────────────── */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  --motion-fast: var(--motion-fast);
+  --motion-normal: var(--motion-normal);
+  --motion-slow: var(--motion-slow);
+
+  /* ── Z-index ────────────────────────────────────────────────────────── */
+  --z-base: var(--z-base);
+  --z-sticky: var(--z-sticky);
+  --z-dropdown: var(--z-dropdown);
+  --z-modal: var(--z-modal);
+  --z-overlay: var(--z-overlay);
+  --z-toast: var(--z-toast);
+
+  /* ── shadcn/ui mappings → aligned to HEGON dark system ─────────────── */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -54,8 +98,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* ── Section accent colors ───────────────────────────────────────────────── */
-  /* Perso */
+  /* ── Legacy section accents kept for existing modules ───────────────── */
   --color-section-football: var(--section-football);
   --color-section-tennis: var(--section-tennis);
   --color-section-f1: var(--section-f1);
@@ -63,259 +106,243 @@
   --color-section-books: var(--section-books);
   --color-section-travel: var(--section-travel);
   --color-section-fitness: var(--section-fitness);
-  /* Pro */
   --color-section-tasks: var(--section-tasks);
   --color-section-goals: var(--section-goals);
   --color-section-jobhunt: var(--section-jobhunt);
   --color-section-tech: var(--section-tech);
-
-  /* ── App surface tokens ──────────────────────────────────────────────────── */
-  --color-surface-1: var(--surface-1);
-  --color-surface-2: var(--surface-2);
-  --color-surface-3: var(--surface-3);
-  --color-border-subtle: var(--border-subtle);
-  --color-border-default: var(--border-default);
-  --color-border-strong: var(--border-strong);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DARK MODE (default — app is dark-first)
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════
+   ROOT TOKENS — HEGON DARK-FIRST
+   These are the real values used by the app.
+   ════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --radius: 0.625rem;
+  color-scheme: dark;
 
-  /* shadcn/ui — light mode */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.21 0.006 285.885);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.705 0.015 286.067);
+  /* ── HEGON core tokens ──────────────────────────────────────────────── */
+  --color-surface-0: #09090b;
+  --color-surface-1: #0e0e10;
+  --color-surface-2: #141416;
+  --color-surface-3: #1a1a1d;
+  --color-surface-overlay: #1f1f22;
 
-  /* App surfaces — light */
-  --surface-1: oklch(0.985 0 0);
-  --surface-2: oklch(0.96 0.002 286);
-  --surface-3: oklch(0.94 0.003 286);
-  --border-subtle: oklch(0.94 0.003 286 / 60%);
-  --border-default: oklch(0.92 0.004 286);
-  --border-strong: oklch(0.85 0.006 286);
+  --color-text-primary: #e2e2e6;
+  --color-text-secondary: #a0a0a8;
+  --color-text-tertiary: #71717a;
+  --color-text-disabled: #3d3d44;
 
-  /* Section accents — same in light/dark, they're vivid colors */
-  --section-football: #10b981;   /* emerald-500 */
-  --section-tennis: #f59e0b;     /* amber-500 */
-  --section-f1: #ef4444;         /* red-500 */
-  --section-watching: #8b5cf6;   /* violet-500 */
-  --section-books: #f97316;      /* orange-500 */
-  --section-travel: #0ea5e9;     /* sky-500 */
-  --section-fitness: #f43f5e;    /* rose-500 */
-  --section-tasks: #6366f1;      /* indigo-500 */
-  --section-goals: #22c55e;      /* green-500 */
-  --section-jobhunt: #3b82f6;    /* blue-500 */
-  --section-tech: #a855f7;       /* purple-500 */
+  --color-border-subtle: rgba(255, 255, 255, 0.04);
+  --color-border-default: rgba(255, 255, 255, 0.07);
+  --color-border-strong: rgba(255, 255, 255, 0.11);
+  --color-border-focus: rgba(255, 255, 255, 0.20);
+
+  --color-sidebar-bg: #0e0e10;
+  --color-sidebar-active: #141416;
+
+  --color-accent-goals: #22c55e;
+  --color-accent-habits: #f43f5e;
+  --color-accent-journal: #f97316;
+  --color-accent-tasks: #71717a;
+  --color-accent-watching: #8b5cf6;
+  --color-accent-sports: #10b981;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-dropdown: 20;
+  --z-modal: 30;
+  --z-overlay: 40;
+  --z-toast: 50;
+
+  --motion-fast: 100ms;
+  --motion-normal: 150ms;
+  --motion-slow: 200ms;
+
+  /* ── shadcn/ui semantics mapped to HEGON dark system ───────────────── */
+  --background: var(--color-surface-0);
+  --foreground: var(--color-text-primary);
+  --card: var(--color-surface-1);
+  --card-foreground: var(--color-text-primary);
+  --popover: var(--color-surface-3);
+  --popover-foreground: var(--color-text-primary);
+  --primary: var(--color-text-primary);
+  --primary-foreground: var(--color-surface-0);
+  --secondary: var(--color-surface-2);
+  --secondary-foreground: var(--color-text-primary);
+  --muted: var(--color-surface-2);
+  --muted-foreground: var(--color-text-secondary);
+  --accent: var(--color-surface-2);
+  --accent-foreground: var(--color-text-primary);
+  --destructive: #f87171;
+  --border: var(--color-border-default);
+  --input: var(--color-border-default);
+  --ring: var(--color-border-focus);
+  --radius: var(--radius-md);
+
+  /* ── Optional chart palette ─────────────────────────────────────────── */
+  --chart-1: #8b5cf6;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #3b82f6;
+  --chart-5: #f43f5e;
+
+  /* ── shadcn sidebar semantics ───────────────────────────────────────── */
+  --sidebar: var(--color-sidebar-bg);
+  --sidebar-foreground: var(--color-text-tertiary);
+  --sidebar-primary: var(--color-sidebar-active);
+  --sidebar-primary-foreground: var(--color-text-primary);
+  --sidebar-accent: var(--color-sidebar-active);
+  --sidebar-accent-foreground: var(--color-text-secondary);
+  --sidebar-border: transparent;
+  --sidebar-ring: var(--color-border-focus);
+
+  /* ── Legacy section accents kept temporarily for old UI ─────────────── */
+  --section-football: #10b981;
+  --section-tennis: #f59e0b;
+  --section-f1: #ef4444;
+  --section-watching: #8b5cf6;
+  --section-books: #f97316;
+  --section-travel: #0ea5e9;
+  --section-fitness: #f43f5e;
+  --section-tasks: #6366f1;
+  --section-goals: #22c55e;
+  --section-jobhunt: #3b82f6;
+  --section-tech: #a855f7;
 }
 
-.dark {
-  /* shadcn/ui — dark mode */
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.92 0.004 286.32);
-  --primary-foreground: oklch(0.21 0.006 285.885);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.552 0.016 285.938);
-
-  /* App surfaces — dark */
-  --surface-1: oklch(0.141 0.005 285.823);   /* zinc-950 */
-  --surface-2: oklch(0.18 0.006 285.885);    /* zinc-900 */
-  --surface-3: oklch(0.21 0.006 285.885);    /* zinc-800 */
-  --border-subtle: oklch(1 0 0 / 6%);
-  --border-default: oklch(1 0 0 / 10%);
-  --border-strong: oklch(1 0 0 / 18%);
+/* Optional light mode shell for external pages.
+   HEGON app itself should remain dark-first. */
+.light {
+  color-scheme: light;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   BASE STYLES
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════
+   BASE
+   ════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--color-border-default);
+    outline-color: var(--color-border-focus);
+  }
+
+  html {
+    background: var(--color-surface-0);
   }
 
   body {
-    @apply bg-background text-foreground;
+    background: var(--color-surface-0);
+    color: var(--color-text-primary);
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  /* Focus visible only on keyboard navigation */
+  ::selection {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--color-text-primary);
+  }
+
   :focus-visible {
-    @apply outline-2 outline-offset-2;
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-text-tertiary);
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SCROLLBAR
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════
+   SCROLLBARS — HEGON spec
+   ════════════════════════════════════════════════════════════════════════ */
 
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(103, 108, 115, 0.5) #000000;
-  overscroll-behavior: contain;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(103, 108, 115, 0.5);
-  border-radius: 10px;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #000000;
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
 }
 
-.custom-scrollbar-hide::-webkit-scrollbar {
-  display: none;
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
-.custom-scrollbar-hide {
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  overscroll-behavior: contain;
+}
+
+.custom-scrollbar-hide,
+.scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-@layer utilities {
-  .scrollbar-hide {
-    -ms-overflow-style: none;          /* IE + Edge */
-    scrollbar-width: none;             /* Firefox */
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;                     /* Chrome, Safari, new Edge */
-  }
+.custom-scrollbar-hide::-webkit-scrollbar,
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════════════════════════════
    SWIPER
-   ═══════════════════════════════════════════════════════════════════════════ */
+   Keep minimal and neutral. Avoid breaking HEGON accent rules globally.
+   ════════════════════════════════════════════════════════════════════════ */
 
 .swiper-pagination-bullet {
-  background: rgba(255, 255, 255, 0.4) !important;
-  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.35) !important;
+  transition: all var(--motion-normal) ease;
 }
 
 .swiper-pagination-bullet-active {
-  background: #34d399 !important;
-  width: 20px !important;
-  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.85) !important;
+  width: 18px !important;
+  border-radius: 9999px;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   ANIMATIONS
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════
+   LEGACY SECTION ACCENT HELPERS
+   Keep only while older modules still rely on --section-accent.
+   ════════════════════════════════════════════════════════════════════════ */
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+.section-football { --section-accent: var(--section-football); }
+.section-tennis { --section-accent: var(--section-tennis); }
+.section-f1 { --section-accent: var(--section-f1); }
+.section-watching { --section-accent: var(--section-watching); }
+.section-books { --section-accent: var(--section-books); }
+.section-travel { --section-accent: var(--section-travel); }
+.section-fitness { --section-accent: var(--section-fitness); }
+.section-tasks { --section-accent: var(--section-tasks); }
+.section-goals { --section-accent: var(--section-goals); }
+.section-jobhunt { --section-accent: var(--section-jobhunt); }
+.section-tech { --section-accent: var(--section-tech); }
 
-@keyframes slide-in-left {
-  from { opacity: 0; transform: translateX(-16px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.3s ease forwards;
-}
-
-.animate-slide-in-left {
-  animation: slide-in-left 0.3s ease forwards;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.2s ease forwards;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SECTION ACCENT UTILITIES
-   Utilisées pour changer l'accent de couleur par section
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* Usage: <div class="section-football"> → tout le contenu enfant utilise --section-accent */
-
-.section-football  { --section-accent: var(--section-football); }
-.section-tennis    { --section-accent: var(--section-tennis); }
-.section-f1        { --section-accent: var(--section-f1); }
-.section-watching  { --section-accent: var(--section-watching); }
-.section-books     { --section-accent: var(--section-books); }
-.section-travel    { --section-accent: var(--section-travel); }
-.section-fitness   { --section-accent: var(--section-fitness); }
-.section-tasks     { --section-accent: var(--section-tasks); }
-.section-goals     { --section-accent: var(--section-goals); }
-.section-jobhunt   { --section-accent: var(--section-jobhunt); }
-.section-tech      { --section-accent: var(--section-tech); }
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   NOISE TEXTURE (utilisé dans Hero)
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════
+   OPTIONAL TEXTURE
+   Hero / marketing only, not for standard cards.
+   ════════════════════════════════════════════════════════════════════════ */
 
 .noise-background {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");

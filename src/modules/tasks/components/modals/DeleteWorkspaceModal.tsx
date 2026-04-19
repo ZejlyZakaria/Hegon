@@ -11,10 +11,6 @@ import { Button } from "@/shared/components/ui/button";
 import { useDeleteWorkspace } from "@/modules/tasks/hooks/useWorkspaces";
 import type { Workspace } from "@/modules/tasks/types";
 
-// =====================================================
-// DELETE WORKSPACE MODAL
-// =====================================================
-
 interface DeleteWorkspaceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -41,14 +37,14 @@ export function DeleteWorkspaceModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 rounded-xl">
+      <DialogContent className="sm:max-w-md bg-[#1a1a1d] border-white/11 rounded-xl">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium text-zinc-100">
+          <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
             Delete workspace?
           </DialogTitle>
-          <DialogDescription className="text-sm text-zinc-400 pt-2">
+          <DialogDescription className="text-sm text-[#a0a0a8] pt-2">
             Are you sure you want to delete{" "}
-            <span className="font-medium text-zinc-300">&quot;{workspace.name}&quot;</span>?
+            <span className="font-medium text-[#e2e2e6]">&quot;{workspace.name}&quot;</span>?
             All projects and tasks inside will be permanently deleted. This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
@@ -59,7 +55,7 @@ export function DeleteWorkspaceModal({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={deleteMutation.isPending}
-            className="border-zinc-700/50 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
+            className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
           >
             Cancel
           </Button>
@@ -67,7 +63,7 @@ export function DeleteWorkspaceModal({
             type="button"
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
-            className="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+            className="h-8 px-3 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
           >
             {deleteMutation.isPending ? "Deleting..." : "Delete workspace"}
           </Button>

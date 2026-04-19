@@ -54,7 +54,12 @@ export async function getCrestsByExternalIds(externalIds: string[]): Promise<Rec
   const { data } = await supabase.schema("sport").from("football_teams")
     .select("api_external_id, crest_url").in("api_external_id", externalIds);
   const map: Record<string, string | null> = {};
-  for (const t of data ?? []) map[t.api_external_id] = t.crest_url;
+  for (const t of data ?? []) {
+    const url = t.crest_url;
+    map[t.api_external_id] = url && !url.startsWith("http")
+      ? `https://crests.football-data.org/${url}`
+      : url;
+  }
   return map;
 }
 

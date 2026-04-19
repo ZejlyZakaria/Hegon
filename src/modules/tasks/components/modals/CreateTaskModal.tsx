@@ -45,9 +45,7 @@ import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
 import type { CreateTaskInput, Priority } from "@/modules/tasks/types";
 
-// =====================================================
-// VALIDATION SCHEMA
-// =====================================================
+const ACCENT = "var(--color-accent-tasks)";
 
 const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(255, "Title too long"),
@@ -66,16 +64,12 @@ type CreateTaskFormData = {
   due_date?: Date | null;
 };
 
-// =====================================================
-// COMPONENT
-// =====================================================
-
 interface CreateTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  statusId: string; // La colonne dans laquelle on crée la task
-  statusName: string; // Pour afficher "Create task in To Do"
+  statusId: string;
+  statusName: string;
 }
 
 export function CreateTaskModal({
@@ -112,7 +106,6 @@ export function CreateTaskModal({
 
     createTaskMutation.mutate(taskInput, {
       onSuccess: (createdTask) => {
-        // Add selected tags after task creation
         selectedTagIds.forEach((tagId) => {
           addTagMutation.mutate({ taskId: createdTask.id, tagId });
         });
@@ -123,7 +116,6 @@ export function CreateTaskModal({
     });
   };
 
-  // Reset form when modal closes
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       form.reset();
@@ -134,22 +126,22 @@ export function CreateTaskModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-125 bg-zinc-900 border-zinc-800">
+      <DialogContent className="sm:max-w-125 bg-[#1a1a1d] border-white/11">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium text-zinc-100">
-            Create task in <span className="text-zinc-400">{statusName}</span>
+          <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
+            Create task in{" "}
+            <span className="text-[#a0a0a8]">{statusName}</span>
           </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Title */}
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-zinc-400">
+                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                     Title
                   </FormLabel>
                   <FormControl>
@@ -158,6 +150,7 @@ export function CreateTaskModal({
                       variant="tasks"
                       placeholder="Task title..."
                       autoFocus
+                      className="bg-[#1f1f22] focus:border-white/20"
                     />
                   </FormControl>
                   <FormMessage />
@@ -165,13 +158,12 @@ export function CreateTaskModal({
               )}
             />
 
-            {/* Description */}
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-zinc-400">
+                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                     Description
                   </FormLabel>
                   <FormControl>
@@ -180,6 +172,7 @@ export function CreateTaskModal({
                       variant="tasks"
                       placeholder="Add details..."
                       rows={3}
+                      className="bg-[#1f1f22] focus:border-white/20"
                     />
                   </FormControl>
                   <FormMessage />
@@ -187,30 +180,23 @@ export function CreateTaskModal({
               )}
             />
 
-            {/* Priority & Due Date (side by side) */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Priority */}
               <FormField
                 control={form.control}
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-zinc-400">
+                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                       Priority
                     </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger variant="tasks">
+                        <SelectTrigger variant="tasks" className="w-full bg-[#1f1f22] focus:border-white/20">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent variant="tasks">
-                        {(
-                          ["critical", "high", "medium", "low"] as Priority[]
-                        ).map((p) => (
+                        {(["critical", "high", "medium", "low"] as Priority[]).map((p) => (
                           <SelectItem key={p} value={p}>
                             <div className="flex items-center gap-2">
                               <PriorityIcon priority={p} />
@@ -225,42 +211,36 @@ export function CreateTaskModal({
                 )}
               />
 
-              {/* Due Date */}
               <FormField
                 control={form.control}
                 name="due_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-zinc-400">
+                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                       Due date
                     </FormLabel>
-                    <Popover
-                      open={isCalendarOpen}
-                      onOpenChange={setIsCalendarOpen}
-                    >
+                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                       <PopoverTrigger asChild>
                         <FormControl>
-                          <Button
-                            variant="outline"
+                          <button
+                            type="button"
                             className={cn(
-                              "w-full justify-start text-left font-normal",
-                              "bg-zinc-800/50 border border-zinc-700/50",
-                              "text-zinc-100 hover:bg-zinc-800/50 hover:text-zinc-100",
-                              "focus-visible:ring-1 focus-visible:ring-zinc-700",
-                              !field.value && "text-zinc-600",
+                              "w-full h-9 px-3 flex items-center gap-2 rounded-lg border border-zinc-700/50 text-sm transition-colors",
+                              "bg-[#1f1f22] hover:bg-zinc-800/80",
+                              field.value ? "text-zinc-100" : "text-zinc-600",
                             )}
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            <CalendarIcon size={14} className="shrink-0" />
                             {field.value ? (
                               format(field.value, "MMM d, yyyy")
                             ) : (
                               <span>Pick a date</span>
                             )}
-                          </Button>
+                          </button>
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent
-                        className="w-auto p-0 bg-zinc-900 border-zinc-800"
+                        className="w-auto p-0 bg-[#1a1a1d] border-white/11"
                         align="start"
                       >
                         <Calendar
@@ -274,7 +254,7 @@ export function CreateTaskModal({
                             date < new Date(new Date().setHours(0, 0, 0, 0))
                           }
                           initialFocus
-                          className="bg-zinc-900"
+                          className="bg-[#1a1a1d]"
                         />
                       </PopoverContent>
                     </Popover>
@@ -284,29 +264,25 @@ export function CreateTaskModal({
               />
             </div>
 
-            {/* Tags */}
             <TagSelector
               selectedIds={selectedTagIds}
               onChange={setSelectedTagIds}
             />
 
-            {/* Actions */}
             <div className="flex justify-end gap-2 pt-2">
-              {/* Cancel button */}
               <Button
                 type="button"
-                variant="outline" // ← Change ghost en outline
+                variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="border-zinc-700/50 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
+                className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
               >
                 Cancel
               </Button>
-
-              {/* Primary action button */}
               <Button
                 type="submit"
                 disabled={createTaskMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: ACCENT }}
               >
                 {createTaskMutation.isPending ? "Creating..." : "Create task"}
               </Button>

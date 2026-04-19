@@ -3,6 +3,13 @@
 import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { useHabits } from "../hooks/useHabits";
 import { HABIT_KEYS } from "../hooks/query-keys";
 import * as HabitService from "../service";
@@ -15,35 +22,38 @@ function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function capitalizeFirst(s: string): string {
+  return s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
 interface CalendarCell {
-  day:       number | null;
-  date:      string | null;
+  day: number | null;
+  date: string | null;
   completed: boolean;
-  future:    boolean;
-  today:     boolean;
+  future: boolean;
+  today: boolean;
 }
 
 export function HabitsCalendarView() {
   const { data: habits = [] } = useHabits();
   const [selectedId, setSelectedId] = useState("");
-  const [monthDate, setMonthDate]   = useState(
+  const [monthDate, setMonthDate] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   );
 
-  const effectiveId    = selectedId || habits[0]?.id || "";
-  const selectedHabit  = habits.find((h) => h.id === effectiveId);
-  const habitColor     = selectedHabit ? resolveIcon(selectedHabit.icon).color : "#f43f5e";
+  const effectiveId = selectedId || habits[0]?.id || "";
+  const selectedHabit = habits.find((h) => h.id === effectiveId);
+  const habitColor = selectedHabit ? resolveIcon(selectedHabit.icon).color : "#f43f5e";
 
-  // Month range
-  const year       = monthDate.getFullYear();
-  const month      = monthDate.getMonth();
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
   const monthStart = toDateStr(new Date(year, month, 1));
-  const monthEnd   = toDateStr(new Date(year, month + 1, 0));
+  const monthEnd = toDateStr(new Date(year, month + 1, 0));
 
   const { data: completions = [] } = useQuery({
     queryKey: HABIT_KEYS.completionsRange(effectiveId, monthStart, monthEnd),
-    queryFn:  () => HabitService.getHabitCompletionsRange(effectiveId, monthStart, monthEnd),
-    enabled:  !!effectiveId,
+    queryFn: () => HabitService.getHabitCompletionsRange(effectiveId, monthStart, monthEnd),
+    enabled: !!effectiveId,
     staleTime: 1000 * 60 * 5,
   });
 
@@ -52,129 +62,171 @@ export function HabitsCalendarView() {
     [completions]
   );
 
-  // Build calendar grid (Mon-first)
   const cells = useMemo<CalendarCell[]>(() => {
-    const daysInMonth  = new Date(year, month + 1, 0).getDate();
-    const firstDow     = new Date(year, month, 1).getDay(); // 0=Sun
-    const startOffset  = firstDow === 0 ? 6 : firstDow - 1; // convert to Mon-first
-    const todayStr     = toDateStr(new Date());
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDow = new Date(year, month, 1).getDay();
+    const startOffset = firstDow === 0 ? 6 : firstDow - 1;
+    const todayStr = toDateStr(new Date());
 
     const result: CalendarCell[] = [];
+
     for (let i = 0; i < startOffset; i++) {
       result.push({ day: null, date: null, completed: false, future: false, today: false });
     }
+
     for (let d = 1; d <= daysInMonth; d++) {
       const ds = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       result.push({
-        day:       d,
-        date:      ds,
+        day: d,
+        date: ds,
         completed: completedSet.has(ds),
-        future:    ds > todayStr,
-        today:     ds === todayStr,
+        future: ds > todayStr,
+        today: ds === todayStr,
       });
     }
+
+    while (result.length % 7 !== 0) {
+      result.push({ day: null, date: null, completed: false, future: false, today: false });
+    }
+
     return result;
   }, [year, month, completedSet]);
 
-  // Stats
-  const todayStr         = toDateStr(new Date());
-  const pastCells        = cells.filter((c) => c.date && c.date <= todayStr);
-  const completionsMonth = completions.filter((c) => c.completed_date >= monthStart && c.completed_date <= monthEnd).length;
-  const rate             = pastCells.length > 0 ? Math.round((completionsMonth / pastCells.length) * 100) : 0;
+  const todayStr = toDateStr(new Date());
+  const pastCells = cells.filter((c) => c.date && c.date <= todayStr);
+  const completionsMonth = completions.filter(
+    (c) => c.completed_date >= monthStart && c.completed_date <= monthEnd
+  ).length;
+  const rate = pastCells.length > 0 ? Math.round((completionsMonth / pastCells.length) * 100) : 0;
 
-  const monthLabel = monthDate.toLocaleString("default", { month: "long", year: "numeric" });
+  const monthLabel = capitalizeFirst(
+    monthDate.toLocaleString("default", { month: "long", year: "numeric" })
+  );
 
   const prevMonth = () => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
   const nextMonth = () => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
 
   if (habits.length === 0) {
-    return <p className="text-sm text-zinc-600 text-center py-8">No habits yet.</p>;
+    return (
+      <div
+        className="rounded-lg border p-6 text-center"
+        style={{
+          backgroundColor: "var(--color-surface-1)",
+          borderColor: "var(--color-border-subtle)",
+        }}
+      >
+        <p className="text-sm" style={{ color: "var(--color-text-tertiary)" }}>
+          No habits yet.
+        </p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
-
-      {/* Controls */}
       <div className="flex items-center gap-3">
-        {/* Habit selector */}
-        <select
-          value={effectiveId}
-          onChange={(e) => setSelectedId(e.target.value)}
-          className="flex-1 h-9 px-3 rounded-lg bg-zinc-900/60 border border-zinc-800/60 text-sm text-zinc-200 outline-none focus:ring-1 focus:ring-[#f43f5e]/50 transition-all"
-        >
-          {habits.map((h) => (
-            <option key={h.id} value={h.id} className="bg-zinc-900">
-              {h.title}
-            </option>
-          ))}
-        </select>
+        <div className="flex-1">
+          <Select value={effectiveId} onValueChange={setSelectedId}>
+            <SelectTrigger
+              variant="tasks"
+              className="h-8 w-full bg-[#1f1f22] focus:border-white/20"
+            >
+              <SelectValue placeholder="Select a habit" />
+            </SelectTrigger>
+            <SelectContent variant="tasks">
+              {habits.map((habit) => (
+                <SelectItem key={habit.id} value={habit.id}>
+                  {habit.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-        {/* Month navigation */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex shrink-0 items-center gap-1">
           <button
+            type="button"
             onClick={prevMonth}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[#71717a] transition-colors duration-100 hover:bg-[#141416] hover:text-[#e2e2e6]"
           >
-            <ChevronLeft size={15} />
+            <ChevronLeft size={14} />
           </button>
-          <span className="text-sm font-medium text-zinc-300 w-38 text-center select-none">
+
+          <span className="w-40 select-none text-center text-sm font-medium text-[#e2e2e6]">
             {monthLabel}
           </span>
+
           <button
+            type="button"
             onClick={nextMonth}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[#71717a] transition-colors duration-100 hover:bg-[#141416] hover:text-[#e2e2e6]"
           >
-            <ChevronRight size={15} />
+            <ChevronRight size={14} />
           </button>
         </div>
       </div>
 
-      {/* Calendar grid */}
-      <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/60 overflow-hidden">
-
-        {/* Day headers */}
-        <div className="grid grid-cols-7 border-b border-zinc-800/60">
+      <div
+        className="overflow-hidden rounded-lg border"
+        style={{
+          backgroundColor: "var(--color-surface-1)",
+          borderColor: "var(--color-border-subtle)",
+        }}
+      >
+        <div
+          className="grid grid-cols-7 border-b"
+          style={{ borderColor: "var(--color-border-default)" }}
+        >
           {DAYS_HEADER.map((d) => (
-            <div key={d} className="py-2 text-center text-xs font-medium text-zinc-600">
+            <div
+              key={d}
+              className="py-2 text-center text-xs font-medium"
+              style={{ color: "var(--color-text-tertiary)" }}
+            >
               {d}
             </div>
           ))}
         </div>
 
-        {/* Cells */}
         <div className="grid grid-cols-7">
           {cells.map((cell, i) => (
             <div
               key={i}
-              className={cn(
-                "relative h-12 flex items-center justify-center border-b border-r border-zinc-800/20",
-                "transition-colors",
-                !cell.day && "bg-transparent",
-              )}
+              className="relative flex h-12 items-center justify-center"
+              style={{
+                borderRight: "1px solid rgba(255,255,255,0.04)",
+                borderBottom: "1px solid rgba(255,255,255,0.04)",
+              }}
             >
               {cell.day && (
                 <>
-                  {/* Background fill for completed */}
                   {cell.completed && (
                     <div
-                      className="absolute inset-[3px] rounded-lg"
-                      style={{ backgroundColor: `${habitColor}25` }}
+                      className="absolute inset-1 rounded-md"
+                      style={{ backgroundColor: `${habitColor}20` }}
                     />
                   )}
-                  {/* Today ring */}
+
                   {cell.today && (
-                    <div className="absolute inset-[3px] rounded-lg ring-1 ring-zinc-600/60" />
+                    <div
+                      className="absolute inset-1 rounded-md"
+                      style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.20)" }}
+                    />
                   )}
-                  {/* Day number */}
+
                   <span
                     className={cn(
                       "relative z-10 text-sm font-medium",
-                      cell.completed ? "font-bold" : "",
-                      cell.future    ? "text-zinc-700"
-                      : cell.completed ? ""
-                      : "text-zinc-400",
+                      cell.future && "opacity-50"
                     )}
-                    style={cell.completed ? { color: habitColor } : undefined}
+                    style={{
+                      color: cell.completed
+                        ? habitColor
+                        : cell.future
+                          ? "#71717a"
+                          : "#a0a0a8",
+                      fontWeight: cell.completed ? 700 : 500,
+                    }}
                   >
                     {cell.day}
                   </span>
@@ -185,22 +237,29 @@ export function HabitsCalendarView() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="flex items-center gap-3 text-xs text-zinc-500 px-1">
+      <div className="flex flex-wrap items-center gap-3 px-1 text-xs" style={{ color: "#71717a" }}>
         <span>
-          <span className="text-zinc-300 font-semibold">{completionsMonth}</span>{" "}
+          <span style={{ color: "#a0a0a8", fontWeight: 600 }}>{completionsMonth}</span>{" "}
           completions this month
         </span>
-        <span className="text-zinc-700">•</span>
+
+        <span style={{ color: "#3d3d44" }}>•</span>
+
         <span>
-          <span className="text-zinc-300 font-semibold">{rate}%</span> of past days
+          <span style={{ color: "#a0a0a8", fontWeight: 600 }}>{rate}%</span> of past days
         </span>
+
         {selectedHabit && (
           <>
-            <span className="text-zinc-700">•</span>
+            <span style={{ color: "#3d3d44" }}>•</span>
             <span>
-              Frequency:{" "}
-              <span className="text-zinc-300 font-semibold capitalize">{selectedHabit.frequency}</span>
+              Frequency{" "}
+              <span
+                className="capitalize"
+                style={{ color: "#a0a0a8", fontWeight: 600 }}
+              >
+                {selectedHabit.frequency}
+              </span>
             </span>
           </>
         )}

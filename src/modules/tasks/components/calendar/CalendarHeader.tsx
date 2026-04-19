@@ -1,122 +1,75 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
-import { format, addMonths, subMonths } from "date-fns";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+import { addMonths, format, subMonths } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import { cn } from "@/shared/utils/utils";
-
-// =====================================================
-// CALENDAR HEADER
-// Month navigation + view switcher
-// =====================================================
 
 interface CalendarHeaderProps {
   currentDate: Date;
+  taskCount: number;
   onDateChange: (date: Date) => void;
 }
 
 export function CalendarHeader({
   currentDate,
+  taskCount,
   onDateChange,
 }: CalendarHeaderProps) {
-  const handlePrevMonth = () => {
-    onDateChange(subMonths(currentDate, 1));
-  };
-
-  const handleNextMonth = () => {
-    onDateChange(addMonths(currentDate, 1));
-  };
-
-  const handleToday = () => {
-    onDateChange(new Date());
-  };
-
   return (
-    <div className="h-14 border-b border-white/5 bg-zinc-950/50 backdrop-blur-sm flex items-center justify-between shrink-0 px-4">
-      {/* Left: Month navigation */}
+    <div
+      className="flex items-center justify-between px-4 pb-4 pt-1"
+      style={{ borderColor: "var(--color-border-subtle)" }}
+    >
       <div className="flex items-center gap-3">
-        {/* Month/Year display */}
-        <h2 className="text-lg font-semibold text-zinc-100 min-w-45">
+        <h2
+          className="min-w-45 text-xl font-semibold leading-tight"
+          style={{ color: "var(--color-text-primary)" }}
+        >
           {format(currentDate, "MMMM yyyy")}
         </h2>
 
-        {/* Navigation buttons */}
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
-            onClick={handlePrevMonth}
-            className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+            onClick={() => onDateChange(subMonths(currentDate, 1))}
+            className="h-8 w-8 rounded-md p-0"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={14} />
           </Button>
+
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleNextMonth}
-            className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+            onClick={() => onDateChange(addMonths(currentDate, 1))}
+            className="h-8 w-8 rounded-md p-0"
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={14} />
           </Button>
         </div>
 
-        {/* Today button */}
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
-          onClick={handleToday}
-          className="h-8 px-3 text-sm text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+          onClick={() => onDateChange(new Date())}
+          className="h-8 px-3"
         >
           Today
         </Button>
       </div>
 
-      {/* Right: View switcher */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-3 text-sm text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 gap-2"
-          >
-            <span>Month</span>
-            <ChevronDown size={14} className="text-zinc-500" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          className="w-32 rounded-md bg-zinc-900 border-zinc-800"
+      <div className="flex items-center gap-2">
+        <span
+          className="rounded px-2 py-0.5 text-xs font-medium"
+          style={{
+            backgroundColor: "var(--color-surface-2)",
+            border: "1px solid var(--color-border-subtle)",
+            color: "var(--color-text-secondary)",
+          }}
         >
-          <DropdownMenuItem
-            className={cn(
-              "cursor-pointer focus:bg-zinc-800",
-              "text-zinc-100" // Active state
-            )}
-          >
-            Month
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled
-            className="cursor-not-allowed text-zinc-600"
-          >
-            Week
-            <span className="ml-auto text-xs text-zinc-600">Soon</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled
-            className="cursor-not-allowed text-zinc-600"
-          >
-            Day
-            <span className="ml-auto text-xs text-zinc-600">Soon</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          {taskCount} active tasks
+        </span>
+      </div>
     </div>
   );
 }

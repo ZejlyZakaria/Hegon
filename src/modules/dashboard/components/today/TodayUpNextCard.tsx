@@ -104,7 +104,6 @@ function FootballCard({
                 src={event.homeTeamCrest}
                 alt={event.homeTeam ?? ""}
                 fill
-                unoptimized
                 className="object-contain"
               />
             </div>
@@ -127,7 +126,6 @@ function FootballCard({
                 src={event.awayTeamCrest}
                 alt={event.awayTeam ?? ""}
                 fill
-                unoptimized
                 className="object-contain"
               />
             </div>

@@ -7,8 +7,10 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
   const rawNext = searchParams.get("next") ?? "/dashboard";
-  // Ensure next is a safe relative path — prevent open redirect
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
+  // Decode first to catch URL-encoded attacks like /%2F%2Fattacker.com
+  let decoded: string;
+  try { decoded = decodeURIComponent(rawNext); } catch { decoded = "/dashboard"; }
+  const next = decoded.startsWith("/") && !decoded.startsWith("//") ? decoded : "/dashboard";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/auth?error=missing_code`);
@@ -58,16 +60,19 @@ export async function GET(request: NextRequest) {
       const orgId = membership?.org_id;
 
       if (orgId) {
+        const userName = data.user.user_metadata?.full_name?.split(" ")[0]
+          ?? data.user.user_metadata?.name?.split(" ")[0]
+          ?? "My";
         const { data: workspace } = await supabase
           .from("workspaces")
-          .insert({ name: "My Workspace", user_id: data.user.id, org_id: orgId })
+          .insert({ name: `${userName}'s Workspace`, user_id: data.user.id, org_id: orgId })
           .select("id")
           .single();
 
         if (workspace) {
           const { data: project } = await supabase
             .from("projects")
-            .insert({ name: "My First Project", workspace_id: workspace.id, color: "#3b82f6", org_id: orgId })
+            .insert({ name: "Personal", workspace_id: workspace.id, color: "#3b82f6", org_id: orgId })
             .select("id")
             .single();
 

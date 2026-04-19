@@ -8,10 +8,6 @@ import { ListRow } from "./ListRow";
 import { CreateTaskModal } from "../modals/CreateTaskModal";
 import type { Status, Task } from "@/modules/tasks/types";
 
-// =====================================================
-// LIST GROUP COMPONENT — Collapsible group per status
-// =====================================================
-
 interface ListGroupProps {
   status: Status;
   tasks: Task[];
@@ -24,66 +20,72 @@ export function ListGroup({ status, tasks, projectId }: ListGroupProps) {
 
   return (
     <>
-      <div className="mb-1">
-        {/* Group Header */}
+      <div className="mb-2">
         <div
           className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg",
-            "hover:bg-white/3 cursor-pointer transition-colors duration-100",
-            "group/header",
+            "flex items-center gap-2 px-3 py-2 rounded-md transition-colors",
+            "cursor-pointer group/header"
           )}
+          style={{ color: "var(--color-text-secondary)" }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
+          }}
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
-          {/* Chevron */}
-          <div className="shrink-0 text-zinc-600">
-            {isCollapsed ? (
-              <ChevronRight size={14} />
-            ) : (
-              <ChevronDown size={14} />
-            )}
+          <div style={{ color: "var(--color-text-tertiary)" }}>
+            {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
           </div>
 
-          {/* Status Icon */}
           <StatusIcon status={status.name} size={14} />
 
-          {/* Status Name */}
-          <span className="text-sm font-medium text-zinc-300">
+          <span className="text-sm font-medium" style={{ color: "var(--color-text-primary)" }}>
             {status.name}
           </span>
 
-          {/* Count */}
-          <span className="text-xs text-zinc-600 font-medium">
+          <span
+            className="text-xs font-medium ml-1"
+            style={{ color: "var(--color-text-tertiary)" }}
+          >
             {tasks.length}
           </span>
 
-          {/* Add Task Button (visible on hover) */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               setIsCreateModalOpen(true);
             }}
             className={cn(
-              "ml-auto w-6 h-6 rounded flex items-center justify-center",
+              "ml-auto w-7 h-7 rounded-md flex items-center justify-center",
               "opacity-0 group-hover/header:opacity-100 transition-opacity",
-              "text-zinc-500 hover:text-zinc-300 hover:bg-white/8",
             )}
+            style={{ color: "var(--color-text-tertiary)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+            }}
           >
             <Plus size={14} />
           </button>
         </div>
 
-        {/* Task Rows */}
         {!isCollapsed && tasks.length > 0 && (
-          <div className="ml-6 rounded-lg border border-white/5 bg-zinc-900/30 overflow-hidden">
+          <div
+            className="ml-5 overflow-hidden rounded-lg"
+            style={{ border: "1px solid var(--color-border-subtle)" }}
+          >
             {tasks.map((task) => (
               <ListRow key={task.id} task={task} />
             ))}
           </div>
         )}
 
-        {/* Empty State (not collapsed) */}
         {!isCollapsed && tasks.length === 0 && (
-          <div className="ml-6 px-4 py-3 text-xs text-zinc-700">
+          <div className="ml-5 px-3 py-2 text-xs" style={{ color: "var(--color-text-tertiary)" }}>
             No tasks — click + to add one
           </div>
         )}

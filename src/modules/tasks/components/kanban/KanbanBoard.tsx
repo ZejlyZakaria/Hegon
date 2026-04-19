@@ -1,6 +1,5 @@
 "use client";
 
-import { createClient } from "@/infrastructure/supabase/client";
 import {
   DndContext,
   DragEndEvent,
@@ -13,10 +12,11 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
 import { useTasksStore } from "@/modules/tasks/store";
+import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useTasks, useMoveTask } from "@/modules/tasks/hooks/useTasks";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
@@ -25,48 +25,27 @@ import type { Task } from "@/modules/tasks/types";
 import { TasksSkeleton } from "../TasksSkeletons";
 import { TasksEmptyState } from "../TasksEmptyState";
 
-// =====================================================
-// KANBAN BOARD COMPONENT
-// =====================================================
-
 export function KanbanBoard() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const userId = useCurrentUserId();
 
-  // Get user ID
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id || null);
-    });
-  }, []);
   const { selectedProjectId, filters } = useTasksStore();
-  const { data: statuses, isLoading: statusesLoading } = useStatuses(
-    selectedProjectId
-  );
+  const { data: statuses, isLoading: statusesLoading } = useStatuses(selectedProjectId);
   const { data: tasks, isLoading: tasksLoading } = useTasks(selectedProjectId);
   const moveMutation = useMoveTask();
 
-  // Check if user has ANY projects — wait for loading before deciding
-  const { data: workspaces, isLoading: workspacesLoading } = useWorkspaces(
-    userId || "",
-  );
+  const { data: workspaces, isLoading: workspacesLoading } = useWorkspaces(userId || "");
   const firstWorkspaceId = workspaces?.[0]?.id ?? null;
-  const { data: allProjects, isLoading: projectsLoading } =
-    useProjects(firstWorkspaceId);
-  const hasProjects = allProjects && allProjects.length > 0;
+  const { data: allProjects, isLoading: projectsLoading } = useProjects(firstWorkspaceId);
+  const hasProjects = !!allProjects && allProjects.length > 0;
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
 
-  // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
   );
 
-  // =====================================================
-  // FILTER TASKS
-  // =====================================================
   const filteredTasks = useMemo(() => {
     if (!tasks) return [];
 
@@ -74,25 +53,21 @@ export function KanbanBoard() {
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         const matchesTitle = task.title.toLowerCase().includes(searchLower);
-        const matchesDescription = task.description
-          ?.toLowerCase()
-          .includes(searchLower);
+        const matchesDescription = task.description?.toLowerCase().includes(searchLower);
         if (!matchesTitle && !matchesDescription) return false;
       }
 
-      if (filters.priorities.length > 0) {
-        if (!filters.priorities.includes(task.priority)) return false;
+      if (filters.priorities.length > 0 && !filters.priorities.includes(task.priority)) {
+        return false;
       }
 
-      if (filters.statuses.length > 0) {
-        if (!filters.statuses.includes(task.status_id)) return false;
+      if (filters.statuses.length > 0 && !filters.statuses.includes(task.status_id)) {
+        return false;
       }
 
       if (filters.tags.length > 0) {
         const taskTagIds = task.tags?.map((t) => t.id) || [];
-        const hasMatchingTag = filters.tags.some((tagId: string) =>
-          taskTagIds.includes(tagId),
-        );
+        const hasMatchingTag = filters.tags.some((tagId: string) => taskTagIds.includes(tagId));
         if (!hasMatchingTag) return false;
       }
 
@@ -100,9 +75,6 @@ export function KanbanBoard() {
     });
   }, [tasks, filters]);
 
-  // =====================================================
-  // DND HANDLERS
-  // =====================================================
   const handleDragOver = (event: DragOverEvent) => {
     const { over, active } = event;
 
@@ -131,6 +103,7 @@ export function KanbanBoard() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+
     setActiveTask(null);
     setActiveColumnId(null);
 
@@ -142,15 +115,12 @@ export function KanbanBoard() {
     const overId = over.id as string;
     const overTask = filteredTasks.find((t) => t.id === overId);
     const overStatus = statuses?.find((s) => s.id === overId);
-    const newStatusId =
-      overStatus?.id || overTask?.status_id || activeTask.status_id;
 
-    if (newStatusId === activeTask.status_id && !overTask) return;
+    const newStatusId = overStatus?.id || overTask?.status_id || activeTask.status_id;
     if (!newStatusId) return;
+    if (newStatusId === activeTask.status_id && !overTask) return;
 
-    const tasksInNewStatus = filteredTasks.filter(
-      (t) => t.status_id === newStatusId,
-    );
+    const tasksInNewStatus = filteredTasks.filter((t) => t.status_id === newStatusId);
     const newPosition = overTask
       ? overTask.position - 0.5
       : Math.max(...tasksInNewStatus.map((t) => t.position), 0) + 1;
@@ -168,11 +138,6 @@ export function KanbanBoard() {
       .filter((t) => t.status_id === statusId)
       .sort((a, b) => a.position - b.position);
 
-  // =====================================================
-  // RENDER STATES
-  // =====================================================
-
-  // Loading — workspaces/projects resolving or sidebar about to auto-select
   if (
     workspacesLoading ||
     projectsLoading ||
@@ -195,8 +160,8 @@ export function KanbanBoard() {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex-1 overflow-x-auto overflow-y-auto p-6">
-        <div className="flex gap-4 min-h-full">
+      <div className="flex-1 overflow-x-auto overflow-y-auto px-4">
+        <div className="flex min-h-full gap-4">
           {statuses?.map((status) => (
             <KanbanColumn
               key={status.id}
@@ -211,10 +176,8 @@ export function KanbanBoard() {
 
       <DragOverlay>
         {activeTask ? (
-          <div className="cursor-grabbing rotate-2">
-            <div className="border-2 border-blue-500 rounded-lg">
-              <TaskCard task={activeTask} />
-            </div>
+          <div className="rotate-1 cursor-grabbing">
+            <TaskCard task={activeTask} isOverlay />
           </div>
         ) : null}
       </DragOverlay>

@@ -11,20 +11,14 @@ import {
 import { useTags } from "@/modules/tasks/hooks/useTags";
 import type { Tag as TagType } from "@/modules/tasks/types";
 
-// =====================================================
-// TAG SELECTOR
 // Two modes:
 //   - "immediate": fires onAdd/onRemove callbacks instantly (EditTaskModal)
 //   - "controlled": manages selectedIds locally, parent reads via onChange (CreateTaskModal)
-// =====================================================
 
 interface TagSelectorProps {
-  // Current tags on the task (for immediate mode)
   selectedTags?: TagType[];
-  // For controlled mode (CreateTaskModal)
   selectedIds?: string[];
   onChange?: (ids: string[]) => void;
-  // For immediate mode (EditTaskModal)
   onAdd?: (tagId: string) => void;
   onRemove?: (tagId: string) => void;
   disabled?: boolean;
@@ -41,23 +35,18 @@ export function TagSelector({
   const [open, setOpen] = useState(false);
   const { data: allTags } = useTags();
 
-  // Determine which tag IDs are currently selected
-  const currentIds: string[] = selectedIds
-    ?? selectedTags?.map((t) => t.id)
-    ?? [];
+  const currentIds: string[] = selectedIds ?? selectedTags?.map((t) => t.id) ?? [];
 
   const isSelected = (tagId: string) => currentIds.includes(tagId);
 
   const handleToggle = (tag: TagType) => {
     if (isSelected(tag.id)) {
-      // Remove
       if (onRemove) {
         onRemove(tag.id);
       } else if (onChange) {
         onChange(currentIds.filter((id) => id !== tag.id));
       }
     } else {
-      // Add
       if (onAdd) {
         onAdd(tag.id);
       } else if (onChange) {
@@ -68,7 +57,7 @@ export function TagSelector({
 
   return (
     <div className="grid gap-2">
-      <label className="text-xs font-medium text-zinc-400">Tags</label>
+      <label className="text-xs font-medium text-[#a0a0a8]">Tags</label>
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -76,10 +65,9 @@ export function TagSelector({
             type="button"
             disabled={disabled}
             className={cn(
-              "w-full min-h-9 px-3 py-1.5 rounded-lg flex items-center gap-2 flex-wrap",
-              "bg-zinc-800/50 border border-zinc-700/50",
+              "w-full min-h-9 px-3 py-1.5 rounded-lg border border-zinc-700/50 flex items-center gap-2 flex-wrap",
+              "bg-[#1f1f22] hover:bg-zinc-800/80 transition-colors",
               "text-zinc-400 text-xs",
-              "hover:bg-zinc-800 hover:border-zinc-600/50 transition-colors",
               "disabled:opacity-50 disabled:cursor-not-allowed",
             )}
           >
@@ -116,7 +104,7 @@ export function TagSelector({
         </PopoverTrigger>
 
         <PopoverContent
-          className="w-56 p-1.5 bg-zinc-900 border-zinc-800"
+          className="w-56 p-1.5 bg-[#1a1a1d] border-white/11"
           align="start"
         >
           {!allTags || allTags.length === 0 ? (

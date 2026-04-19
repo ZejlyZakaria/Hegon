@@ -1,23 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// routes accessibles sans auth
 const PUBLIC_ROUTES = ["/auth", "/auth/callback"];
-
-// routes statiques à ignorer
-const IGNORED_PREFIXES = ["/_next", "/favicon", "/api/auth"];
+const IGNORED_PREFIXES = ["/_next", "/favicon", "/api", "/icon", "/logo"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ignore static assets and auth api
   if (IGNORED_PREFIXES.some(p => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
-  const response = NextResponse.next({
-    request: { headers: request.headers },
-  });
+  const response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,21 +32,44 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const isPublic = PUBLIC_ROUTES.some(r => pathname.startsWith(r));
 
-  // not authenticated → redirect to auth
+  // Not authenticated → /auth with next param
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
-    // preserve the intended destination for post-login redirect
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
-  // authenticated + on auth page → redirect to dashboard
-  if (user && isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    url.searchParams.delete("next");
-    return NextResponse.redirect(url);
+  // Authenticated → check workspace once for all routing decisions
+  if (user) {
+    const { data: workspace } = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+
+    // On auth page → redirect to onboarding or dashboard
+    if (isPublic) {
+      const url = request.nextUrl.clone();
+      url.pathname = workspace ? "/dashboard" : "/onboarding";
+      url.searchParams.delete("next");
+      return NextResponse.redirect(url);
+    }
+
+    // No workspace + not already on onboarding → force onboarding
+    if (!workspace && pathname !== "/onboarding") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    // Has workspace but landed on onboarding → skip to dashboard
+    if (workspace && pathname === "/onboarding") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;

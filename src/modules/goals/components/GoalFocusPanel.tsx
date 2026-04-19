@@ -4,25 +4,32 @@ import { useRouter } from "next/navigation";
 import { LifeCompass } from "./LifeCompass";
 import type { Goal, GoalCategory } from "../types";
 
-const ACCENT = "#18ad9d";
+const ACCENT = "var(--color-accent-goals)";
 
 interface Props {
-  goals:           Goal[];
-  activeCategory:  GoalCategory | null;
+  goals: Goal[];
+  activeCategory: GoalCategory | null;
   onCategoryClick: (cat: GoalCategory | null) => void;
 }
 
-export function GoalFocusPanel({ goals, activeCategory, onCategoryClick }: Props) {
+export function GoalFocusPanel({
+  goals,
+  activeCategory,
+  onCategoryClick,
+}: Props) {
   const router = useRouter();
 
   const focusGoal =
     goals.find((g) => g.status === "active" && g.target_date) ??
     goals.find((g) => g.status === "active");
 
-  const active    = goals.filter((g) => g.status === "active").length;
+  const active = goals.filter((g) => g.status === "active").length;
   const completed = goals.filter((g) => g.status === "completed").length;
-  const overdue   = goals.filter(
-    (g) => g.status === "active" && g.target_date && new Date(g.target_date) < new Date()
+  const overdue = goals.filter(
+    (g) =>
+      g.status === "active" &&
+      g.target_date &&
+      new Date(g.target_date) < new Date(),
   ).length;
 
   return (
@@ -38,27 +45,33 @@ export function GoalFocusPanel({ goals, activeCategory, onCategoryClick }: Props
       {focusGoal && (
         <div
           onClick={() => router.push(`/life/goals/${focusGoal.id}`)}
-          className="relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-linear-to-b from-zinc-900/80 to-zinc-900/60 backdrop-blur-sm p-4 cursor-pointer transition-all duration-200 hover:border-zinc-700/80"
+          className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-3 cursor-pointer transition-colors duration-100 hover:bg-[#141416]"
         >
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3">
+          <h3
+            className="mb-2.5 text-xs font-semibold"
+            style={{ color: "var(--color-text-primary)" }}
+          >
             Focus
           </h3>
-          <p className="text-sm font-semibold text-zinc-200 mb-3 line-clamp-2 leading-snug">
+          <p className="text-xs font-medium mb-3 line-clamp-2 leading-snug" style={{ color: "var(--color-text-secondary)" }}>
             {focusGoal.title}
           </p>
           <div className="flex items-center gap-2 mb-2">
-            <div className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+            <div className="flex-1 h-1 rounded-full bg-[#141416] overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${focusGoal.progress}%`, backgroundColor: ACCENT }}
+                style={{
+                  width: `${focusGoal.progress}%`,
+                  backgroundColor: ACCENT,
+                }}
               />
             </div>
-            <span className="text-xs font-medium text-zinc-300 shrink-0 tabular-nums">
+            <span className="text-xs font-medium text-[#e2e2e6] shrink-0 tabular-nums">
               {focusGoal.progress}%
             </span>
           </div>
           {focusGoal.target_date && (
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-[#71717a]">
               {new Date(focusGoal.target_date).toLocaleDateString("en-GB", {
                 day: "numeric",
                 month: "short",
@@ -70,21 +83,32 @@ export function GoalFocusPanel({ goals, activeCategory, onCategoryClick }: Props
       )}
 
       {/* Quick Stats */}
-      <div className="relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-linear-to-b from-zinc-900/80 to-zinc-900/60 backdrop-blur-sm p-3">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3">Stats</h3>
+      <div className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-3">
+        <h3
+          className="mb-2.5 text-xs font-semibold"
+          style={{ color: "var(--color-text-primary)" }}
+        >
+          Stats
+        </h3>
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-400">Active</span>
-            <span className="text-sm font-semibold text-zinc-200 tabular-nums">{active}</span>
+            <span className="text-xs text-[#a0a0a8]">Active</span>
+            <span className="text-sm font-medium text-[#e2e2e6] tabular-nums">
+              {active}
+            </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-400">Completed</span>
-            <span className="text-sm font-semibold text-zinc-200 tabular-nums">{completed}</span>
+            <span className="text-xs text-[#a0a0a8]">Completed</span>
+            <span className="text-sm font-medium text-[#e2e2e6] tabular-nums">
+              {completed}
+            </span>
           </div>
           {overdue > 0 && (
             <div className="flex items-center justify-between">
-              <span className="text-xs text-zinc-400">Overdue</span>
-              <span className="text-sm font-semibold text-red-400 tabular-nums">{overdue}</span>
+              <span className="text-xs text-[#a0a0a8]">Overdue</span>
+              <span className="text-sm font-medium tabular-nums" style={{ color: "#f87171" }}>
+                {overdue}
+              </span>
             </div>
           )}
         </div>

@@ -42,8 +42,6 @@ import { cn } from "@/shared/utils/utils";
 import { useCreateGoal, useUpdateGoal } from "../hooks/useGoals";
 import type { Goal, GoalCategory, GoalPriority } from "../types";
 
-// ─── Schema ───────────────────────────────────────────────────────────────────
-
 const goalSchema = z.object({
   title:       z.string().min(1, "Title is required").max(255, "Title too long"),
   description: z.string().optional(),
@@ -60,15 +58,13 @@ type GoalFormData = {
   target_date?: Date | null;
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 interface Props {
   open:    boolean;
   onClose: () => void;
   goal?:   Goal;
 }
 
-const ACCENT = "#18ad9d";
+const ACCENT = "var(--color-accent-goals)";
 
 export function GoalModal({ open, onClose, goal }: Props) {
   const isEdit = !!goal;
@@ -88,7 +84,6 @@ export function GoalModal({ open, onClose, goal }: Props) {
     },
   });
 
-  // Populate in edit mode
   useEffect(() => {
     if (open && goal) {
       form.reset({
@@ -137,22 +132,21 @@ export function GoalModal({ open, onClose, goal }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800">
+      <DialogContent className="sm:max-w-md bg-[#1a1a1d] border-white/11">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium text-zinc-100">
+          <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
             {isEdit ? "Edit Goal" : "New Goal"}
           </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Title */}
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-zinc-400">
+                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                     Title <span style={{ color: ACCENT }}>*</span>
                   </FormLabel>
                   <FormControl>
@@ -161,7 +155,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
                       variant="tasks"
                       placeholder="e.g. Launch HEGON beta"
                       autoFocus
-                      className="focus:ring-[#18ad9d] focus:border-[#18ad9d]"
+                      className="bg-[#1f1f22] focus:border-white/20"
                     />
                   </FormControl>
                   <FormMessage />
@@ -169,13 +163,12 @@ export function GoalModal({ open, onClose, goal }: Props) {
               )}
             />
 
-            {/* Description */}
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-zinc-400">
+                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                     Description
                   </FormLabel>
                   <FormControl>
@@ -184,7 +177,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
                       variant="tasks"
                       placeholder="What does success look like?"
                       rows={2}
-                      className="focus:ring-[#18ad9d] focus:border-[#18ad9d]"
+                      className="bg-[#1f1f22] focus:border-white/20"
                     />
                   </FormControl>
                   <FormMessage />
@@ -192,19 +185,18 @@ export function GoalModal({ open, onClose, goal }: Props) {
               )}
             />
 
-            {/* Category + Priority */}
             <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-zinc-400">
+                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                       Category
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value ?? ""}>
                       <FormControl>
-                        <SelectTrigger variant="tasks" className="w-full focus:ring-[#18ad9d]">
+                        <SelectTrigger variant="tasks" className="w-full bg-[#1f1f22] focus:border-white/20">
                           <SelectValue placeholder="None" />
                         </SelectTrigger>
                       </FormControl>
@@ -228,12 +220,12 @@ export function GoalModal({ open, onClose, goal }: Props) {
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-zinc-400">
+                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                       Priority
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger variant="tasks" className="w-full focus:ring-[#18ad9d]">
+                        <SelectTrigger variant="tasks" className="w-full bg-[#1f1f22] focus:border-white/20">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -250,13 +242,12 @@ export function GoalModal({ open, onClose, goal }: Props) {
               />
             </div>
 
-            {/* Target date */}
             <FormField
               control={form.control}
               name="target_date"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-zinc-400">
+                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                     Target date
                   </FormLabel>
                   <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
@@ -266,11 +257,11 @@ export function GoalModal({ open, onClose, goal }: Props) {
                           type="button"
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal",
-                            "bg-zinc-800/50 border border-zinc-700/50",
-                            "text-zinc-100 hover:bg-zinc-800/50 hover:text-zinc-100",
-                            "focus-visible:ring-1 focus-visible:ring-[#18ad9d]",
-                            !field.value && "text-zinc-600"
+                            "w-full h-8 justify-start text-left font-normal",
+                            "bg-[#1f1f22] border-white/[0.07]",
+                            "text-[#e2e2e6] hover:bg-[#1f1f22] hover:border-white/11",
+                            "focus-visible:border-white/20",
+                            !field.value && "text-[#71717a]"
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -278,7 +269,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-zinc-900 border-zinc-800" align="start">
+                    <PopoverContent className="w-auto p-0 bg-[#1a1a1d] border-white/11" align="start">
                       <Calendar
                         mode="single"
                         selected={field.value ?? undefined}
@@ -287,7 +278,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
                           setCalendarOpen(false);
                         }}
                         initialFocus
-                        className="bg-zinc-900"
+                        className="bg-[#1a1a1d]"
                       />
                     </PopoverContent>
                   </Popover>
@@ -296,21 +287,20 @@ export function GoalModal({ open, onClose, goal }: Props) {
               )}
             />
 
-            {/* Actions */}
             <div className="flex justify-end gap-2 pt-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => handleOpenChange(false)}
-                className="border-zinc-700/50 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
+                className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isPending}
+                className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: ACCENT }}
-                className="text-white hover:opacity-90 disabled:opacity-50"
               >
                 {isPending ? "Saving…" : isEdit ? "Save" : "Create"}
               </Button>

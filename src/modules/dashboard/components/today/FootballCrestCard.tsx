@@ -93,7 +93,6 @@ export default function FootballCrestCard({ event, className = "" }: Props) {
                     src={event.homeTeamCrest}
                     alt={event.homeTeam ?? ""}
                     fill
-                    unoptimized
                     className="object-contain"
                   />
                 </div>
@@ -115,7 +114,6 @@ export default function FootballCrestCard({ event, className = "" }: Props) {
                     src={event.awayTeamCrest}
                     alt={event.awayTeam ?? ""}
                     fill
-                    unoptimized
                     className="object-contain"
                   />
                 </div>

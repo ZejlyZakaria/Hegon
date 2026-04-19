@@ -418,9 +418,9 @@ function ProfileMenu({
               Z
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-white leading-tight">
+              {/* <p className="text-[13px] font-semibold text-white leading-tight">
                 Zakaria
-              </p>
+              </p> */}
               <p className="text-[11px] text-zinc-500 truncate">
                 {userEmail ?? "—"}
               </p>
@@ -681,9 +681,9 @@ export default function Sidebar() {
             {!collapsed && (
               <>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-zinc-300 truncate leading-tight">
+                  {/* <p className="text-[13px] font-semibold text-zinc-300 truncate leading-tight">
                     Zakaria
-                  </p>
+                  </p> */}
                   <p className="text-[11px] text-zinc-600 truncate">
                     {orgName ?? "My Workspace"}
                   </p>

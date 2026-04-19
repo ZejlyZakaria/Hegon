@@ -1,35 +1,53 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
-import type { Goal, GoalCategory, GoalPriority } from "../types";
+import type { Goal, GoalCategory } from "../types";
 
-const ACCENT = "#18ad9d";
+const GOALS_ACCENT = "var(--color-accent-goals)";
 
-const CATEGORY_COLORS: Record<GoalCategory, string> = {
-  personal:  "bg-pink-500/10 text-pink-400 border-pink-500/20", // flex-1 px-4 py-3 rounded-2xl border border-zinc-800/60 bg-zinc-900/30 flex flex-col gap-2
-  work:      "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  health:    "bg-red-500/10 text-red-400 border-red-500/20",
-  learning:  "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  finance:   "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  other:     "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+const CATEGORY_STYLES: Record<
+  GoalCategory,
+  { dot: string; text: string }
+> = {
+  personal: { dot: "#ec4899", text: "#f472b6" },
+  work: { dot: "#3b82f6", text: "#60a5fa" },
+  health: { dot: "#22c55e", text: "#4ade80" },
+  learning: { dot: "#eab308", text: "#facc15" },
+  finance: { dot: "#06b6d4", text: "#22d3ee" },
+  other: { dot: "#71717a", text: "#a1a1aa" },
 };
 
-const PRIORITY_TEXT: Record<GoalPriority, string> = {
-  critical: "text-red-400",
-  high:     "text-orange-400",
-  medium:   "text-yellow-500",
-  low:      "text-zinc-500",
-};
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+function formatDate(dateStr: string | null) {
+  if (!dateStr) return null;
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
 }
 
-function isOverdue(target_date: string | null, status: string) {
-  if (!target_date || status === "completed") return false;
-  return new Date(target_date) < new Date();
+function isOverdue(targetDate: string | null, status: string) {
+  if (!targetDate || status === "completed") return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const due = new Date(targetDate);
+  due.setHours(0, 0, 0, 0);
+
+  return due < today;
+}
+
+function getMilestoneText(goal: Goal) {
+  const milestones = goal.milestones ?? [];
+  const total = milestones.length;
+  if (total === 0) return null;
+
+  const completed = milestones.filter((m) => m.status === "completed").length;
+  return `${completed}/${total} milestones`;
 }
 
 interface Props {
@@ -37,90 +55,129 @@ interface Props {
 }
 
 export function GoalCard({ goal }: Props) {
-  const router      = useRouter();
-  const overdue     = isOverdue(goal.target_date, goal.status);
+  const router = useRouter();
+
+  const overdue = isOverdue(goal.target_date, goal.status);
   const isCompleted = goal.status === "completed";
+  const categoryStyle = goal.category ? CATEGORY_STYLES[goal.category] : null;
 
   return (
     <div
       onClick={() => router.push(`/life/goals/${goal.id}`)}
       className={cn(
-        "relative overflow-hidden rounded-2xl border cursor-pointer",
-        "bg-linear-to-b from-zinc-900/80 to-zinc-900/60 backdrop-blur-sm",
-        "transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-black/30",
-        overdue ? "border-red-500/20" : "border-zinc-800/80",
+        "group cursor-pointer rounded-lg border p-3 transition-colors duration-100",
         isCompleted && "opacity-50"
       )}
+      style={{
+        backgroundColor: "var(--color-surface-1)",
+        borderColor: "var(--color-border-subtle)",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = "var(--color-surface-1)";
+      }}
     >
-      {overdue && (
-        <div
-          className="absolute top-0 inset-x-0 h-px"
-          style={{ background: "linear-gradient(to right, transparent, rgba(239,68,68,0.4), transparent)" }}
-        />
-      )}
+      <div className="grid grid-cols-[minmax(0,1fr)_240px_120px_44px] items-center gap-4">
+        <div className="min-w-0">
+          {goal.category && categoryStyle && (
+            <div className="mb-2 flex items-center gap-1.5">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: categoryStyle.dot }}
+              />
+              <span
+                className="text-[10px] font-medium capitalize"
+                style={{ color: categoryStyle.text }}
+              >
+                {goal.category}
+              </span>
+            </div>
+          )}
 
-      <div className="relative p-4">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold tracking-tight text-zinc-200 truncate">
-              {goal.title}
-            </h3>
-            {goal.description && (
-              <p className="mt-0.5 text-xs text-zinc-400 line-clamp-1">{goal.description}</p>
+          <h3
+            className={cn(
+              "truncate text-sm font-semibold",
+              isCompleted && "line-through"
             )}
-          </div>
-          {goal.category && (
-            <span className={cn(
-              "shrink-0 rounded-lg border px-2 py-0.5 text-[10px] font-medium capitalize",
-              CATEGORY_COLORS[goal.category]
-            )}>
-              {goal.category}
-            </span>
+            style={{
+              color: isCompleted
+                ? "var(--color-text-tertiary)"
+                : "var(--color-text-primary)",
+            }}
+          >
+            {goal.title}
+          </h3>
+
+          {goal.description && (
+            <p
+              className="mt-1 truncate text-xs"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
+              {goal.description}
+            </p>
           )}
         </div>
 
-        {/* Progress */}
-        <div className="mb-3">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-zinc-500">Progress</span>
-            <span className="text-xs font-medium text-zinc-300">{goal.progress}%</span>
+        <div className="w-60">
+          <div className="mb-1 flex items-center justify-between">
+            <span
+              className="text-sm font-bold leading-none"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              {goal.progress}%
+            </span>
           </div>
-          <div className="h-1 w-full rounded-full bg-zinc-800 overflow-hidden">
+
+          <div
+            className="h-1 w-full overflow-hidden rounded-full"
+            style={{ backgroundColor: "var(--color-surface-2)" }}
+          >
             <div
               className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${goal.progress}%`, backgroundColor: ACCENT }}
+              style={{
+                width: `${goal.progress}%`,
+                backgroundColor: GOALS_ACCENT,
+              }}
             />
           </div>
+
+          {getMilestoneText(goal) && (
+            <p
+              className="mt-1 text-[10px]"
+              style={{ color: "var(--color-text-tertiary)" }}
+            >
+              {getMilestoneText(goal)}
+            </p>
+          )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-2">
-          {/* Priority */}
+        <div className="w-30">
+          {goal.target_date && (
+            <div
+              className="mb-1 inline-flex items-center gap-1 text-xs"
+              style={{
+                color: overdue ? "#f87171" : "var(--color-text-tertiary)",
+              }}
+            >
+              <span>{formatDate(goal.target_date)}</span>
+            </div>
+          )}
+
           <div className="flex items-center gap-1.5">
             <PriorityIcon priority={goal.priority} />
-            <span className={cn("text-xs capitalize", PRIORITY_TEXT[goal.priority])}>
+            <span className="text-xs capitalize" style={{ color: "var(--color-text-tertiary)" }}>
               {goal.priority}
             </span>
           </div>
+        </div>
 
-          {/* Date + Status */}
-          <div className="flex items-center gap-2 text-xs">
-            {goal.target_date && (
-              <span className={overdue ? "text-red-400" : "text-zinc-500"}>
-                {formatDate(goal.target_date)}
-              </span>
-            )}
-            <span className={cn(
-              "capitalize",
-              goal.status === "active"    && "text-zinc-400",
-              goal.status === "completed" && "text-zinc-400",
-              goal.status === "paused"    && "text-yellow-500/60",
-              goal.status === "abandoned" && "text-red-500/40",
-            )}>
-              {goal.status}
-            </span>
-          </div>
+        <div className="flex w-11 justify-end">
+          <ArrowRight
+            size={16}
+            style={{ color: "var(--color-text-tertiary)" }}
+          />
         </div>
       </div>
     </div>

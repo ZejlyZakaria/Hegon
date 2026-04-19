@@ -24,9 +24,7 @@ import { Button } from "@/shared/components/ui/button";
 import { useCreateWorkspace, useUpdateWorkspace } from "@/modules/tasks/hooks/useWorkspaces";
 import type { Workspace } from "@/modules/tasks/types";
 
-// =====================================================
-// SCHEMA
-// =====================================================
+const ACCENT = "var(--color-accent-tasks)";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name too long"),
@@ -34,14 +32,10 @@ const schema = z.object({
 
 type FormData = { name: string };
 
-// =====================================================
-// COMPONENT
-// =====================================================
-
 interface WorkspaceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspace?: Workspace; // If provided → rename mode, else → create mode
+  workspace?: Workspace;
 }
 
 export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModalProps) {
@@ -55,7 +49,6 @@ export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModal
     defaultValues: { name: workspace?.name || "" },
   });
 
-  // Sync name when switching between workspaces or open/close
   useEffect(() => {
     form.reset({ name: workspace?.name || "" });
   }, [workspace, open, form]);
@@ -83,9 +76,9 @@ export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModal
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800">
+      <DialogContent className="sm:max-w-md bg-[#1a1a1d] border-white/11">
         <DialogHeader>
-          <DialogTitle className="text-base font-medium text-zinc-100">
+          <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
             {isEdit ? "Rename workspace" : "New workspace"}
           </DialogTitle>
         </DialogHeader>
@@ -97,7 +90,7 @@ export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModal
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-zinc-400">
+                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                     Name
                   </FormLabel>
                   <FormControl>
@@ -106,6 +99,7 @@ export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModal
                       variant="tasks"
                       placeholder="e.g. Personal, Work, Side Projects..."
                       autoFocus
+                      className="bg-[#1f1f22] focus:border-white/20"
                     />
                   </FormControl>
                   <FormMessage />
@@ -118,16 +112,19 @@ export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModal
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="border-zinc-700/50 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
+                className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: ACCENT }}
               >
-                {isPending ? (isEdit ? "Saving..." : "Creating...") : (isEdit ? "Save" : "Create workspace")}
+                {isPending
+                  ? isEdit ? "Saving..." : "Creating..."
+                  : isEdit ? "Save" : "Create workspace"}
               </Button>
             </div>
           </form>

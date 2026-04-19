@@ -10,11 +10,15 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
+    const supabase = createClient();
+
     (async () => {
-      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
-      if (!user) return;
+      if (!user) {
+        router.replace("/auth");
+        return;
+      }
 
       const name =
         user.user_metadata?.full_name?.split(" ")[0] ??
@@ -32,9 +36,15 @@ export default function DashboardPage() {
 
       if (!workspace) router.replace("/onboarding");
     })();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") router.replace("/auth");
+    });
+
+    return () => subscription.unsubscribe();
   }, [router]);
 
-  if (!userName) return null;
+  if (!userName) return <div className="min-h-screen bg-[#09090b]" />;
 
   return (
     <div className="min-h-screen bg-[#09090b] overflow-y-auto">

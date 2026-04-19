@@ -29,13 +29,11 @@ import {
 } from "../hooks/useMilestones";
 import type { GoalMilestone } from "../types";
 
-const ACCENT = "#18ad9d";
+const ACCENT = "var(--color-accent-goals)";
 
 interface Props {
   goalId: string;
 }
-
-// ── Sortable milestone row ────────────────────────────────────────────────────
 
 interface RowProps {
   m: GoalMilestone;
@@ -63,24 +61,15 @@ function SortableRow({ m, idx, completedCount, onToggle, onDelete }: RowProps) {
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
-        borderColor: isDragging
-          ? `${ACCENT}50`
-          : isActive
-          ? `${ACCENT}30`
-          : undefined,
       }}
       className={cn(
-        "group flex items-center gap-3 rounded-xl border px-3 py-2.5",
-        isDragging
-          ? "bg-zinc-800/90 shadow-lg shadow-black/40 z-50 relative border-zinc-800/20"
-          : cn(
-              m.status === "completed" && "border-zinc-700/25 bg-zinc-800/20",
-              m.status !== "completed" && !isActive && "border-zinc-700/60 bg-zinc-800/50",
-              m.status !== "completed" && isActive && "border-zinc-700 bg-[#18ad9d]/10",
-            )
+        "group flex items-center gap-3 rounded-lg border px-3 py-2.5",
+        isDragging && "bg-[#141416] shadow-lg shadow-black/40 z-50 relative border-white/4",
+        !isDragging && m.status === "completed" && "border-white/4 bg-[#0e0e10] opacity-50",
+        !isDragging && m.status !== "completed" && !isActive && "border-white/4 bg-[#0e0e10]",
+        !isDragging && m.status !== "completed" && isActive && "border-white/[0.07] bg-[#141416]"
       )}
     >
-      {/* Handle — seul déclencheur du drag */}
       <div
         {...attributes}
         {...listeners}
@@ -90,12 +79,11 @@ function SortableRow({ m, idx, completedCount, onToggle, onDelete }: RowProps) {
           size={12}
           className={cn(
             "transition-colors",
-            isDragging ? "text-zinc-400" : "text-zinc-700 group-hover:text-zinc-500"
+            isDragging ? "text-[#a0a0a8]" : "text-[#71717a] group-hover:text-[#a0a0a8]"
           )}
         />
       </div>
 
-      {/* Toggle complete */}
       <button
         type="button"
         onClick={() => onToggle(m.id, m.status)}
@@ -103,31 +91,28 @@ function SortableRow({ m, idx, completedCount, onToggle, onDelete }: RowProps) {
           "shrink-0 h-4 w-4 rounded-full border transition-all flex items-center justify-center",
           m.status === "completed"
             ? "border-transparent"
-            : "border-zinc-600 hover:border-zinc-400"
+            : "border-white/20 hover:border-white/30"
         )}
         style={
           m.status === "completed"
             ? { backgroundColor: ACCENT }
-            : isActive
-            ? { borderColor: `${ACCENT}80` }
             : undefined
         }
       >
         {m.status === "completed" && <Check size={9} className="text-white" />}
       </button>
 
-      {/* Title */}
       <span
         className={cn(
           "flex-1 text-sm",
-          m.status === "completed" ? "line-through text-zinc-600" : "text-zinc-200"
+          m.status === "completed" ? "line-through text-[#71717a]" : "text-[#e2e2e6]"
         )}
       >
         {m.title}
       </span>
 
       {m.due_date && (
-        <span className="text-[11px] text-zinc-600 shrink-0">
+        <span className="text-[11px] text-[#71717a] shrink-0">
           {new Date(m.due_date).toLocaleDateString("en-GB", {
             day: "numeric",
             month: "short",
@@ -138,15 +123,13 @@ function SortableRow({ m, idx, completedCount, onToggle, onDelete }: RowProps) {
       <button
         type="button"
         onClick={() => onDelete(m.id)}
-        className="text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+        className="text-[#71717a] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
       >
         <Trash2 size={12} />
       </button>
     </div>
   );
 }
-
-// ── Main ──────────────────────────────────────────────────────────────────────
 
 export function MilestoneList({ goalId }: Props) {
   const { data: milestones = [], isLoading } = useMilestones(goalId);
@@ -160,8 +143,6 @@ export function MilestoneList({ goalId }: Props) {
   const [ordered,  setOrdered]  = useState<GoalMilestone[]>(milestones);
   const draggingRef = useRef(false);
 
-  // Sync depuis la query — seulement quand le contenu a réellement changé
-  // Forme fonctionnelle : retourner `prev` = pas de re-render = pas de boucle infinie
   useEffect(() => {
     if (draggingRef.current) return;
     setOrdered(prev => {
@@ -211,7 +192,7 @@ export function MilestoneList({ goalId }: Props) {
     const newIndex = ordered.findIndex((m) => m.id === over.id);
     const newOrder = arrayMove(ordered, oldIndex, newIndex);
 
-    setOrdered(newOrder); // UI immédiat — pas d'attente DB
+    setOrdered(newOrder);
     reorderMilestones.mutate(
       newOrder.map((m, i) => ({ id: m.id, order_index: i }))
     );
@@ -220,16 +201,16 @@ export function MilestoneList({ goalId }: Props) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-[#71717a]">
           The Path
         </h3>
-        <span className="text-xs text-zinc-600">
+        <span className="text-xs text-[#71717a]">
           {completedCount}/{ordered.length} completed
         </span>
       </div>
 
       {isLoading ? (
-        <div className="h-9 rounded-xl bg-zinc-900/50 animate-pulse" />
+        <div className="h-9 rounded-lg bg-[#0e0e10] animate-pulse" />
       ) : (
         <DndContext
           sensors={sensors}
@@ -255,10 +236,7 @@ export function MilestoneList({ goalId }: Props) {
               ))}
 
               {adding ? (
-                <div
-                  className="flex h-9 items-center gap-2 rounded-xl border px-3"
-                  style={{ borderColor: `${ACCENT}40` }}
-                >
+                <div className="flex h-9 items-center gap-2 rounded-lg border border-white/[0.07] px-3">
                   <input
                     autoFocus
                     value={newTitle}
@@ -268,7 +246,7 @@ export function MilestoneList({ goalId }: Props) {
                       if (e.key === "Escape") setAdding(false);
                     }}
                     placeholder="Milestone title…"
-                    className="flex-1 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
+                    className="flex-1 bg-transparent text-sm text-[#e2e2e6] placeholder:text-[#71717a] focus:outline-none"
                   />
                   <button
                     type="button"
@@ -282,7 +260,7 @@ export function MilestoneList({ goalId }: Props) {
                   <button
                     type="button"
                     onClick={() => setAdding(false)}
-                    className="text-xs text-zinc-500"
+                    className="text-xs text-[#71717a]"
                   >
                     Cancel
                   </button>
@@ -291,7 +269,7 @@ export function MilestoneList({ goalId }: Props) {
                 <button
                   type="button"
                   onClick={() => setAdding(true)}
-                  className="flex h-9 items-center gap-2 w-full rounded-xl border border-dashed border-zinc-800 px-3 text-sm text-zinc-600 hover:text-zinc-400 hover:border-zinc-700 transition-colors"
+                  className="flex h-9 items-center gap-2 w-full rounded-lg border border-dashed border-white/4 px-3 text-sm text-[#71717a] hover:text-[#a0a0a8] hover:border-white/[0.07] transition-colors"
                 >
                   <Plus size={12} />
                   Add milestone

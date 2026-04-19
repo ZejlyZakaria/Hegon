@@ -1,6 +1,8 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
 const CSP = [
   "default-src 'self'",
   // Next.js App Router requires unsafe-inline for hydration scripts (no nonce without middleware)
@@ -14,7 +16,8 @@ const CSP = [
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
-  "upgrade-insecure-requests",
+  // upgrade-insecure-requests breaks localhost dev (HTTP → HTTPS mismatch)
+  ...(!isDev ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const nextConfig: NextConfig = {

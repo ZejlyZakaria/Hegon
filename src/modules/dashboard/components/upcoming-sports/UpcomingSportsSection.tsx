@@ -80,7 +80,7 @@ function SportCard({ event, isActive }: { event: DashboardSportEvent; isActive: 
               <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
                 {event.homeTeamCrest ? (
                   <div className="relative w-9 h-9 shrink-0">
-                    <Image src={event.homeTeamCrest} alt={event.homeTeam ?? ""} fill unoptimized className="object-contain" />
+                    <Image src={event.homeTeamCrest} alt={event.homeTeam ?? ""} fill className="object-contain" />
                   </div>
                 ) : (
                   <div className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-sm">⚽</div>
@@ -93,7 +93,7 @@ function SportCard({ event, isActive }: { event: DashboardSportEvent; isActive: 
               <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
                 {event.awayTeamCrest ? (
                   <div className="relative w-9 h-9 shrink-0">
-                    <Image src={event.awayTeamCrest} alt={event.awayTeam ?? ""} fill unoptimized className="object-contain" />
+                    <Image src={event.awayTeamCrest} alt={event.awayTeam ?? ""} fill className="object-contain" />
                   </div>
                 ) : (
                   <div className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-sm">⚽</div>

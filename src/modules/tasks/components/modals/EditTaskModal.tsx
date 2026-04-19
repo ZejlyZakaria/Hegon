@@ -47,21 +47,13 @@ import { Button } from "@/shared/components/ui/button";
 import { Calendar } from "@/shared/components/ui/calendar";
 import { cn } from "@/shared/utils/utils";
 
-
 import { useUpdateTask } from "@/modules/tasks/hooks/useTasks";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useAddTagToTask, useRemoveTagFromTask } from "@/modules/tasks/hooks/useTags";
 import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
 import { StatusIcon } from "@/shared/components/icons/StatusIcon";
-import type {
-  Task,
-  Priority,
-} from "@/modules/tasks/types"
-
-// =====================================================
-// VALIDATION SCHEMA
-// =====================================================
+import type { Task, Priority } from "@/modules/tasks/types";
 
 const editTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(255, "Title too long"),
@@ -74,21 +66,13 @@ const editTaskSchema = z.object({
 
 type EditTaskFormData = z.infer<typeof editTaskSchema>;
 
-// =====================================================
-// COMPONENT
-// =====================================================
-
 interface EditTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task: Task;
 }
 
-export function EditTaskModal({
-  open,
-  onOpenChange,
-  task,
-}: EditTaskModalProps) {
+export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -181,67 +165,51 @@ export function EditTaskModal({
     });
   };
 
-  // Handle modal close
   const handleOpenChange = async (open: boolean) => {
     if (!open) {
-      // Validate before closing
       const isValid = await form.trigger();
-
-      if (!isValid) {
-        // Block close if invalid
-        return;
-      }
-
-      // Save if valid
+      if (!isValid) return;
       await autoSave();
     }
-
     onOpenChange(open);
   };
 
-  // Prevent close on ESC if form invalid
   const handleEscapeKeyDown = async (e: Event) => {
     const isValid = await form.trigger();
-    if (!isValid) {
-      e.preventDefault();
-    }
+    if (!isValid) e.preventDefault();
   };
 
-  // Prevent close on outside click if form invalid
   const handlePointerDownOutside = async (e: Event) => {
     const isValid = await form.trigger();
-    if (!isValid) {
-      e.preventDefault();
-    }
+    if (!isValid) e.preventDefault();
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="sm:max-w-150 bg-zinc-900 border-zinc-800 rounded-xl max-h-[90vh] overflow-y-auto"
+        className="sm:max-w-150 bg-[#1a1a1d] border-white/11 rounded-xl max-h-[90vh] overflow-y-auto"
         onEscapeKeyDown={handleEscapeKeyDown}
         onPointerDownOutside={handlePointerDownOutside}
       >
         <DialogHeader>
           <div className="flex items-center justify-between pr-6">
-            <DialogTitle className="text-base font-medium text-zinc-100">
+            <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
               Edit task
             </DialogTitle>
 
-            {/* Dropdown Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="absolute top-2 right-10 h-8 w-8 p-0 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="absolute top-2 right-10 h-8 w-8 p-0 text-[#71717a] hover:text-[#e2e2e6] hover:bg-[#141416] focus-visible:ring-0 focus-visible:ring-offset-0"
                 >
                   <MoreHorizontal size={16} />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-48 rounded-md bg-zinc-900 border-zinc-800"
+                className="w-48 rounded-md bg-[#1a1a1d] border-white/11"
               >
                 <DropdownMenuItem
                   onClick={() => setIsDeleteModalOpen(true)}
@@ -256,13 +224,12 @@ export function EditTaskModal({
 
         <Form {...form}>
           <form className="space-y-4">
-            {/* Title */}
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-zinc-400">
+                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                     Title
                   </FormLabel>
                   <FormControl>
@@ -271,6 +238,7 @@ export function EditTaskModal({
                       variant="tasks"
                       placeholder="Task title..."
                       autoComplete="off"
+                      className="bg-[#1f1f22] focus:border-white/20"
                     />
                   </FormControl>
                   <FormMessage />
@@ -278,13 +246,12 @@ export function EditTaskModal({
               )}
             />
 
-            {/* Description */}
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-zinc-400">
+                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                     Description
                   </FormLabel>
                   <FormControl>
@@ -293,6 +260,7 @@ export function EditTaskModal({
                       variant="tasks"
                       placeholder="Add details..."
                       rows={4}
+                      className="bg-[#1f1f22] focus:border-white/20"
                     />
                   </FormControl>
                   <FormMessage />
@@ -300,23 +268,18 @@ export function EditTaskModal({
               )}
             />
 
-            {/* Row 1: Priority + Status */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Priority */}
               <FormField
                 control={form.control}
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-zinc-400">
+                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                       Priority
                     </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger variant="tasks">
+                        <SelectTrigger variant="tasks" className="w-full bg-[#1f1f22] focus:border-white/20">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -336,21 +299,17 @@ export function EditTaskModal({
                 )}
               />
 
-              {/* Status */}
               <FormField
                 control={form.control}
                 name="status_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-zinc-400">
+                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                       Status
                     </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger variant="tasks">
+                        <SelectTrigger variant="tasks" className="w-full bg-[#1f1f22] focus:border-white/20">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -378,44 +337,37 @@ export function EditTaskModal({
               onRemove={(tagId) => removeTagMutation.mutate({ taskId: task.id, tagId })}
             />
 
-            {/* Row 2: Due Date + Estimated Hours */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Due Date */}
               <FormField
                 control={form.control}
                 name="due_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-zinc-400">
+                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                       Due date
                     </FormLabel>
-                    <Popover
-                      open={isCalendarOpen}
-                      onOpenChange={setIsCalendarOpen}
-                    >
+                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                       <PopoverTrigger asChild>
                         <FormControl>
-                          <Button
-                            variant="outline"
+                          <button
+                            type="button"
                             className={cn(
-                              "w-full justify-start text-left font-normal",
-                              "bg-zinc-800/50 border-zinc-700/50",
-                              "text-zinc-100 hover:bg-zinc-800/50 hover:text-zinc-100",
-                              "focus-visible:ring-1 focus-visible:ring-zinc-700",
-                              !field.value && "text-zinc-600",
+                              "w-full h-9 px-3 flex items-center gap-2 rounded-lg border border-zinc-700/50 text-sm transition-colors",
+                              "bg-[#1f1f22] hover:bg-zinc-800/80",
+                              field.value ? "text-zinc-100" : "text-zinc-600",
                             )}
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            <CalendarIcon size={14} className="shrink-0" />
                             {field.value ? (
                               format(field.value, "MMM d, yyyy")
                             ) : (
                               <span>Pick a date</span>
                             )}
-                          </Button>
+                          </button>
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent
-                        className="w-auto p-0 bg-zinc-900 border-zinc-800"
+                        className="w-auto p-0 bg-[#1a1a1d] border-white/11"
                         align="start"
                       >
                         <Calendar
@@ -429,7 +381,7 @@ export function EditTaskModal({
                             date < new Date(new Date().setHours(0, 0, 0, 0))
                           }
                           initialFocus
-                          className="bg-zinc-900"
+                          className="bg-[#1a1a1d]"
                         />
                       </PopoverContent>
                     </Popover>
@@ -438,13 +390,12 @@ export function EditTaskModal({
                 )}
               />
 
-              {/* Estimated Hours */}
               <FormField
                 control={form.control}
                 name="estimated_hours"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-zinc-400">
+                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
                       Estimated hours
                     </FormLabel>
                     <FormControl>
@@ -461,6 +412,7 @@ export function EditTaskModal({
                           field.onChange(val === "" ? null : parseFloat(val));
                         }}
                         autoComplete="off"
+                        className="bg-[#1f1f22] focus:border-white/20"
                       />
                     </FormControl>
                     <FormMessage />
@@ -475,7 +427,6 @@ export function EditTaskModal({
         open={isDeleteModalOpen}
         onOpenChange={(open) => {
           setIsDeleteModalOpen(open);
-          // Si delete réussi, fermer aussi le Edit modal
           if (!open && !isDeleteModalOpen) {
             onOpenChange(false);
           }

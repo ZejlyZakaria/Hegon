@@ -1,27 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "@/shared/providers/QueryProvider";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
-  title: "HEGON",
-  description: "Ton espace personnel tout-en-un",
-  icons: {
-    icon: "/logo/Hegon_white_logo.png",
-  },
+  title: "Hegon",
+  description: "Your personal second brain.",
   formatDetection: {
     telephone: false,
     date: false,
@@ -33,7 +26,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-hidden`}>
+      <body className={`${inter.variable} antialiased overflow-hidden`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <QueryProvider>
             {children}

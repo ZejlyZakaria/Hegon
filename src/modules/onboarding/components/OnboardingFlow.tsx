@@ -1188,6 +1188,42 @@ function DoneStep({
 
 // ─── Main Orchestrator ────────────────────────────────────────────────────────
 
+async function ensureWorkspace(userId: string) {
+  const supabase = createClient();
+  const { data: existing } = await supabase
+    .from("workspaces").select("id").eq("user_id", userId).limit(1);
+  if (existing?.length) return;
+
+  const orgId = await getCurrentOrgId();
+  if (!orgId) return;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const userName = user?.user_metadata?.full_name?.split(" ")[0]
+    ?? user?.user_metadata?.name?.split(" ")[0]
+    ?? "My";
+
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .insert({ name: `${userName}'s Workspace`, user_id: userId, org_id: orgId })
+    .select("id").single();
+
+  if (!workspace) return;
+
+  const { data: project } = await supabase
+    .from("projects")
+    .insert({ name: "Personal", workspace_id: workspace.id, color: "#3b82f6", org_id: orgId })
+    .select("id").single();
+
+  if (!project) return;
+
+  await supabase.from("statuses").insert([
+    { name: "Backlog",      color: "#6b7280", position: 0, project_id: project.id, org_id: orgId },
+    { name: "To Do",        color: "#6b7280", position: 1, project_id: project.id, org_id: orgId },
+    { name: "In Progress",  color: "#f59e0b", position: 2, project_id: project.id, org_id: orgId },
+    { name: "Done",         color: "#3b82f6", position: 3, project_id: project.id, org_id: orgId },
+  ]);
+}
+
 export default function OnboardingFlow({
   userId,
   userName,
@@ -1310,7 +1346,10 @@ export default function OnboardingFlow({
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => router.push("/dashboard")}
+                  onClick={async () => {
+                    await ensureWorkspace(userId);
+                    router.push("/dashboard");
+                  }}
                   className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
                 >
                   Enter HEGON

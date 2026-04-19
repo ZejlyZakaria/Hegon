@@ -1,21 +1,18 @@
 import { createClient } from "@/infrastructure/supabase/client";
 import { useOrgStore } from "@/shared/stores/useOrgStore";
 
-/**
- * Retourne l'org_id de l'utilisateur connecté.
- * Utilise le store Zustand si disponible (évite un appel DB),
- * sinon fallback sur un appel memberships.
- */
 export async function getCurrentOrgId(): Promise<string> {
-  // Zustand store (getState fonctionne en dehors de React)
   const { orgId } = useOrgStore.getState();
   if (orgId) return orgId;
 
-  // Fallback DB
   const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
   const { data, error } = await supabase
     .from("memberships")
     .select("org_id")
+    .eq("user_id", user.id)
     .limit(1)
     .single();
 

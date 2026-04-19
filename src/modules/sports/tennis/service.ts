@@ -11,15 +11,11 @@ import type { TennisPlayers, TennisPlayer } from "./types";
 export async function getTennisPlayers(userId: string): Promise<TennisPlayers> {
   const supabase = createClient();
 
-  const [{ data: favorites }, { data: settings }] = await Promise.all([
-    supabase.schema("sport").from("user_favorites")
-      .select("entity_id").eq("user_id", userId).eq("entity_type", "tennis_player"),
-    supabase.schema("sport").from("tennis_user_settings")
-      .select("main_player_id").eq("user_id", userId).maybeSingle(),
-  ]);
+  const { data: favorites } = await supabase.schema("sport").from("user_favorites")
+    .select("entity_id").eq("user_id", userId).eq("entity_type", "tennis_player");
 
   const favoritePlayerIds = favorites?.map((f: any) => f.entity_id) ?? [];
-  const mainPlayerId = settings?.main_player_id ?? null;
+  const mainPlayerId = favoritePlayerIds[0] ?? null;
 
   let favoritePlayers: TennisPlayer[] = [];
   if (favoritePlayerIds.length) {

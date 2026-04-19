@@ -24,17 +24,10 @@ import {
   DropdownMenuSubContent,
 } from "@/shared/components/ui/dropdown-menu";
 import { Button } from "@/shared/components/ui/button";
-// import { PriorityIcon } from "@/components/tasks/PriorityIcon";
-// import { StatusIcon } from "@/components/tasks/StatusIcon";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useTags } from "@/modules/tasks/hooks/useTags";
 import { StatusIcon } from "../../../../shared/components/icons/StatusIcon";
 import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
-
-// =====================================================
-// TASKS TOPBAR
-// Search, filters, view switcher
-// =====================================================
 
 export function TasksTopbar() {
   const {
@@ -47,6 +40,7 @@ export function TasksTopbar() {
     isSidebarCollapsed,
     toggleSidebar,
   } = useTasksStore();
+
   const { data: statuses } = useStatuses(selectedProjectId);
   const { data: tags } = useTags();
 
@@ -64,11 +58,9 @@ export function TasksTopbar() {
     { mode: "calendar", icon: <Calendar size={16} />, label: "Calendar" },
   ];
 
-  // Count active filters (excluding search)
   const activeFiltersCount =
     filters.statuses.length + filters.priorities.length + filters.tags.length;
 
-  // Priority options
   const priorityOptions: { value: Priority; label: string }[] = [
     { value: "critical", label: "Critical" },
     { value: "high", label: "High" },
@@ -76,7 +68,6 @@ export function TasksTopbar() {
     { value: "low", label: "Low" },
   ];
 
-  // Toggle priority filter
   const togglePriority = (priority: Priority) => {
     const current = filters.priorities;
     const updated = current.includes(priority)
@@ -85,7 +76,6 @@ export function TasksTopbar() {
     setFilters({ priorities: updated });
   };
 
-  // Toggle status filter
   const toggleStatus = (statusId: string) => {
     const current = filters.statuses;
     const updated = current.includes(statusId)
@@ -95,27 +85,42 @@ export function TasksTopbar() {
   };
 
   return (
-    <div className="h-14 border-b border-white/5 bg-zinc-950/50 backdrop-blur-sm flex items-center justify-between px-4 gap-4 shrink-0">
-      {/* Left: Sidebar Toggle + Search */}
-      <div className="flex items-center gap-2 flex-1 max-w-md">
+    <div
+      className="flex h-14 shrink-0 items-center justify-between gap-4 border-b px-4"
+      style={{
+        backgroundColor: "var(--color-surface-0)",
+        borderColor: "var(--color-border-subtle)",
+      }}
+    >
+      <div className="flex max-w-md flex-1 items-center gap-2">
         {isSidebarCollapsed && (
           <button
             type="button"
             onClick={toggleSidebar}
-            className={cn(
-              "shrink-0 w-9 h-9 rounded-lg flex items-center justify-center",
-              "bg-zinc-900/50 border border-white/5",
-              "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50",
-              "transition-all",
-            )}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100"
+            style={{
+              backgroundColor: "var(--color-surface-2)",
+              border: "1px solid var(--color-border-default)",
+              color: "var(--color-text-tertiary)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-surface-3)";
+              e.currentTarget.style.color = "var(--color-text-primary)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
+              e.currentTarget.style.color = "var(--color-text-tertiary)";
+            }}
           >
             <PanelLeftOpen size={16} />
           </button>
         )}
+
         <div className="relative flex-1">
           <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2"
+            style={{ color: "var(--color-text-tertiary)" }}
           />
           <input
             type="text"
@@ -123,35 +128,39 @@ export function TasksTopbar() {
             value={filters.search}
             onChange={(e) => setFilters({ search: e.target.value })}
             className={cn(
-              "w-full h-9 pl-9 pr-3 rounded-lg",
-              "bg-zinc-900/50 border border-white/5",
-              "text-zinc-100 text-sm placeholder:text-zinc-600",
-              "focus:outline-none focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700",
-              "transition-all",
+              "h-8 w-full rounded-md pl-8 pr-3 text-sm outline-none transition-colors duration-100"
             )}
+            style={{
+              backgroundColor: "var(--color-surface-2)",
+              border: "1px solid var(--color-border-default)",
+              color: "var(--color-text-primary)",
+            }}
           />
         </div>
       </div>
 
-      {/* Right: Filters + View Switcher */}
       <div className="flex items-center gap-2">
-        {/* Filters Dropdown - Nested Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className={cn(
-                "h-9 px-3 rounded-lg flex items-center gap-2",
-                "bg-zinc-900/50 border border-white/5",
-                "text-zinc-400 text-sm font-medium",
-                "hover:bg-zinc-800/50 hover:text-zinc-300",
-                "transition-all",
-                "focus-visible:ring-0 focus-visible:ring-offset-0",
-              )}
+              type="button"
+              className="flex h-8 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors duration-100"
+              style={{
+                backgroundColor: "var(--color-surface-2)",
+                border: "1px solid var(--color-border-default)",
+                color: "var(--color-text-secondary)",
+              }}
             >
-              <SlidersHorizontal size={16} />
+              <SlidersHorizontal size={14} />
               <span>Filters</span>
               {activeFiltersCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded bg-blue-600 text-white text-xs font-semibold">
+                <span
+                  className="rounded px-1.5 py-0.5 text-xs font-semibold"
+                  style={{
+                    backgroundColor: "var(--color-surface-3)",
+                    color: "var(--color-text-primary)",
+                  }}
+                >
                   {activeFiltersCount}
                 </span>
               )}
@@ -159,19 +168,28 @@ export function TasksTopbar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="w-56 rounded-md bg-zinc-900 border-zinc-800"
+            className="w-56 rounded-lg"
+            style={{
+              backgroundColor: "var(--color-surface-3)",
+              borderColor: "var(--color-border-default)",
+              color: "var(--color-text-secondary)",
+            }}
           >
-            {/* Status Filter - Nested */}
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="cursor-pointer focus:bg-zinc-800">
+              <DropdownMenuSubTrigger className="cursor-pointer">
                 <div className="flex items-center gap-2">
                   <StatusIcon status="To Do" size={16} />
                   <span>Status</span>
                 </div>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent
-                className="w-48 rounded-md bg-zinc-900 border-zinc-800"
+                className="w-48 rounded-lg"
                 sideOffset={4}
+                style={{
+                  backgroundColor: "var(--color-surface-3)",
+                  borderColor: "var(--color-border-default)",
+                  color: "var(--color-text-secondary)",
+                }}
               >
                 {statuses?.map((status) => (
                   <DropdownMenuCheckboxItem
@@ -179,7 +197,6 @@ export function TasksTopbar() {
                     checked={filters.statuses.includes(status.id)}
                     onCheckedChange={() => toggleStatus(status.id)}
                     onSelect={(e) => e.preventDefault()}
-                    className="cursor-pointer focus:bg-zinc-800"
                   >
                     <div className="flex items-center gap-2">
                       <StatusIcon status={status.name} size={16} />
@@ -190,17 +207,21 @@ export function TasksTopbar() {
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
-            {/* Priority Filter - Nested */}
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="cursor-pointer focus:bg-zinc-800">
+              <DropdownMenuSubTrigger className="cursor-pointer">
                 <div className="flex items-center gap-2">
                   <PriorityIcon priority="none" />
                   <span>Priority</span>
                 </div>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent
-                className="w-48 rounded-md bg-zinc-900 border-zinc-800"
+                className="w-48 rounded-lg"
                 sideOffset={4}
+                style={{
+                  backgroundColor: "var(--color-surface-3)",
+                  borderColor: "var(--color-border-default)",
+                  color: "var(--color-text-secondary)",
+                }}
               >
                 {priorityOptions.map((option) => (
                   <DropdownMenuCheckboxItem
@@ -208,7 +229,6 @@ export function TasksTopbar() {
                     checked={filters.priorities.includes(option.value)}
                     onCheckedChange={() => togglePriority(option.value)}
                     onSelect={(e) => e.preventDefault()}
-                    className="cursor-pointer focus:bg-zinc-800"
                   >
                     <div className="flex items-center gap-2">
                       <PriorityIcon priority={option.value} />
@@ -219,18 +239,22 @@ export function TasksTopbar() {
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
-            {/* Tag Filter - Nested */}
             {tags && tags.length > 0 && (
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="cursor-pointer focus:bg-zinc-800">
+                <DropdownMenuSubTrigger className="cursor-pointer">
                   <div className="flex items-center gap-2">
-                    <Tag size={14} className="text-zinc-400" />
+                    <Tag size={14} style={{ color: "var(--color-text-tertiary)" }} />
                     <span>Tags</span>
                   </div>
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent
-                  className="w-48 rounded-md bg-zinc-900 border-zinc-800"
+                  className="w-48 rounded-lg"
                   sideOffset={4}
+                  style={{
+                    backgroundColor: "var(--color-surface-3)",
+                    borderColor: "var(--color-border-default)",
+                    color: "var(--color-text-secondary)",
+                  }}
                 >
                   {tags.map((tag) => (
                     <DropdownMenuCheckboxItem
@@ -238,11 +262,10 @@ export function TasksTopbar() {
                       checked={filters.tags.includes(tag.id)}
                       onCheckedChange={() => toggleTag(tag.id)}
                       onSelect={(e) => e.preventDefault()}
-                      className="cursor-pointer focus:bg-zinc-800"
                     >
                       <div className="flex items-center gap-2">
                         <span
-                          className="w-2 h-2 rounded-full shrink-0"
+                          className="h-2 w-2 rounded-full shrink-0"
                           style={{ backgroundColor: tag.color ?? "#71717a" }}
                         />
                         <span>{tag.name}</span>
@@ -253,16 +276,15 @@ export function TasksTopbar() {
               </DropdownMenuSub>
             )}
 
-            {/* Clear Filters */}
             {activeFiltersCount > 0 && (
               <>
-                <DropdownMenuSeparator className="bg-zinc-800" />
+                <DropdownMenuSeparator />
                 <div className="px-2 py-1.5">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={resetFilters}
-                    className="w-full h-8 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 justify-start"
+                    className="h-8 w-full justify-start text-xs"
                   >
                     <X size={14} className="mr-2" />
                     Clear all filters
@@ -273,18 +295,27 @@ export function TasksTopbar() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* View Switcher */}
-        <div className="flex items-center bg-zinc-900/50 border border-white/5 rounded-lg p-1">
+        <div
+          className="flex items-center rounded-md p-1"
+          style={{
+            backgroundColor: "var(--color-surface-2)",
+            border: "1px solid var(--color-border-default)",
+          }}
+        >
           {views.map((view) => (
             <button
               key={view.mode}
+              type="button"
               onClick={() => setViewMode(view.mode)}
-              className={cn(
-                "h-7 px-3 rounded-md flex items-center gap-1.5 text-sm font-medium transition-all",
-                viewMode === view.mode
-                  ? "bg-zinc-800 text-white shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-300",
-              )}
+              className="flex h-7 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors duration-100"
+              style={{
+                backgroundColor:
+                  viewMode === view.mode ? "var(--color-surface-3)" : "transparent",
+                color:
+                  viewMode === view.mode
+                    ? "var(--color-text-primary)"
+                    : "var(--color-text-tertiary)",
+              }}
             >
               {view.icon}
               <span className="hidden sm:inline">{view.label}</span>
