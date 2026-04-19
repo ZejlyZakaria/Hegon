@@ -198,11 +198,11 @@ function AuthPageInner() {
     if (urlError === "missing_code") setError("Invalid or expired link.");
   }, [urlError]);
 
-  // When a fresh SIGNED_IN event fires (OAuth callback or email link),
-  // the middleware may have missed the session — navigate client-side.
+  // If the user lands on /auth with an existing session (e.g. after OAuth callback
+  // or email confirmation link), navigate them to the right destination.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session) {
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session && !urlError) {
         const { data: workspace } = await supabase
           .from("workspaces")
           .select("id")
@@ -213,7 +213,7 @@ function AuthPageInner() {
       }
     });
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [supabase, urlError]);
 
 
   const clear = () => { setError(""); setSuccess(""); setEmail(""); setPassword(""); setName(""); };
