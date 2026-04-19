@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const rawNext    = searchParams.get("next") ?? "/dashboard";
   let decoded: string;
   try { decoded = decodeURIComponent(rawNext); } catch { decoded = "/dashboard"; }
-  const next = decoded.startsWith("/") && !decoded.startsWith("//") ? decoded : "/dashboard";
+  const next = decoded.startsWith("/") && !decoded.startsWith("//") && decoded !== "/" ? decoded : "/dashboard";
 
   if (!code && !tokenHash) {
     return NextResponse.redirect(`${origin}/auth?error=missing_code`);
