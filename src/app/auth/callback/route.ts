@@ -1,7 +1,6 @@
-// app/auth/callback/route.ts
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
+import type { CookieOptions } from "@supabase/ssr";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
@@ -17,17 +16,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth?error=missing_code`);
   }
 
-  const cookieStore = await cookies();
+  // Collect cookies to write — we'll attach them to the final redirect response
+  const pendingCookies: Array<{ name: string; value: string; options: CookieOptions }> = [];
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: () => cookieStore.getAll(),
+        getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet) => {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
+            pendingCookies.push({ name, value, options });
           });
         },
       },
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
   let error, data;
   if (tokenHash && type) {
-    ({ error, data } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as "email" | "recovery" | "invite" }));
+    ({ error, data } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as "signup" | "email" | "recovery" | "invite" | "magiclink" | "email_change" }));
   } else {
     ({ error, data } = await supabase.auth.exchangeCodeForSession(code!));
   }
@@ -45,6 +45,8 @@ export async function GET(request: NextRequest) {
     console.error("[auth/callback] exchange error:", error.message);
     return NextResponse.redirect(`${origin}/auth?error=auth_failed`);
   }
+
+  let redirectPath = next;
 
   // Auto-create workspace for new users
   if (data.user) {
@@ -55,7 +57,6 @@ export async function GET(request: NextRequest) {
       .limit(1);
 
     if (!existing?.length) {
-      // Récupérer l'org_id créé par le trigger à l'inscription
       const { data: membership } = await supabase
         .from("memberships")
         .select("org_id")
@@ -93,11 +94,16 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // New user → show onboarding
-      return NextResponse.redirect(`${origin}/onboarding`);
+      redirectPath = "/onboarding";
     }
   }
 
-  // redirect to intended destination (or dashboard)
-  return NextResponse.redirect(`${origin}${next}`);
+  const response = NextResponse.redirect(`${origin}${redirectPath}`);
+
+  // Attach session cookies to the redirect response so middleware can read them
+  pendingCookies.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, options);
+  });
+
+  return response;
 }
