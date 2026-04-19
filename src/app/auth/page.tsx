@@ -198,6 +198,23 @@ function AuthPageInner() {
     if (urlError === "missing_code") setError("Invalid or expired link.");
   }, [urlError]);
 
+  // When a fresh SIGNED_IN event fires (OAuth callback or email link),
+  // the middleware may have missed the session — navigate client-side.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        const { data: workspace } = await supabase
+          .from("workspaces")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .limit(1)
+          .maybeSingle();
+        window.location.replace(workspace ? "/dashboard" : "/onboarding");
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
 
   const clear = () => { setError(""); setSuccess(""); setEmail(""); setPassword(""); setName(""); };
 
