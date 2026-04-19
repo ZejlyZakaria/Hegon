@@ -1,6 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import type { CookieOptions } from "@supabase/ssr";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
@@ -16,8 +15,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth?error=missing_code`);
   }
 
-  // Collect cookies to write — we'll attach them to the final redirect response
-  const pendingCookies: Array<{ name: string; value: string; options: CookieOptions }> = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pendingCookies: Array<{ name: string; value: string; options: any }> = [];
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,7 +35,10 @@ export async function GET(request: NextRequest) {
 
   let error, data;
   if (tokenHash && type) {
-    ({ error, data } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as "signup" | "email" | "recovery" | "invite" | "magiclink" | "email_change" }));
+    ({ error, data } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: type as "signup" | "email" | "recovery" | "invite" | "magiclink" | "email_change",
+    }));
   } else {
     ({ error, data } = await supabase.auth.exchangeCodeForSession(code!));
   }
@@ -98,9 +100,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const response = NextResponse.redirect(`${origin}${redirectPath}`);
+  // Return 200 + meta-refresh instead of 302 redirect.
+  // Browsers store Set-Cookie headers on 200 responses before navigating,
+  // whereas some CDN/proxy setups (incl. Vercel) can strip Set-Cookie on 302.
+  const safeUrl = `${origin}${redirectPath}`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${safeUrl}"></head><body></body></html>`;
+  const response = new NextResponse(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
 
-  // Attach session cookies to the redirect response so middleware can read them
   pendingCookies.forEach(({ name, value, options }) => {
     response.cookies.set(name, value, options);
   });
