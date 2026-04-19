@@ -49,8 +49,8 @@ export async function middleware(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    // On auth page → redirect to onboarding or dashboard
-    if (isPublic) {
+    // On auth page → redirect to onboarding or dashboard (unless there's an error to display)
+    if (isPublic && !request.nextUrl.searchParams.get("error")) {
       const url = request.nextUrl.clone();
       url.pathname = workspace ? "/dashboard" : "/onboarding";
       url.searchParams.delete("next");

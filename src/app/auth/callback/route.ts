@@ -5,14 +5,15 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
-  const code = searchParams.get("code");
-  const rawNext = searchParams.get("next") ?? "/dashboard";
-  // Decode first to catch URL-encoded attacks like /%2F%2Fattacker.com
+  const code       = searchParams.get("code");
+  const tokenHash  = searchParams.get("token_hash");
+  const type       = searchParams.get("type");
+  const rawNext    = searchParams.get("next") ?? "/dashboard";
   let decoded: string;
   try { decoded = decodeURIComponent(rawNext); } catch { decoded = "/dashboard"; }
   const next = decoded.startsWith("/") && !decoded.startsWith("//") ? decoded : "/dashboard";
 
-  if (!code) {
+  if (!code && !tokenHash) {
     return NextResponse.redirect(`${origin}/auth?error=missing_code`);
   }
 
@@ -33,7 +34,12 @@ export async function GET(request: NextRequest) {
     },
   );
 
-  const { error, data } = await supabase.auth.exchangeCodeForSession(code);
+  let error, data;
+  if (tokenHash && type) {
+    ({ error, data } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as "email" | "recovery" | "invite" }));
+  } else {
+    ({ error, data } = await supabase.auth.exchangeCodeForSession(code!));
+  }
 
   if (error) {
     console.error("[auth/callback] exchange error:", error.message);

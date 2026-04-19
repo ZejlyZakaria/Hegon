@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
@@ -190,7 +189,8 @@ function AuthPageInner() {
   const [error,         setError]         = useState("");
   const [success,       setSuccess]       = useState("");
 
-  const next     = searchParams.get("next") ?? "/dashboard";
+  const rawNext  = searchParams.get("next") ?? "/dashboard";
+  const next     = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
   const urlError = searchParams.get("error");
 
   useEffect(() => {
@@ -209,13 +209,13 @@ function AuthPageInner() {
         options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
       });
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message ?? "Google sign-in failed.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed.");
       setGoogleLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     setError(""); setSuccess("");
     setLoading(true);
@@ -240,13 +240,14 @@ function AuthPageInner() {
           setSuccess("Check your email to confirm your account.");
         }
       }
-    } catch (err: any) {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An error occurred.";
       const map: Record<string, string> = {
         "Invalid login credentials": "Incorrect email or password.",
         "Email not confirmed":        "Please confirm your email before signing in.",
         "User already registered":    "An account already exists with this email.",
       };
-      setError(map[err.message] ?? err.message);
+      setError(map[message] ?? message);
     } finally {
       setLoading(false);
     }
@@ -430,7 +431,7 @@ function AuthPageInner() {
 
 export default function AuthPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="min-h-screen bg-[#09090b]" />}>
       <AuthPageInner />
     </Suspense>
   );
