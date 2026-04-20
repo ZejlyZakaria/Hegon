@@ -1,12 +1,12 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/infrastructure/supabase/server";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
-  const code       = searchParams.get("code");
-  const tokenHash  = searchParams.get("token_hash");
-  const type       = searchParams.get("type");
-  const rawNext    = searchParams.get("next") ?? "/dashboard";
+  const code      = searchParams.get("code");
+  const tokenHash = searchParams.get("token_hash");
+  const type      = searchParams.get("type");
+  const rawNext   = searchParams.get("next") ?? "/dashboard";
   let decoded: string;
   try { decoded = decodeURIComponent(rawNext); } catch { decoded = "/dashboard"; }
   const next = decoded.startsWith("/") && !decoded.startsWith("//") && decoded !== "/" ? decoded : "/dashboard";
@@ -15,23 +15,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth?error=missing_code`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pendingCookies: Array<{ name: string; value: string; options: any }> = [];
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => request.cookies.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            pendingCookies.push({ name, value, options });
-          });
-        },
-      },
-    },
-  );
+  // cookies() from next/headers — Next.js manages cookie propagation at the
+  // request-context level, so Set-Cookie headers are included in any response
+  // returned from this handler, including redirects.
+  const supabase = await createServerClient();
 
   let error, data;
   if (tokenHash && type) {
@@ -69,9 +56,10 @@ export async function GET(request: NextRequest) {
       const orgId = membership?.org_id;
 
       if (orgId) {
-        const userName = data.user.user_metadata?.full_name?.split(" ")[0]
-          ?? data.user.user_metadata?.name?.split(" ")[0]
-          ?? "My";
+        const userName =
+          data.user.user_metadata?.full_name?.split(" ")[0] ??
+          data.user.user_metadata?.name?.split(" ")[0] ??
+          "My";
         const { data: workspace } = await supabase
           .from("workspaces")
           .insert({ name: `${userName}'s Workspace`, user_id: data.user.id, org_id: orgId })
@@ -100,16 +88,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 200 + JS redirect: cookies are committed by the browser before script executes,
-  // unlike a 302 where Vercel edge can serve the next request before cookies propagate.
-  const safeUrl = `${origin}${redirectPath}`;
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>window.location.replace(${JSON.stringify(safeUrl)})</script></body></html>`;
-  const response = new NextResponse(html, {
-    status: 200,
-    headers: { "Content-Type": "text/html; charset=utf-8" },
-  });
-  pendingCookies.forEach(({ name, value, options }) => {
-    response.cookies.set(name, value, options);
-  });
-  return response;
+  return NextResponse.redirect(`${origin}${redirectPath}`);
 }
