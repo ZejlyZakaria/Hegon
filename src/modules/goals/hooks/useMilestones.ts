@@ -53,6 +53,7 @@ export function useDeleteMilestone(goalId: string) {
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useReorderMilestones(goalId: string) {
   return useMutation({
     mutationFn: (updates: { id: string; order_index: number }[]) =>
