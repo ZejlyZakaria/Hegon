@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -285,11 +285,27 @@ function AuthPageInner() {
       ? rawNext
       : "/dashboard";
   const urlError = searchParams.get("error");
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
     if (urlError === "auth_failed")
       setError("Authentication failed. Please try again.");
     if (urlError === "missing_code") setError("Invalid or expired link.");
+  }, [urlError]);
+
+  // Fallback: if Supabase redirected to the site URL instead of /auth/finalize
+  // (allowlist miss), the browser client auto-detects the session from URL params.
+  // We listen and forward to finalize so the middleware timing issue is avoided.
+  useEffect(() => {
+    if (urlError) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session && !hasRedirected.current) {
+        hasRedirected.current = true;
+        router.replace(`/auth/finalize?target=${encodeURIComponent(next)}`);
+      }
+    });
+    return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlError]);
 
   const clear = () => {
@@ -307,7 +323,7 @@ function AuthPageInner() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          redirectTo: `${window.location.origin}/auth/finalize?target=${encodeURIComponent(next)}`,
         },
       });
       if (error) throw error;
@@ -337,7 +353,7 @@ function AuthPageInner() {
           password,
           options: {
             data: { full_name: name },
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+            emailRedirectTo: `${window.location.origin}/auth/finalize?target=${encodeURIComponent(next)}`,
           },
         });
         if (error) throw error;
