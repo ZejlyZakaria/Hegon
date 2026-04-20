@@ -1,34 +1,39 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/infrastructure/supabase/client";
 
 export default function AuthFinalizePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const ran = useRef(false);
+  const hasRunRef = useRef(false);
 
   useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
+    if (hasRunRef.current) return;
+    hasRunRef.current = true;
 
     const supabase = createClient();
-   
 
-    const run = async () => {
-      for (let i = 0; i < 10; i++) {
+    const finalizeAuth = async () => {
+      for (let attempt = 0; attempt < 10; attempt++) {
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
         if (session?.user) {
-          const { data: workspace } = await supabase
+          const { data: workspace, error } = await supabase
             .from("workspaces")
             .select("id")
             .eq("user_id", session.user.id)
             .limit(1)
             .maybeSingle();
+
+          if (error) {
+            router.replace("/auth");
+            return;
+          }
 
           router.replace(workspace ? "/dashboard" : "/onboarding");
           router.refresh();
@@ -38,16 +43,17 @@ export default function AuthFinalizePage() {
         await new Promise((resolve) => setTimeout(resolve, 150));
       }
 
-      // fallback raisonnable
       router.replace("/auth");
     };
 
-    void run();
-  }, [router, searchParams]);
+    void finalizeAuth();
+  }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-[#a1a1aa]">
-      Finalizing sign in...
+    <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
+      <div className="text-sm text-zinc-400 tracking-wide">
+        Finalizing sign in...
+      </div>
     </div>
   );
 }
