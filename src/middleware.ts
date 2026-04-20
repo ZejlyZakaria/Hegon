@@ -81,15 +81,25 @@
 //   ],
 // };
 
-
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_ROUTES = ["/auth", "/auth/finalize"];
-const IGNORED_PREFIXES = ["/_next", "/favicon", "/api", "/icon", "/logo", "/auth/callback"];
+const IGNORED_PREFIXES = [
+  "/_next",
+  "/favicon",
+  "/api",
+  "/icon",
+  "/logo",
+  "/auth/callback",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Logging for debugging purposes
+  console.log("[middleware] pathname:", pathname);
+  console.log("[middleware] host:", request.nextUrl.origin);
 
   if (IGNORED_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
@@ -111,12 +121,15 @@ export async function middleware(request: NextRequest) {
           });
         },
       },
-    }
+    },
   );
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Logging for debugging purposes
+  console.log("[middleware] user missing on protected route:", pathname);
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
@@ -126,7 +139,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // Laisse /auth/finalize tranquille, même si user existe déjà.
-  if (user && pathname.startsWith("/auth") && !pathname.startsWith("/auth/finalize")) {
+  if (
+    user &&
+    pathname.startsWith("/auth") &&
+    !pathname.startsWith("/auth/finalize")
+  ) {
     const { data: workspace } = await supabase
       .from("workspaces")
       .select("id")

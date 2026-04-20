@@ -249,5 +249,14 @@ export async function GET(request: NextRequest) {
     response.cookies.set(name, value, options);
   });
 
+  // Logging for debugging purposes
+
+  console.log(
+    "[auth/callback] redirect target:",
+    `${origin}/auth/finalize?target=${encodeURIComponent(redirectPath)}`,
+  );
+  console.log("[auth/callback] final redirectPath:", redirectPath);
+  console.log("[auth/callback] host:", origin);
+
   return response;
 }
