@@ -84,33 +84,27 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const IGNORED_PREFIXES = [
-  "/_next",
-  "/favicon",
-  "/api",
-  "/icon",
-  "/logo",
-  "/auth/callback",
-];
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Logging for debugging purposes
-  console.log("[middleware] pathname:", pathname);
-  console.log("[middleware] host:", request.nextUrl.origin);
-
-  if (IGNORED_PREFIXES.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next();
-  }
-
-  const isPublic =
+  // Always allow auth pages and static/internal routes first
+  if (
     pathname === "/auth" ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname === "/favicon.ico";
-  const response = NextResponse.next({ request: { headers: request.headers } });
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/icon") ||
+    pathname.startsWith("/logo")
+  ) {
+    return NextResponse.next();
+  }
+
+  const response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -118,8 +112,8 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
-        setAll: (cookies) => {
-          cookies.forEach(({ name, value, options }) => {
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value);
             response.cookies.set(name, value, options);
           });
@@ -132,61 +126,37 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Logging for debugging purposes
-  console.log("[middleware] user missing on protected route:", pathname);
-
-  if (!user && !isPublic) {
+  if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
-  // Laisse /auth/finalize tranquille, même si user existe déjà.
-  if (
-    user &&
-    pathname.startsWith("/auth") &&
-    !pathname.startsWith("/auth/finalize")
-  ) {
-    const { data: workspace } = await supabase
-      .from("workspaces")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
 
+  if (!workspace && pathname !== "/onboarding") {
     const url = request.nextUrl.clone();
-    url.pathname = workspace ? "/dashboard" : "/onboarding";
+    url.pathname = "/onboarding";
     url.searchParams.delete("next");
     return NextResponse.redirect(url);
   }
 
-  if (user && !isPublic) {
-    const { data: workspace } = await supabase
-      .from("workspaces")
-      .select("id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
-
-    if (!workspace && pathname !== "/onboarding") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
-    }
-
-    if (workspace && pathname === "/onboarding") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
-    }
+  if (workspace && pathname === "/onboarding") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    url.searchParams.delete("next");
+    return NextResponse.redirect(url);
   }
 
   return response;
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ["/((?!.*\\..*).*)"],
 };
