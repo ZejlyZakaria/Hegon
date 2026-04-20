@@ -100,7 +100,14 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const response = NextResponse.redirect(`${origin}${redirectPath}`);
+  // 200 + JS redirect: cookies are committed by the browser before script executes,
+  // unlike a 302 where Vercel edge can serve the next request before cookies propagate.
+  const safeUrl = `${origin}${redirectPath}`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>window.location.replace(${JSON.stringify(safeUrl)})</script></body></html>`;
+  const response = new NextResponse(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
   pendingCookies.forEach(({ name, value, options }) => {
     response.cookies.set(name, value, options);
   });
