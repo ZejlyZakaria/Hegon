@@ -1,4 +1,4 @@
-import { createServerClient } from "@/infrastructure/supabase/server";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -15,10 +15,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth?error=missing_code`);
   }
 
-  // cookies() from next/headers — Next.js manages cookie propagation at the
-  // request-context level, so Set-Cookie headers are included in any response
-  // returned from this handler, including redirects.
-  const supabase = await createServerClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pendingCookies: Array<{ name: string; value: string; options: any }> = [];
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            pendingCookies.push({ name, value, options });
+          });
+        },
+      },
+    },
+  );
 
   let error, data;
   if (tokenHash && type) {
@@ -88,5 +101,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(`${origin}${redirectPath}`);
+  const response = NextResponse.redirect(`${origin}${redirectPath}`);
+  response.headers.set("Cache-Control", "no-store");
+  pendingCookies.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, options);
+  });
+  return response;
 }
