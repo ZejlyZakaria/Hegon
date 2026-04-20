@@ -1,13 +1,12 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/infrastructure/supabase/client";
 
-export default function AuthFinalizePage() {
+function AuthFinalizeContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const hasRunRef = useRef(false);
 
   useEffect(() => {
@@ -16,38 +15,32 @@ export default function AuthFinalizePage() {
 
     const supabase = createClient();
 
+    const rawTarget = searchParams.get("target") ?? "/dashboard";
+    const target =
+      rawTarget.startsWith("/") && !rawTarget.startsWith("//")
+        ? rawTarget
+        : "/dashboard";
+
     const finalizeAuth = async () => {
-      for (let attempt = 0; attempt < 10; attempt++) {
+      for (let attempt = 0; attempt < 30; attempt++) {
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
         if (session?.user) {
-          const { data: workspace, error } = await supabase
-            .from("workspaces")
-            .select("id")
-            .eq("user_id", session.user.id)
-            .limit(1)
-            .maybeSingle();
-
-          if (error) {
-            router.replace("/auth");
-            return;
-          }
-
-          router.replace(workspace ? "/dashboard" : "/onboarding");
+          router.replace(target);
           router.refresh();
           return;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
 
       router.replace("/auth");
     };
 
     void finalizeAuth();
-  }, [router]);
+  }, [router, searchParams]);
 
   return (
     <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
@@ -55,5 +48,21 @@ export default function AuthFinalizePage() {
         Finalizing sign in...
       </div>
     </div>
+  );
+}
+
+export default function AuthFinalizePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
+          <div className="text-sm text-zinc-400 tracking-wide">
+            Finalizing sign in...
+          </div>
+        </div>
+      }
+    >
+      <AuthFinalizeContent />
+    </Suspense>
   );
 }
