@@ -149,10 +149,7 @@ export async function middleware(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    const url = request.nextUrl.clone();
-    url.pathname = workspace ? "/dashboard" : "/onboarding";
-    url.searchParams.delete("next");
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL(workspace ? "/dashboard" : "/onboarding", request.url));
   }
 
   // All other app routes are protected
