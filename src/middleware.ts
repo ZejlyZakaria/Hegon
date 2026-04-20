@@ -1,16 +1,101 @@
+// import { createServerClient } from "@supabase/ssr";
+// import { NextResponse, type NextRequest } from "next/server";
+
+// const PUBLIC_ROUTES = ["/auth"];
+// const IGNORED_PREFIXES = ["/_next", "/favicon", "/api", "/icon", "/logo", "/auth/callback"];
+
+// export async function middleware(request: NextRequest) {
+//   const { pathname } = request.nextUrl;
+
+//   if (IGNORED_PREFIXES.some(p => pathname.startsWith(p))) {
+//     return NextResponse.next();
+//   }
+
+//   const response = NextResponse.next({ request: { headers: request.headers } });
+
+//   const supabase = createServerClient(
+//     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+//     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+//     {
+//       cookies: {
+//         getAll: () => request.cookies.getAll(),
+//         setAll: (cookies) => {
+//           cookies.forEach(({ name, value, options }) => {
+//             request.cookies.set(name, value);
+//             response.cookies.set(name, value, options);
+//           });
+//         },
+//       },
+//     }
+//   );
+
+//   const { data: { user } } = await supabase.auth.getUser();
+//   const isPublic = PUBLIC_ROUTES.some(r => pathname.startsWith(r));
+
+//   // Not authenticated → /auth with next param
+//   if (!user && !isPublic) {
+//     const url = request.nextUrl.clone();
+//     url.pathname = "/auth";
+//     url.searchParams.set("next", pathname);
+//     return NextResponse.redirect(url);
+//   }
+
+//   // Authenticated → check workspace once for all routing decisions
+//   if (user) {
+//     const { data: workspace } = await supabase
+//       .from("workspaces")
+//       .select("id")
+//       .eq("user_id", user.id)
+//       .limit(1)
+//       .maybeSingle();
+
+//     // On auth page → redirect to onboarding or dashboard (unless there's an error to display)
+//     if (isPublic && !request.nextUrl.searchParams.get("error")) {
+//       const url = request.nextUrl.clone();
+//       url.pathname = workspace ? "/dashboard" : "/onboarding";
+//       url.searchParams.delete("next");
+//       return NextResponse.redirect(url);
+//     }
+
+//     // No workspace + not already on onboarding → force onboarding
+//     if (!workspace && pathname !== "/onboarding") {
+//       const url = request.nextUrl.clone();
+//       url.pathname = "/onboarding";
+//       return NextResponse.redirect(url);
+//     }
+
+//     // Has workspace but landed on onboarding → skip to dashboard
+//     if (workspace && pathname === "/onboarding") {
+//       const url = request.nextUrl.clone();
+//       url.pathname = "/dashboard";
+//       return NextResponse.redirect(url);
+//     }
+//   }
+
+//   return response;
+// }
+
+// export const config = {
+//   matcher: [
+//     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+//   ],
+// };
+
+
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_ROUTES = ["/auth"];
+const PUBLIC_ROUTES = ["/auth", "/auth/finalize"];
 const IGNORED_PREFIXES = ["/_next", "/favicon", "/api", "/icon", "/logo", "/auth/callback"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (IGNORED_PREFIXES.some(p => pathname.startsWith(p))) {
+  if (IGNORED_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
+  const isPublic = PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
   const response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
@@ -29,10 +114,10 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const isPublic = PUBLIC_ROUTES.some(r => pathname.startsWith(r));
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Not authenticated → /auth with next param
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
@@ -40,8 +125,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Authenticated → check workspace once for all routing decisions
-  if (user) {
+  // Laisse /auth/finalize tranquille, même si user existe déjà.
+  if (user && pathname.startsWith("/auth") && !pathname.startsWith("/auth/finalize")) {
     const { data: workspace } = await supabase
       .from("workspaces")
       .select("id")
@@ -49,22 +134,26 @@ export async function middleware(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    // On auth page → redirect to onboarding or dashboard (unless there's an error to display)
-    if (isPublic && !request.nextUrl.searchParams.get("error")) {
-      const url = request.nextUrl.clone();
-      url.pathname = workspace ? "/dashboard" : "/onboarding";
-      url.searchParams.delete("next");
-      return NextResponse.redirect(url);
-    }
+    const url = request.nextUrl.clone();
+    url.pathname = workspace ? "/dashboard" : "/onboarding";
+    url.searchParams.delete("next");
+    return NextResponse.redirect(url);
+  }
 
-    // No workspace + not already on onboarding → force onboarding
+  if (user && !isPublic) {
+    const { data: workspace } = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+
     if (!workspace && pathname !== "/onboarding") {
       const url = request.nextUrl.clone();
       url.pathname = "/onboarding";
       return NextResponse.redirect(url);
     }
 
-    // Has workspace but landed on onboarding → skip to dashboard
     if (workspace && pathname === "/onboarding") {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";

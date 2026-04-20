@@ -3,20 +3,28 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
-  const code      = searchParams.get("code");
+  const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
-  const type      = searchParams.get("type");
-  const rawNext   = searchParams.get("next") ?? "/dashboard";
+  const type = searchParams.get("type");
+  const rawNext = searchParams.get("next") ?? "/dashboard";
   let decoded: string;
-  try { decoded = decodeURIComponent(rawNext); } catch { decoded = "/dashboard"; }
-  const next = decoded.startsWith("/") && !decoded.startsWith("//") && decoded !== "/" ? decoded : "/dashboard";
+  try {
+    decoded = decodeURIComponent(rawNext);
+  } catch {
+    decoded = "/dashboard";
+  }
+  const next =
+    decoded.startsWith("/") && !decoded.startsWith("//") && decoded !== "/"
+      ? decoded
+      : "/dashboard";
 
   if (!code && !tokenHash) {
     return NextResponse.redirect(`${origin}/auth?error=missing_code`);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pendingCookies: Array<{ name: string; value: string; options: any }> = [];
+  const pendingCookies: Array<{ name: string; value: string; options: any }> =
+    [];
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,7 +45,13 @@ export async function GET(request: NextRequest) {
   if (tokenHash && type) {
     ({ error, data } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
-      type: type as "signup" | "email" | "recovery" | "invite" | "magiclink" | "email_change",
+      type: type as
+        | "signup"
+        | "email"
+        | "recovery"
+        | "invite"
+        | "magiclink"
+        | "email_change",
     }));
   } else {
     ({ error, data } = await supabase.auth.exchangeCodeForSession(code!));
@@ -75,23 +89,56 @@ export async function GET(request: NextRequest) {
           "My";
         const { data: workspace } = await supabase
           .from("workspaces")
-          .insert({ name: `${userName}'s Workspace`, user_id: data.user.id, org_id: orgId })
+          .insert({
+            name: `${userName}'s Workspace`,
+            user_id: data.user.id,
+            org_id: orgId,
+          })
           .select("id")
           .single();
 
         if (workspace) {
           const { data: project } = await supabase
             .from("projects")
-            .insert({ name: "Personal", workspace_id: workspace.id, color: "#3b82f6", org_id: orgId })
+            .insert({
+              name: "Personal",
+              workspace_id: workspace.id,
+              color: "#3b82f6",
+              org_id: orgId,
+            })
             .select("id")
             .single();
 
           if (project) {
             await supabase.from("statuses").insert([
-              { name: "Backlog",     color: "#6b7280", position: 0, project_id: project.id, org_id: orgId },
-              { name: "To Do",       color: "#6b7280", position: 1, project_id: project.id, org_id: orgId },
-              { name: "In Progress", color: "#f59e0b", position: 2, project_id: project.id, org_id: orgId },
-              { name: "Done",        color: "#3b82f6", position: 3, project_id: project.id, org_id: orgId },
+              {
+                name: "Backlog",
+                color: "#6b7280",
+                position: 0,
+                project_id: project.id,
+                org_id: orgId,
+              },
+              {
+                name: "To Do",
+                color: "#6b7280",
+                position: 1,
+                project_id: project.id,
+                org_id: orgId,
+              },
+              {
+                name: "In Progress",
+                color: "#f59e0b",
+                position: 2,
+                project_id: project.id,
+                org_id: orgId,
+              },
+              {
+                name: "Done",
+                color: "#3b82f6",
+                position: 3,
+                project_id: project.id,
+                org_id: orgId,
+              },
             ]);
           }
         }
@@ -101,10 +148,14 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const response = NextResponse.redirect(`${origin}${redirectPath}`);
+  const response = NextResponse.redirect(
+    `${origin}/auth/finalize?target=${encodeURIComponent(redirectPath)}`,
+  );
   response.headers.set("Cache-Control", "no-store");
+
   pendingCookies.forEach(({ name, value, options }) => {
     response.cookies.set(name, value, options);
   });
+
   return response;
 }
