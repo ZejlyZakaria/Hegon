@@ -198,23 +198,6 @@ function AuthPageInner() {
     if (urlError === "missing_code") setError("Invalid or expired link.");
   }, [urlError]);
 
-  // If the user lands on /auth with an existing session (e.g. after OAuth callback
-  // or email confirmation link), navigate them to the right destination.
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session && !urlError) {
-        const { data: workspace } = await supabase
-          .from("workspaces")
-          .select("id")
-          .eq("user_id", session.user.id)
-          .limit(1)
-          .maybeSingle();
-        window.location.replace(workspace ? "/dashboard" : "/onboarding");
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [supabase, urlError]);
-
 
   const clear = () => { setError(""); setSuccess(""); setEmail(""); setPassword(""); setName(""); };
 

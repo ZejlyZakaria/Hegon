@@ -100,19 +100,9 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Return 200 + meta-refresh instead of 302 redirect.
-  // Browsers store Set-Cookie headers on 200 responses before navigating,
-  // whereas some CDN/proxy setups (incl. Vercel) can strip Set-Cookie on 302.
-  const safeUrl = `${origin}${redirectPath}`;
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${safeUrl}"></head><body></body></html>`;
-  const response = new NextResponse(html, {
-    status: 200,
-    headers: { "Content-Type": "text/html; charset=utf-8" },
-  });
-
+  const response = NextResponse.redirect(`${origin}${redirectPath}`);
   pendingCookies.forEach(({ name, value, options }) => {
     response.cookies.set(name, value, options);
   });
-
   return response;
 }
