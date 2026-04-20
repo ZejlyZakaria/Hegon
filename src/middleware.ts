@@ -84,7 +84,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_ROUTES = ["/auth", "/auth/finalize"];
 const IGNORED_PREFIXES = [
   "/_next",
   "/favicon",
@@ -105,7 +104,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const isPublic = PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
+  const isPublic =
+    pathname === "/auth" ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname === "/favicon.ico";
   const response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
