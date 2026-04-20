@@ -157,6 +157,18 @@ export async function middleware(request: NextRequest) {
 
   // All other app routes are protected
   if (!user) {
+    // If Supabase missed the allowlist and sent an OAuth code to the wrong page,
+    // forward directly to finalize instead of flashing the login form.
+    const code = request.nextUrl.searchParams.get("code");
+    const tokenHash = request.nextUrl.searchParams.get("token_hash");
+    if (code || tokenHash) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/finalize";
+      url.searchParams.set("target", "/dashboard");
+      url.searchParams.delete("next");
+      return NextResponse.redirect(url);
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
     url.searchParams.set("next", pathname);

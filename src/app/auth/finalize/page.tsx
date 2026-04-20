@@ -59,21 +59,13 @@ function AuthFinalizeContent() {
     void finalizeAuth();
   }, [router, searchParams]);
 
-  return (
-    <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
-      <div className="text-sm text-zinc-400 tracking-wide">Finalizing sign in...</div>
-    </div>
-  );
+  return <div className="min-h-screen bg-[#09090b]" />;
 }
 
 export default function AuthFinalizePage() {
   return (
     <Suspense
-      fallback={
-        <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
-          <div className="text-sm text-zinc-400 tracking-wide">Finalizing sign in...</div>
-        </div>
-      }
+      fallback={<div className="min-h-screen bg-[#09090b]" />}
     >
       <AuthFinalizeContent />
     </Suspense>

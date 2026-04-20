@@ -293,6 +293,15 @@ function AuthPageInner() {
     if (urlError === "missing_code") setError("Invalid or expired link.");
   }, [urlError]);
 
+  // Reset Google button if user hits browser back from the OAuth provider page (bfcache restore)
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setGoogleLoading(false);
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   // Fallback: if Supabase redirected to the site URL instead of /auth/finalize
   // (allowlist miss), the browser client auto-detects the session from URL params.
   // We listen and forward to finalize so the middleware timing issue is avoided.
