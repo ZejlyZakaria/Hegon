@@ -14,11 +14,7 @@ export default function AuthFinalizePage() {
     ran.current = true;
 
     const supabase = createClient();
-    const rawTarget = searchParams.get("target") ?? "/dashboard";
-    const target =
-      rawTarget.startsWith("/") && !rawTarget.startsWith("//")
-        ? rawTarget
-        : "/dashboard";
+   
 
     const run = async () => {
       for (let i = 0; i < 10; i++) {
