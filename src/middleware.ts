@@ -81,21 +81,29 @@
 //   ],
 // };
 
+
+
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Always allow auth pages and static/internal routes first
+  // Static / internal assets
   if (
-    pathname === "/auth" ||
-    pathname.startsWith("/auth/") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname === "/favicon.ico" ||
     pathname.startsWith("/icon") ||
     pathname.startsWith("/logo")
+  ) {
+    return NextResponse.next();
+  }
+
+  // Callback + finalize must always pass through
+  if (
+    pathname.startsWith("/auth/callback") ||
+    pathname.startsWith("/auth/finalize")
   ) {
     return NextResponse.next();
   }
@@ -119,13 +127,35 @@ export async function middleware(request: NextRequest) {
           });
         },
       },
-    },
+    }
   );
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Auth page:
+  // - no user => allow
+  // - user => redirect away
+  if (pathname === "/auth") {
+    if (!user) {
+      return NextResponse.next();
+    }
+
+    const { data: workspace } = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+
+    const url = request.nextUrl.clone();
+    url.pathname = workspace ? "/dashboard" : "/onboarding";
+    url.searchParams.delete("next");
+    return NextResponse.redirect(url);
+  }
+
+  // All other app routes are protected
   if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
