@@ -1,46 +1,37 @@
 "use client";
 
-import { useEffect } from "react";
 import { useJournalToday, useCreateEntry, useUpdateEntry } from "../hooks/useJournalToday";
 import { MoodPicker } from "./MoodPicker";
 import { JournalEditor } from "./JournalEditor";
 import type { JournalMood } from "../types";
+
+// Timezone-safe: use local date, not UTC
+function getTodayLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export function JournalTodayView() {
   const { data: entry, isLoading } = useJournalToday();
   const createEntry = useCreateEntry();
   const updateEntry = useUpdateEntry();
 
-  const today = new Date().toISOString().split("T")[0];
-
-  // Create entry if it doesn't exist
-  useEffect(() => {
-    if (!isLoading && !entry) {
-      createEntry.mutate({
-        entry_date: today,
-        content: "",
-        mood: null,
-        tags: [],
-      });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, entry, today]);
-
+  // Create or update based on whether an entry exists yet
   const handleMoodChange = (mood: JournalMood) => {
-    if (!entry) return;
-    updateEntry.mutate({
-      id: entry.id,
-      mood,
-    });
+    if (entry) {
+      updateEntry.mutate({ id: entry.id, mood });
+    } else {
+      createEntry.mutate({ entry_date: getTodayLocal(), content: "", mood, tags: [] });
+    }
   };
 
   const handleSave = (data: { content: string; tags: string[] }) => {
-    if (!entry) return;
-    updateEntry.mutate({
-      id: entry.id,
-      content: data.content,
-      tags: data.tags,
-    });
+    if (entry) {
+      updateEntry.mutate({ id: entry.id, content: data.content, tags: data.tags });
+    } else if (data.content.trim()) {
+      // Only create if there's actual content — avoid empty ghost entries
+      createEntry.mutate({ entry_date: getTodayLocal(), content: data.content, mood: null, tags: data.tags });
+    }
   };
 
   if (isLoading) {
@@ -53,7 +44,7 @@ export function JournalTodayView() {
 
   return (
     <div className="flex flex-col h-full gap-6">
-      {/* Mood picker at top */}
+      {/* Mood picker */}
       <div>
         <MoodPicker
           value={entry?.mood ?? null}
@@ -61,7 +52,7 @@ export function JournalTodayView() {
         />
       </div>
 
-      {/* Editor - takes remaining height */}
+      {/* Editor */}
       <div className="flex-1 min-h-0">
         <JournalEditor
           key={entry?.id ?? "new"}
@@ -71,7 +62,7 @@ export function JournalTodayView() {
         />
       </div>
 
-      {/* Today's context pills - cross-module read-only */}
+      {/* Today's context pills */}
       <div className="pb-2">
         <TodayContext />
       </div>
@@ -79,8 +70,7 @@ export function JournalTodayView() {
   );
 }
 
-// Cross-module context pills — read-only, auto-generated from other modules
-// Will be wired to real data in Phase 3 (Supabase Realtime + cross-module queries)
+// Will be wired to real data in Phase 3 (cross-module queries)
 function TodayContext() {
   const pills = [
     { label: "3 habits ✓" },
@@ -93,10 +83,7 @@ function TodayContext() {
       <p className="text-xs text-text-tertiary">Today&apos;s context</p>
       <div className="flex flex-wrap gap-2">
         {pills.map((pill, i) => (
-          <span
-            key={i}
-            className="px-2.5 py-1 text-xs bg-surface-2 text-text-secondary rounded-md"
-          >
+          <span key={i} className="px-2.5 py-1 text-xs bg-surface-2 text-text-secondary rounded-md">
             {pill.label}
           </span>
         ))}
