@@ -23,6 +23,7 @@ import {
   ChevronUp,
   Moon,
   Sun,
+  Repeat2,
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { useTheme } from "next-themes";
@@ -58,13 +59,13 @@ const NAV: NavGroup[] = [
         label: "Goals",
         href: "/life/goals",
         icon: <Target size={15} />,
-        accent: "#18ad9d",
+        accent: "#22c55e",
       },
       {
         key: "habits",
         label: "Habits",
         href: "/life/habits",
-        icon: <Dumbbell size={15} />,
+        icon: <Repeat2 size={15} />,
         accent: "#f43f5e",
       },
       {
@@ -72,8 +73,7 @@ const NAV: NavGroup[] = [
         label: "Journal",
         href: "/life/journal",
         icon: <BookOpen size={15} />,
-        accent: "#eab308",
-        comingSoon: true,
+        accent: "#f97316",
       },
     ],
   },
@@ -199,8 +199,8 @@ const SECTION_COLORS: Record<
     isGlass: true,
   },
   "/life/goals": {
-    from: "rgba(24,173,157,0.08)",
-    glow: "#18ad9d",
+    from: "rgba(34,197,94,0.08)",
+    glow: "#22c55e",
     isGlass: false,
   },
   "/life/habits": {
@@ -209,8 +209,8 @@ const SECTION_COLORS: Record<
     isGlass: false,
   },
   "/life/journal": {
-    from: "rgba(234,179,8,0.08)",
-    glow: "#eab308",
+    from: "rgba(249,115,22,0.08)",
+    glow: "#f97316",
     isGlass: false,
   },
   "/pro/jobhunt": {

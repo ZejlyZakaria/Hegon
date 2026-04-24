@@ -83,10 +83,7 @@ function WeeklyRhythm({
         borderColor: "var(--color-border-subtle)",
       }}
     >
-      <p
-        className="mb-2.5 text-xs font-semibold"
-        style={{ color: "var(--color-text-primary)" }}
-      >
+      <p className="mb-2 text-xs font-semibold text-text-secondary">
         Weekly Rhythm
       </p>
 
@@ -208,10 +205,7 @@ function QuickStats({
         borderColor: "var(--color-border-subtle)",
       }}
     >
-      <p
-        className="mb-2 text-xs font-semibold"
-        style={{ color: "var(--color-text-primary)" }}
-      >
+      <p className="mb-2 text-xs font-semibold text-text-secondary">
         Quick Stats
       </p>
 
@@ -331,10 +325,7 @@ function CompactHeatmap() {
         borderColor: "var(--color-border-subtle)",
       }}
     >
-      <p
-        className="mb-2 text-xs font-semibold"
-        style={{ color: "var(--color-text-primary)" }}
-      >
+      <p className="mb-2 text-xs font-semibold text-text-secondary">
         All Habits Heatmap
       </p>
 

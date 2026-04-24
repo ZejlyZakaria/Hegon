@@ -14,7 +14,7 @@ import {
 import { GoalCard } from "./GoalCard";
 import { GoalModal } from "./GoalModal";
 import { GoalsEmptyState } from "./GoalsEmptyState";
-import { GoalFocusPanel } from "./GoalFocusPanel";
+import { GoalRightPanel } from "./GoalFocusPanel";
 import { useGoals } from "../hooks/useGoals";
 import type { Goal, GoalSort, GoalCategory } from "../types";
 
@@ -208,7 +208,7 @@ export function GoalsPage() {
 
             {/* Right panel — xl+ only, sticky */}
             <div className="hidden xl:block w-72 shrink-0 sticky top-20">
-              <GoalFocusPanel
+              <GoalRightPanel
                 goals={goals}
                 activeCategory={activeCategory}
                 onCategoryClick={handleCompassClick}

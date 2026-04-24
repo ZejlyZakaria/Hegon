@@ -12,7 +12,7 @@ interface Props {
   onCategoryClick: (cat: GoalCategory | null) => void;
 }
 
-export function GoalFocusPanel({
+export function GoalRightPanel({
   goals,
   activeCategory,
   onCategoryClick,
@@ -47,10 +47,7 @@ export function GoalFocusPanel({
           onClick={() => router.push(`/life/goals/${focusGoal.id}`)}
           className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-3 cursor-pointer transition-colors duration-100 hover:bg-[#141416]"
         >
-          <h3
-            className="mb-2.5 text-xs font-semibold"
-            style={{ color: "var(--color-text-primary)" }}
-          >
+          <h3 className="mb-2 text-xs font-semibold text-text-secondary">
             Focus
           </h3>
           <p className="text-xs font-medium mb-3 line-clamp-2 leading-snug" style={{ color: "var(--color-text-secondary)" }}>
@@ -84,10 +81,7 @@ export function GoalFocusPanel({
 
       {/* Quick Stats */}
       <div className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-3">
-        <h3
-          className="mb-2.5 text-xs font-semibold"
-          style={{ color: "var(--color-text-primary)" }}
-        >
+        <h3 className="mb-2 text-xs font-semibold text-text-secondary">
           Stats
         </h3>
         <div className="space-y-2.5">
