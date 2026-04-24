@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useJournalStreak, useJournalCalendar } from "../hooks/useJournalCalendar";
+import { toDateStr, getCurrentWeekDays, getMonthGrid } from "../lib/journal-utils";
 import { MOOD_CONFIG } from "../types";
 import type { JournalMood } from "../types";
 
@@ -11,10 +12,6 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
-
-function toDateStr(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 export function JournalRightPanel() {
   const today = new Date();
@@ -39,19 +36,10 @@ export function JournalRightPanel() {
   streakCalendarData?.forEach((day) => streakMoodMap.set(day.entry_date, day.mood));
 
   // Current week Mon → Sun
-  const dayOfWeek = today.getDay(); // 0=Sun
-  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - daysSinceMonday + i);
-    return d;
-  });
+  const weekDays = getCurrentWeekDays(today);
 
   // Calendar grid
-  const firstDay = new Date(currentYear, currentMonth - 1, 1);
-  const lastDay = new Date(currentYear, currentMonth, 0);
-  const daysInMonth = lastDay.getDate();
-  const startDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+  const { daysInMonth, startDayOfWeek } = getMonthGrid(currentYear, currentMonth);
 
   const goToPrevMonth = () => {
     if (currentMonth === 1) { setCurrentMonth(12); setCurrentYear(currentYear - 1); }

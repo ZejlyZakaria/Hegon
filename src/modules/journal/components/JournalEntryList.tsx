@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Search, X } from "lucide-react";
 import { useJournalEntries } from "../hooks/useJournalEntry";
 import { useDebounce } from "@/shared/hooks/useDebounce";
+import { formatEntryDate, getPreview } from "../lib/journal-utils";
 import { MOOD_CONFIG } from "../types";
 import type { JournalMood, JournalEntry } from "../types";
 
@@ -30,24 +31,7 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
     mood: moodFilter !== 'all' ? moodFilter : undefined,
   });
 
-  const formatDate = (dateStr: string) => {
-    // Parse as local date to avoid UTC timezone shift
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    return new Intl.DateTimeFormat('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    }).format(date);
-  };
 
-  const getPreview = (content: string) => {
-    const firstLine = content.split('\n')[0];
-    return firstLine.length > 100 
-      ? firstLine.slice(0, 100) + '...' 
-      : firstLine;
-  };
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -150,7 +134,7 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
                     <div className="flex-1 min-w-0">
                       {/* Date */}
                       <h3 className="text-sm font-medium text-text-primary mb-1">
-                        {entry.title || formatDate(entry.entry_date)}
+                        {entry.title || formatEntryDate(entry.entry_date)}
                       </h3>
 
                       {/* Preview */}
