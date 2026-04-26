@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Input } from "@/shared/components/ui/input";
 import {
   Search,
   Coffee,
@@ -44,18 +45,13 @@ function HabitsTopbar({
           size={15}
           className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71717a]"
         />
-        <input
+        <Input
+          variant="tasks"
           type="text"
           placeholder="Search habits..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className={cn(
-            "h-9 w-full rounded-lg pl-9 pr-3",
-            "border border-white/4 bg-[#141416]/50",
-            "text-sm text-[#e2e2e6] placeholder:text-[#71717a]",
-            "focus:border-accent-habits/30 focus:outline-none focus:ring-1 focus:ring-accent-habits/50",
-            "transition-all"
-          )}
+          className="pl-9 bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
         />
       </div>
     </div>

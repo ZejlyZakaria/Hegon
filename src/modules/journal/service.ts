@@ -8,6 +8,11 @@ import type {
   UpdateJournalEntryInput,
 } from "./types";
 
+// Local-time date string — avoids UTC shift for users in non-UTC timezones
+function toLocalDate(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 // =====================================================
 // READ
 // =====================================================
@@ -15,7 +20,7 @@ import type {
 export async function getTodayEntry(): Promise<JournalEntry | null> {
   const supabase = createClient();
   const orgId = await getCurrentOrgId();
-  const today = new Date().toISOString().split("T")[0];
+  const today = toLocalDate();
 
   const { data, error } = await supabase
     .from("journal_entries")
@@ -63,9 +68,8 @@ export async function getEntries(opts?: {
   }
 
   if (opts?.search) {
-    query = query.or(
-      `title.ilike.%${opts.search}%,content.ilike.%${opts.search}%`
-    );
+    const safe = opts.search.replace(/[%,]/g, "\\$&");
+    query = query.or(`title.ilike.%${safe}%,content.ilike.%${safe}%`);
   }
 
   if (opts?.limit) {
@@ -107,43 +111,48 @@ export async function getStreak(): Promise<JournalStreak> {
   const supabase = createClient();
   const orgId = await getCurrentOrgId();
 
-  const from = new Date();
-  from.setFullYear(from.getFullYear() - 1);
+  const fromDate = new Date();
+  fromDate.setFullYear(fromDate.getFullYear() - 1);
 
   const { data, error } = await supabase
     .from("journal_entries")
     .select("entry_date")
     .eq("org_id", orgId)
-    .gte("entry_date", from.toISOString().split("T")[0])
+    .gte("entry_date", toLocalDate(fromDate))
     .order("entry_date", { ascending: false });
 
   if (error) throw error;
 
   const dates = new Set((data ?? []).map((r) => r.entry_date));
 
-  const today = new Date();
+  const todayStr = toLocalDate();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = toLocalDate(yesterday);
+
+  // Current streak: walk backward from today if has entry, else from yesterday
+  const startOffset = dates.has(todayStr) ? 0 : dates.has(yesterdayStr) ? 1 : -1;
   let current = 0;
+  if (startOffset >= 0) {
+    for (let i = startOffset; i < 365; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      if (dates.has(toLocalDate(d))) current++;
+      else break;
+    }
+  }
+
+  // Best streak: full scan over 365 days
   let best = 0;
   let consecutive = 0;
-
-  // Walk backwards day by day for up to 365 days
   for (let i = 0; i < 365; i++) {
-    const d = new Date(today);
+    const d = new Date();
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().split("T")[0];
-
-    if (dates.has(key)) {
+    if (dates.has(toLocalDate(d))) {
       consecutive++;
-      if (i === 0 || current > 0) current = consecutive;
       best = Math.max(best, consecutive);
     } else {
-      if (i === 0) {
-        // No entry today — streak is still valid from yesterday
-        consecutive = 0;
-      } else {
-        if (current === 0) current = 0;
-        consecutive = 0;
-      }
+      consecutive = 0;
     }
   }
 

@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MoreHorizontal, ExternalLink } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { Slider } from "@/shared/components/ui/slider";
 import { cn } from "@/shared/utils/utils";
-import { Button } from "@/shared/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -20,10 +19,11 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { useGoal } from "../hooks/useGoal";
-import { useUpdateGoal, useDeleteGoal } from "../hooks/useGoals";
+import { useUpdateGoal } from "../hooks/useGoals";
 import { useLinkedTasks, useUnlinkTask } from "../hooks/useLinkedTasks";
 import { MilestoneList } from "./MilestoneList";
 import { GoalModal } from "./GoalModal";
+import { DeleteGoalModal } from "./DeleteGoalModal";
 import * as GoalService from "../service";
 import { useQueryClient } from "@tanstack/react-query";
 import { GOAL_KEYS } from "../hooks/query-keys";
@@ -50,11 +50,10 @@ export function GoalDetailPage({ id }: Props) {
   const { data: linkedTasks = [] } = useLinkedTasks(id);
 
   const updateGoal = useUpdateGoal();
-  const deleteGoal = useDeleteGoal();
   const unlinkTask = useUnlinkTask(id);
 
-  const [isEditOpen,    setIsEditOpen]    = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isEditOpen,     setIsEditOpen]     = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [localProgress, setLocalProgress] = useState<number | null>(null);
   const [localMode,     setLocalMode]     = useState<"manual" | "auto" | null>(null);
 
@@ -97,11 +96,6 @@ export function GoalDetailPage({ id }: Props) {
         queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
       });
     }
-  }
-
-  async function handleDelete() {
-    await deleteGoal.mutateAsync(id);
-    router.push("/life/goals");
   }
 
   async function handleStatusChange(status: GoalStatus) {
@@ -160,12 +154,14 @@ export function GoalDetailPage({ id }: Props) {
                       onClick={() => setIsEditOpen(true)}
                       className="cursor-pointer text-[#a0a0a8] focus:text-[#e2e2e6] focus:bg-[#141416]"
                     >
+                      <Pencil className="w-3.5 h-3.5 mr-2 shrink-0" />
                       Edit goal
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => setConfirmDelete(true)}
+                      onClick={() => setDeleteModalOpen(true)}
                       className="cursor-pointer text-red-400 focus:text-red-300 focus:bg-red-500/10"
                     >
+                      <Trash2 className="w-3.5 h-3.5 mr-2 shrink-0" />
                       Delete goal
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -381,31 +377,13 @@ export function GoalDetailPage({ id }: Props) {
       {/* Edit modal */}
       <GoalModal open={isEditOpen} onClose={() => setIsEditOpen(false)} goal={goal} />
 
-      {/* Delete confirm */}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmDelete(false)} />
-          <div className="relative w-full max-w-sm rounded-xl border border-white/11 bg-[#1a1a1d] p-5 shadow-2xl">
-            <h3 className="mb-2 text-sm font-semibold text-[#e2e2e6]">Delete goal?</h3>
-            <p className="mb-5 text-xs text-[#a0a0a8]">
-              This will delete the goal and all its milestones. Tasks linked to it will not be deleted.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setConfirmDelete(false)}
-                className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
-              >
-                Cancel
-              </Button>
-              <Button type="button" variant="destructive" onClick={handleDelete} className="h-8 px-3">
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteGoalModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        goalId={id}
+        goalTitle={goal.title}
+        onDeleted={() => router.push("/life/goals")}
+      />
     </div>
   );
 }

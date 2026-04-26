@@ -57,9 +57,13 @@ export function useUpdateEntry() {
 export function useDeleteEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => JournalService.deleteEntry(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: JOURNAL_KEYS.all });
+    mutationFn: ({ id }: { id: string; entryDate: string }) => JournalService.deleteEntry(id),
+    onSuccess: (_, { entryDate }) => {
+      const d = new Date(entryDate + "T00:00:00");
+      queryClient.invalidateQueries({ queryKey: JOURNAL_KEYS.today() });
+      queryClient.invalidateQueries({ queryKey: JOURNAL_KEYS.list() });
+      queryClient.invalidateQueries({ queryKey: JOURNAL_KEYS.streak() });
+      queryClient.invalidateQueries({ queryKey: JOURNAL_KEYS.calendar(d.getFullYear(), d.getMonth() + 1) });
       toast.success("Entry deleted.");
     },
     onError: () => {

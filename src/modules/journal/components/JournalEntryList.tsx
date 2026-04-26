@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { Search, X } from "lucide-react";
+import { Input } from "@/shared/components/ui/input";
 import { useJournalEntries } from "../hooks/useJournalEntry";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { formatEntryDate, getPreview } from "../lib/journal-utils";
 import { MOOD_CONFIG } from "../types";
+import { JournalEmptyState } from "./JournalEmptyState";
 import type { JournalMood, JournalEntry } from "../types";
 
 interface JournalEntryListProps {
@@ -40,12 +42,13 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
         {/* Search bar */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-          <input
+          <Input
+            variant="tasks"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search entries..."
-            className="w-full pl-10 pr-10 py-2 bg-surface-2 text-text-primary placeholder:text-text-tertiary rounded-md outline-none border border-border-subtle focus:border-border-focus transition-colors"
+            className="pl-10 pr-10 bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
           />
           {search && (
             <button
@@ -83,26 +86,27 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
       {/* Entries list */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <span className="text-text-tertiary">Loading...</span>
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-24 bg-surface-1 rounded-lg border border-border-subtle animate-pulse" />
+            ))}
           </div>
         ) : entries?.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 gap-2">
-            <span className="text-text-tertiary">No entries found</span>
-            {(search || moodFilter !== 'all') && (
+          !search && moodFilter === 'all' ? (
+            <JournalEmptyState />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-32 gap-2">
+              <span className="text-text-tertiary">No entries found</span>
               <button
                 type="button"
-                onClick={() => {
-                  setSearch("");
-                  setMoodFilter('all');
-                }}
-                className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+                onClick={() => { setSearch(""); setMoodFilter('all'); }}
+                className="text-sm transition-colors"
                 style={{ color: '#f97316' }}
               >
                 Clear filters
               </button>
-            )}
-          </div>
+            </div>
+          )
         ) : (
           <div className="flex flex-col gap-2">
             {entries?.map((entry) => {
@@ -114,14 +118,7 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
                   key={entry.id}
                   type="button"
                   onClick={() => onSelectEntry(entry)}
-                  className="w-full text-left p-4 rounded-lg border border-border-subtle transition-colors"
-                  style={{ backgroundColor: "var(--color-surface-1)" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "var(--color-surface-1)";
-                  }}
+                  className="w-full text-left p-4 rounded-lg border border-border-subtle bg-surface-1 hover:bg-surface-2 transition-colors duration-100"
                 >
                   <div className="flex items-start gap-3">
                     {/* Mood dot */}

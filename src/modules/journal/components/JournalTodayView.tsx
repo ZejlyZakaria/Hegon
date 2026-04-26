@@ -36,8 +36,9 @@ export function JournalTodayView() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-text-tertiary">Loading...</div>
+      <div className="flex flex-col h-full gap-6">
+        <div className="h-9 w-72 bg-surface-1 rounded-lg animate-pulse" />
+        <div className="flex-1 bg-surface-1 rounded-lg animate-pulse" />
       </div>
     );
   }
@@ -70,24 +71,14 @@ export function JournalTodayView() {
   );
 }
 
-// Will be wired to real data in Phase 3 (cross-module queries)
+// Placeholder until Phase 3 wires real cross-module data
 function TodayContext() {
-  const pills = [
-    { label: "3 habits ✓" },
-    { label: "2 tasks ✓" },
-    { label: "Read 10 books — 40%" },
-  ];
-
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-text-tertiary">Today&apos;s context</p>
-      <div className="flex flex-wrap gap-2">
-        {pills.map((pill, i) => (
-          <span key={i} className="px-2.5 py-1 text-xs bg-surface-2 text-text-secondary rounded-md">
-            {pill.label}
-          </span>
-        ))}
-      </div>
+      <p className="text-xs text-text-disabled italic">
+        Habits, tasks &amp; reading progress — coming in Phase 3.
+      </p>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -102,9 +103,10 @@ export function GoalsPage() {
       <div className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b border-white/4 bg-[#09090b]/80 px-4 backdrop-blur-sm shrink-0">
         <div className="relative flex-1 max-w-xs">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71717a]" />
-          <input
-            className="w-full h-8 pl-8 pr-3 rounded-md bg-[#141416] border border-white/[0.07] text-sm text-[#e2e2e6] placeholder:text-[#71717a] focus:outline-none focus:border-white/20 transition-colors"
+          <Input
+            variant="tasks"
             placeholder="Search goals…"
+            className="h-8 pl-8 bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
           />
         </div>
       </div>

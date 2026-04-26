@@ -22,28 +22,14 @@ export function MoodPicker({ value, onChange }: MoodPickerProps) {
             key={mood}
             type="button"
             onClick={() => onChange(mood)}
-            className="relative px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-            style={
+            className={`relative px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-100 ${
               isSelected
-                ? { backgroundColor: "var(--color-surface-2)", color: config.color }
-                : undefined
-            }
-            onMouseEnter={(e) => {
-              if (!isSelected) {
-                e.currentTarget.style.backgroundColor = "var(--color-surface-1)";
-                e.currentTarget.style.color = "var(--color-text-secondary)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isSelected) {
-                e.currentTarget.style.backgroundColor = "";
-                e.currentTarget.style.color = "";
-              }
-            }}
+                ? ""
+                : "text-text-tertiary hover:text-text-secondary hover:bg-surface-1"
+            }`}
+            style={isSelected ? { backgroundColor: "var(--color-surface-2)", color: config.color } : undefined}
           >
-            <span className={!isSelected ? "text-text-tertiary" : ""}>
-              {config.label}
-            </span>
+            {config.label}
             {isSelected && (
               <span
                 className="absolute bottom-0 left-2 right-2 h-0.5 rounded-t-sm"

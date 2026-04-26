@@ -65,19 +65,9 @@ export function GoalCard({ goal }: Props) {
     <div
       onClick={() => router.push(`/life/goals/${goal.id}`)}
       className={cn(
-        "group cursor-pointer rounded-lg border p-3 transition-colors duration-100",
+        "group cursor-pointer rounded-lg border border-border-subtle p-3 bg-surface-1 hover:bg-surface-2 transition-colors duration-100",
         isCompleted && "opacity-50"
       )}
-      style={{
-        backgroundColor: "var(--color-surface-1)",
-        borderColor: "var(--color-border-subtle)",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "var(--color-surface-1)";
-      }}
     >
       <div className="grid grid-cols-[minmax(0,1fr)_240px_120px_44px] items-center gap-4">
         <div className="min-w-0">

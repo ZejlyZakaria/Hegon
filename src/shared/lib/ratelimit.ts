@@ -26,3 +26,10 @@ export const tennisRatelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(20, "1 m"),
   prefix: "rl:tennis",
 });
+
+// 10 requests per minute per IP — Google Books quota is 1000/day
+export const booksRatelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, "1 m"),
+  prefix: "rl:books",
+});

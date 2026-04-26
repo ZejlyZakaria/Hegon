@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import type { JournalEntry } from "../types";
@@ -24,16 +24,24 @@ export function JournalEditor({
   const savedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  // Track initial values to avoid a redundant save on mount
+  const initialRef = useRef({ content: entry?.content ?? "", tags: entry?.tags ?? [] });
 
-  // Auto-save with 2s debounce
+  // Auto-save with 2s debounce — only fires if content or tags actually changed
   // Note: use key={entry?.id} on this component at the parent level to reset state when entry changes
   useEffect(() => {
     if (!entry) return;
+
+    const unchanged =
+      content === initialRef.current.content &&
+      JSON.stringify(tags) === JSON.stringify(initialRef.current.tags);
+    if (unchanged) return;
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
     saveTimeoutRef.current = setTimeout(() => {
       onSaveRef.current({ content, tags });
+      initialRef.current = { content, tags };
 
       setShowSaved(true);
       if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
@@ -61,19 +69,20 @@ export function JournalEditor({
     : content.trim().split(/\s+/).length;
 
   // Handle tag input
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleTagKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim()) {
       e.preventDefault();
-      if (!tags.includes(tagInput.trim())) {
-        setTags([...tags, tagInput.trim()]);
+      const trimmed = tagInput.trim().slice(0, 30);
+      if (!tags.includes(trimmed) && tags.length < 10) {
+        setTags((prev) => [...prev, trimmed]);
       }
       setTagInput("");
     }
-  };
+  }, [tagInput, tags]);
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(t => t !== tagToRemove));
-  };
+  const removeTag = useCallback((tagToRemove: string) => {
+    setTags((prev) => prev.filter(t => t !== tagToRemove));
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-surface-1 rounded-lg">
@@ -118,15 +127,18 @@ export function JournalEditor({
             ))}
           </AnimatePresence>
 
-          {/* Tag input */}
-          <input
-            type="text"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={handleTagKeyDown}
-            placeholder="Add tag..."
-            className="bg-transparent text-text-secondary placeholder:text-text-tertiary outline-none text-sm w-32"
-          />
+          {/* Tag input — max 10 tags, 30 chars each */}
+          {tags.length < 10 && (
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleTagKeyDown}
+              placeholder="Add tag..."
+              maxLength={30}
+              className="bg-transparent text-text-secondary placeholder:text-text-tertiary outline-none text-sm w-32"
+            />
+          )}
         </div>
 
         {/* Right side: Word count + Saved indicator */}

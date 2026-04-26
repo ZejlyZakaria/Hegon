@@ -10,6 +10,7 @@ import {
   Trophy,
   Tv,
   BookOpen,
+  Library,
   Plane,
   Dumbbell,
   CheckSquare,
@@ -75,6 +76,13 @@ const NAV: NavGroup[] = [
         icon: <BookOpen size={15} />,
         accent: "#f97316",
       },
+      {
+        key: "books",
+        label: "Books",
+        href: "/life/books",
+        icon: <Library size={15} />,
+        accent: "#0ea5e9",
+      },
     ],
   },
   {
@@ -95,14 +103,6 @@ const NAV: NavGroup[] = [
         activePrefix: "/perso/watching",
         icon: <Tv size={15} />,
         accent: "#8b5cf6",
-      },
-      {
-        key: "books",
-        label: "Books",
-        href: "/perso/books",
-        icon: <BookOpen size={15} />,
-        accent: "#f59e0b",
-        comingSoon: true,
       },
       {
         key: "travel",
@@ -178,9 +178,9 @@ const SECTION_COLORS: Record<
     glow: "#8b5cf6",
     isGlass: false,
   },
-  "/perso/books": {
-    from: "rgba(245,158,11,0.08)",
-    glow: "#f59e0b",
+  "/life/books": {
+    from: "rgba(14,165,233,0.08)",
+    glow: "#0ea5e9",
     isGlass: false,
   },
   "/perso/travel": {

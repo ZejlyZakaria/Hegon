@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useJournalStreak, useJournalCalendar } from "../hooks/useJournalCalendar";
 import { toDateStr, getCurrentWeekDays, getMonthGrid } from "../lib/journal-utils";
@@ -35,11 +35,14 @@ export function JournalRightPanel() {
   const streakMoodMap = new Map<string, JournalMood | null>();
   streakCalendarData?.forEach((day) => streakMoodMap.set(day.entry_date, day.mood));
 
-  // Current week Mon → Sun
-  const weekDays = getCurrentWeekDays(today);
+  // Current week Mon → Sun — computed once on mount, never changes
+  const [weekDays] = useState(() => getCurrentWeekDays(new Date()));
 
-  // Calendar grid
-  const { daysInMonth, startDayOfWeek } = getMonthGrid(currentYear, currentMonth);
+  // Calendar grid — recompute only when month/year changes
+  const { daysInMonth, startDayOfWeek } = useMemo(
+    () => getMonthGrid(currentYear, currentMonth),
+    [currentYear, currentMonth]
+  );
 
   const goToPrevMonth = () => {
     if (currentMonth === 1) { setCurrentMonth(12); setCurrentYear(currentYear - 1); }
@@ -62,12 +65,9 @@ export function JournalRightPanel() {
         </div>
 
         {/* Count */}
-        <div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-3xl font-bold text-text-primary">{streak?.current ?? 0}</span>
-            <span className="text-sm text-text-tertiary">days</span>
-          </div>
-          <p className="text-xs text-text-tertiary mt-0.5">Keep it up!</p>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-3xl font-bold text-text-primary">{streak?.current ?? 0}</span>
+          <span className="text-sm" style={{ color: '#f97316' }}>days</span>
         </div>
 
         {/* Week dots */}
