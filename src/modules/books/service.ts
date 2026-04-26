@@ -19,7 +19,7 @@ export async function getBooks(opts?: {
   status?: BookStatus;
   search?: string;
   favorite?: boolean;
-  sort?: "recently_added" | "rating" | "title" | "progress";
+  sort?: "recently_added" | "rating" | "title" | "most_read";
 }): Promise<Book[]> {
   const supabase = createClient();
   const orgId = await getCurrentOrgId();
