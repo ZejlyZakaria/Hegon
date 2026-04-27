@@ -32,6 +32,7 @@ export function useUpdateHabit() {
     mutationFn: (input: UpdateHabitInput) => HabitService.updateHabit(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.lists() });
+      toast.success("Habit updated.");
     },
     onError: () => {
       toast.error("Failed to update habit.");

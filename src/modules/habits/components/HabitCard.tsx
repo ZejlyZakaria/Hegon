@@ -17,56 +17,6 @@ const BORDER_SUBTLE = "var(--color-border-subtle)";
 const BORDER_DEFAULT = "var(--color-border-default)";
 const AMBER = "#f59e0b";
 
-function ProgressRing({ pct }: { pct: number }) {
-  const size = 36;
-  const radius = (size - 6) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - pct / 100);
-
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg
-        width={size}
-        height={size}
-        className="block -rotate-90"
-        aria-hidden="true"
-      >
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={SURFACE_2}
-          strokeWidth={3}
-        />
-        {pct > 0 && (
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke={HABITS_ACCENT}
-            strokeWidth={3}
-            strokeDasharray={`${circumference} ${circumference}`}
-            strokeDashoffset={dashOffset}
-            strokeLinecap="round"
-            style={{ transition: "stroke-dashoffset var(--motion-slow) ease" }}
-          />
-        )}
-      </svg>
-
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span
-          className="text-[10px] font-medium leading-none"
-          style={{ color: pct > 0 ? HABITS_ACCENT : TEXT_TERTIARY }}
-        >
-          {pct}%
-        </span>
-      </div>
-    </div>
-  );
-}
-
 interface Props {
   habit: HabitWithStatus;
   onComplete: (habitId: string) => void;
@@ -213,10 +163,6 @@ export function HabitCard({
         >
           Best {best_streak}
         </span>
-      </div>
-
-      <div className="flex w-16 shrink-0 items-center justify-center">
-        <ProgressRing pct={completed_today ? 100 : 0} />
       </div>
 
       <div className="shrink-0">

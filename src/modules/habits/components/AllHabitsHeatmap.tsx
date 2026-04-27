@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/shared/utils/utils";
 import { useHeatmapData } from "../hooks/useHabitStats";
+import { toDateStr } from "../utils";
 import type { HeatmapDay } from "../types";
 
 type RangeMode = "6M" | "12M";
@@ -14,10 +15,6 @@ const CELL = 16;
 const GAP = 3;
 const ROWS = 7;
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-function toDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function getCellColor(count: number): string {
   if (count === 0) return "var(--color-surface-2)";

@@ -96,6 +96,7 @@ export async function deleteGoal(id: string): Promise<void> {
 
 export async function recalculateProgress(goalId: string): Promise<number> {
   const supabase = createClient();
+  const orgId = await getCurrentOrgId();
 
   const { data: tasks, error } = await supabase
     .from("tasks")
@@ -111,7 +112,8 @@ export async function recalculateProgress(goalId: string): Promise<number> {
   await supabase
     .from("goals")
     .update({ progress })
-    .eq("id", goalId);
+    .eq("id", goalId)
+    .eq("org_id", orgId);
 
   return progress;
 }
@@ -186,11 +188,7 @@ export async function reorderMilestones(
   updates: { id: string; order_index: number }[]
 ): Promise<void> {
   const supabase = createClient();
-  await Promise.all(
-    updates.map(({ id, order_index }) =>
-      supabase.from("goal_milestones").update({ order_index }).eq("id", id)
-    )
-  );
+  await supabase.from("goal_milestones").upsert(updates, { onConflict: "id" });
 }
 
 // =====================================================
@@ -224,18 +222,32 @@ export async function getLinkedTasks(goalId: string): Promise<LinkedTask[]> {
 
 export async function linkTaskToGoal(taskId: string, goalId: string): Promise<void> {
   const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data: task } = await supabase
+    .from("tasks")
+    .select("id")
+    .eq("id", taskId)
+    .eq("org_id", orgId)
+    .single();
+
+  if (!task) throw new Error("Task not found or access denied.");
+
   const { error } = await supabase
     .from("tasks")
     .update({ goal_id: goalId })
-    .eq("id", taskId);
+    .eq("id", taskId)
+    .eq("org_id", orgId);
   if (error) throw error;
 }
 
 export async function unlinkTaskFromGoal(taskId: string): Promise<void> {
   const supabase = createClient();
+  const orgId = await getCurrentOrgId();
   const { error } = await supabase
     .from("tasks")
     .update({ goal_id: null })
-    .eq("id", taskId);
+    .eq("id", taskId)
+    .eq("org_id", orgId);
   if (error) throw error;
 }

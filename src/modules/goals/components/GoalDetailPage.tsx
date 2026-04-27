@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MoreHorizontal, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Unlink, Pencil, Trash2 } from "lucide-react";
 import { Slider } from "@/shared/components/ui/slider";
 import { cn } from "@/shared/utils/utils";
 import {
@@ -225,7 +225,7 @@ export function GoalDetailPage({ id }: Props) {
                       onClick={() => unlinkTask.mutateAsync(task.id)}
                       className="text-[#71717a] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                     >
-                      <ExternalLink size={12} />
+                      <Unlink size={12} />
                     </button>
                   </div>
                 ))}

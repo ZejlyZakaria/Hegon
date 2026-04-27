@@ -33,6 +33,7 @@ export function useUpdateGoal() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
       queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(data.id) });
+      toast.success("Goal updated.");
     },
     onError: () => {
       toast.error("Failed to update goal.");

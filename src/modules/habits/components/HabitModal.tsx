@@ -151,13 +151,16 @@ export function HabitModal({ open, onClose, habit }: Props) {
       goal_id: data.goal_id || null,
     };
 
-    if (isEdit && habit) {
-      await updateHabit.mutateAsync({ id: habit.id, ...input });
-    } else {
-      await createHabit.mutateAsync(input);
+    try {
+      if (isEdit && habit) {
+        await updateHabit.mutateAsync({ id: habit.id, ...input });
+      } else {
+        await createHabit.mutateAsync(input);
+      }
+      handleOpenChange(false);
+    } catch {
+      // mutation onError handles the toast
     }
-
-    handleOpenChange(false);
   };
 
   const isPending = createHabit.isPending || updateHabit.isPending;

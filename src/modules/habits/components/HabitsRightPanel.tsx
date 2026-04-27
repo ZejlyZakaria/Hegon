@@ -3,14 +3,11 @@
 import { useMemo } from "react";
 import { Flame, Trophy, TrendingUp } from "lucide-react";
 import { useHeatmapData } from "../hooks/useHabitStats";
+import { toDateStr, isExpectedOnDate } from "../utils";
 import type { HabitWithStatus, HeatmapDay } from "../types";
 
 const ACCENT = "var(--color-accent-habits)";
 const DAYS_SHORT = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-
-function toDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function getWeekDates(): string[] {
   const today = new Date();
@@ -32,12 +29,6 @@ function rateToColor(pct: number): string {
   if (pct <= 75) return "#be123c";
   if (pct < 100) return "#e11d48";
   return ACCENT;
-}
-
-function isExpectedOnDate(habit: HabitWithStatus, date: string): boolean {
-  if (habit.frequency === "daily") return true;
-  const dow = new Date(date + "T12:00:00").getDay();
-  return habit.custom_days?.includes(dow) ?? false;
 }
 
 function WeeklyRhythm({

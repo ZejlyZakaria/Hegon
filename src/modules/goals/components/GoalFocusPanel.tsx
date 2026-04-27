@@ -1,8 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { LifeCompass } from "./LifeCompass";
-import type { Goal, GoalCategory } from "../types";
+import type { Goal, GoalCategory, GoalPriority } from "../types";
+
+const PRIORITY_RANK: Record<GoalPriority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
 const ACCENT = "var(--color-accent-goals)";
 
@@ -19,9 +22,18 @@ export function GoalRightPanel({
 }: Props) {
   const router = useRouter();
 
-  const focusGoal =
-    goals.find((g) => g.status === "active" && g.target_date) ??
-    goals.find((g) => g.status === "active");
+  const focusGoal = useMemo(() => {
+    const active = goals.filter((g) => g.status === "active");
+    return (
+      active.sort((a, b) => {
+        if (a.target_date && b.target_date)
+          return a.target_date.localeCompare(b.target_date);
+        if (a.target_date) return -1;
+        if (b.target_date) return 1;
+        return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+      })[0] ?? null
+    );
+  }, [goals]);
 
   const active = goals.filter((g) => g.status === "active").length;
   const completed = goals.filter((g) => g.status === "completed").length;
@@ -43,9 +55,10 @@ export function GoalRightPanel({
 
       {/* Focus Goal */}
       {focusGoal && (
-        <div
+        <button
+          type="button"
           onClick={() => router.push(`/life/goals/${focusGoal.id}`)}
-          className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-3 cursor-pointer transition-colors duration-100 hover:bg-[#141416]"
+          className="w-full text-left relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-3 cursor-pointer transition-colors duration-100 hover:bg-[#141416]"
         >
           <h3 className="mb-2 text-xs font-semibold text-text-secondary">
             Focus
@@ -76,7 +89,7 @@ export function GoalRightPanel({
               })}
             </p>
           )}
-        </div>
+        </button>
       )}
 
       {/* Quick Stats */}

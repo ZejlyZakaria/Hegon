@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Goal, GoalCategory, CategoryStats } from "../types";
 
 const ACCENT = "var(--color-accent-goals)";
@@ -72,7 +72,7 @@ interface Props {
 
 export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
   const [tooltip, setTooltip] = useState<GoalCategory | null>(null);
-  const stats = computeStats(goals);
+  const stats = useMemo(() => computeStats(goals), [goals]);
   const n = CATEGORIES.length;
   const angleStep = 360 / n;
   const rings = [25, 50, 75, 100];

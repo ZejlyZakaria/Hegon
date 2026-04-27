@@ -114,6 +114,15 @@ export async function deleteHabit(id: string): Promise<void> {
 
 export async function completeHabit(input: CompleteHabitInput): Promise<HabitCompletion> {
   const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data: habit } = await supabase
+    .from("habits")
+    .select("id")
+    .eq("id", input.habit_id)
+    .eq("org_id", orgId)
+    .single();
+  if (!habit) throw new Error("Access denied.");
 
   const { data, error } = await supabase
     .from("habit_completions")
@@ -134,6 +143,15 @@ export async function completeHabit(input: CompleteHabitInput): Promise<HabitCom
 
 export async function uncompleteHabit(habitId: string, date: string): Promise<void> {
   const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data: habit } = await supabase
+    .from("habits")
+    .select("id")
+    .eq("id", habitId)
+    .eq("org_id", orgId)
+    .single();
+  if (!habit) throw new Error("Access denied.");
 
   const { error } = await supabase
     .from("habit_completions")
@@ -144,14 +162,16 @@ export async function uncompleteHabit(habitId: string, date: string): Promise<vo
   if (error) throw error;
 }
 
-// All completions for a specific date (used to build Today view)
-export async function getDayCompletions(date: string): Promise<HabitCompletion[]> {
+// All completions for a specific date scoped to the provided habit ids
+export async function getDayCompletions(date: string, habitIds: string[]): Promise<HabitCompletion[]> {
+  if (habitIds.length === 0) return [];
   const supabase = createClient();
 
   const { data, error } = await supabase
     .from("habit_completions")
     .select("*")
-    .eq("completed_date", date);
+    .eq("completed_date", date)
+    .in("habit_id", habitIds);
 
   if (error) throw error;
   return data ?? [];

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo, startTransition } from "react";
+import { useCommandCenter } from "@/modules/command-center/store";
 import { Search } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
@@ -53,6 +54,7 @@ function filterAndSort(
   status: StatusFilter,
   category: GoalCategory | "all",
   sort: GoalSort,
+  search: string,
 ): Goal[] {
   let result = goals.filter((g) => g.status !== "abandoned");
 
@@ -62,6 +64,15 @@ function filterAndSort(
 
   if (category !== "all") {
     result = result.filter((g) => g.category === category);
+  }
+
+  if (search.trim()) {
+    const q = search.toLowerCase();
+    result = result.filter(
+      (g) =>
+        g.title.toLowerCase().includes(q) ||
+        (g.description ?? "").toLowerCase().includes(q),
+    );
   }
 
   return [...result].sort((a, b) => {
@@ -87,15 +98,27 @@ export function GoalsPage() {
   const [status, setStatus]         = useState<StatusFilter>("all");
   const [category, setCategory]     = useState<GoalCategory | "all">("all");
   const [sort, setSort]             = useState<GoalSort>("deadline");
+  const [search, setSearch]             = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<GoalCategory | null>(null);
+
+  const { pendingAction, clearPendingAction } = useCommandCenter();
+  useEffect(() => {
+    if (pendingAction === "new-goal") {
+      startTransition(() => setIsModalOpen(true));
+      clearPendingAction();
+    }
+  }, [pendingAction, clearPendingAction]);
 
   function handleCompassClick(cat: GoalCategory | null) {
     setActiveCategory(cat);
     setCategory(cat ?? "all");
   }
 
-  const displayed = filterAndSort(goals, status, category, sort);
+  const displayed = useMemo(
+    () => filterAndSort(goals, status, category, sort, search),
+    [goals, status, category, sort, search],
+  );
 
   return (
     <div className="max-w-7xl mx-auto flex min-h-full flex-col">
@@ -106,6 +129,8 @@ export function GoalsPage() {
           <Input
             variant="tasks"
             placeholder="Search goals…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             className="h-8 pl-8 bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
           />
         </div>

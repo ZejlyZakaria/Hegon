@@ -46,6 +46,7 @@ export function useDeleteMilestone(goalId: string) {
     mutationFn: (id: string) => GoalService.deleteMilestone(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: MILESTONE_KEYS.byGoal(goalId) });
+      queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
     },
     onError: () => {
       toast.error("Failed to delete milestone.");
@@ -53,14 +54,14 @@ export function useDeleteMilestone(goalId: string) {
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useReorderMilestones(goalId: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (updates: { id: string; order_index: number }[]) =>
       GoalService.reorderMilestones(updates),
     onError: () => {
+      queryClient.invalidateQueries({ queryKey: MILESTONE_KEYS.byGoal(goalId) });
       toast.error("Failed to save order.");
     },
-    // Pas d'invalidation — le local state de MilestoneList gère l'UI
   });
 }

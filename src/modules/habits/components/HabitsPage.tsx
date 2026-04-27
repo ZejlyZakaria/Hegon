@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, startTransition } from "react";
+import { useCommandCenter } from "@/modules/command-center/store";
 import { Input } from "@/shared/components/ui/input";
 import {
   Search,
@@ -122,6 +123,14 @@ export function HabitsPage() {
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
 
+  const { pendingAction, clearPendingAction } = useCommandCenter();
+  useEffect(() => {
+    if (pendingAction === "new-habit") {
+      startTransition(() => setModalOpen(true));
+      clearPendingAction();
+    }
+  }, [pendingAction, clearPendingAction]);
+
   const { data: allHabits = [], isLoading: habitsLoading } = useHabits();
   const {
     habits: todayHabits,
@@ -147,6 +156,10 @@ export function HabitsPage() {
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const isLoading = habitsLoading || todayLoading;
+
+  const filteredTodayHabits = search.trim()
+    ? todayHabits.filter((h) => h.title.toLowerCase().includes(search.toLowerCase()))
+    : todayHabits;
 
   if (!isLoading && allHabits.length === 0) {
     return (
@@ -221,12 +234,12 @@ export function HabitsPage() {
         {tab === "today" && (
           <div className="mt-4 flex gap-4">
             <div className="min-w-0 flex-13 space-y-3">
-              {todayHabits.length === 0 ? (
+              {filteredTodayHabits.length === 0 ? (
                 <p className="py-6 text-center text-sm text-[#71717a]">
-                  No habits scheduled for today.
+                  {search.trim() ? "No habits match your search." : "No habits scheduled for today."}
                 </p>
               ) : (
-                todayHabits.map((habit) => (
+                filteredTodayHabits.map((habit) => (
                   <HabitCard
                     key={habit.id}
                     habit={habit}

@@ -15,12 +15,9 @@ import { HABIT_KEYS } from "../hooks/query-keys";
 import * as HabitService from "../service";
 import { resolveIcon } from "@/shared/constants/icons";
 import { cn } from "@/shared/utils/utils";
+import { toDateStr, isExpectedOnDate } from "../utils";
 
 const DAYS_HEADER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-function toDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function capitalizeFirst(s: string): string {
   return s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s;
@@ -45,10 +42,8 @@ export function HabitsCalendarView() {
   const selectedHabit = habits.find((h) => h.id === effectiveId);
   const habitColor = selectedHabit ? resolveIcon(selectedHabit.icon).color : "#f43f5e";
 
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const monthStart = toDateStr(new Date(year, month, 1));
-  const monthEnd = toDateStr(new Date(year, month + 1, 0));
+  const monthStart = toDateStr(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
+  const monthEnd   = toDateStr(new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0));
 
   const { data: completions = [] } = useQuery({
     queryKey: HABIT_KEYS.completionsRange(effectiveId, monthStart, monthEnd),
@@ -63,8 +58,10 @@ export function HabitsCalendarView() {
   );
 
   const cells = useMemo<CalendarCell[]>(() => {
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDow = new Date(year, month, 1).getDay();
+    const y = monthDate.getFullYear();
+    const m = monthDate.getMonth();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const firstDow = new Date(y, m, 1).getDay();
     const startOffset = firstDow === 0 ? 6 : firstDow - 1;
     const todayStr = toDateStr(new Date());
 
@@ -75,7 +72,7 @@ export function HabitsCalendarView() {
     }
 
     for (let d = 1; d <= daysInMonth; d++) {
-      const ds = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const ds = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       result.push({
         day: d,
         date: ds,
@@ -90,14 +87,17 @@ export function HabitsCalendarView() {
     }
 
     return result;
-  }, [year, month, completedSet]);
+  }, [monthDate, completedSet]);
 
   const todayStr = toDateStr(new Date());
   const pastCells = cells.filter((c) => c.date && c.date <= todayStr);
   const completionsMonth = completions.filter(
     (c) => c.completed_date >= monthStart && c.completed_date <= monthEnd
   ).length;
-  const rate = pastCells.length > 0 ? Math.round((completionsMonth / pastCells.length) * 100) : 0;
+  const expectedCount = selectedHabit
+    ? pastCells.filter((c) => c.date && isExpectedOnDate(selectedHabit, c.date)).length
+    : pastCells.length;
+  const rate = expectedCount > 0 ? Math.round((completionsMonth / expectedCount) * 100) : 0;
 
   const monthLabel = capitalizeFirst(
     monthDate.toLocaleString("default", { month: "long", year: "numeric" })

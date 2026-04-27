@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useMemo } from "react";
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
@@ -55,17 +56,27 @@ interface Props {
 }
 
 export function GoalCard({ goal }: Props) {
-  const router = useRouter();
-
   const overdue = isOverdue(goal.target_date, goal.status);
   const isCompleted = goal.status === "completed";
   const categoryStyle = goal.category ? CATEGORY_STYLES[goal.category] : null;
+  const milestoneText = getMilestoneText(goal);
+
+  const daysUntilDeadline = useMemo(() => {
+    if (!goal.target_date) return null;
+    const now = new Date();
+    return Math.ceil((new Date(goal.target_date).getTime() - now.getTime()) / 86400000);
+  }, [goal.target_date]);
+  const deadlineSoon =
+    daysUntilDeadline !== null &&
+    daysUntilDeadline > 0 &&
+    daysUntilDeadline <= 7 &&
+    goal.status === "active";
 
   return (
-    <div
-      onClick={() => router.push(`/life/goals/${goal.id}`)}
+    <Link
+      href={`/life/goals/${goal.id}`}
       className={cn(
-        "group cursor-pointer rounded-lg border border-border-subtle p-3 bg-surface-1 hover:bg-surface-2 transition-colors duration-100",
+        "group rounded-lg border border-border-subtle p-3 bg-surface-1 hover:bg-surface-2 transition-colors duration-100 block",
         isCompleted && "opacity-50"
       )}
     >
@@ -133,25 +144,33 @@ export function GoalCard({ goal }: Props) {
             />
           </div>
 
-          {getMilestoneText(goal) && (
+          {milestoneText && (
             <p
               className="mt-1 text-[10px]"
               style={{ color: "var(--color-text-tertiary)" }}
             >
-              {getMilestoneText(goal)}
+              {milestoneText}
             </p>
           )}
         </div>
 
         <div className="w-30">
           {goal.target_date && (
-            <div
-              className="mb-1 inline-flex items-center gap-1 text-xs"
-              style={{
-                color: overdue ? "#f87171" : "var(--color-text-tertiary)",
-              }}
-            >
-              <span>{formatDate(goal.target_date)}</span>
+            <div className="mb-1 flex flex-col gap-1">
+              <span
+                className="text-xs"
+                style={{ color: overdue ? "#f87171" : "var(--color-text-tertiary)" }}
+              >
+                {formatDate(goal.target_date)}
+              </span>
+              {deadlineSoon && (
+                <span
+                  className="text-[10px] font-medium px-1.5 py-0.5 rounded-sm w-fit"
+                  style={{ backgroundColor: "#f9731620", color: "#fb923c" }}
+                >
+                  {daysUntilDeadline}d left
+                </span>
+              )}
             </div>
           )}
 
@@ -170,6 +189,6 @@ export function GoalCard({ goal }: Props) {
           />
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
