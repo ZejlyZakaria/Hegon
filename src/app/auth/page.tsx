@@ -354,8 +354,8 @@ function AuthPageInner() {
           password,
         });
         if (error) throw error;
-        router.push(next);
-        router.refresh();
+        hasRedirected.current = true;
+        window.location.href = next;
       } else {
         const { data: signUpData, error } = await supabase.auth.signUp({
           email,
