@@ -42,21 +42,21 @@ export function JournalPage() {
   );
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="max-w-7xl mx-auto flex h-full overflow-hidden gap-6 pr-4">
       {/* ── Centre ──────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-5 pb-4 shrink-0">
           <div>
-            <h1 className="text-xl font-bold text-[#e2e2e6]">Journal</h1>
-            <p className="text-sm text-[#71717a] mt-0.5">
+            <h1 className="text-xl font-bold text-text-primary">Journal</h1>
+            <p className="text-sm text-text-tertiary mt-0.5">
               Write. Reflect. Understand. Turn thoughts into clarity.
             </p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center border-b border-white/4 px-4 shrink-0">
+        <div className="flex items-center px-4 shrink-0">
           {(["today", "all"] as Tab[]).map((t) => (
             <button
               key={t}
@@ -66,9 +66,9 @@ export function JournalPage() {
                 setSelectedEntry(null);
               }}
               className="relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors"
-              style={tab === t ? { color: "#e2e2e6" } : undefined}
+              style={tab === t ? { color: "var(--color-text-primary)" } : undefined}
             >
-              <span className={tab !== t ? "text-[#71717a] hover:text-[#a0a0a8]" : ""}>
+              <span className={tab !== t ? "text-text-tertiary hover:text-text-secondary" : ""}>
                 {t === "today" ? "Today" : "All Entries"}
               </span>
               {tab === t && (
@@ -82,7 +82,7 @@ export function JournalPage() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-h-0 overflow-hidden px-4 pt-4 pb-5">
+        <div className="flex-1 min-h-0 overflow-hidden pl-4 pt-4 pb-5">
           {tab === "today" ? (
             <JournalTodayView />
           ) : selectedEntry ? (
@@ -110,7 +110,7 @@ export function JournalPage() {
       </div>
 
       {/* ── Right Panel ─────────────────────────── */}
-      <div className="w-72 shrink-0 border-l border-border-subtle overflow-y-auto p-4">
+      <div className="w-72 shrink-0 overflow-y-auto pt-4 pb-5">
         <JournalRightPanel />
       </div>
     </div>

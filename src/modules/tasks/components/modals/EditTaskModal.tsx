@@ -187,13 +187,13 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="sm:max-w-150 bg-[#1a1a1d] border-white/11 rounded-xl max-h-[90vh] overflow-y-auto"
+        className="sm:max-w-150 bg-surface-3 border-border-strong rounded-xl max-h-[90vh] overflow-y-auto"
         onEscapeKeyDown={handleEscapeKeyDown}
         onPointerDownOutside={handlePointerDownOutside}
       >
         <DialogHeader>
           <div className="flex items-center justify-between pr-6">
-            <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
+            <DialogTitle className="text-sm font-semibold text-text-primary">
               Edit task
             </DialogTitle>
 
@@ -202,14 +202,14 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="absolute top-2 right-10 h-8 w-8 p-0 text-[#71717a] hover:text-[#e2e2e6] hover:bg-[#141416] focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="absolute top-2 right-10 h-8 w-8 p-0 text-text-tertiary hover:text-text-primary hover:bg-surface-2 focus-visible:ring-0 focus-visible:ring-offset-0"
                 >
                   <MoreHorizontal size={16} />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-48 rounded-md bg-[#1a1a1d] border-white/11"
+                className="w-48 rounded-md bg-surface-3 border-border-strong"
               >
                 <DropdownMenuItem
                   onClick={() => setIsDeleteModalOpen(true)}
@@ -229,7 +229,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                  <FormLabel className="text-xs font-medium text-text-secondary">
                     Title
                   </FormLabel>
                   <FormControl>
@@ -238,7 +238,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                       variant="tasks"
                       placeholder="Task title..."
                       autoComplete="off"
-                      className="bg-[#1f1f22] focus:border-white/20"
+                      className="bg-surface-overlay focus:border-border-focus"
                     />
                   </FormControl>
                   <FormMessage />
@@ -251,7 +251,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                  <FormLabel className="text-xs font-medium text-text-secondary">
                     Description
                   </FormLabel>
                   <FormControl>
@@ -260,7 +260,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                       variant="tasks"
                       placeholder="Add details..."
                       rows={4}
-                      className="bg-[#1f1f22] focus:border-white/20"
+                      className="bg-surface-overlay focus:border-border-focus"
                     />
                   </FormControl>
                   <FormMessage />
@@ -274,12 +274,12 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                    <FormLabel className="text-xs font-medium text-text-secondary">
                       Priority
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger variant="tasks" className="w-full bg-[#1f1f22] focus:border-white/20">
+                        <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -304,12 +304,12 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                 name="status_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                    <FormLabel className="text-xs font-medium text-text-secondary">
                       Status
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger variant="tasks" className="w-full bg-[#1f1f22] focus:border-white/20">
+                        <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -343,7 +343,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                 name="due_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                    <FormLabel className="text-xs font-medium text-text-secondary">
                       Due date
                     </FormLabel>
                     <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
@@ -352,9 +352,9 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                           <button
                             type="button"
                             className={cn(
-                              "w-full h-9 px-3 flex items-center gap-2 rounded-lg border border-zinc-700/50 text-sm transition-colors",
-                              "bg-[#1f1f22] hover:bg-zinc-800/80",
-                              field.value ? "text-zinc-100" : "text-zinc-600",
+                              "w-full h-9 px-3 flex items-center gap-2 rounded-lg border border-border-default text-sm transition-colors",
+                              "bg-surface-overlay hover:bg-surface-2",
+                              field.value ? "text-text-primary" : "text-text-tertiary",
                             )}
                           >
                             <CalendarIcon size={14} className="shrink-0" />
@@ -367,7 +367,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent
-                        className="w-auto p-0 bg-[#1a1a1d] border-white/11"
+                        className="w-auto p-0 bg-surface-3 border-border-strong"
                         align="start"
                       >
                         <Calendar
@@ -381,7 +381,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                             date < new Date(new Date().setHours(0, 0, 0, 0))
                           }
                           initialFocus
-                          className="bg-[#1a1a1d]"
+                          className="bg-surface-3"
                         />
                       </PopoverContent>
                     </Popover>
@@ -395,7 +395,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                 name="estimated_hours"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                    <FormLabel className="text-xs font-medium text-text-secondary">
                       Estimated hours
                     </FormLabel>
                     <FormControl>
@@ -412,7 +412,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                           field.onChange(val === "" ? null : parseFloat(val));
                         }}
                         autoComplete="off"
-                        className="bg-[#1f1f22] focus:border-white/20"
+                        className="bg-surface-overlay focus:border-border-focus"
                       />
                     </FormControl>
                     <FormMessage />

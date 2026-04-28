@@ -126,11 +126,11 @@ export function CreateTaskModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-125 bg-[#1a1a1d] border-white/11">
+      <DialogContent className="sm:max-w-125 bg-surface-3 border-border-strong">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
+          <DialogTitle className="text-sm font-semibold text-text-primary">
             Create task in{" "}
-            <span className="text-[#a0a0a8]">{statusName}</span>
+            <span className="text-text-secondary">{statusName}</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -141,7 +141,7 @@ export function CreateTaskModal({
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                  <FormLabel className="text-xs font-medium text-text-secondary">
                     Title
                   </FormLabel>
                   <FormControl>
@@ -150,7 +150,7 @@ export function CreateTaskModal({
                       variant="tasks"
                       placeholder="Task title..."
                       autoFocus
-                      className="bg-[#1f1f22] focus:border-white/20"
+                      className="bg-surface-overlay focus:border-border-focus"
                     />
                   </FormControl>
                   <FormMessage />
@@ -163,7 +163,7 @@ export function CreateTaskModal({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                  <FormLabel className="text-xs font-medium text-text-secondary">
                     Description
                   </FormLabel>
                   <FormControl>
@@ -172,7 +172,7 @@ export function CreateTaskModal({
                       variant="tasks"
                       placeholder="Add details..."
                       rows={3}
-                      className="bg-[#1f1f22] focus:border-white/20"
+                      className="bg-surface-overlay focus:border-border-focus"
                     />
                   </FormControl>
                   <FormMessage />
@@ -186,12 +186,12 @@ export function CreateTaskModal({
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                    <FormLabel className="text-xs font-medium text-text-secondary">
                       Priority
                     </FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger variant="tasks" className="w-full bg-[#1f1f22] focus:border-white/20">
+                        <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -216,7 +216,7 @@ export function CreateTaskModal({
                 name="due_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                    <FormLabel className="text-xs font-medium text-text-secondary">
                       Due date
                     </FormLabel>
                     <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
@@ -225,9 +225,9 @@ export function CreateTaskModal({
                           <button
                             type="button"
                             className={cn(
-                              "w-full h-9 px-3 flex items-center gap-2 rounded-lg border border-zinc-700/50 text-sm transition-colors",
-                              "bg-[#1f1f22] hover:bg-zinc-800/80",
-                              field.value ? "text-zinc-100" : "text-zinc-600",
+                              "w-full h-9 px-3 flex items-center gap-2 rounded-lg border border-border-default text-sm transition-colors",
+                              "bg-surface-overlay hover:bg-surface-2",
+                              field.value ? "text-text-primary" : "text-text-tertiary",
                             )}
                           >
                             <CalendarIcon size={14} className="shrink-0" />
@@ -240,7 +240,7 @@ export function CreateTaskModal({
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent
-                        className="w-auto p-0 bg-[#1a1a1d] border-white/11"
+                        className="w-auto p-0 bg-surface-3 border-border-strong"
                         align="start"
                       >
                         <Calendar
@@ -254,7 +254,7 @@ export function CreateTaskModal({
                             date < new Date(new Date().setHours(0, 0, 0, 0))
                           }
                           initialFocus
-                          className="bg-[#1a1a1d]"
+                          className="bg-surface-3"
                         />
                       </PopoverContent>
                     </Popover>
@@ -274,7 +274,7 @@ export function CreateTaskModal({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
+                className="h-8 px-3 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
               >
                 Cancel
               </Button>

@@ -167,9 +167,9 @@ export function HabitModal({ open, onClose, habit }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md bg-[#1a1a1d] border-white/11">
+      <DialogContent className="sm:max-w-md bg-surface-3 border-border-strong">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
+          <DialogTitle className="text-sm font-semibold text-text-primary">
             {isEdit ? "Edit Habit" : "New Habit"}
           </DialogTitle>
         </DialogHeader>
@@ -181,7 +181,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                  <FormLabel className="text-xs font-medium text-text-secondary">
                     Title <span style={{ color: ACCENT }}>*</span>
                   </FormLabel>
                   <FormControl>
@@ -190,7 +190,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       variant="tasks"
                       placeholder="e.g. Morning run"
                       autoFocus
-                      className="bg-[#1f1f22] focus:border-white/20"
+                      className="bg-surface-overlay focus:border-border-focus"
                     />
                   </FormControl>
                   <FormMessage />
@@ -203,7 +203,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                  <FormLabel className="text-xs font-medium text-text-secondary">
                     Description
                   </FormLabel>
                   <FormControl>
@@ -212,7 +212,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       variant="tasks"
                       placeholder="Why does this habit matter?"
                       rows={2}
-                      className="bg-[#1f1f22] focus:border-white/20"
+                      className="bg-surface-overlay focus:border-border-focus"
                     />
                   </FormControl>
                   <FormMessage />
@@ -226,14 +226,14 @@ export function HabitModal({ open, onClose, habit }: Props) {
                 name="frequency"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                    <FormLabel className="text-xs font-medium text-text-secondary">
                       Frequency
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger
                           variant="tasks"
-                          className="w-full bg-[#1f1f22] focus:border-white/20"
+                          className="w-full bg-surface-overlay focus:border-border-focus"
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -254,7 +254,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                 name="goal_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                    <FormLabel className="text-xs font-medium text-text-secondary">
                       Linked goal
                     </FormLabel>
                     <Select
@@ -266,7 +266,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       <FormControl>
                         <SelectTrigger
                           variant="tasks"
-                          className="w-full bg-[#1f1f22] focus:border-white/20"
+                          className="w-full bg-surface-overlay focus:border-border-focus"
                         >
                           <SelectValue placeholder="None" />
                         </SelectTrigger>
@@ -309,7 +309,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
 
                   return (
                     <div>
-                      <p className="mb-2 text-xs font-medium text-[#a0a0a8]">
+                      <p className="mb-2 text-xs font-medium text-text-secondary">
                         {frequency === "weekly" ? "Which day?" : "Which days?"}
                       </p>
 
@@ -326,7 +326,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                                 "flex-1 h-8 rounded-lg text-xs font-semibold transition-all",
                                 isSelected
                                   ? "text-white"
-                                  : "bg-[#141416] text-[#71717a] hover:text-[#e2e2e6] hover:bg-[#1f1f22]",
+                                  : "bg-surface-2 text-text-tertiary hover:text-text-primary hover:bg-surface-overlay",
                               )}
                               style={
                                 isSelected
@@ -356,7 +356,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
               name="icon"
               render={({ field }) => (
                 <FormItem className="space-y-2">
-                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                  <FormLabel className="text-xs font-medium text-text-secondary">
                     Icon
                   </FormLabel>
                   <FormControl>
@@ -376,7 +376,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                 type="button"
                 variant="outline"
                 onClick={() => handleOpenChange(false)}
-                className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
+                className="h-8 px-3 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
               >
                 Cancel
               </Button>

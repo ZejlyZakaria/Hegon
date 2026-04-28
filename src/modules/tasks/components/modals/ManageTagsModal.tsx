@@ -68,10 +68,10 @@ export function ManageTagsModal({ open, onOpenChange }: ManageTagsModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-[#1a1a1d] border-white/11">
+      <DialogContent className="sm:max-w-md bg-surface-3 border-border-strong">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold text-[#e2e2e6] flex items-center gap-2">
-            <Tag size={14} className="text-[#71717a]" />
+          <DialogTitle className="text-sm font-semibold text-text-primary flex items-center gap-2">
+            <Tag size={14} className="text-text-tertiary" />
             Manage Tags
           </DialogTitle>
         </DialogHeader>
@@ -79,7 +79,7 @@ export function ManageTagsModal({ open, onOpenChange }: ManageTagsModalProps) {
         <div className="space-y-5">
           {/* Create new tag */}
           <div className="space-y-3">
-            <p className="text-xs font-medium text-[#a0a0a8]">New tag</p>
+            <p className="text-xs font-medium text-text-secondary">New tag</p>
 
             {/* Color picker */}
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -91,7 +91,7 @@ export function ManageTagsModal({ open, onOpenChange }: ManageTagsModalProps) {
                   className={cn(
                     "w-5 h-5 rounded-full transition-all",
                     selectedColor === color
-                      ? "ring-2 ring-offset-2 ring-offset-[#1a1a1d] ring-white/60 scale-110"
+                      ? "ring-2 ring-offset-2 ring-offset-surface-3 ring-white/60 scale-110"
                       : "hover:scale-105",
                   )}
                   style={{ backgroundColor: color }}
@@ -101,7 +101,7 @@ export function ManageTagsModal({ open, onOpenChange }: ManageTagsModalProps) {
 
             {/* Name + add button */}
             <div className="flex gap-2">
-              <div className="flex items-center gap-2 flex-1 bg-[#1f1f22] border border-zinc-700/50 rounded-lg px-3">
+              <div className="flex items-center gap-2 flex-1 bg-surface-overlay border border-border-default rounded-lg px-3">
                 <span
                   className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: selectedColor }}
@@ -134,24 +134,24 @@ export function ManageTagsModal({ open, onOpenChange }: ManageTagsModalProps) {
 
           {/* Existing tags */}
           <div className="space-y-2">
-            <p className="text-xs font-medium text-[#a0a0a8]">
+            <p className="text-xs font-medium text-text-secondary">
               Your tags {tags && tags.length > 0 && `(${tags.length})`}
             </p>
 
             {!tags || tags.length === 0 ? (
-              <p className="text-xs text-[#71717a] py-2">No tags yet.</p>
+              <p className="text-xs text-text-tertiary py-2">No tags yet.</p>
             ) : (
               <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
                 {tags.map((tag) => (
                   <div
                     key={tag.id}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-[#1f1f22] border border-zinc-700/50 group"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface-overlay border border-border-default group"
                   >
                     <span
                       className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: tag.color ?? "#71717a" }}
                     />
-                    <span className="text-sm text-[#e2e2e6] flex-1 truncate">
+                    <span className="text-sm text-text-primary flex-1 truncate">
                       {tag.name}
                     </span>
                     <button
@@ -160,7 +160,7 @@ export function ManageTagsModal({ open, onOpenChange }: ManageTagsModalProps) {
                       disabled={deletingId === tag.id}
                       className={cn(
                         "opacity-0 group-hover:opacity-100 transition-opacity",
-                        "p-1 rounded hover:bg-red-500/10 text-[#71717a] hover:text-red-400",
+                        "p-1 rounded hover:bg-red-500/10 text-text-tertiary hover:text-red-400",
                         "disabled:opacity-50",
                       )}
                     >
@@ -177,7 +177,7 @@ export function ManageTagsModal({ open, onOpenChange }: ManageTagsModalProps) {
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
+              className="h-8 px-3 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
             >
               Done
             </Button>

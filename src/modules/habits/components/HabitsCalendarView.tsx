@@ -125,11 +125,11 @@ export function HabitsCalendarView() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="flex-1">
+        <div>
           <Select value={effectiveId} onValueChange={setSelectedId}>
             <SelectTrigger
               variant="tasks"
-              className="h-8 w-full bg-[#1f1f22] focus:border-white/20"
+              className="h-8 w-48 bg-surface-1 border-border-subtle focus:border-border-focus"
             >
               <SelectValue placeholder="Select a habit" />
             </SelectTrigger>
@@ -147,19 +147,19 @@ export function HabitsCalendarView() {
           <button
             type="button"
             onClick={prevMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-[#71717a] transition-colors duration-100 hover:bg-[#141416] hover:text-[#e2e2e6]"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors duration-100 hover:bg-surface-2 hover:text-text-primary"
           >
             <ChevronLeft size={14} />
           </button>
 
-          <span className="w-40 select-none text-center text-sm font-medium text-[#e2e2e6]">
+          <span className="w-40 select-none text-center text-sm font-medium text-text-primary">
             {monthLabel}
           </span>
 
           <button
             type="button"
             onClick={nextMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-[#71717a] transition-colors duration-100 hover:bg-[#141416] hover:text-[#e2e2e6]"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors duration-100 hover:bg-surface-2 hover:text-text-primary"
           >
             <ChevronRight size={14} />
           </button>
@@ -223,8 +223,8 @@ export function HabitsCalendarView() {
                       color: cell.completed
                         ? habitColor
                         : cell.future
-                          ? "#71717a"
-                          : "#a0a0a8",
+                          ? "var(--color-text-tertiary)"
+                          : "var(--color-text-secondary)",
                       fontWeight: cell.completed ? 700 : 500,
                     }}
                   >
@@ -237,27 +237,24 @@ export function HabitsCalendarView() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 px-1 text-xs" style={{ color: "#71717a" }}>
+      <div className="flex flex-wrap items-center gap-3 px-1 text-xs text-text-tertiary">
         <span>
-          <span style={{ color: "#a0a0a8", fontWeight: 600 }}>{completionsMonth}</span>{" "}
+          <span className="font-semibold text-text-secondary">{completionsMonth}</span>{" "}
           completions this month
         </span>
 
-        <span style={{ color: "#3d3d44" }}>•</span>
+        <span className="text-zinc-700">•</span>
 
         <span>
-          <span style={{ color: "#a0a0a8", fontWeight: 600 }}>{rate}%</span> of past days
+          <span className="font-semibold text-text-secondary">{rate}%</span> of past days
         </span>
 
         {selectedHabit && (
           <>
-            <span style={{ color: "#3d3d44" }}>•</span>
+            <span className="text-zinc-700">•</span>
             <span>
               Frequency{" "}
-              <span
-                className="capitalize"
-                style={{ color: "#a0a0a8", fontWeight: 600 }}
-              >
+              <span className="capitalize font-semibold text-text-secondary">
                 {selectedHabit.frequency}
               </span>
             </span>

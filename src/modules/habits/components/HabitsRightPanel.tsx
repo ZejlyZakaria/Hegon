@@ -1,20 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
-import { Flame, Trophy, TrendingUp } from "lucide-react";
 import { useHeatmapData } from "../hooks/useHabitStats";
 import { toDateStr, isExpectedOnDate } from "../utils";
 import type { HabitWithStatus, HeatmapDay } from "../types";
 
 const ACCENT = "var(--color-accent-habits)";
 const DAYS_SHORT = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const RING_R = 38;
+const RING_C = 2 * Math.PI * RING_R;
 
 function getWeekDates(): string[] {
   const today = new Date();
   const dow = today.getDay();
   const monday = new Date(today);
   monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
-
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
@@ -22,16 +22,9 @@ function getWeekDates(): string[] {
   });
 }
 
-function rateToColor(pct: number): string {
-  if (pct === 0) return "var(--color-surface-2)";
-  if (pct <= 25) return "#4c0d1f";
-  if (pct <= 50) return "#881337";
-  if (pct <= 75) return "#be123c";
-  if (pct < 100) return "#e11d48";
-  return ACCENT;
-}
+// ─── Habit Streak ─────────────────────────────────────────────────────────────
 
-function WeeklyRhythm({
+function HabitStreakCard({
   habits,
   recentCompletions,
 }: {
@@ -41,197 +34,110 @@ function WeeklyRhythm({
   const weekDates = useMemo(() => getWeekDates(), []);
   const todayStr = toDateStr(new Date());
 
-  const dayStats = useMemo(
-    () =>
-      weekDates.map((date) => {
-        const expected = habits.filter((h) => isExpectedOnDate(h, date));
-        const doneIds = new Set(
-          recentCompletions
-            .filter((c) => c.completed_date === date)
-            .map((c) => c.habit_id),
-        );
+  const { maxCurrent, maxBest } = useMemo(() => {
+    if (habits.length === 0) return { maxCurrent: 0, maxBest: 0 };
+    return {
+      maxCurrent: Math.max(...habits.map((h) => h.current_streak)),
+      maxBest: Math.max(...habits.map((h) => h.best_streak)),
+    };
+  }, [habits]);
 
-        const done = expected.filter((h) => doneIds.has(h.id)).length;
-        const pct =
-          expected.length > 0 ? Math.round((done / expected.length) * 100) : 0;
-
-        return { date, total: expected.length, done, pct };
-      }),
-    [habits, recentCompletions, weekDates],
-  );
-
-  const past = dayStats.filter((d) => d.date <= todayStr && d.total > 0);
-  const totalDone = past.reduce((s, d) => s + d.done, 0);
-  const totalExpected = past.reduce((s, d) => s + d.total, 0);
-  const consistency =
-    totalExpected > 0 ? Math.round((totalDone / totalExpected) * 100) : 0;
+  const weekDots = useMemo(() => {
+    const completionDates = new Set(recentCompletions.map((c) => c.completed_date));
+    return weekDates.map((date, i) => ({
+      label: DAYS_SHORT[i],
+      active: date <= todayStr && completionDates.has(date),
+      future: date > todayStr,
+    }));
+  }, [weekDates, recentCompletions, todayStr]);
 
   return (
-    <div
-      className="rounded-lg border p-3"
-      style={{
-        backgroundColor: "var(--color-surface-1)",
-        borderColor: "var(--color-border-subtle)",
-      }}
-    >
-      <p className="mb-2 text-xs font-semibold text-text-secondary">
-        Weekly Rhythm
-      </p>
-
-      <div className="flex gap-3">
-        {dayStats.map(({ date, total, done, pct }, i) => {
-          const future = date > todayStr;
-          const isToday = date === todayStr;
-          const color = rateToColor(pct);
-
-          return (
-            <div key={date} className="flex flex-1 flex-col items-center gap-1">
-              <div
-                className="relative h-9 w-full rounded-md transition-colors"
-                style={{
-                  backgroundColor: future ? "transparent" : color,
-                  border: future
-                    ? "1px dashed rgba(255,255,255,0.10)"
-                    : isToday
-                      ? `1px solid ${pct > 0 ? color : "rgba(255,255,255,0.20)"}`
-                      : undefined,
-                  boxShadow:
-                    isToday && pct > 0 ? `0 0 6px ${color}40` : undefined,
-                }}
-                title={
-                  !future && total > 0 ? `${done}/${total} habits` : undefined
-                }
-              />
-              <span
-                className="text-[9px] font-medium"
-                style={{
-                  color: isToday
-                    ? "var(--color-text-secondary)"
-                    : "var(--color-text-tertiary)",
-                }}
-              >
-                {DAYS_SHORT[i]}
-              </span>
-            </div>
-          );
-        })}
+    <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold text-text-secondary">Habit Streak</h3>
+        <span className="text-xs text-text-tertiary">Best {maxBest}d</span>
       </div>
-
-      <p
-        className="mt-2 text-[10px]"
-        style={{ color: "var(--color-text-tertiary)" }}
-      >
-        Consistency this week{" "}
-        <span
-          className="font-semibold"
-          style={{
-            color:
-              consistency >= 70
-                ? "#4ade80"
-                : consistency >= 40
-                  ? "#f59e0b"
-                  : ACCENT,
-          }}
-        >
-          {consistency}%
-        </span>
-      </p>
-    </div>
-  );
-}
-
-function QuickStats({
-  habits,
-  recentCompletions,
-}: {
-  habits: HabitWithStatus[];
-  recentCompletions: { habit_id: string; completed_date: string }[];
-}) {
-  const { maxCurrent, maxBest, rate30 } = useMemo(() => {
-    if (habits.length === 0) return { maxCurrent: 0, maxBest: 0, rate30: 0 };
-
-    const maxCurrent = Math.max(...habits.map((h) => h.current_streak));
-    const maxBest = Math.max(...habits.map((h) => h.best_streak));
-
-    const d = new Date();
-    d.setDate(d.getDate() - 29);
-    const from30 = toDateStr(d);
-    const count30 = recentCompletions.filter(
-      (c) => c.completed_date >= from30,
-    ).length;
-    const rate30 = Math.min(
-      Math.round((count30 / (habits.length * 30)) * 100),
-      100,
-    );
-
-    return { maxCurrent, maxBest, rate30 };
-  }, [habits, recentCompletions]);
-
-  const stats = [
-    {
-      icon: <Flame size={14} />,
-      value: `${maxCurrent}d`,
-      label: "Current Streak",
-      color: "#f97316",
-    },
-    {
-      icon: <Trophy size={14} />,
-      value: `${maxBest}d`,
-      label: "Best Streak",
-      color: "#eab308",
-    },
-    {
-      icon: <TrendingUp size={14} />,
-      value: `${rate30}%`,
-      label: "30-day Rate",
-      color: ACCENT,
-    },
-  ];
-
-  return (
-    <div
-      className="rounded-lg border p-3"
-      style={{
-        backgroundColor: "var(--color-surface-1)",
-        borderColor: "var(--color-border-subtle)",
-      }}
-    >
-      <p className="mb-2 text-xs font-semibold text-text-secondary">
-        Quick Stats
-      </p>
-
-      <div
-        className="grid grid-cols-3"
-        style={{ borderColor: "var(--color-border-default)" }}
-      >
-        {stats.map(({ icon, value, label, color }, index) => (
-          <div
-            key={label}
-            className="flex flex-col items-center gap-0.5 px-1 py-1"
-            style={{
-              borderLeft:
-                index === 0 ? "none" : "1px solid rgba(255,255,255,0.07)",
-            }}
-          >
-            <span style={{ color }}>{icon}</span>
-            <span
-              className="mt-0.5 text-sm font-bold"
-              style={{ color: "var(--color-text-primary)" }}
-            >
-              {value}
-            </span>
-            <span
-              className="mt-0.5 text-center text-[9px] leading-tight"
-              style={{ color: "var(--color-text-tertiary)" }}
-            >
-              {label}
-            </span>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-3xl font-bold text-text-primary">{maxCurrent}</span>
+        <span className="text-sm" style={{ color: ACCENT }}>days</span>
+      </div>
+      <div className="flex items-center justify-between">
+        {weekDots.map((dot, i) => (
+          <div key={i} className="flex flex-col items-center gap-1">
+            <span className="text-[10px] text-text-tertiary">{dot.label}</span>
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: dot.active ? ACCENT : "#27272a" }}
+            />
           </div>
         ))}
       </div>
     </div>
   );
 }
+
+// ─── This Month ───────────────────────────────────────────────────────────────
+
+function ThisMonthCard({
+  habits,
+  recentCompletions,
+}: {
+  habits: HabitWithStatus[];
+  recentCompletions: { habit_id: string; completed_date: string }[];
+}) {
+  const { completionsMonth, rate } = useMemo(() => {
+    const today = new Date();
+    const monthStart = toDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
+    const todayStr = toDateStr(today);
+
+    const completionsMonth = recentCompletions.filter(
+      (c) => c.completed_date >= monthStart && c.completed_date <= todayStr,
+    ).length;
+
+    let expectedMonth = 0;
+    const cur = new Date(today.getFullYear(), today.getMonth(), 1);
+    while (toDateStr(cur) <= todayStr) {
+      expectedMonth += habits.filter((h) => isExpectedOnDate(h, toDateStr(cur))).length;
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    const rate = expectedMonth > 0 ? Math.round((completionsMonth / expectedMonth) * 100) : 0;
+    return { completionsMonth, rate };
+  }, [habits, recentCompletions]);
+
+  const dash = Math.min(rate / 100, 1) * RING_C;
+
+  return (
+    <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
+      <h3 className="text-xs font-semibold text-text-secondary">This Month</h3>
+      <div className="flex items-center justify-center">
+        <div className="relative w-24 h-24">
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r={RING_R} fill="none" stroke="#27272a" strokeWidth="7" />
+            <circle
+              cx="48" cy="48" r={RING_R}
+              fill="none"
+              stroke={ACCENT}
+              strokeWidth="7"
+              strokeDasharray={`${dash} ${RING_C}`}
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-xl font-bold text-text-primary">{rate}%</span>
+            <span className="text-[10px] text-text-tertiary">rate</span>
+          </div>
+        </div>
+      </div>
+      <p className="text-center text-xs text-text-tertiary">
+        <span className="font-semibold text-text-secondary">{completionsMonth}</span>{" "}
+        completions
+      </p>
+    </div>
+  );
+}
+
+// ─── Compact Heatmap ─────────────────────────────────────────────────────────
 
 function getHeatmapCellColor(count: number): string {
   if (count === 0) return "var(--color-surface-2)";
@@ -250,7 +156,7 @@ function buildHeatmapGrid(data: HeatmapDay[]) {
   const countMap = new Map(data.map((d) => [d.date, d.count]));
 
   const start = new Date(today);
-  start.setMonth(start.getMonth() - 6);
+  start.setMonth(start.getMonth() - 3);
   while (start.getDay() !== 1) start.setDate(start.getDate() - 1);
 
   const weeks: GridCell[][] = [];
@@ -283,9 +189,7 @@ function buildMonthLabels(weeks: GridCell[][]): MonthLabel[] {
     if (month !== lastMonth) {
       labels.push({
         col: wi,
-        label: new Date(first.date).toLocaleString("default", {
-          month: "short",
-        }),
+        label: new Date(first.date).toLocaleString("default", { month: "short" }),
       });
       lastMonth = month;
     }
@@ -309,14 +213,8 @@ function CompactHeatmap() {
   if (isLoading) return null;
 
   return (
-    <div
-      className="rounded-lg border p-3"
-      style={{
-        backgroundColor: "var(--color-surface-1)",
-        borderColor: "var(--color-border-subtle)",
-      }}
-    >
-      <p className="mb-2 text-xs font-semibold text-text-secondary">
+    <div className="bg-surface-1 rounded-lg p-4">
+      <p className="mb-3 text-xs font-semibold text-text-secondary">
         All Habits Heatmap
       </p>
 
@@ -328,11 +226,8 @@ function CompactHeatmap() {
           {DAYS_SHORT.map((d) => (
             <div
               key={d}
-              className="flex items-center justify-end text-[8px] leading-none"
-              style={{
-                height: 9,
-                color: "var(--color-text-tertiary)",
-              }}
+              className="flex items-center justify-end text-[8px] leading-none text-text-tertiary"
+              style={{ height: 9 }}
             >
               {d}
             </div>
@@ -344,10 +239,9 @@ function CompactHeatmap() {
             {monthLabels.map((month) => (
               <div
                 key={`${month.col}-${month.label}`}
-                className="absolute text-[8px] leading-none"
+                className="absolute text-[8px] leading-none text-text-tertiary"
                 style={{
                   left: `${(month.col / Math.max(weeks.length, 1)) * 100}%`,
-                  color: "var(--color-text-tertiary)",
                 }}
               >
                 {month.label}
@@ -382,42 +276,21 @@ function CompactHeatmap() {
         </div>
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-3">
+      <div className="mt-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-1">
-          <span
-            className="text-[9px]"
-            style={{ color: "var(--color-text-tertiary)" }}
-          >
-            Less
-          </span>
+          <span className="text-[9px] text-text-tertiary">Less</span>
           {[0, 1, 2, 3, 5].map((n) => (
             <div
               key={n}
               className="shrink-0 rounded-xs"
-              style={{
-                width: 8,
-                height: 8,
-                backgroundColor: getHeatmapCellColor(n),
-              }}
+              style={{ width: 8, height: 8, backgroundColor: getHeatmapCellColor(n) }}
             />
           ))}
-          <span
-            className="text-[9px]"
-            style={{ color: "var(--color-text-tertiary)" }}
-          >
-            More
-          </span>
+          <span className="text-[9px] text-text-tertiary">More</span>
         </div>
-
-        <p
-          className="text-[9px]"
-          style={{ color: "var(--color-text-tertiary)" }}
-        >
+        <p className="text-[9px] text-text-tertiary">
           Total{" "}
-          <span
-            className="font-medium"
-            style={{ color: "var(--color-text-secondary)" }}
-          >
+          <span className="font-medium text-text-secondary">
             {totalCompletions.toLocaleString()}
           </span>
         </p>
@@ -425,6 +298,8 @@ function CompactHeatmap() {
     </div>
   );
 }
+
+// ─── Right Panel ─────────────────────────────────────────────────────────────
 
 interface HabitsRightPanelProps {
   habits: HabitWithStatus[];
@@ -439,8 +314,8 @@ export function HabitsRightPanel({
 
   return (
     <div className="space-y-3">
-      <WeeklyRhythm habits={habits} recentCompletions={recentCompletions} />
-      <QuickStats habits={habits} recentCompletions={recentCompletions} />
+      <HabitStreakCard habits={habits} recentCompletions={recentCompletions} />
+      <ThisMonthCard habits={habits} recentCompletions={recentCompletions} />
       <CompactHeatmap />
     </div>
   );

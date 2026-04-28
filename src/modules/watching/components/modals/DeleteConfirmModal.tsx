@@ -1,9 +1,13 @@
-// components/watching/DeleteConfirmModal.tsx
 "use client";
 
-import { Dialog, Transition } from "@headlessui/react";
-import { Fragment } from "react";
 import { AlertTriangle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
 
 interface DeleteConfirmModalProps {
@@ -28,68 +32,38 @@ export default function DeleteConfirmModal({
   isDeleting = false,
 }: DeleteConfirmModalProps) {
   return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-60" onClose={onClose}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-200"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-150"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
-        </Transition.Child>
+    <Dialog open={isOpen} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-md bg-surface-3 border-border-strong rounded-xl">
+        <DialogHeader className="items-center text-center">
+          <div className="mx-auto w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center mb-3">
+            <AlertTriangle size={20} className="text-red-500" />
+          </div>
+          <DialogTitle className="text-sm font-semibold text-text-primary">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="text-sm text-text-secondary pt-1">
+            {description}
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-200"
-            enterFrom="opacity-0 scale-95"
-            enterTo="opacity-100 scale-100"
-            leave="ease-in duration-150"
-            leaveFrom="opacity-100 scale-100"
-            leaveTo="opacity-0 scale-95"
+        <div className="flex gap-3 pt-2">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={isDeleting}
+            className="flex-1 h-8 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
           >
-            <Dialog.Panel className="relative w-full max-w-md rounded-2xl bg-zinc-900 border border-red-500/20 shadow-2xl p-6">
-              {/* Icon */}
-              <div className="mx-auto w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-                <AlertTriangle size={24} className="text-red-500" />
-              </div>
-
-              {/* Title */}
-              <Dialog.Title className="text-xl font-bold text-white text-center mb-2">
-                {title}
-              </Dialog.Title>
-
-              {/* Description */}
-              <p className="text-sm text-zinc-400 text-center mb-6">
-                {description}
-              </p>
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={onClose}
-                  disabled={isDeleting}
-                  className="flex-1 border-zinc-700 text-white hover:bg-white/5"
-                >
-                  {cancelText}
-                </Button>
-                <Button
-                  onClick={onConfirm}
-                  disabled={isDeleting}
-                  className="flex-1 bg-red-600 hover:bg-red-500 text-white"
-                >
-                  {isDeleting ? "Deleting..." : confirmText}
-                </Button>
-              </div>
-            </Dialog.Panel>
-          </Transition.Child>
+            {cancelText}
+          </Button>
+          <Button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="flex-1 h-8 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+          >
+            {isDeleting ? "Deleting..." : confirmText}
+          </Button>
         </div>
-      </Dialog>
-    </Transition>
+      </DialogContent>
+    </Dialog>
   );
 }

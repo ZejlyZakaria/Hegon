@@ -92,17 +92,17 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg bg-[#1a1a1d] border-white/11 flex flex-col max-h-[80vh] gap-0 p-0">
+      <DialogContent className="sm:max-w-lg bg-surface-3 border-border-strong flex flex-col max-h-[80vh] gap-0 p-0">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-4 shrink-0">
-          <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
+          <DialogTitle className="text-sm font-semibold text-text-primary">
             Add Book
           </DialogTitle>
         </DialogHeader>
 
         {/* Status selector */}
         <div className="px-5 pt-4 pb-3 flex items-center gap-2 shrink-0">
-          <span className="text-xs text-[#71717a]">Add to:</span>
+          <span className="text-xs text-text-tertiary">Add to:</span>
           <div className="flex items-center gap-1.5">
             {(["want_to_read", "reading", "read"] as BookStatus[]).map((status) => {
               const isActive = selectedStatus === status;
@@ -129,7 +129,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
             <>
               {/* Search input */}
               <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#71717a]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
                 <Input
                   variant="tasks"
                   type="text"
@@ -137,13 +137,13 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by title or author…"
                   autoFocus
-                  className="pl-9 pr-9 bg-[#1f1f22] focus:border-white/20"
+                  className="pl-9 pr-9 bg-surface-overlay focus:border-border-focus"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#71717a] hover:text-[#a0a0a8] transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -153,14 +153,14 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
               {/* Searching */}
               {isSearching && (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="w-5 h-5 text-[#71717a] animate-spin" />
+                  <Loader2 className="w-5 h-5 text-text-tertiary animate-spin" />
                 </div>
               )}
 
               {/* No results */}
               {!isSearching && searchResults && searchResults.length === 0 && searchQuery.length >= 2 && (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">
-                  <p className="text-sm text-[#71717a]">No results found</p>
+                  <p className="text-sm text-text-tertiary">No results found</p>
                   <button
                     type="button"
                     onClick={() => setShowManualForm(true)}
@@ -181,23 +181,23 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                       type="button"
                       onClick={() => handleSelectBook(result)}
                       disabled={createBook.isPending}
-                      className="flex gap-3 p-3 bg-[#141416] hover:bg-[#1f1f22] rounded-lg border border-white/4 transition-colors text-left disabled:opacity-50"
+                      className="flex gap-3 p-3 bg-surface-2 hover:bg-surface-overlay rounded-lg border border-white/4 transition-colors text-left disabled:opacity-50"
                     >
-                      <div className="relative w-10 h-14 shrink-0 bg-[#1f1f22] rounded overflow-hidden">
+                      <div className="relative w-10 h-14 shrink-0 bg-surface-overlay rounded overflow-hidden">
                         {result.cover_url ? (
                           <Image src={result.cover_url} alt={result.title} fill className="object-contain" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <BookOpen className="w-4 h-4 text-[#71717a]" />
+                            <BookOpen className="w-4 h-4 text-text-tertiary" />
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#e2e2e6] truncate">{result.title}</p>
+                        <p className="text-sm font-medium text-text-primary truncate">{result.title}</p>
                         {result.author && (
-                          <p className="text-xs text-[#a0a0a8] mt-0.5">{result.author}</p>
+                          <p className="text-xs text-text-secondary mt-0.5">{result.author}</p>
                         )}
-                        <div className="flex items-center gap-2 mt-1 text-xs text-[#71717a]">
+                        <div className="flex items-center gap-2 mt-1 text-xs text-text-tertiary">
                           {result.year && <span>{result.year}</span>}
                           {result.total_pages && (
                             <>
@@ -215,7 +215,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
               {/* Empty — no query */}
               {!searchQuery && (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">
-                  <p className="text-sm text-[#71717a]">Search for a book to add</p>
+                  <p className="text-sm text-text-tertiary">Search for a book to add</p>
                   <button
                     type="button"
                     onClick={() => setShowManualForm(true)}
@@ -232,7 +232,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
             /* Manual form */
             <form onSubmit={handleManualAdd} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-[#a0a0a8]">
+                <label className="text-xs font-medium text-text-secondary">
                   Title <span style={{ color: ACCENT }}>*</span>
                 </label>
                 <Input
@@ -242,23 +242,23 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                   placeholder="Enter book title"
                   autoFocus
                   required
-                  className="bg-[#1f1f22] focus:border-white/20"
+                  className="bg-surface-overlay focus:border-border-focus"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-[#a0a0a8]">Author</label>
+                <label className="text-xs font-medium text-text-secondary">Author</label>
                 <Input
                   variant="tasks"
                   value={manualAuthor}
                   onChange={(e) => setManualAuthor(e.target.value)}
                   placeholder="Enter author name"
-                  className="bg-[#1f1f22] focus:border-white/20"
+                  className="bg-surface-overlay focus:border-border-focus"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-[#a0a0a8]">Total Pages</label>
+                <label className="text-xs font-medium text-text-secondary">Total Pages</label>
                 <Input
                   variant="tasks"
                   type="number"
@@ -266,7 +266,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                   value={manualPages}
                   onChange={(e) => setManualPages(e.target.value)}
                   placeholder="Number of pages"
-                  className="bg-[#1f1f22] focus:border-white/20"
+                  className="bg-surface-overlay focus:border-border-focus"
                 />
               </div>
 
@@ -275,7 +275,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                   type="button"
                   variant="outline"
                   onClick={() => setShowManualForm(false)}
-                  className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
+                  className="h-8 px-3 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
                 >
                   Back
                 </Button>

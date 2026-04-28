@@ -15,6 +15,7 @@ function resolveQueryKey(type: MediaType, options: GetMediaOptions) {
   if (options.recentlyWatched) return WATCHING_KEYS.recentlyWatched(type);
   if (options.wantToWatch) return WATCHING_KEYS.wantToWatch(type);
   if (options.topRated) return WATCHING_KEYS.topRated(type);
+  if (options.watched) return WATCHING_KEYS.byStatus(type, "completed");
   if (type === "film") return WATCHING_KEYS.movies();
   if (type === "serie") return WATCHING_KEYS.series();
   return WATCHING_KEYS.animes();

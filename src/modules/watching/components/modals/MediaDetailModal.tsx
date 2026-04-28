@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import Image from "next/image";
@@ -11,6 +11,7 @@ import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
 import { toast } from "@/shared/utils/toast";
 import { useUpdateMedia } from "@/modules/watching/hooks/useUpdateMedia";
+import { useSimilarTitles } from "@/modules/watching/hooks/useSimilarTitles";
 import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfirmModal";
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -42,13 +43,11 @@ export default function MediaDetailModal({
   const [episodeInput, setEpisodeInput] = useState<string>(String(item.current_episode || 1));
   const [seasonError, setSeasonError] = useState<string | null>(null);
   const [episodeError, setEpisodeError] = useState<string | null>(null);
-  const [similarTitles, setSimilarTitles] = useState<any[]>([]);
-  
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const updateMediaMutation = useUpdateMedia();
-  const lastFetchedId = useRef<number | null>(null);
+  const { data: similarTitles = [] } = useSimilarTitles(item.tmdb_id, item.type, isOpen);
 
   useEffect(() => {
     if (item) setFavorite(item.favorite);
@@ -67,33 +66,6 @@ export default function MediaDetailModal({
     }
   }, [isOpen, item]);
 
-  // fetch similar titles
-  useEffect(() => {
-    if (!item?.tmdb_id || !isOpen) return;
-    if (lastFetchedId.current === item.tmdb_id) return;
-
-    const fetchSimilar = async () => {
-      try {
-        const type = item.type === "film" ? "movie" : "tv";
-        const endpoint = `${type}/${item.tmdb_id}/recommendations`;
-        const res = await fetch(
-          `/api/tmdb?endpoint=${encodeURIComponent(endpoint)}&language=fr-FR`,
-        );
-        const data = await res.json();
-
-        let results = data.results || [];
-        if (item.type === "anime") {
-          results = results.filter((r: any) => r.genre_ids?.includes(16));
-        }
-        setSimilarTitles(results.slice(0, 6));
-        lastFetchedId.current = item.tmdb_id;
-      } catch (err) {
-        console.error("Erreur recommandations TMDB:", err);
-      }
-    };
-
-    fetchSimilar();
-  }, [item, isOpen]);
 
   // ─── Season / episode validation ──────────────────────────────────────────
 
@@ -234,7 +206,7 @@ export default function MediaDetailModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#121212] border border-white/5 shadow-2xl custom-scrollbar">
+              <Dialog.Panel className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#121212] border border-border-subtle shadow-2xl custom-scrollbar">
                 {/* ── hero ── */}
                 <div className="relative w-full aspect-21/9 md:aspect-3/1 overflow-hidden">
                   <Image
@@ -270,7 +242,7 @@ export default function MediaDetailModal({
                 </div>
 
                 {/* ── metadata ── */}
-                <div className="px-3 md:px-8 py-4 flex flex-wrap items-center gap-6 text-zinc-400 text-sm font-medium border-b border-white/5">
+                <div className="px-3 md:px-8 py-4 flex flex-wrap items-center gap-6 text-text-secondary text-sm font-medium border-b border-border-subtle">
                   {item.user_rating != null && item.user_rating > 0 && (
                     <div className="flex items-center gap-1.5 text-white">
                       <Star size={18} className="text-amber-400 fill-amber-400" />
@@ -281,7 +253,7 @@ export default function MediaDetailModal({
                   )}
                   <span>{item.year}</span>
                   <span>{item.type}</span>
-                  <div className="ml-auto w-6 h-6 rounded-full border border-zinc-700 flex items-center justify-center text-zinc-500">
+                  <div className="ml-auto w-6 h-6 rounded-full border border-border-default flex items-center justify-center text-text-tertiary">
                     <Info size={14} />
                   </div>
                 </div>
@@ -294,7 +266,7 @@ export default function MediaDetailModal({
                     className={cn(
                       item.watched
                         ? "bg-green-600 hover:bg-green-600 text-white cursor-default"
-                        : "border-zinc-700 text-white hover:bg-white/5",
+                        : "border-border-default text-white hover:bg-white/5",
                     )}
                   >
                     {item.watched ? "Watched" : "Mark as Watched"}
@@ -304,7 +276,7 @@ export default function MediaDetailModal({
                     variant="outline"
                     onClick={() => setFavorite(!favorite)}
                     className={cn(
-                      "border-zinc-700 gap-2",
+                      "border-border-default gap-2",
                       favorite
                         ? "text-red-400 border-red-500/40 hover:bg-red-500/5"
                         : "text-white hover:bg-white/5",
@@ -316,12 +288,12 @@ export default function MediaDetailModal({
                 </div>
 
                 {/* ── content grid ── */}
-                <div className="px-3 md:px-8 py-6 grid grid-cols-1 md:grid-cols-3 gap-12 border-t border-white/5">
+                <div className="px-3 md:px-8 py-6 grid grid-cols-1 md:grid-cols-3 gap-12 border-t border-border-subtle">
                   {/* left col */}
                   <div className="md:col-span-2 space-y-8">
                     <div className="space-y-4">
                       <h3 className="text-white font-bold text-lg">Overview</h3>
-                      <p className="text-zinc-400 text-sm leading-relaxed whitespace-pre-line">
+                      <p className="text-text-secondary text-sm leading-relaxed whitespace-pre-line">
                         {item.description || "No description available."}
                       </p>
                     </div>
@@ -330,7 +302,7 @@ export default function MediaDetailModal({
                       {item.tags?.map((tag) => (
                         <span
                           key={tag}
-                          className="px-4 py-1.5 rounded-full bg-zinc-800 text-zinc-300 text-xs font-medium border border-white/5"
+                          className="px-4 py-1.5 rounded-full bg-surface-2 text-text-secondary text-xs font-medium border border-border-subtle"
                         >
                           {tag}
                         </span>
@@ -340,7 +312,7 @@ export default function MediaDetailModal({
                     <div className="space-y-4 pt-4">
                       {item.directors && item.directors.length > 0 && (
                         <div>
-                          <span className="text-zinc-500 text-sm">
+                          <span className="text-text-tertiary text-sm">
                             Director(s):
                           </span>
                           <div className="flex flex-wrap gap-4 mt-2">
@@ -357,7 +329,7 @@ export default function MediaDetailModal({
                                     height={32}
                                   />
                                 </div>
-                                <span className="text-xs text-zinc-400">
+                                <span className="text-xs text-text-secondary">
                                   {d.name}
                                 </span>
                               </div>
@@ -367,22 +339,22 @@ export default function MediaDetailModal({
                       )}
                       {item.studio && (
                         <div className="text-sm">
-                          <span className="text-zinc-500">Studio:</span>{" "}
-                          <span className="text-zinc-300">{item.studio}</span>
+                          <span className="text-text-tertiary">Studio:</span>{" "}
+                          <span className="text-text-secondary">{item.studio}</span>
                         </div>
                       )}
                     </div>
 
                     {/* notes */}
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                      <label className="text-xs font-bold text-text-tertiary uppercase tracking-wider">
                         Personal Notes
                       </label>
                       <textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Your thoughts..."
-                        className="mt-2 w-full p-4 bg-zinc-800/50 border border-white/5 rounded-2xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-24 resize-none transition-all"
+                        className="mt-2 w-full p-4 bg-surface-2/50 border border-border-subtle rounded-2xl text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-24 resize-none transition-all"
                       />
                     </div>
 
@@ -390,7 +362,7 @@ export default function MediaDetailModal({
                     {/* rating — masqué pour À voir et En cours */}
                     {(item.watched || item.priority != null) && !item.want_to_watch && (
                       <div className="space-y-3">
-                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center justify-between">
+                        <label className="text-xs font-bold text-text-tertiary uppercase tracking-wider flex items-center justify-between">
                           <span className="flex items-center gap-2">
                             <Star size={14} className="text-amber-400" />
                             My Rating
@@ -401,7 +373,7 @@ export default function MediaDetailModal({
                         </label>
 
                         <div className="space-y-2">
-                          <div className="relative h-2 bg-zinc-800 rounded-full">
+                          <div className="relative h-2 bg-surface-2 rounded-full">
                             <div
                               className="absolute inset-y-0 left-0 bg-amber-400 rounded-full transition-all duration-150"
                               style={{ width: `${ratingPercent}%` }}
@@ -425,7 +397,7 @@ export default function MediaDetailModal({
                     {/* priority — uniquement pour À voir */}
                     {item.want_to_watch && (
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                        <label className="text-xs font-bold text-text-tertiary uppercase tracking-wider">
                           Priority Level
                         </label>
                         <div className="flex gap-2">
@@ -441,8 +413,8 @@ export default function MediaDetailModal({
                                     ? "bg-red-500/20 border-red-500/50 text-red-400"
                                     : level === "medium"
                                       ? "bg-amber-500/20 border-amber-500/50 text-amber-400"
-                                      : "bg-zinc-500/20 border-zinc-500/50 text-zinc-400"
-                                  : "bg-zinc-800/50 border-white/5 text-zinc-600 hover:text-zinc-400",
+                                      : "bg-zinc-500/20 border-zinc-500/50 text-text-secondary"
+                                  : "bg-surface-2/50 border-border-subtle text-text-tertiary hover:text-text-secondary",
                               )}
                             >
                               {level === "high"
@@ -464,13 +436,13 @@ export default function MediaDetailModal({
                     </h3>
                     <div className="space-y-4 text-sm">
                       <div className="flex flex-col gap-1">
-                        <span className="text-zinc-500">Release date:</span>
-                        <span className="text-zinc-300">{item.year}</span>
+                        <span className="text-text-tertiary">Release date:</span>
+                        <span className="text-text-secondary">{item.year}</span>
                       </div>
                       {item.runtime && (
                         <div className="flex flex-col gap-1">
-                          <span className="text-zinc-500">Runtime:</span>
-                          <span className="text-zinc-300">
+                          <span className="text-text-tertiary">Runtime:</span>
+                          <span className="text-text-secondary">
                             {item.type === "serie" && item.episodes
                               ? `~${item.runtime} min/episode`
                               : `${item.runtime} min`}
@@ -479,28 +451,28 @@ export default function MediaDetailModal({
                       )}
                       {item.status && (
                         <div className="flex flex-col gap-1">
-                          <span className="text-zinc-500">Status:</span>
-                          <span className="text-zinc-300">{item.status}</span>
+                          <span className="text-text-tertiary">Status:</span>
+                          <span className="text-text-secondary">{item.status}</span>
                         </div>
                       )}
                       {item.seasons && (
                         <div className="flex flex-col gap-1">
-                          <span className="text-zinc-500">Seasons:</span>
-                          <span className="text-zinc-300">{item.seasons}</span>
+                          <span className="text-text-tertiary">Seasons:</span>
+                          <span className="text-text-secondary">{item.seasons}</span>
                         </div>
                       )}
                       {item.episodes && (
                         <div className="flex flex-col gap-1">
-                          <span className="text-zinc-500">Episodes:</span>
-                          <span className="text-zinc-300">{item.episodes}</span>
+                          <span className="text-text-tertiary">Episodes:</span>
+                          <span className="text-text-secondary">{item.episodes}</span>
                         </div>
                       )}
                       {item.in_progress && (item.type === "serie" || item.type === "anime") && (
                         <div className="flex flex-col gap-2">
-                          <span className="text-zinc-500">Progression:</span>
+                          <span className="text-text-tertiary">Progression:</span>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
-                              <span className="text-xs text-zinc-600">
+                              <span className="text-xs text-text-tertiary">
                                 Season{maxSeason ? ` (max ${maxSeason})` : ""}
                               </span>
                               <input
@@ -510,10 +482,10 @@ export default function MediaDetailModal({
                                 onChange={(e) => handleSeasonChange(e.target.value)}
                                 onBlur={handleSeasonBlur}
                                 className={cn(
-                                  "w-full bg-zinc-800/50 border rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1",
+                                  "w-full bg-surface-2/50 border rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1",
                                   seasonError
                                     ? "border-red-500/60 focus:ring-red-500/50"
-                                    : "border-white/5 focus:ring-blue-500/50",
+                                    : "border-border-subtle focus:ring-blue-500/50",
                                 )}
                               />
                               {seasonError && (
@@ -521,7 +493,7 @@ export default function MediaDetailModal({
                               )}
                             </div>
                             <div className="space-y-1">
-                              <span className="text-xs text-zinc-600">
+                              <span className="text-xs text-text-tertiary">
                                 Episode{getMaxEpisode(parseInt(seasonInput) || 1) ? ` (max ${getMaxEpisode(parseInt(seasonInput) || 1)})` : ""}
                               </span>
                               <input
@@ -531,10 +503,10 @@ export default function MediaDetailModal({
                                 onChange={(e) => handleEpisodeChange(e.target.value)}
                                 onBlur={handleEpisodeBlur}
                                 className={cn(
-                                  "w-full bg-zinc-800/50 border rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1",
+                                  "w-full bg-surface-2/50 border rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:ring-1",
                                   episodeError
                                     ? "border-red-500/60 focus:ring-red-500/50"
-                                    : "border-white/5 focus:ring-blue-500/50",
+                                    : "border-border-subtle focus:ring-blue-500/50",
                                 )}
                               />
                               {episodeError && (
@@ -550,7 +522,7 @@ export default function MediaDetailModal({
 
                 {/* ── similar titles ── */}
                 {similarTitles.length > 0 && (
-                  <div className="px-3 md:px-8 py-8 border-t border-white/5 space-y-6">
+                  <div className="px-3 md:px-8 py-8 border-t border-border-subtle space-y-6">
                     <h3 className="text-white font-bold text-lg">
                       Similar Titles
                     </h3>
@@ -573,7 +545,7 @@ export default function MediaDetailModal({
                               className="object-cover transition-transform duration-500 group-hover:scale-105"
                             />
                           </div>
-                          <p className="text-sm font-medium text-zinc-300 line-clamp-2 group-hover:text-white transition-colors">
+                          <p className="text-sm font-medium text-text-secondary line-clamp-2 group-hover:text-white transition-colors">
                             {sim.title || sim.name}
                           </p>
                         </div>
@@ -583,7 +555,7 @@ export default function MediaDetailModal({
                 )}
 
                 {/* ── footer ── */}
-                <div className="px-3 md:px-8 py-6 bg-black/20 border-t border-white/5 flex items-center justify-between">
+                <div className="px-3 md:px-8 py-6 bg-black/20 border-t border-border-subtle flex items-center justify-between">
                   {onDelete && (
                     <Button
                       variant="ghost"

@@ -2,9 +2,10 @@
 "use client";
 
 import Image from "next/image";
-import { Star, TrendingUp, Sparkles } from "lucide-react";
+import { Star, TrendingUp, Sparkles, Plus } from "lucide-react";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
 import { useWatchingHero } from "@/modules/watching/hooks/useWatchingHero";
+import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { MoviesHeroSkeleton } from "@/modules/watching/components/WatchingSkeletons";
 import type { WatchingConfig } from "@/modules/watching/types";
 
@@ -14,7 +15,7 @@ function RecoCard({ item }: { item: any }) {
   const posterUrl = item.poster_path ? `${TMDB_IMG}${item.poster_path}` : null;
   return (
     <div className="flex gap-3 group cursor-pointer">
-      <div className="relative w-14 h-20 shrink-0 rounded-lg overflow-hidden bg-zinc-800">
+      <div className="relative w-14 h-20 shrink-0 rounded-lg overflow-hidden bg-surface-2">
         {posterUrl && (
           <Image src={posterUrl} alt={item.title || item.name} fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -22,10 +23,10 @@ function RecoCard({ item }: { item: any }) {
         )}
       </div>
       <div className="flex-1 min-w-0 py-0.5">
-        <p className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">
+        <p className="text-sm font-medium text-text-primary truncate group-hover:text-white transition-colors">
           {item.title || item.name}
         </p>
-        <p className="text-xs text-zinc-600 mt-0.5">
+        <p className="text-xs text-text-tertiary mt-0.5">
           {(item.release_date || item.first_air_date)?.slice(0, 4)}
         </p>
         <div className="flex items-center gap-1 mt-1">
@@ -41,6 +42,7 @@ function RecoCard({ item }: { item: any }) {
 
 export default function WatchingHero({ config }: { config: WatchingConfig }) {
   const { data, isLoading } = useWatchingHero(config.type);
+  const { openModalWithItem } = useWatching();
 
   if (isLoading || !data) return <MoviesHeroSkeleton />;
 
@@ -75,7 +77,7 @@ export default function WatchingHero({ config }: { config: WatchingConfig }) {
         <div className="absolute bottom-0 inset-x-0 p-4">
           <div className="flex gap-2 mb-2 flex-wrap">
             {genres.slice(0, 3).map(g => (
-              <span key={g} className="text-[9px] md:text-[10px] px-2 py-0.5 bg-white/10 rounded-full text-zinc-300">
+              <span key={g} className="text-[9px] md:text-[10px] px-2 py-0.5 bg-white/10 rounded-full text-text-secondary">
                 {g}
               </span>
             ))}
@@ -90,19 +92,26 @@ export default function WatchingHero({ config }: { config: WatchingConfig }) {
                 {trending?.vote_average?.toFixed(1)}
               </span>
             </div>
-            <span className="text-zinc-500 text-[10px] md:text-xs">{releaseDate}</span>
+            <span className="text-text-tertiary text-[10px] md:text-xs">{releaseDate}</span>
           </div>
-          <p className="text-[11px] md:text-xs text-zinc-400 mt-2 line-clamp-2 max-w-full lg:max-w-lg">
+          <p className="text-[11px] md:text-xs text-text-secondary mt-2 line-clamp-2 max-w-full lg:max-w-lg">
             {trending?.overview}
           </p>
+          <button
+            onClick={() => trending && openModalWithItem("recentlyWatched", trending)}
+            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white text-xs font-medium transition-colors"
+          >
+            <Plus size={12} />
+            Add to collection
+          </button>
         </div>
       </div>
 
       {/* ── recommendations — 1/3 sur desktop, full sur mobile ── */}
-      <div className="lg:col-span-1 rounded-2xl bg-zinc-900/60 border border-zinc-800/50 p-4 flex flex-col gap-3 min-h-50 lg:min-h-0">
+      <div className="lg:col-span-1 rounded-2xl bg-surface-1 border border-border-subtle p-4 flex flex-col gap-3 min-h-50 lg:min-h-0">
         <div className="flex items-center gap-2">
           <Sparkles size={13} className="text-violet-400 md:w-3.5 md:h-3.5" />
-          <h3 className="text-xs md:text-sm font-semibold text-zinc-300">
+          <h3 className="text-xs md:text-sm font-semibold text-text-secondary">
             Don&apos;t Miss
           </h3>
         </div>
@@ -115,7 +124,7 @@ export default function WatchingHero({ config }: { config: WatchingConfig }) {
           </div>
         ) : (
           <div className="flex items-center justify-center flex-1">
-            <p className="text-[10px] md:text-xs text-zinc-600">
+            <p className="text-[10px] md:text-xs text-text-tertiary">
               No recommendations
             </p>
           </div>

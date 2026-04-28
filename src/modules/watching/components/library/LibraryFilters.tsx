@@ -66,7 +66,7 @@ export default function LibraryFilters({ onFilterChange }: Props) {
               "rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150",
               mediaType === value
                 ? "bg-white text-black"
-                : "bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
+                : "bg-surface-1 border border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default"
             )}
           >
             {label}
@@ -76,19 +76,19 @@ export default function LibraryFilters({ onFilterChange }: Props) {
 
       {/* sort select — shadcn */}
       <div className="flex items-center gap-2 ml-auto">
-        <ArrowUpDown size={14} className="text-zinc-500 shrink-0" />
+        <ArrowUpDown size={14} className="text-text-tertiary shrink-0" />
         <Select value={sortBy} onValueChange={v => handleSortChange(v as SortKey)}>
           <SelectTrigger
-            className="w-40 h-9 bg-zinc-900 border-zinc-800 text-zinc-300 text-sm hover:border-zinc-600 focus:ring-0 focus:ring-offset-0 transition-colors"
+            className="w-40 h-9 bg-surface-1 border-border-subtle text-text-secondary text-sm hover:border-border-default focus:ring-0 focus:ring-offset-0 transition-colors"
           >
             <SelectValue placeholder="Sort by..." />
           </SelectTrigger>
-          <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300">
+          <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
             {SORT_OPTIONS.map(({ value, label }) => (
               <SelectItem
                 key={value}
                 value={value}
-                className="text-sm focus:bg-zinc-800 focus:text-white cursor-pointer"
+                className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer"
               >
                 {label}
               </SelectItem>

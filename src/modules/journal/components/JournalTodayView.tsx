@@ -76,7 +76,7 @@ function TodayContext() {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-text-tertiary">Today&apos;s context</p>
-      <p className="text-xs text-text-disabled italic">
+      <p className="text-xs text-text-tertiary italic">
         Habits, tasks &amp; reading progress — coming in Phase 3.
       </p>
     </div>

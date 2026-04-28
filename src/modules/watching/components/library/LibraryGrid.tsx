@@ -19,12 +19,12 @@ export default function LibraryGrid({
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-text-tertiary">
           {items.length} media{items.length > 1 ? "s" : ""}
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
         {items.map((item) => (
           <LibraryCard
             key={item.id}
@@ -56,7 +56,7 @@ export default function LibraryGrid({
 
       {items.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-zinc-500">No media found</p>
+          <p className="text-text-tertiary">No media found</p>
         </div>
       )}
     </div>

@@ -116,10 +116,10 @@ export function BooksPage() {
           <BooksStatsZone />
 
           {/* Main layout — tabs+sort+content left, stats right */}
-          <div className="flex gap-4">
+          <div className="flex gap-6">
             <div className="min-w-0 flex-1 flex flex-col gap-4">
               {/* Tabs + Sort */}
-              <div className="flex items-center border-b border-white/4">
+              <div className="flex items-center">
                 {TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
                   return (

@@ -174,7 +174,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
           <div className="flex gap-6 max-w-4xl">
 
             {/* ── Left: Cover + metadata ── */}
-            <div className="w-44 shrink-0 flex flex-col gap-4">
+            <div className="w-44 shrink-0 flex flex-col gap-3">
               {/* Cover */}
               <div className="relative w-full aspect-2/3 rounded-lg overflow-hidden bg-surface-1 border border-border-subtle">
                 {book.cover_url ? (
@@ -235,7 +235,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
             </div>
 
             {/* ── Right: Main content ── */}
-            <div className="flex-1 min-w-0 flex flex-col gap-4">
+            <div className="flex-1 min-w-0 flex flex-col gap-3">
               {/* Title + Author + Actions */}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -255,11 +255,11 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                   {showMenu && (
-                    <div className="absolute right-0 top-full mt-1 w-36 bg-[#1a1a1d] border border-white/11 rounded-lg shadow-lg z-10 py-1">
+                    <div className="absolute right-0 top-full mt-1 w-36 bg-surface-3 border border-border-strong rounded-lg shadow-lg z-10 py-1">
                       <button
                         type="button"
                         onClick={() => { setShowMenu(false); setDeleteModalOpen(true); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-[#141416] transition-colors"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-surface-2 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         Delete book
@@ -444,7 +444,7 @@ function BookDetailSkeleton() {
           <div className="w-44 shrink-0">
             <div className="w-full aspect-2/3 bg-surface-1 rounded-lg border border-border-subtle animate-pulse" />
           </div>
-          <div className="flex-1 flex flex-col gap-4">
+          <div className="flex-1 flex flex-col gap-3">
             <div className="flex flex-col gap-2">
               <div className="h-7 w-3/4 bg-surface-2 rounded animate-pulse" />
               <div className="h-4 w-1/3 bg-surface-2 rounded animate-pulse" />

@@ -132,9 +132,9 @@ export function GoalModal({ open, onClose, goal }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md bg-[#1a1a1d] border-white/11">
+      <DialogContent className="sm:max-w-md bg-surface-3 border-border-strong">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
+          <DialogTitle className="text-sm font-semibold text-text-primary">
             {isEdit ? "Edit Goal" : "New Goal"}
           </DialogTitle>
         </DialogHeader>
@@ -146,7 +146,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                  <FormLabel className="text-xs font-medium text-text-secondary">
                     Title <span style={{ color: ACCENT }}>*</span>
                   </FormLabel>
                   <FormControl>
@@ -155,7 +155,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
                       variant="tasks"
                       placeholder="e.g. Launch HEGON beta"
                       autoFocus
-                      className="bg-[#1f1f22] focus:border-white/20"
+                      className="bg-surface-overlay focus:border-border-focus"
                     />
                   </FormControl>
                   <FormMessage />
@@ -168,7 +168,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                  <FormLabel className="text-xs font-medium text-text-secondary">
                     Description
                   </FormLabel>
                   <FormControl>
@@ -177,7 +177,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
                       variant="tasks"
                       placeholder="What does success look like?"
                       rows={2}
-                      className="bg-[#1f1f22] focus:border-white/20"
+                      className="bg-surface-overlay focus:border-border-focus"
                     />
                   </FormControl>
                   <FormMessage />
@@ -191,12 +191,12 @@ export function GoalModal({ open, onClose, goal }: Props) {
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                    <FormLabel className="text-xs font-medium text-text-secondary">
                       Category
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value ?? ""}>
                       <FormControl>
-                        <SelectTrigger variant="tasks" className="w-full bg-[#1f1f22] focus:border-white/20">
+                        <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
                           <SelectValue placeholder="None" />
                         </SelectTrigger>
                       </FormControl>
@@ -220,12 +220,12 @@ export function GoalModal({ open, onClose, goal }: Props) {
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                    <FormLabel className="text-xs font-medium text-text-secondary">
                       Priority
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger variant="tasks" className="w-full bg-[#1f1f22] focus:border-white/20">
+                        <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -247,7 +247,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
               name="target_date"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                  <FormLabel className="text-xs font-medium text-text-secondary">
                     Target date
                   </FormLabel>
                   <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
@@ -258,10 +258,10 @@ export function GoalModal({ open, onClose, goal }: Props) {
                           variant="outline"
                           className={cn(
                             "w-full h-8 justify-start text-left font-normal",
-                            "bg-[#1f1f22] border-white/[0.07]",
-                            "text-[#e2e2e6] hover:bg-[#1f1f22] hover:border-white/11",
-                            "focus-visible:border-white/20",
-                            !field.value && "text-[#71717a]"
+                            "bg-surface-overlay border-border-default",
+                            "text-text-primary hover:bg-surface-overlay hover:border-border-focus",
+                            "focus-visible:border-border-focus",
+                            !field.value && "text-text-tertiary"
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -269,7 +269,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-[#1a1a1d] border-white/11" align="start">
+                    <PopoverContent className="w-auto p-0 bg-surface-3 border-border-strong" align="start">
                       <Calendar
                         mode="single"
                         selected={field.value ?? undefined}
@@ -278,7 +278,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
                           setCalendarOpen(false);
                         }}
                         initialFocus
-                        className="bg-[#1a1a1d]"
+                        className="bg-surface-3"
                       />
                     </PopoverContent>
                   </Popover>
@@ -292,7 +292,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
                 type="button"
                 variant="outline"
                 onClick={() => handleOpenChange(false)}
-                className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
+                className="h-8 px-3 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
               >
                 Cancel
               </Button>

@@ -125,7 +125,7 @@ export function GoalsPage() {
       {/* ── Topbar ── */}
       <div className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b border-white/4 bg-[#09090b]/80 px-4 backdrop-blur-sm shrink-0">
         <div className="relative flex-1 max-w-xs">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71717a]" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
           <Input
             variant="tasks"
             placeholder="Search goals…"
@@ -140,8 +140,8 @@ export function GoalsPage() {
         {/* ── Module header ── */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold leading-tight text-[#e2e2e6]">Goals</h1>
-            <p className="mt-0.5 text-sm text-[#71717a]">
+            <h1 className="text-xl font-bold leading-tight text-text-primary">Goals</h1>
+            <p className="mt-0.5 text-sm text-text-tertiary">
               Big picture. Clear path.
             </p>
           </div>
@@ -157,9 +157,9 @@ export function GoalsPage() {
 
         {/* ── Content ── */}
         {isLoading ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-14 rounded-lg bg-[#0e0e10] animate-pulse" />
+              <div key={i} className="h-14 rounded-lg bg-surface-1 animate-pulse" />
             ))}
           </div>
         ) : goals.length === 0 ? (
@@ -171,7 +171,7 @@ export function GoalsPage() {
             {/* Left — tabs + list */}
             <div className="flex-1 min-w-0">
               {/* Tabs row */}
-              <div className="flex items-center justify-between border-b border-white/4">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   {STATUS_TABS.map(({ value, label }) => (
                     <button
@@ -180,7 +180,7 @@ export function GoalsPage() {
                       onClick={() => setStatus(value)}
                       className={cn(
                         "relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
-                        status === value ? "text-[#e2e2e6]" : "text-[#71717a] hover:text-[#a0a0a8]"
+                        status === value ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary"
                       )}
                     >
                       {label}
@@ -220,9 +220,9 @@ export function GoalsPage() {
               </div>
 
               {/* List */}
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 space-y-3">
                 {displayed.length === 0 ? (
-                  <p className="py-16 text-center text-sm text-[#71717a]">
+                  <p className="py-16 text-center text-sm text-text-tertiary">
                     No goals match this filter.
                   </p>
                 ) : (
@@ -234,7 +234,7 @@ export function GoalsPage() {
             </div>
 
             {/* Right panel — xl+ only, sticky */}
-            <div className="hidden xl:block w-72 shrink-0 sticky top-20">
+            <div className="w-72 shrink-0">
               <GoalRightPanel
                 goals={goals}
                 activeCategory={activeCategory}

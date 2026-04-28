@@ -45,7 +45,7 @@ export function GoalRightPanel({
   ).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Life Compass */}
       <LifeCompass
         goals={goals}
@@ -58,7 +58,7 @@ export function GoalRightPanel({
         <button
           type="button"
           onClick={() => router.push(`/life/goals/${focusGoal.id}`)}
-          className="w-full text-left relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-3 cursor-pointer transition-colors duration-100 hover:bg-[#141416]"
+          className="w-full text-left relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-3 cursor-pointer transition-colors duration-100 hover:bg-surface-2"
         >
           <h3 className="mb-2 text-xs font-semibold text-text-secondary">
             Focus
@@ -67,7 +67,7 @@ export function GoalRightPanel({
             {focusGoal.title}
           </p>
           <div className="flex items-center gap-2 mb-2">
-            <div className="flex-1 h-1 rounded-full bg-[#141416] overflow-hidden">
+            <div className="flex-1 h-1 rounded-full bg-surface-2 overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
@@ -76,12 +76,12 @@ export function GoalRightPanel({
                 }}
               />
             </div>
-            <span className="text-xs font-medium text-[#e2e2e6] shrink-0 tabular-nums">
+            <span className="text-xs font-medium text-text-primary shrink-0 tabular-nums">
               {focusGoal.progress}%
             </span>
           </div>
           {focusGoal.target_date && (
-            <p className="text-xs text-[#71717a]">
+            <p className="text-xs text-text-tertiary">
               {new Date(focusGoal.target_date).toLocaleDateString("en-GB", {
                 day: "numeric",
                 month: "short",
@@ -93,26 +93,26 @@ export function GoalRightPanel({
       )}
 
       {/* Quick Stats */}
-      <div className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-3">
+      <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-3">
         <h3 className="mb-2 text-xs font-semibold text-text-secondary">
           Stats
         </h3>
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-[#a0a0a8]">Active</span>
-            <span className="text-sm font-medium text-[#e2e2e6] tabular-nums">
+            <span className="text-xs text-text-secondary">Active</span>
+            <span className="text-sm font-medium text-text-primary tabular-nums">
               {active}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-[#a0a0a8]">Completed</span>
-            <span className="text-sm font-medium text-[#e2e2e6] tabular-nums">
+            <span className="text-xs text-text-secondary">Completed</span>
+            <span className="text-sm font-medium text-text-primary tabular-nums">
               {completed}
             </span>
           </div>
           {overdue > 0 && (
             <div className="flex items-center justify-between">
-              <span className="text-xs text-[#a0a0a8]">Overdue</span>
+              <span className="text-xs text-text-secondary">Overdue</span>
               <span className="text-sm font-medium tabular-nums" style={{ color: "#f87171" }}>
                 {overdue}
               </span>

@@ -44,7 +44,7 @@ function HabitsTopbar({
       <div className="relative max-w-xs flex-1">
         <Search
           size={15}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71717a]"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"
         />
         <Input
           variant="tasks"
@@ -76,12 +76,12 @@ function TodayProgress({ completed, total }: { completed: number; total: number 
   const { icon, message } = getMotivationConfig(pct);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10]">
+    <div className="overflow-hidden rounded-lg border border-border-subtle bg-surface-1">
       <div className="flex items-stretch">
         <div className="flex-1 px-4 py-3">
-          <p className="mb-2 text-sm font-semibold text-[#e2e2e6]">Today Progress</p>
+          <p className="mb-2 text-sm font-semibold text-text-primary">Today Progress</p>
           <div className="flex items-center gap-3">
-            <div className="h-2 w-1/2 shrink-0 overflow-hidden rounded-full bg-[#1a1a1d]">
+            <div className="h-2 w-1/2 shrink-0 overflow-hidden rounded-full bg-surface-overlay">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
@@ -97,17 +97,17 @@ function TodayProgress({ completed, total }: { completed: number; total: number 
             >
               {pct}%
             </span>
-            <span className="shrink-0 text-xs text-[#71717a]">
+            <span className="shrink-0 text-xs text-text-tertiary">
               {completed}/{safeTotal} habits completed
             </span>
           </div>
         </div>
 
-        <div className="my-3 w-px bg-[#141416]" />
+        <div className="my-3 w-px bg-surface-2" />
 
         <div className="flex w-44 items-center gap-2.5 px-4" style={{ color: ACCENT }}>
           <span className="shrink-0">{icon}</span>
-          <span className="text-xs font-medium leading-relaxed text-[#a0a0a8]">
+          <span className="text-xs font-medium leading-relaxed text-text-secondary">
             {message}
           </span>
         </div>
@@ -188,8 +188,8 @@ export function HabitsPage() {
       <div className="space-y-4 px-4 py-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold leading-tight text-[#e2e2e6]">Habits</h1>
-            <p className="mt-0.5 text-sm text-[#71717a]">
+            <h1 className="text-xl font-bold leading-tight text-text-primary">Habits</h1>
+            <p className="mt-0.5 text-sm text-text-tertiary">
               Build consistency. One day at a time.
             </p>
           </div>
@@ -205,7 +205,7 @@ export function HabitsPage() {
 
         {totalCount > 0 && <TodayProgress completed={completedCount} total={totalCount} />}
 
-        <div className="flex items-center border-b border-white/4">
+        <div className="flex items-center">
           {([
             { value: "today", label: "Today" },
             { value: "calendar", label: "Calendar" },
@@ -217,7 +217,7 @@ export function HabitsPage() {
               onClick={() => setTab(value)}
               className={cn(
                 "relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
-                tab === value ? "text-[#e2e2e6]" : "text-[#71717a] hover:text-[#a0a0a8]"
+                tab === value ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary"
               )}
             >
               {label}
@@ -232,10 +232,10 @@ export function HabitsPage() {
         </div>
 
         {tab === "today" && (
-          <div className="mt-4 flex gap-4">
-            <div className="min-w-0 flex-13 space-y-3">
+          <div className="mt-4 flex gap-6">
+            <div className="flex-1 min-w-0 space-y-3">
               {filteredTodayHabits.length === 0 ? (
-                <p className="py-6 text-center text-sm text-[#71717a]">
+                <p className="py-6 text-center text-sm text-text-tertiary">
                   {search.trim() ? "No habits match your search." : "No habits scheduled for today."}
                 </p>
               ) : (
@@ -258,7 +258,7 @@ export function HabitsPage() {
               )}
             </div>
 
-            <div className="min-w-0 flex-7">
+            <div className="w-72 shrink-0">
               <HabitsRightPanel
                 habits={todayHabits}
                 recentCompletions={recentCompletions}

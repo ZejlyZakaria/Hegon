@@ -13,6 +13,7 @@ type ListContext = "topTen" | "inProgress" | "recentlyWatched" | "wantToWatch";
 
 interface WatchingContextValue {
   openModal: (ctx: ListContext) => void;
+  openModalWithItem: (ctx: ListContext, item: unknown) => void;
   config: WatchingConfig;
   // item ajouté → notifier la bonne section
   registerOnAdded: (ctx: ListContext, fn: (item: WatchingMedia) => void) => void;
@@ -33,6 +34,7 @@ interface WatchingContextValue {
 
 export const WatchingContext = createContext<WatchingContextValue>({
   openModal: () => {},
+  openModalWithItem: () => {},
   config: {} as WatchingConfig,
   registerOnAdded: () => {},
   unregisterOnAdded: () => {},
@@ -59,6 +61,7 @@ interface Props {
 
 export default function WatchingClient({ config, children }: Props) {
   const [activeModal, setActiveModal] = useState<ListContext | null>(null);
+  const [pendingInitialItem, setPendingInitialItem] = useState<unknown>(null);
 
   // refs pour les callbacks — pas de re-render quand on register/unregister
   const addedCbs  = useRef<Partial<Record<ListContext, (item: WatchingMedia) => void>>>({});
@@ -69,7 +72,15 @@ export default function WatchingClient({ config, children }: Props) {
   const activeModalRef = useRef<ListContext | null>(null);
   activeModalRef.current = activeModal;
 
-  const openModal = useCallback((ctx: ListContext) => setActiveModal(ctx), []);
+  const openModal = useCallback((ctx: ListContext) => {
+    setPendingInitialItem(null);
+    setActiveModal(ctx);
+  }, []);
+
+  const openModalWithItem = useCallback((ctx: ListContext, item: unknown) => {
+    setPendingInitialItem(item);
+    setActiveModal(ctx);
+  }, []);
 
   // ── added callbacks ──
   const registerOnAdded = useCallback((ctx: ListContext, fn: (item: WatchingMedia) => void) => {
@@ -124,6 +135,7 @@ export default function WatchingClient({ config, children }: Props) {
   // called when AddMediaModal succeeds
   const handleAdded = useCallback((item?: WatchingMedia) => {
     setActiveModal(null);
+    setPendingInitialItem(null);
     if (!item) return;
     const ctx = activeModalRef.current;
     if (ctx && addedCbs.current[ctx]) {
@@ -132,7 +144,7 @@ export default function WatchingClient({ config, children }: Props) {
   }, []);
 
   const contextValue: WatchingContextValue = {
-    openModal, config,
+    openModal, openModalWithItem, config,
     registerOnAdded, unregisterOnAdded,
     registerOnUpdated, unregisterOnUpdated, notifyUpdated,
     registerOnMoved, unregisterOnMoved, notifyMoved,
@@ -147,31 +159,35 @@ export default function WatchingClient({ config, children }: Props) {
 
       <AddMediaModal
         isOpen={activeModal === "topTen"}
-        onClose={() => setActiveModal(null)}
+        onClose={() => { setActiveModal(null); setPendingInitialItem(null); }}
         onAdded={handleAdded}
         defaultType={config.type as MediaType}
         listContext="topTen"
+        initialItem={activeModal === "topTen" ? pendingInitialItem : null}
       />
       <AddMediaModal
         isOpen={activeModal === "inProgress"}
-        onClose={() => setActiveModal(null)}
+        onClose={() => { setActiveModal(null); setPendingInitialItem(null); }}
         onAdded={handleAdded}
         defaultType={config.type as MediaType}
         listContext="inProgress"
+        initialItem={activeModal === "inProgress" ? pendingInitialItem : null}
       />
       <AddMediaModal
         isOpen={activeModal === "recentlyWatched"}
-        onClose={() => setActiveModal(null)}
+        onClose={() => { setActiveModal(null); setPendingInitialItem(null); }}
         onAdded={handleAdded}
         defaultType={config.type as MediaType}
         listContext="recentlyWatched"
+        initialItem={activeModal === "recentlyWatched" ? pendingInitialItem : null}
       />
       <AddMediaModal
         isOpen={activeModal === "wantToWatch"}
-        onClose={() => setActiveModal(null)}
+        onClose={() => { setActiveModal(null); setPendingInitialItem(null); }}
         onAdded={handleAdded}
         defaultType={config.type as MediaType}
         listContext="wantToWatch"
+        initialItem={activeModal === "wantToWatch" ? pendingInitialItem : null}
       />
     </WatchingContext.Provider>
   );

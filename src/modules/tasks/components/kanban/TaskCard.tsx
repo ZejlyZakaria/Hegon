@@ -51,20 +51,10 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
   const content = (
     <div
       className={cn(
-        "group relative rounded-lg border p-3 transition-colors duration-100",
-        !isOverlay && "cursor-pointer",
+        "group relative rounded-lg border border-border-subtle bg-surface-1 p-3 transition-colors duration-100",
+        !isOverlay && "cursor-pointer hover:bg-surface-2",
         isDragging && !isOverlay && "opacity-0"
       )}
-      style={{
-        backgroundColor: "var(--color-surface-1)",
-        borderColor: "var(--color-border-subtle)",
-      }}
-      onMouseEnter={(e) => {
-        if (!isOverlay) e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-      }}
-      onMouseLeave={(e) => {
-        if (!isOverlay) e.currentTarget.style.backgroundColor = "var(--color-surface-1)";
-      }}
     >
       {!isOverlay && (
         <div
@@ -148,16 +138,7 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
             <button
               type="button"
               onClick={(e) => e.stopPropagation()}
-              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-md opacity-0 transition-all duration-100 group-hover:opacity-100"
-              style={{ color: "var(--color-text-tertiary)" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-                e.currentTarget.style.color = "var(--color-text-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.color = "var(--color-text-tertiary)";
-              }}
+              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-md opacity-0 transition-all duration-100 group-hover:opacity-100 text-text-tertiary hover:bg-surface-2 hover:text-text-primary"
             >
               <MoreHorizontal size={14} />
             </button>

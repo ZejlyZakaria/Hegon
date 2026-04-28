@@ -12,15 +12,15 @@ interface Props {
 export default function LibraryCard({ item, onClick }: Props) {
   return (
     <div
-      className="group relative cursor-pointer overflow-hidden rounded-xl"
+      className="group relative cursor-pointer overflow-hidden rounded-lg"
       onClick={onClick}
     >
-      <div className="relative aspect-2/3 overflow-hidden rounded-xl shadow-xl">
+      <div className="relative aspect-2/3 overflow-hidden rounded-lg">
         <Image
           src={item.poster_url || "/placeholder.svg"}
           alt={item.title}
           fill
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-cover"
           sizes="(max-width: 768px) 100vw, 50vw"
           quality={75}
         />
@@ -47,8 +47,8 @@ export default function LibraryCard({ item, onClick }: Props) {
       </div>
 
       <div className="mt-3 px-1">
-        <h4 className="font-semibold text-white text-sm line-clamp-1">{item.title}</h4>
-        <div className="mt-1 flex items-center justify-between text-xs text-zinc-400">
+        <h4 className="font-semibold text-text-primary text-sm line-clamp-1">{item.title}</h4>
+        <div className="mt-1 flex items-center justify-between text-xs text-text-tertiary">
           <span className="mr-2">{item.year}</span>
           {item.tags?.length > 0 && (
             <span className="text-[9px] uppercase tracking-wider line-clamp-1">

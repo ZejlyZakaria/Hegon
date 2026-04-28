@@ -90,7 +90,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
     : null;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10]">
+    <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1">
       <div className="relative p-3">
         <h3
           className="text-xs mb-2 font-semibold text-text-secondary"
@@ -118,7 +118,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
                   key={pct}
                   d={d}
                   fill="none"
-                  stroke="#141416"
+                  stroke="var(--color-surface-2)"
                   strokeWidth={1}
                 />
               );
@@ -134,7 +134,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
                   y1={CENTER}
                   x2={end.x}
                   y2={end.y}
-                  stroke="#141416"
+                  stroke="var(--color-surface-2)"
                   strokeWidth={1}
                 />
               );
@@ -193,7 +193,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
                     style={{
                       fontSize: 9,
                       fontWeight: isActive ? 700 : 500,
-                      fill: isActive ? color : "#71717a",
+                      fill: isActive ? color : "var(--color-text-tertiary)",
                     }}
                   >
                     {CATEGORY_LABELS[s.category]}
@@ -214,7 +214,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
 
         {/* Tooltip */}
         {tooltipStat && (
-          <div className="mt-2 rounded-md border border-white/[0.07] bg-[#0e0e10] px-3 py-2 text-xs text-[#a0a0a8]">
+          <div className="mt-2 rounded-md border border-border-default bg-surface-1 px-3 py-2 text-xs text-text-secondary">
             <span
               className="font-medium"
               style={{ color: CATEGORY_COLORS[tooltipStat.category] }}

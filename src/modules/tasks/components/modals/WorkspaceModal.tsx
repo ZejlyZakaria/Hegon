@@ -76,9 +76,9 @@ export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModal
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md bg-[#1a1a1d] border-white/11">
+      <DialogContent className="sm:max-w-md bg-surface-3 border-border-strong">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
+          <DialogTitle className="text-sm font-semibold text-text-primary">
             {isEdit ? "Rename workspace" : "New workspace"}
           </DialogTitle>
         </DialogHeader>
@@ -90,7 +90,7 @@ export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModal
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-[#a0a0a8]">
+                  <FormLabel className="text-xs font-medium text-text-secondary">
                     Name
                   </FormLabel>
                   <FormControl>
@@ -99,7 +99,7 @@ export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModal
                       variant="tasks"
                       placeholder="e.g. Personal, Work, Side Projects..."
                       autoFocus
-                      className="bg-[#1f1f22] focus:border-white/20"
+                      className="bg-surface-overlay focus:border-border-focus"
                     />
                   </FormControl>
                   <FormMessage />
@@ -112,7 +112,7 @@ export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModal
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
+                className="h-8 px-3 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
               >
                 Cancel
               </Button>

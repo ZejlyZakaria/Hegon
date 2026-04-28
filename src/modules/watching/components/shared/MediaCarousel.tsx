@@ -16,11 +16,17 @@ import {
 import type { WatchingMedia } from "@/modules/watching/types";
 import { cn } from "@/shared/utils/utils"
 import MediaDetailModal from "../modals/MediaDetailModal";
-import { createClient } from "@/infrastructure/supabase/client"
-import { useRouter } from "next/navigation";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 
-const supabase = createClient();
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+function computeProgress(item: WatchingMedia): number {
+  if (!item.season_episodes?.length) return 0;
+  const seasonIdx = (item.current_season ?? 1) - 1;
+  const prevEps = item.season_episodes.slice(0, seasonIdx).reduce((s, n) => s + n, 0);
+  const total = item.season_episodes.reduce((s, n) => s + n, 0);
+  return total ? Math.round(((prevEps + (item.current_episode ?? 0)) / total) * 100) : 0;
+}
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -122,18 +128,18 @@ function CardMenu({
         {open && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-            <div className="absolute right-0 top-8 z-50 w-52 bg-zinc-900 border border-zinc-700/60 rounded-xl shadow-2xl overflow-hidden">
+            <div className="absolute right-0 top-8 z-50 w-52 bg-surface-3 border border-border-default rounded-xl shadow-2xl overflow-hidden">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onView();
                   setOpen(false);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-zinc-800 transition-colors text-sm text-zinc-300 group"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-surface-2 transition-colors text-sm text-text-secondary group"
               >
                 <Pencil
                   size={13}
-                  className="text-zinc-500 group-hover:text-zinc-300"
+                  className="text-text-tertiary group-hover:text-text-secondary"
                 />
                 View / Edit
               </button>
@@ -145,11 +151,11 @@ function CardMenu({
                     await onMarkWatched(item.id);
                     setOpen(false);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-zinc-800 transition-colors text-sm text-zinc-300 group"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-surface-2 transition-colors text-sm text-text-secondary group"
                 >
                   <Eye
                     size={13}
-                    className="text-zinc-500 group-hover:text-emerald-400"
+                    className="text-text-tertiary group-hover:text-emerald-400"
                   />
                   {item.in_progress ? "Mark as finished" : "Mark as watched"}
                 </button>
@@ -162,7 +168,7 @@ function CardMenu({
                     setShowDeleteConfirm(true);  // ✅ MODIFIÉ : Ouvre le modal au lieu de supprimer directement
                     setOpen(false);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-red-500/10 transition-colors text-sm text-red-400 group border-t border-zinc-800"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-red-500/10 transition-colors text-sm text-red-400 group border-t border-border-default"
                 >
                   <Trash2
                     size={13}
@@ -261,15 +267,23 @@ function MovieCard({
 
           {/* episode progress */}
           {showEpisodeBadge && item.current_episode != null && item.current_episode > 0 && (
-              <div className="mt-1">
-                <span className="text-[10px] font-semibold bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
-                  {"S" +
-                    String(item.current_season ?? 1).padStart(2, "0") +
-                    " E" +
-                    String(item.current_episode).padStart(2, "0")}
-                </span>
-              </div>
-            )}
+            <div className="mt-1 space-y-1.5">
+              <span className="text-[10px] font-semibold bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
+                {"S" +
+                  String(item.current_season ?? 1).padStart(2, "0") +
+                  " E" +
+                  String(item.current_episode).padStart(2, "0")}
+              </span>
+              {computeProgress(item) > 0 && (
+                <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-400 rounded-full"
+                    style={{ width: `${computeProgress(item)}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-1.5 flex items-center gap-2 flex-wrap">
             {item.tags?.slice(0, 2).map((tag) => (
@@ -280,7 +294,7 @@ function MovieCard({
                 {tag}
               </span>
             ))}
-            <span className="text-xs text-zinc-400">{item.year}</span>
+            <span className="text-xs text-text-tertiary">{item.year}</span>
 
             {/* rating — only if not null/0 */}
             {item.user_rating != null && item.user_rating > 0 && (
@@ -327,7 +341,6 @@ export function MediaCarousel({
   showEpisodeBadge = false,
   showRankBadge = false,
 }: MediaCarouselProps) {
-  const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(4);
@@ -357,34 +370,6 @@ export function MediaCarousel({
     [localItems],
   );
 
-  // ✅ CORRECTION : Handler personnalisé pour "Marquer comme vu"
-  const handleMarkAsWatched = async (itemId: string) => {
-    try {
-      const { error } = await supabase
-        .schema("watching")
-        .from("media_items")
-        .update({
-          watched: true,
-          watched_at: new Date().toISOString(),
-          recently_watched: true,  // ✅ Passe à Vu Récemment (visible)
-          want_to_watch: false,
-          in_progress: false,
-        })
-        .eq("id", itemId);
-
-      if (error) throw error;
-
-      // ✅ Supprimer immédiatement de la liste locale
-      setLocalItems((prev) => prev.filter((item) => item.id !== itemId));
-      
-      // ✅ Rafraîchir pour afficher dans Vu Récemment
-      router.refresh();
-    } catch (err) {
-      console.error("❌ Erreur mark as watched:", err);
-      alert("Error while marking as watched");
-    }
-  };
-
   const totalElements = onAddClick
     ? sortedItems.length + 1
     : sortedItems.length;
@@ -413,7 +398,7 @@ export function MediaCarousel({
   };
 
   const AddCardWrapper = onAddClick ? (
-    <div className="shrink-0" style={itemWidthStyle}>
+    <div className="shrink-0 snap-start" style={itemWidthStyle}>
       <AddCard onClick={onAddClick} />
     </div>
   ) : null;
@@ -423,23 +408,23 @@ export function MediaCarousel({
       <section className="mb-3">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h3 className="text-base font-semibold text-white tracking-tight">{title}</h3>
-            {subtitle && <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>}
+            <h3 className="text-base font-semibold text-text-primary tracking-tight">{title}</h3>
+            {subtitle && <p className="mt-1 text-sm text-text-tertiary">{subtitle}</p>}
           </div>
         </div>
         <div
-          className="rounded-xl border border-white/5 bg-zinc-950/40 flex flex-col items-center justify-center gap-3 py-12 cursor-pointer group hover:border-white/10 transition-colors"
+          className="rounded-xl border border-border-subtle bg-surface-1 flex flex-col items-center justify-center gap-3 py-12 cursor-pointer group hover:border-border-default transition-colors"
           onClick={onAddClick}
         >
           {onAddClick ? (
             <>
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/5 group-hover:bg-white/10 transition-colors">
-                <Plus size={22} className="text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+                <Plus size={22} className="text-text-tertiary group-hover:text-text-secondary transition-colors" />
               </div>
-              <p className="text-sm text-zinc-500 group-hover:text-zinc-400 transition-colors">Add your first item</p>
+              <p className="text-sm text-text-tertiary group-hover:text-text-secondary transition-colors">Add your first item</p>
             </>
           ) : (
-            <p className="text-sm text-zinc-500">Nothing here yet</p>
+            <p className="text-sm text-text-tertiary">Nothing here yet</p>
           )}
         </div>
       </section>
@@ -450,8 +435,8 @@ export function MediaCarousel({
     <section className="mb-3">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-white tracking-tight">{title}</h3>
-          {subtitle && <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>}
+          <h3 className="text-base font-semibold text-text-primary tracking-tight">{title}</h3>
+          {subtitle && <p className="mt-1 text-sm text-text-tertiary">{subtitle}</p>}
         </div>
         <div className="flex gap-2">
           <button
@@ -459,8 +444,8 @@ export function MediaCarousel({
             className={cn(
               "rounded-full border border-white/10 p-2 transition-all duration-300",
               canGoPrev
-                ? "text-zinc-400 hover:bg-white/10 hover:text-white cursor-pointer"
-                : "text-zinc-400/20 border-white/5 cursor-not-allowed opacity-50",
+                ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
+                : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
             )}
             aria-label="Previous"
           >
@@ -471,8 +456,8 @@ export function MediaCarousel({
             className={cn(
               "rounded-full border border-white/10 p-2 transition-all duration-300",
               canGoNext
-                ? "text-zinc-400 hover:bg-white/10 hover:text-white cursor-pointer"
-                : "text-zinc-400/20 border-white/5 cursor-not-allowed opacity-50",
+                ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
+                : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
             )}
             aria-label="Next"
           >
@@ -483,7 +468,7 @@ export function MediaCarousel({
 
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-hidden scroll-smooth"
+        className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {onAddClick && addCardPosition === "start" && AddCardWrapper}
@@ -491,14 +476,14 @@ export function MediaCarousel({
         {sortedItems.map((item) => (
           <div
             key={item.id}
-            className="shrink-0 transition-all duration-500 ease-in-out"
+            className="shrink-0 snap-start transition-all duration-500 ease-in-out"
             style={itemWidthStyle}
           >
             <MovieCard
               item={item}
               onView={() => setSelectedItem(item)}
               onDelete={onDelete}
-              onMarkWatched={onMarkWatched || handleMarkAsWatched}
+              onMarkWatched={onMarkWatched}
               showEpisodeBadge={showEpisodeBadge}
               showRankBadge={showRankBadge}
             />

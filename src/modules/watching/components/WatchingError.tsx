@@ -15,10 +15,10 @@ export function WatchingError({ error, resetErrorBoundary }: FallbackProps) {
 
         {/* Text */}
         <div className="space-y-2">
-          <h2 className="text-lg font-semibold text-zinc-100">
+          <h2 className="text-lg font-semibold text-text-primary">
             Unable to load watching data
           </h2>
-          <p className="text-sm text-zinc-500 leading-relaxed">
+          <p className="text-sm text-text-tertiary leading-relaxed">
             {error instanceof Error ? error.message : "Something went wrong while fetching your media. Please try again."}
           </p>
         </div>
@@ -29,8 +29,8 @@ export function WatchingError({ error, resetErrorBoundary }: FallbackProps) {
           onClick={resetErrorBoundary}
           className={cn(
             "flex items-center gap-2 px-4 h-9 rounded-lg",
-            "bg-zinc-800 border border-white/8 text-zinc-100 text-sm font-medium",
-            "hover:bg-zinc-700 hover:border-white/12 transition-all"
+            "bg-surface-2 border border-border-subtle text-text-primary text-sm font-medium",
+            "hover:bg-surface-3 hover:border-border-default transition-all"
           )}
         >
           <RefreshCw size={15} />

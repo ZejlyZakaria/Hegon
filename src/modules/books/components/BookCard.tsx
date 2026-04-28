@@ -32,7 +32,7 @@ export function BookCard({ book }: BookCardProps) {
     <button
       type="button"
       onClick={() => router.push(`/life/books/${book.id}`)}
-      className="w-full text-left p-3 bg-surface-1 hover:bg-surface-2 rounded-lg border border-border-subtle transition-colors duration-100"
+      className="w-full cursor-pointer text-left p-3 bg-surface-1 hover:bg-surface-2 rounded-lg border border-border-subtle transition-colors duration-100"
     >
       <div className="flex gap-4">
         {/* Cover */}

@@ -9,10 +9,8 @@ import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Button } from "@/shared/components/ui/button";
-import { createClient } from "@/infrastructure/supabase/client"
+import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import { toast } from "@/shared/utils/toast";
-
-const supabase = createClient();
 const ITEMS_PER_PAGE = 32;
 
 type MediaType = "all" | "film" | "serie" | "anime";
@@ -23,6 +21,7 @@ interface Props {
 }
 
 export default function LibraryClient({ initialItems }: Props) {
+  const deleteMediaMutation = useDeleteMedia();
   const [allItems, setAllItems]       = useState(initialItems);
   const [mediaType, setMediaType]     = useState<MediaType>("all");
   const [sortBy, setSortBy]           = useState<SortKey>("added");
@@ -82,24 +81,15 @@ export default function LibraryClient({ initialItems }: Props) {
     setAllItems(prev => prev.map(i => i.id === updated.id ? updated : i));
   }, []);
 
-  // ✅ CORRIGÉ : Suppression en DB + état local
   const handleDelete = useCallback(async (itemId: string) => {
     try {
-      const { error } = await supabase
-        .schema("watching")
-        .from("media_items")
-        .delete()
-        .eq("id", itemId);
-
-      if (error) throw error;
-
+      await deleteMediaMutation.mutateAsync(itemId);
       setAllItems(prev => prev.filter(i => i.id !== itemId));
       toast.success("Removed from library.");
-    } catch (err) {
-      console.error("Erreur suppression:", err);
+    } catch {
       toast.error("Failed to delete item.");
     }
-  }, []);
+  }, [deleteMediaMutation]);
 
   const handleAdded = useCallback((item?: WatchingMedia) => {
     if (!item) return;
@@ -114,8 +104,8 @@ export default function LibraryClient({ initialItems }: Props) {
       {/* header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white">My Library</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">
+          <h1 className="text-xl font-bold text-text-primary">My Library</h1>
+          <p className="text-sm text-text-tertiary mt-0.5">
             {totalCount} media{totalCount > 1 ? "s" : ""}
           </p>
         </div>
@@ -123,18 +113,18 @@ export default function LibraryClient({ initialItems }: Props) {
         <div className="flex items-center gap-3">
           {/* search */}
           <div className="relative w-full sm:w-64">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
             <input
               type="text"
               placeholder="Search for a title, or genre..."
               value={search}
               onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-              className="w-full bg-zinc-900/80 border border-zinc-800 rounded-xl pl-9 pr-9 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600/20 transition-all"
+              className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-9 pr-9 py-2 text-sm text-text-primary placeholder:text-text-tertiary outline-none focus:border-border-focus transition-all"
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
               >
                 <X size={14} />
               </button>
@@ -206,14 +196,14 @@ function Pagination({ currentPage, totalPages, onChange }: {
       <button
         onClick={() => onChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="px-3 py-1.5 text-sm rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-3 py-1.5 text-sm rounded-lg bg-surface-1 border border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
       >
         Previous
       </button>
 
       {pages.map((page, i) =>
         page === "..." ? (
-          <span key={`ellipsis-${i}`} className="px-2 text-zinc-600">…</span>
+          <span key={`ellipsis-${i}`} className="px-2 text-text-tertiary">…</span>
         ) : (
           <button
             key={page}
@@ -221,7 +211,7 @@ function Pagination({ currentPage, totalPages, onChange }: {
             className={`w-8 h-8 text-sm rounded-lg border transition-colors ${
               currentPage === page
                 ? "bg-white text-black border-white font-semibold"
-                : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600"
+                : "bg-surface-1 border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default"
             }`}
           >
             {page}
@@ -232,7 +222,7 @@ function Pagination({ currentPage, totalPages, onChange }: {
       <button
         onClick={() => onChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="px-3 py-1.5 text-sm rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="px-3 py-1.5 text-sm rounded-lg bg-surface-1 border border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
       >
         Next
       </button>

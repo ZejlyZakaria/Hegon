@@ -56,17 +56,17 @@ export default function TennisRemoveConfirmModal({
             transition={{ type: "spring", bounce: 0.2, duration: 0.35 }}
             className="fixed inset-x-4 top-[30%] z-50 mx-auto max-w-sm"
           >
-            <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950 shadow-2xl shadow-black/60 overflow-hidden">
+            <div className="rounded-xl border border-border-strong bg-surface-3 shadow-2xl shadow-black/60 overflow-hidden">
               {/* Header */}
-              <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-zinc-800/60">
+              <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-border-subtle">
                 <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
                   <User size={15} className="text-red-400" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-white">
+                  <h2 className="text-sm font-bold text-text-primary">
                     Remove from Favorites
                   </h2>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-text-tertiary">
                     This action is reversible
                   </p>
                 </div>
@@ -78,10 +78,10 @@ export default function TennisRemoveConfirmModal({
                   <User size={20} className="text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-white font-semibold text-sm">
+                  <p className="text-text-primary font-semibold text-sm">
                     {player.name}
                   </p>
-                  <p className="text-zinc-500 text-xs mt-0.5">
+                  <p className="text-text-tertiary text-xs mt-0.5">
                     Remove this player from your favorites?
                   </p>
                 </div>
@@ -94,7 +94,7 @@ export default function TennisRemoveConfirmModal({
                   size="sm"
                   onClick={onClose}
                   disabled={loading}
-                  className="border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
+                  className="border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
                 >
                   Cancel
                 </Button>

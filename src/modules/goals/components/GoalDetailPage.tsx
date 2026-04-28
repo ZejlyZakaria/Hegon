@@ -32,7 +32,7 @@ import type { GoalStatus } from "../types";
 const ACCENT = "var(--color-accent-goals)";
 
 const PRIORITY_COLOR: Record<string, string> = {
-  low:      "text-[#71717a]",
+  low:      "text-text-tertiary",
   medium:   "text-yellow-400",
   high:     "text-orange-400",
   critical: "text-red-400",
@@ -112,7 +112,7 @@ export function GoalDetailPage({ id }: Props) {
       <button
         type="button"
         onClick={() => router.push("/life/goals")}
-        className="mb-4 flex items-center gap-2 text-sm text-[#71717a] hover:text-[#a0a0a8] transition-colors"
+        className="mb-4 flex items-center gap-2 text-sm text-text-tertiary hover:text-text-secondary transition-colors"
       >
         <ArrowLeft size={14} />
         Goals
@@ -123,12 +123,12 @@ export function GoalDetailPage({ id }: Props) {
         <div className="flex-1 min-w-0 space-y-4">
 
           {/* Hero card */}
-          <div className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10]">
+          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1">
             <div className="relative p-3">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <h1 className="text-xl font-semibold text-[#e2e2e6] leading-tight">{goal.title}</h1>
+                    <h1 className="text-xl font-semibold text-text-primary leading-tight">{goal.title}</h1>
                     {goal.category && (
                       <span className="inline-flex items-center text-[10px] font-medium uppercase tracking-wider rounded border px-2 py-0.5 shrink-0 bg-green-500/10 text-green-400 border-green-500/20">
                         {goal.category}
@@ -136,7 +136,7 @@ export function GoalDetailPage({ id }: Props) {
                     )}
                   </div>
                   {goal.description && (
-                    <p className="text-sm text-[#a0a0a8]">{goal.description}</p>
+                    <p className="text-sm text-text-secondary">{goal.description}</p>
                   )}
                 </div>
 
@@ -144,15 +144,15 @@ export function GoalDetailPage({ id }: Props) {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="h-8 w-8 rounded-md flex items-center justify-center text-[#71717a] hover:text-[#a0a0a8] hover:bg-[#141416] transition-colors shrink-0"
+                      className="h-8 w-8 rounded-md flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-surface-2 transition-colors shrink-0"
                     >
                       <MoreHorizontal size={16} />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40 rounded-xl bg-[#1a1a1d] border-white/11">
+                  <DropdownMenuContent align="end" className="w-40 rounded-xl bg-surface-3 border-border-strong">
                     <DropdownMenuItem
                       onClick={() => setIsEditOpen(true)}
-                      className="cursor-pointer text-[#a0a0a8] focus:text-[#e2e2e6] focus:bg-[#141416]"
+                      className="cursor-pointer text-text-secondary focus:text-text-primary focus:bg-surface-2"
                     >
                       <Pencil className="w-3.5 h-3.5 mr-2 shrink-0" />
                       Edit goal
@@ -171,10 +171,10 @@ export function GoalDetailPage({ id }: Props) {
               {/* Progress bar */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-[#71717a]">Progress</span>
-                  <span className="text-sm font-medium text-[#e2e2e6]">{displayProgress}%</span>
+                  <span className="text-xs text-text-tertiary">Progress</span>
+                  <span className="text-sm font-medium text-text-primary">{displayProgress}%</span>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-[#141416] overflow-hidden">
+                <div className="h-1.5 w-full rounded-full bg-surface-2 overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
@@ -183,7 +183,7 @@ export function GoalDetailPage({ id }: Props) {
                     }}
                   />
                 </div>
-                <p className="mt-1.5 text-xs text-[#71717a]">
+                <p className="mt-1.5 text-xs text-text-tertiary">
                   {tasksCompleted}/{tasksTotal} tasks completed
                   {displayMode === "auto" && " · auto"}
                 </p>
@@ -192,38 +192,38 @@ export function GoalDetailPage({ id }: Props) {
           </div>
 
           {/* Milestones */}
-          <div className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-4">
+          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4">
             <MilestoneList goalId={id} />
           </div>
 
           {/* Linked tasks */}
-          <div className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-4">
-            <h3 className="text-xs font-medium uppercase tracking-wider text-[#71717a] mb-3">
+          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">
               Fueling this Goal
             </h3>
             {linkedTasks.length === 0 ? (
-              <p className="text-sm text-[#71717a]">No tasks linked yet.</p>
+              <p className="text-sm text-text-tertiary">No tasks linked yet.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {linkedTasks.map((task) => (
                   <div
                     key={task.id}
-                    className="group flex items-center gap-3 rounded-lg border border-white/4 bg-[#0e0e10] px-3 py-2"
+                    className="group flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-1 px-3 py-2"
                   >
                     <div
                       className="h-1.5 w-1.5 rounded-full shrink-0"
                       style={{ backgroundColor: task.completed_at ? ACCENT : "#52525b" }}
                     />
-                    <span className={cn("flex-1 text-sm", task.completed_at ? "line-through text-[#71717a]" : "text-[#e2e2e6]")}>
+                    <span className={cn("flex-1 text-sm", task.completed_at ? "line-through text-text-tertiary" : "text-text-primary")}>
                       {task.title}
                     </span>
                     {task.status && (
-                      <span className="text-xs text-[#71717a] shrink-0">{task.status.name}</span>
+                      <span className="text-xs text-text-tertiary shrink-0">{task.status.name}</span>
                     )}
                     <button
                       type="button"
                       onClick={() => unlinkTask.mutateAsync(task.id)}
-                      className="text-[#71717a] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                      className="text-text-tertiary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                     >
                       <Unlink size={12} />
                     </button>
@@ -238,19 +238,19 @@ export function GoalDetailPage({ id }: Props) {
         <div className="w-72 shrink-0 space-y-3 sticky top-6">
 
           {/* Progress Control */}
-          <div className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-4">
-            <h3 className="text-xs font-medium uppercase tracking-wider text-[#71717a] mb-3">
+          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">
               Progress Control
             </h3>
 
             {/* Segmented toggle Manual / Auto */}
-            <div className="flex rounded-md bg-[#141416] p-0.5 mb-4">
+            <div className="flex rounded-md bg-surface-2 p-0.5 mb-4">
               <button
                 type="button"
                 onClick={() => displayMode !== "manual" && handleToggleProgressMode()}
                 className={cn(
                   "flex-1 text-xs py-1.5 rounded transition-all font-medium",
-                  displayMode === "manual" ? "text-[#e2e2e6]" : "text-[#71717a] hover:text-[#a0a0a8]"
+                  displayMode === "manual" ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary"
                 )}
                 style={displayMode === "manual"
                   ? { backgroundColor: "#22c55e25", color: ACCENT }
@@ -263,7 +263,7 @@ export function GoalDetailPage({ id }: Props) {
                 onClick={() => displayMode !== "auto" && handleToggleProgressMode()}
                 className={cn(
                   "flex-1 text-xs py-1.5 rounded transition-all font-medium",
-                  displayMode === "auto" ? "text-[#e2e2e6]" : "text-[#71717a] hover:text-[#a0a0a8]"
+                  displayMode === "auto" ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary"
                 )}
                 style={displayMode === "auto"
                   ? { backgroundColor: "#22c55e25", color: ACCENT }
@@ -280,7 +280,7 @@ export function GoalDetailPage({ id }: Props) {
                   <span className="text-4xl font-bold tabular-nums" style={{ color: ACCENT }}>
                     {displayProgress}
                   </span>
-                  <span className="text-sm text-[#71717a]">%</span>
+                  <span className="text-sm text-text-tertiary">%</span>
                 </div>
 
                 {/* Shadcn Slider */}
@@ -291,24 +291,24 @@ export function GoalDetailPage({ id }: Props) {
                   step={1}
                   onValueChange={([val]) => setLocalProgress(val)}
                   onValueCommit={([val]) => handleProgressSave(val)}
-                  className="**:data-[slot=slider-track]:bg-[#141416] **:data-[slot=slider-range]:bg-accent-goals **:data-[slot=slider-thumb]:bg-accent-goals **:data-[slot=slider-thumb]:border-accent-goals **:data-[slot=slider-thumb]:shadow-[0_0_8px_#22c55e60]"
+                  className="**:data-[slot=slider-track]:bg-surface-2 **:data-[slot=slider-range]:bg-accent-goals **:data-[slot=slider-thumb]:bg-accent-goals **:data-[slot=slider-thumb]:border-accent-goals **:data-[slot=slider-thumb]:shadow-[0_0_8px_#22c55e60]"
                 />
 
-                <p className="text-center text-xs text-[#71717a]">Drag to set progress</p>
+                <p className="text-center text-xs text-text-tertiary">Drag to set progress</p>
               </div>
             ) : (
-              <p className="text-xs text-[#71717a] text-center">
+              <p className="text-xs text-text-tertiary text-center">
                 Calculated from linked tasks &amp; milestones
               </p>
             )}
           </div>
 
           {/* Goal Info */}
-          <div className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-4">
-            <h3 className="text-xs font-medium uppercase tracking-wider text-[#71717a] mb-3">Goal Info</h3>
+          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">Goal Info</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-[#71717a] block mb-1">Status</label>
+                <label className="text-xs text-text-tertiary block mb-1">Status</label>
                 <Select value={goal.status} onValueChange={(v) => handleStatusChange(v as GoalStatus)}>
                   <SelectTrigger variant="tasks" className="w-full">
                     <SelectValue />
@@ -323,7 +323,7 @@ export function GoalDetailPage({ id }: Props) {
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-xs text-[#71717a]">Priority</span>
+                <span className="text-xs text-text-tertiary">Priority</span>
                 <span className={cn("text-xs font-medium capitalize", PRIORITY_COLOR[goal.priority])}>
                   {goal.priority}
                 </span>
@@ -331,8 +331,8 @@ export function GoalDetailPage({ id }: Props) {
 
               {goal.target_date && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#71717a]">Target</span>
-                  <span className={cn("text-xs", isOverdue ? "text-red-400" : "text-[#a0a0a8]")}>
+                  <span className="text-xs text-text-tertiary">Target</span>
+                  <span className={cn("text-xs", isOverdue ? "text-red-400" : "text-text-secondary")}>
                     {new Date(goal.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     {isOverdue && " · overdue"}
                   </span>
@@ -340,15 +340,15 @@ export function GoalDetailPage({ id }: Props) {
               )}
 
               <div className="flex items-center justify-between">
-                <span className="text-xs text-[#71717a]">Started</span>
-                <span className="text-xs text-[#a0a0a8]">
+                <span className="text-xs text-text-tertiary">Started</span>
+                <span className="text-xs text-text-secondary">
                   {new Date(goal.started_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                 </span>
               </div>
 
               {goal.completed_at && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#71717a]">Completed</span>
+                  <span className="text-xs text-text-tertiary">Completed</span>
                   <span className="text-xs" style={{ color: ACCENT }}>
                     {new Date(goal.completed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   </span>
@@ -358,16 +358,16 @@ export function GoalDetailPage({ id }: Props) {
           </div>
 
           {/* Stats */}
-          <div className="relative overflow-hidden rounded-lg border border-white/4 bg-[#0e0e10] p-3">
-            <h3 className="text-xs font-medium uppercase tracking-wider text-[#71717a] mb-3">Stats</h3>
+          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-3">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">Stats</h3>
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-md bg-[#141416] px-3 py-2 text-center">
-                <div className="text-lg font-bold text-[#e2e2e6]">{tasksTotal}</div>
-                <div className="text-xs text-[#71717a]">Tasks</div>
+              <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                <div className="text-lg font-bold text-text-primary">{tasksTotal}</div>
+                <div className="text-xs text-text-tertiary">Tasks</div>
               </div>
-              <div className="rounded-md bg-[#141416] px-3 py-2 text-center">
+              <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
                 <div className="text-lg font-bold" style={{ color: ACCENT }}>{tasksCompleted}</div>
-                <div className="text-xs text-[#71717a]">Done</div>
+                <div className="text-xs text-text-tertiary">Done</div>
               </div>
             </div>
           </div>

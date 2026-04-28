@@ -30,7 +30,7 @@ export default function WantToWatchSectionClient({ initialItems, userId, config 
   const updateMediaMutation = useUpdateMedia();
   const deleteMediaMutation = useDeleteMedia();
   const markAsWatchedMutation = useMarkAsWatched();
-  const { openModal, notifyMoved } = useWatching();
+  const { openModal, notifyMoved, notifyDeleted } = useWatching();
 
   if (isLoading) return <CarouselSkeleton />;
 
@@ -47,6 +47,7 @@ export default function WantToWatchSectionClient({ initialItems, userId, config 
   const handleDelete = async (itemId: string) => {
     try {
       await deleteMediaMutation.mutateAsync(itemId);
+      notifyDeleted(itemId);
       toast.success("Removed from watchlist.");
     } catch {
       toast.error("Error occurred while deleting.");

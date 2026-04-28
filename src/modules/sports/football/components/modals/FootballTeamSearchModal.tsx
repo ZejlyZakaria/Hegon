@@ -140,18 +140,18 @@ export default function FootballTeamSearchModal({
             transition={{ type: "spring", bounce: 0.2, duration: 0.35 }}
             className="fixed inset-x-4 top-[10%] z-50 mx-auto max-w-lg"
           >
-            <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950 shadow-2xl shadow-black/60 overflow-hidden">
+            <div className="rounded-xl border border-border-strong bg-surface-3 shadow-2xl shadow-black/60 overflow-hidden">
               {/* Header */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-zinc-800/60">
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border-subtle">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                     <Shield size={15} className="text-emerald-400" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-white">
+                    <h2 className="text-sm font-bold text-text-primary">
                       Add a Team
                     </h2>
-                    <p className="text-[11px] text-zinc-500">
+                    <p className="text-[11px] text-text-tertiary">
                       Search for a favorite team
                     </p>
                   </div>
@@ -160,29 +160,29 @@ export default function FootballTeamSearchModal({
                   variant="ghost"
                   size="icon"
                   onClick={onClose}
-                  className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:border-zinc-700"
+                  className="w-8 h-8 rounded-lg bg-surface-2 border border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default"
                 >
                   <X size={14} />
                 </Button>
               </div>
 
               {/* Search */}
-              <div className="px-4 py-3 border-b border-zinc-800/60">
-                <div className="relative flex items-center gap-2 rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-2.5 focus-within:border-emerald-500/50 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all">
+              <div className="px-4 py-3 border-b border-border-subtle">
+                <div className="relative flex items-center gap-2 rounded-xl bg-surface-2 border border-border-subtle px-3 py-2.5 focus-within:border-emerald-500/50 focus-within:ring-1 focus-within:ring-emerald-500/20 transition-all">
                   {loading ? (
                     <Loader2
                       size={15}
-                      className="text-zinc-500 animate-spin shrink-0"
+                      className="text-text-tertiary animate-spin shrink-0"
                     />
                   ) : (
-                    <Search size={15} className="text-zinc-500 shrink-0" />
+                    <Search size={15} className="text-text-tertiary shrink-0" />
                   )}
                   <input
                     ref={inputRef}
                     value={query}
                     onChange={(e) => handleQueryChange(e.target.value)}
                     placeholder="Barcelona, Real Madrid, PSG..."
-                    className="flex-1 bg-transparent text-sm text-white placeholder-zinc-600 outline-none"
+                    className="flex-1 bg-transparent text-sm text-text-primary placeholder-zinc-600 outline-none"
                   />
                   {query && (
                     <button
@@ -190,7 +190,7 @@ export default function FootballTeamSearchModal({
                         setQuery("");
                         setResults([]);
                       }}
-                      className="text-zinc-600 hover:text-zinc-400 transition-colors"
+                      className="text-text-tertiary hover:text-text-secondary transition-colors"
                     >
                       <X size={13} />
                     </button>
@@ -208,7 +208,7 @@ export default function FootballTeamSearchModal({
                       className="flex flex-col items-center gap-3 py-10 text-center"
                     >
                       <Shield size={28} className="text-zinc-700" />
-                      <p className="text-zinc-600 text-sm">
+                      <p className="text-text-tertiary text-sm">
                         Type a team name
                       </p>
                     </motion.div>
@@ -219,7 +219,7 @@ export default function FootballTeamSearchModal({
                       animate={{ opacity: 1 }}
                       className="flex flex-col items-center gap-3 py-10 text-center"
                     >
-                      <p className="text-zinc-500 text-sm">
+                      <p className="text-text-tertiary text-sm">
                         No team found for {query}
                       </p>
                     </motion.div>
@@ -249,7 +249,7 @@ export default function FootballTeamSearchModal({
                               ${
                                 isAdded
                                   ? "bg-emerald-500/5 border border-emerald-500/20"
-                                  : "hover:bg-zinc-900 border border-transparent hover:border-zinc-800"
+                                  : "hover:bg-surface-2 border border-transparent hover:border-border-subtle"
                               }`}
                             >
                               <div className="w-10 h-10 shrink-0 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-center">
@@ -259,7 +259,7 @@ export default function FootballTeamSearchModal({
                                 />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white truncate">
+                                <p className="text-sm font-semibold text-text-primary truncate">
                                   {team.name}
                                 </p>
                               </div>
@@ -301,12 +301,12 @@ export default function FootballTeamSearchModal({
               </div>
 
               {/* Footer */}
-              <div className="px-4 py-3 border-t border-zinc-800/60 flex items-center justify-end">
+              <div className="px-4 py-3 border-t border-border-subtle flex items-center justify-end">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={onClose}
-                  className="text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700"
+                  className="text-text-secondary border-border-subtle hover:text-text-primary hover:border-border-default"
                 >
                   Close
                 </Button>

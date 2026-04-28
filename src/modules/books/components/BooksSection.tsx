@@ -34,7 +34,7 @@ export function BooksSection({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="h-32 bg-surface-1 rounded-lg animate-pulse" />
         ))}
@@ -53,7 +53,7 @@ export function BooksSection({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
       {books.map((book) => (
         <BookCard key={book.id} book={book} />
       ))}

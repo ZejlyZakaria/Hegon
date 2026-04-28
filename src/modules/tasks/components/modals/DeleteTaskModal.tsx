@@ -40,14 +40,14 @@ export function DeleteTaskModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-110 bg-[#1a1a1d] border-white/11 rounded-xl">
+      <DialogContent className="sm:max-w-110 bg-surface-3 border-border-strong rounded-xl">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold text-[#e2e2e6]">
+          <DialogTitle className="text-sm font-semibold text-text-primary">
             Delete task?
           </DialogTitle>
-          <DialogDescription className="text-sm text-[#a0a0a8] pt-2">
+          <DialogDescription className="text-sm text-text-secondary pt-2">
             Are you sure you want to delete{" "}
-            <span className="font-medium text-[#e2e2e6]">
+            <span className="font-medium text-text-primary">
               &quot;{taskTitle}&quot;
             </span>
             ? This action cannot be undone.
@@ -60,7 +60,7 @@ export function DeleteTaskModal({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={deleteTaskMutation.isPending}
-            className="h-8 px-3 border-white/[0.07] text-[#a0a0a8] hover:text-[#e2e2e6] hover:bg-[#141416]"
+            className="h-8 px-3 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
           >
             Cancel
           </Button>

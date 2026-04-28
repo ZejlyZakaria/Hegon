@@ -12,7 +12,7 @@ export function BooksStatsZone() {
 
   if (isLoading) {
     return (
-      <div className="flex items-stretch gap-2 py-3">
+      <div className="flex items-stretch gap-3 py-3">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
@@ -30,7 +30,7 @@ export function BooksStatsZone() {
     : "—";
 
   return (
-    <div className="flex items-stretch gap-2 py-3">
+    <div className="flex items-stretch gap-3 py-3">
       <StatCard icon={Library}       value={stats.total}                label="books"     />
       <StatCard icon={BookOpen}      value={stats.reading}              label="reading"   sublabel="in progress" />
       <StatCard icon={CheckCircle2}  value={stats.completed_this_year}  label="completed" sublabel="this year"   />

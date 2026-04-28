@@ -209,47 +209,47 @@ export default function TennisPlayerSearchModal({
             transition={{ type: "spring", bounce: 0.2, duration: 0.35 }}
             className="fixed inset-x-4 top-[10%] z-50 mx-auto max-w-lg"
           >
-            <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950 shadow-2xl shadow-black/60 overflow-hidden">
+            <div className="rounded-xl border border-border-strong bg-surface-3 shadow-2xl shadow-black/60 overflow-hidden">
               {/* Header */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-zinc-800/60">
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border-subtle">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
                     <Trophy size={15} className="text-amber-400" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-white">
+                    <h2 className="text-sm font-bold text-text-primary">
                       Add a Player
                     </h2>
-                    <p className="text-[11px] text-zinc-500">
+                    <p className="text-[11px] text-text-tertiary">
                       Search for an ATP player
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={onClose}
-                  className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-white hover:border-zinc-700 transition-colors"
+                  className="w-8 h-8 rounded-lg bg-surface-2 border border-border-subtle flex items-center justify-center text-text-tertiary hover:text-text-primary hover:border-border-default transition-colors"
                 >
                   <X size={14} />
                 </button>
               </div>
 
               {/* Search */}
-              <div className="px-4 py-3 border-b border-zinc-800/60">
-                <div className="relative flex items-center gap-2 rounded-xl bg-zinc-900 border border-zinc-800 px-3 py-2.5 focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/20 transition-all">
+              <div className="px-4 py-3 border-b border-border-subtle">
+                <div className="relative flex items-center gap-2 rounded-xl bg-surface-2 border border-border-subtle px-3 py-2.5 focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/20 transition-all">
                   {loading ? (
                     <Loader2
                       size={15}
-                      className="text-zinc-500 animate-spin shrink-0"
+                      className="text-text-tertiary animate-spin shrink-0"
                     />
                   ) : (
-                    <Search size={15} className="text-zinc-500 shrink-0" />
+                    <Search size={15} className="text-text-tertiary shrink-0" />
                   )}
                   <input
                     ref={inputRef}
                     value={query}
                     onChange={(e) => handleQueryChange(e.target.value)}
                     placeholder="Djokovic, Alcaraz, Sinner..."
-                    className="flex-1 bg-transparent text-sm text-white placeholder-zinc-600 outline-none"
+                    className="flex-1 bg-transparent text-sm text-text-primary placeholder-zinc-600 outline-none"
                   />
                   {query && (
                     <button
@@ -257,7 +257,7 @@ export default function TennisPlayerSearchModal({
                         setQuery("");
                         setResults([]);
                       }}
-                      className="text-zinc-600 hover:text-zinc-400 transition-colors"
+                      className="text-text-tertiary hover:text-text-secondary transition-colors"
                     >
                       <X size={13} />
                     </button>
@@ -275,7 +275,7 @@ export default function TennisPlayerSearchModal({
                       className="flex flex-col items-center gap-3 py-10 text-center"
                     >
                       <div className="text-3xl">🎾</div>
-                      <p className="text-zinc-600 text-sm">
+                      <p className="text-text-tertiary text-sm">
                         Type an ATP player name
                       </p>
                     </motion.div>
@@ -287,7 +287,7 @@ export default function TennisPlayerSearchModal({
                       className="flex flex-col items-center gap-3 py-10 text-center"
                     >
                       <div className="text-3xl">🔍</div>
-                      <p className="text-zinc-500 text-sm">
+                      <p className="text-text-tertiary text-sm">
                         No player found for {query}
                       </p>
                     </motion.div>
@@ -316,7 +316,7 @@ export default function TennisPlayerSearchModal({
                               ${
                                 isAdded
                                   ? "bg-amber-500/5 border border-amber-500/20"
-                                  : "hover:bg-zinc-900 border border-transparent hover:border-zinc-800"
+                                  : "hover:bg-surface-2 border border-transparent hover:border-border-subtle"
                               }`}
                             >
                               <div className="relative w-10 h-10 rounded-full overflow-hidden bg-zinc-800 shrink-0 border border-zinc-700/50">
@@ -336,10 +336,10 @@ export default function TennisPlayerSearchModal({
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white truncate">
+                                <p className="text-sm font-semibold text-text-primary truncate">
                                   {player.strPlayer}
                                 </p>
-                                <p className="text-[11px] text-zinc-500 flex items-center gap-1">
+                                <p className="text-[11px] text-text-tertiary flex items-center gap-1">
                                   <span>{getFlagEmoji(player.strNationality)}</span>
                                   <span>
                                     {player.strNationality ?? "Unknown nationality"}
@@ -356,8 +356,8 @@ export default function TennisPlayerSearchModal({
                                     isAdded
                                       ? "bg-amber-500/10 border-amber-500/30 text-amber-400 cursor-default"
                                       : isAdding
-                                        ? "bg-zinc-800 border-zinc-700 text-zinc-500 cursor-wait"
-                                        : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-amber-500/10 hover:border-amber-500/40 hover:text-amber-400"
+                                        ? "bg-zinc-800 border-zinc-700 text-text-tertiary cursor-wait"
+                                        : "bg-zinc-900 border-zinc-700 text-text-secondary hover:bg-amber-500/10 hover:border-amber-500/40 hover:text-amber-400"
                                   }`}
                               >
                                 {isAdding ? (
@@ -383,11 +383,11 @@ export default function TennisPlayerSearchModal({
               </div>
 
               {/* Footer */}
-              <div className="px-4 py-3 border-t border-zinc-800/60 flex items-center justify-between">
-                <p className="text-[11px] text-zinc-600">Data via TheSportsDB</p>
+              <div className="px-4 py-3 border-t border-border-subtle flex items-center justify-between">
+                <p className="text-[11px] text-text-tertiary">Data via TheSportsDB</p>
                 <button
                   onClick={onClose}
-                  className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors"
+                  className="px-3 py-1.5 rounded-lg bg-surface-2 border border-border-subtle text-xs text-text-secondary hover:text-text-primary hover:border-border-default transition-colors"
                 >
                   Close
                 </button>

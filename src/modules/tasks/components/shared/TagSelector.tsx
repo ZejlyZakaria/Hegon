@@ -57,7 +57,7 @@ export function TagSelector({
 
   return (
     <div className="grid gap-2">
-      <label className="text-xs font-medium text-[#a0a0a8]">Tags</label>
+      <label className="text-xs font-medium text-text-secondary">Tags</label>
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -65,9 +65,9 @@ export function TagSelector({
             type="button"
             disabled={disabled}
             className={cn(
-              "w-full min-h-9 px-3 py-1.5 rounded-lg border border-zinc-700/50 flex items-center gap-2 flex-wrap",
-              "bg-[#1f1f22] hover:bg-zinc-800/80 transition-colors",
-              "text-zinc-400 text-xs",
+              "w-full min-h-9 px-3 py-1.5 rounded-lg border border-border-subtle flex items-center gap-2 flex-wrap",
+              "bg-surface-overlay hover:bg-surface-2 transition-colors",
+              "text-text-tertiary text-xs",
               "disabled:opacity-50 disabled:cursor-not-allowed",
             )}
           >
@@ -99,16 +99,16 @@ export function TagSelector({
                   ))}
               </div>
             )}
-            <ChevronDown size={12} className="ml-auto shrink-0 text-zinc-600" />
+            <ChevronDown size={12} className="ml-auto shrink-0 text-text-tertiary" />
           </button>
         </PopoverTrigger>
 
         <PopoverContent
-          className="w-56 p-1.5 bg-[#1a1a1d] border-white/11"
+          className="w-56 p-1.5 bg-surface-3 border-border-strong"
           align="start"
         >
           {!allTags || allTags.length === 0 ? (
-            <p className="text-xs text-zinc-500 px-2 py-2 text-center">
+            <p className="text-xs text-text-tertiary px-2 py-2 text-center">
               No tags yet. Create one below.
             </p>
           ) : (
@@ -120,8 +120,8 @@ export function TagSelector({
                   onClick={() => handleToggle(tag)}
                   className={cn(
                     "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs",
-                    "hover:bg-white/5 transition-colors text-left",
-                    isSelected(tag.id) ? "text-zinc-100" : "text-zinc-400",
+                    "hover:bg-surface-2 transition-colors text-left",
+                    isSelected(tag.id) ? "text-text-primary" : "text-text-tertiary",
                   )}
                 >
                   <span
@@ -130,7 +130,7 @@ export function TagSelector({
                   />
                   <span className="flex-1 truncate">{tag.name}</span>
                   {isSelected(tag.id) && (
-                    <Check size={12} className="shrink-0 text-zinc-400" />
+                    <Check size={12} className="shrink-0 text-text-tertiary" />
                   )}
                 </button>
               ))}

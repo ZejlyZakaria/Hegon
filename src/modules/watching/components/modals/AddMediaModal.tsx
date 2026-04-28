@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import {
@@ -30,7 +30,6 @@ import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
 
 import { createClient } from "@/infrastructure/supabase/client";
-const supabase = createClient();
 
 type ListType =
   | "topTen"
@@ -46,6 +45,7 @@ type AddMediaModalProps = {
   onAdded: (item?: any) => void;
   defaultType?: MediaType;
   listContext?: ListType;
+  initialItem?: any;
 };
 
 export default function AddMediaModal({
@@ -54,7 +54,9 @@ export default function AddMediaModal({
   onAdded,
   defaultType = "film",
   listContext = "recentlyWatched",
+  initialItem,
 }: AddMediaModalProps) {
+  const supabase = useMemo(() => createClient(), []);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
@@ -112,7 +114,7 @@ export default function AddMediaModal({
     if (!error && data) {
       setTakenPriorities(data.map((item) => item.priority));
     }
-  }, [listContext, defaultType]);
+  }, [listContext, defaultType, supabase]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -433,6 +435,10 @@ export default function AddMediaModal({
     }
   };
 
+  // Auto-select initialItem when modal opens (ex: quick-add depuis le hero)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (isOpen && initialItem) selectResult(initialItem); }, [isOpen]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -627,7 +633,7 @@ export default function AddMediaModal({
           >
             <Dialog.Panel className="relative w-full max-w-3xl h-[85vh] md:h-[80vh] flex flex-col overflow-hidden rounded-3xl bg-zinc-900 border border-white/10 shadow-2xl transition-all">
               {/* Header */}
-              <div className="flex items-center justify-between p-5 md:p-6 border-b border-white/5 bg-zinc-900/50 backdrop-blur-md z-10">
+              <div className="flex items-center justify-between p-5 md:p-6 border-b border-border-subtle bg-zinc-900/50 backdrop-blur-md z-10">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-white/5 rounded-xl">{header.icon}</div>
                   <div>
@@ -637,14 +643,14 @@ export default function AddMediaModal({
                     >
                       {header.title}
                     </Dialog.Title>
-                    <p className="text-xs text-zinc-500 mt-1.5">
+                    <p className="text-xs text-text-tertiary mt-1.5">
                       {header.desc}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-2 rounded-full hover:bg-white/5 text-zinc-400 hover:text-white transition-colors"
+                  className="p-2 rounded-full hover:bg-white/5 text-text-secondary hover:text-white transition-colors"
                 >
                   <X size={20} />
                 </button>
@@ -661,13 +667,13 @@ export default function AddMediaModal({
                 <div className="relative mb-6">
                   <div className="relative group">
                     <Search
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-blue-500 transition-colors"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary group-focus-within:text-blue-500 transition-colors"
                       size={18}
                     />
                     <input
                       type="text"
                       placeholder={`Search for ${defaultType === "film" ? "a movie" : defaultType === "serie" ? "a series" : "an anime"}...`}
-                      className="w-full pl-12 pr-4 py-3.5 bg-zinc-800/50 border border-white/5 rounded-2xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-sm"
+                      className="w-full pl-12 pr-4 py-3.5 bg-surface-2/50 border border-border-subtle rounded-2xl text-white placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-sm"
                       value={searchQuery}
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
@@ -685,14 +691,14 @@ export default function AddMediaModal({
                   </div>
 
                   {searchResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-800 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-20 max-h-60 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-surface-2 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-20 max-h-60 overflow-y-auto">
                       {searchResults.map((res) => (
                         <button
                           key={res.id}
                           onClick={() => selectResult(res)}
-                          className="w-full p-3 hover:bg-white/5 flex gap-4 text-left transition-colors border-b border-white/5 last:border-0"
+                          className="w-full p-3 hover:bg-white/5 flex gap-4 text-left transition-colors border-b border-border-subtle last:border-0"
                         >
-                          <div className="relative w-10 h-14 shrink-0 bg-zinc-700 rounded overflow-hidden">
+                          <div className="relative w-10 h-14 shrink-0 bg-surface-2 rounded overflow-hidden">
                             {res.poster_path ? (
                               <img
                                 src={`https://image.tmdb.org/t/p/w92${res.poster_path}`}
@@ -702,7 +708,7 @@ export default function AddMediaModal({
                             ) : (
                               <Film
                                 size={14}
-                                className="text-zinc-500 m-auto"
+                                className="text-text-tertiary m-auto"
                               />
                             )}
                           </div>
@@ -710,7 +716,7 @@ export default function AddMediaModal({
                             <p className="font-semibold text-white text-sm line-clamp-1">
                               {res.title || res.name}
                             </p>
-                            <p className="text-xs text-zinc-500">
+                            <p className="text-xs text-text-tertiary">
                               {res.release_date?.slice(0, 4) ||
                                 res.first_air_date?.slice(0, 4)}
                             </p>
@@ -738,7 +744,7 @@ export default function AddMediaModal({
                 {selectedItem ? (
                   <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-400">
                     {/* Media Preview */}
-                    <div className="relative overflow-hidden rounded-2xl bg-zinc-800/30 border border-white/5 p-4 md:p-5 flex flex-col sm:flex-row gap-6">
+                    <div className="relative overflow-hidden rounded-2xl bg-surface-2/30 border border-border-subtle p-4 md:p-5 flex flex-col sm:flex-row gap-6">
                       <div className="absolute inset-0 -z-10 opacity-30 blur-3xl scale-110">
                         <img
                           src={
@@ -789,7 +795,7 @@ export default function AddMediaModal({
                             <Star size={12} className="fill-amber-400" />
                             {selectedItem.vote_average?.toFixed(1)}
                           </div>
-                          <div className="flex items-center gap-1 text-zinc-400 text-[11px]">
+                          <div className="flex items-center gap-1 text-text-secondary text-[11px]">
                             <Calendar size={12} />
                             {selectedItem.release_date?.slice(0, 4) ||
                               selectedItem.first_air_date?.slice(0, 4)}
@@ -801,7 +807,7 @@ export default function AddMediaModal({
                             (genre: string) => (
                               <span
                                 key={genre}
-                                className="px-2 py-0.5 bg-white/5 border border-white/5 rounded-md text-[10px] text-zinc-300 font-medium flex items-center gap-1"
+                                className="px-2 py-0.5 bg-white/5 border border-border-subtle rounded-md text-[10px] text-text-secondary font-medium flex items-center gap-1"
                               >
                                 <Tag size={8} className="text-blue-400" />
                                 {genre}
@@ -810,7 +816,7 @@ export default function AddMediaModal({
                           )}
                         </div>
 
-                        <p className="text-xs text-zinc-400 leading-relaxed line-clamp-3 italic">
+                        <p className="text-xs text-text-secondary leading-relaxed line-clamp-3 italic">
                           {selectedItem.overview}
                         </p>
                       </div>
@@ -823,7 +829,7 @@ export default function AddMediaModal({
                         {listContext !== "wantToWatch" &&
                           listContext !== "inProgress" && (
                             <div>
-                              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3 flex items-center justify-between">
+                              <label className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-3 flex items-center justify-between">
                                 <span className="flex items-center gap-2">
                                   <Star size={14} className="text-blue-500" />{" "}
                                   Your Rating
@@ -843,7 +849,7 @@ export default function AddMediaModal({
                                 onChange={(e) =>
                                   setUserRating(parseFloat(e.target.value))
                                 }
-                                className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                className="w-full h-1.5 bg-surface-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
                               />
                             </div>
                           )}
@@ -851,7 +857,7 @@ export default function AddMediaModal({
                         {/* Top 10 Priority */}
                         {listContext === "topTen" && (
                           <div>
-                            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <label className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-3 flex items-center gap-2">
                               <Trophy size={14} className="text-amber-500" />{" "}
                               Top 10 Ranking
                             </label>
@@ -869,7 +875,7 @@ export default function AddMediaModal({
                                         ? "bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-600/20"
                                         : isTaken
                                           ? "bg-amber-500/20 border-amber-500/30 text-amber-500 cursor-not-allowed"
-                                          : "bg-zinc-800/50 border-white/5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300",
+                                          : "bg-surface-2/50 border-border-subtle text-text-tertiary hover:bg-surface-2 hover:text-text-secondary",
                                     )}
                                   >
                                     {num}
@@ -881,21 +887,21 @@ export default function AddMediaModal({
                         )}
 
                         <div className="space-y-2">
-                          <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                          <label className="block text-xs font-bold text-text-tertiary uppercase tracking-wider">
                             Personal Notes
                           </label>
                           <textarea
                             placeholder="Your thoughts..."
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
-                            className="w-full p-4 bg-zinc-800/50 border border-white/5 rounded-2xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-24 resize-none transition-all"
+                            className="w-full p-4 bg-surface-2/50 border border-border-subtle rounded-2xl text-white text-sm placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-blue-500/50 h-24 resize-none transition-all"
                           />
                         </div>
                       </div>
 
                       {/* Options Section */}
                       <div className="space-y-4">
-                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                        <label className="block text-xs font-bold text-text-tertiary uppercase tracking-wider">
                           Status & Options
                         </label>
 
@@ -922,7 +928,7 @@ export default function AddMediaModal({
                                   "w-full flex items-center justify-between p-4 rounded-2xl border transition-all",
                                   favorite
                                     ? "bg-rose-500/10 border-rose-500/50 text-rose-400"
-                                    : "bg-zinc-800/50 border-white/5 text-zinc-400",
+                                    : "bg-surface-2/50 border-border-subtle text-text-secondary",
                                 )}
                               >
                                 <div className="flex items-center gap-3">
@@ -939,7 +945,7 @@ export default function AddMediaModal({
                                     "w-5 h-5 rounded-full border-2 flex items-center justify-center",
                                     favorite
                                       ? "border-rose-500 bg-rose-500"
-                                      : "border-zinc-600",
+                                      : "border-border-default",
                                   )}
                                 >
                                   {favorite && (
@@ -964,14 +970,14 @@ export default function AddMediaModal({
                                   <p className="text-[11px] text-blue-200/60 leading-relaxed">
                                     Set where you are to track your progress.
                                   </p>
-                                  <p className="text-[10px] text-zinc-600 leading-relaxed">
+                                  <p className="text-[10px] text-text-tertiary leading-relaxed">
                                     Note: season/episode breakdown follows TMDB structure, which may differ from broadcast seasons (especially for anime).
                                   </p>
                                 </div>
                               </div>
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
-                                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                                  <label className="text-xs font-bold text-text-tertiary uppercase tracking-wider">
                                     Season{maxSeason ? ` (max ${maxSeason})` : ""}
                                   </label>
                                   <input
@@ -986,10 +992,10 @@ export default function AddMediaModal({
                                       }
                                     }}
                                     className={cn(
-                                      "w-full bg-zinc-800/50 border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1",
+                                      "w-full bg-surface-2/50 border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1",
                                       seasonError
                                         ? "border-red-500/60 focus:ring-red-500/50"
-                                        : "border-white/5 focus:ring-blue-500/50",
+                                        : "border-border-subtle focus:ring-blue-500/50",
                                     )}
                                   />
                                   {seasonError && (
@@ -997,7 +1003,7 @@ export default function AddMediaModal({
                                   )}
                                 </div>
                                 <div className="space-y-1.5">
-                                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                                  <label className="text-xs font-bold text-text-tertiary uppercase tracking-wider">
                                     Episode{getMaxEpisodeAdd(parseInt(seasonInput) || 1) ? ` (max ${getMaxEpisodeAdd(parseInt(seasonInput) || 1)})` : ""}
                                   </label>
                                   <input
@@ -1012,10 +1018,10 @@ export default function AddMediaModal({
                                       }
                                     }}
                                     className={cn(
-                                      "w-full bg-zinc-800/50 border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1",
+                                      "w-full bg-surface-2/50 border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1",
                                       episodeError
                                         ? "border-red-500/60 focus:ring-red-500/50"
-                                        : "border-white/5 focus:ring-blue-500/50",
+                                        : "border-border-subtle focus:ring-blue-500/50",
                                     )}
                                   />
                                   {episodeError && (
@@ -1042,7 +1048,7 @@ export default function AddMediaModal({
                               </div>
 
                               <div>
-                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 block">
+                                <label className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-2 block">
                                   Priority
                                 </label>
                                 <div className="flex gap-2">
@@ -1059,8 +1065,8 @@ export default function AddMediaModal({
                                               ? "bg-red-500/20 border-red-500/50 text-red-400"
                                               : level === "medium"
                                                 ? "bg-amber-500/20 border-amber-500/50 text-amber-400"
-                                                : "bg-zinc-500/20 border-zinc-500/50 text-zinc-400"
-                                            : "bg-zinc-800/50 border-white/5 text-zinc-600 hover:text-zinc-400",
+                                                : "bg-zinc-500/20 border-zinc-500/50 text-text-secondary"
+                                            : "bg-surface-2/50 border-border-subtle text-text-tertiary hover:text-text-secondary",
                                         )}
                                       >
                                         {level === "high"
@@ -1084,7 +1090,7 @@ export default function AddMediaModal({
                                   "w-full flex items-center justify-between p-4 rounded-2xl border transition-all",
                                   favorite
                                     ? "bg-rose-500/10 border-rose-500/50 text-rose-400"
-                                    : "bg-zinc-800/50 border-white/5 text-zinc-400",
+                                    : "bg-surface-2/50 border-border-subtle text-text-secondary",
                                 )}
                               >
                                 <div className="flex items-center gap-3">
@@ -1101,7 +1107,7 @@ export default function AddMediaModal({
                                     "w-5 h-5 rounded-full border-2 flex items-center justify-center",
                                     favorite
                                       ? "border-rose-500 bg-rose-500"
-                                      : "border-zinc-600",
+                                      : "border-border-default",
                                   )}
                                 >
                                   {favorite && (
@@ -1123,8 +1129,8 @@ export default function AddMediaModal({
                   </div>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-center py-16 space-y-4">
-                    <div className="w-16 h-16 bg-zinc-800/50 rounded-2xl flex items-center justify-center border border-white/5">
-                      <Search size={28} className="text-zinc-700" />
+                    <div className="w-16 h-16 bg-surface-2/50 rounded-2xl flex items-center justify-center border border-border-subtle">
+                      <Search size={28} className="text-text-tertiary" />
                     </div>
                     <div>
                       <h4 className="text-base font-medium text-white">
@@ -1135,7 +1141,7 @@ export default function AddMediaModal({
                             ? "a series"
                             : "an anime"}
                       </h4>
-                      <p className="text-xs text-zinc-500 mt-1">
+                      <p className="text-xs text-text-tertiary mt-1">
                         Search to import data from TMDB.
                       </p>
                     </div>
@@ -1144,11 +1150,11 @@ export default function AddMediaModal({
               </div>
 
               {/* Footer */}
-              <div className="p-5 md:p-6 border-t border-white/5 bg-zinc-900/80 backdrop-blur-md flex justify-end gap-3">
+              <div className="p-5 md:p-6 border-t border-border-subtle bg-zinc-900/80 backdrop-blur-md flex justify-end gap-3">
                 <Button
                   variant="ghost"
                   onClick={onClose}
-                  className="text-zinc-400"
+                  className="text-text-secondary"
                 >
                   Cancel
                 </Button>
