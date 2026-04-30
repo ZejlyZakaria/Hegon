@@ -1,8 +1,10 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useJournalToday, useCreateEntry, useUpdateEntry } from "../hooks/useJournalToday";
 import { MoodPicker } from "./MoodPicker";
 import { JournalEditor } from "./JournalEditor";
+import { JournalTodayViewSkeleton } from "./JournalSkeleton";
 import type { JournalMood } from "../types";
 
 // Timezone-safe: use local date, not UTC
@@ -34,17 +36,15 @@ export function JournalTodayView() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col h-full gap-6">
-        <div className="h-9 w-72 bg-surface-1 rounded-lg animate-pulse" />
-        <div className="flex-1 bg-surface-1 rounded-lg animate-pulse" />
-      </div>
-    );
-  }
+  if (isLoading) return <JournalTodayViewSkeleton />;
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <motion.div
+      className="flex flex-col h-full gap-6"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+    >
       {/* Mood picker */}
       <div>
         <MoodPicker
@@ -67,7 +67,7 @@ export function JournalTodayView() {
       <div className="pb-2">
         <TodayContext />
       </div>
-    </div>
+    </motion.div>
   );
 }
 

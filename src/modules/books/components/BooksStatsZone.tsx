@@ -3,6 +3,7 @@
 import { CheckCircle2, Library, BookOpen, Star } from "lucide-react";
 import type { ElementType } from "react";
 import { useBookStats } from "../hooks/useBooks";
+import { StatsZoneSkeleton } from "./BooksSkeleton";
 
 const SKY     = "#0ea5e9";
 const SKY_BG  = "rgba(14,165,233,0.08)";
@@ -10,18 +11,7 @@ const SKY_BG  = "rgba(14,165,233,0.08)";
 export function BooksStatsZone() {
   const { data: stats, isLoading } = useBookStats();
 
-  if (isLoading) {
-    return (
-      <div className="flex items-stretch gap-3 py-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex-1 h-15 bg-surface-1 rounded-lg border border-border-subtle animate-pulse"
-          />
-        ))}
-      </div>
-    );
-  }
+  if (isLoading) return <StatsZoneSkeleton />;
 
   if (!stats) return null;
 

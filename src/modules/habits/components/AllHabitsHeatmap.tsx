@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/shared/utils/utils";
 import { useHeatmapData } from "../hooks/useHabitStats";
+import { AllHabitsHeatmapSkeleton } from "./HabitsSkeleton";
 import { toDateStr } from "../utils";
 import type { HeatmapDay } from "../types";
 
@@ -86,16 +87,7 @@ export function AllHabitsHeatmap() {
   }, [data, range]);
 
   if (isLoading) {
-    return (
-      <div
-        className="animate-pulse rounded-lg border p-4"
-        style={{
-          backgroundColor: "var(--color-surface-1)",
-          borderColor: "var(--color-border-subtle)",
-          height: 220,
-        }}
-      />
-    );
+    return <AllHabitsHeatmapSkeleton />;
   }
 
   if (data.length === 0) {

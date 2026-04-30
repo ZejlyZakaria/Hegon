@@ -1,11 +1,7 @@
-// components/shared/SectionHeader.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/shared/utils/utils"
-
-// ─── types ────────────────────────────────────────────────────────────────────
 
 export interface SectionTab {
   label: string;
@@ -13,66 +9,46 @@ export interface SectionTab {
 }
 
 export interface SectionHeaderProps {
-  icon: React.ReactNode;
   title: string;
+  subtitle: string;
   accent: string;
   tabs: SectionTab[];
 }
 
-// ─── main ─────────────────────────────────────────────────────────────────────
-
-export default function SectionHeader({
-  icon,
-  title,
-  accent,
-  tabs,
-}: SectionHeaderProps) {
+export default function SectionHeader({ title, subtitle, accent, tabs }: SectionHeaderProps) {
   const pathname = usePathname();
 
   return (
-    <div className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/50">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center gap-6 h-14">
-          {/* section identity */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span style={{ color: accent }}>{icon}</span>
-            <span className="text-sm font-bold text-white tracking-tight">
-              {title}
-            </span>
-          </div>
+    <div className="px-6 pt-5 pb-0 shrink-0">
+      {/* Module header */}
+      <div className="mb-4">
+        <h1 className="text-xl font-bold leading-tight text-text-primary">{title}</h1>
+        <p className="mt-0.5 text-sm text-text-tertiary">{subtitle}</p>
+      </div>
 
-          {/* divider */}
-          <div className="w-px h-4 bg-zinc-700/60 shrink-0" />
-
-          {/* tabs */}
-          <nav className="flex items-center gap-1">
-            {tabs.map((tab) => {
-              const active =
-                pathname === tab.href || pathname.startsWith(tab.href + "/");
-              return (
-                <Link
-                  key={tab.href}
-                  href={tab.href}
-                  className={cn(
-                    "relative px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-150",
-                    active
-                      ? "text-white"
-                      : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50",
-                  )}
-                >
-                  {tab.label}
-                  {/* active indicator */}
-                  {active && (
-                    <span
-                      className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full"
-                      style={{ backgroundColor: accent }}
-                    />
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+      {/* Tabs */}
+      <div className="flex items-center">
+        {tabs.map((tab) => {
+          const active = pathname === tab.href || pathname.startsWith(tab.href + "/");
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className="relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors"
+              style={active ? { color: "var(--color-text-primary)" } : undefined}
+            >
+              <span className={!active ? "text-text-tertiary hover:text-text-secondary" : ""}>
+                {tab.label}
+              </span>
+              {active && (
+                <span
+                  className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm"
+                  style={{ backgroundColor: accent }}
+                />
+              )}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

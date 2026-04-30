@@ -1,6 +1,5 @@
 // app/perso/sports/layout.tsx
-import { Trophy } from "lucide-react";
-import SectionHeader from "@/shared/components/layout/SectionHeader"
+import SectionHeader from "@/shared/components/layout/SectionHeader";
 
 const TABS = [
   { label: "Football", href: "/perso/sports/football" },
@@ -12,8 +11,8 @@ export default function SportLayout({ children }: { children: React.ReactNode })
   return (
     <div className="bg-zinc-950">
       <SectionHeader
-        icon={<Trophy size={16} />}
         title="Sport"
+        subtitle="Football, Tennis, F1 — follow every match, every season."
         accent="#10b981"
         tabs={TABS}
       />

@@ -110,8 +110,8 @@ export function LibrarySkeleton() {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6">
-        {Array.from({ length: 16 }).map((_, i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-6">
+        {Array.from({ length: 20 }).map((_, i) => (
           <div key={i} className="animate-pulse space-y-2">
             <Pulse className="aspect-2/3 w-full bg-surface-2 rounded-xl" />
             <Pulse className="h-3 w-3/4 bg-surface-2" />

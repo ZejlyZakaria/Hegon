@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MoreHorizontal, Unlink, Pencil, Trash2 } from "lucide-react";
 import { Slider } from "@/shared/components/ui/slider";
@@ -24,6 +25,7 @@ import { useLinkedTasks, useUnlinkTask } from "../hooks/useLinkedTasks";
 import { MilestoneList } from "./MilestoneList";
 import { GoalModal } from "./GoalModal";
 import { DeleteGoalModal } from "./DeleteGoalModal";
+import { GoalDetailSkeleton } from "./GoalDetailSkeleton";
 import * as GoalService from "../service";
 import { useQueryClient } from "@tanstack/react-query";
 import { GOAL_KEYS } from "../hooks/query-keys";
@@ -65,13 +67,7 @@ export function GoalDetailPage({ id }: Props) {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setLocalMode(null); }, [goal?.progress_mode]);
 
-  if (isLoading || !goal) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="h-8 w-8 rounded-full border-2 border-[#141416] border-t-accent-goals animate-spin" />
-      </div>
-    );
-  }
+  if (isLoading || !goal) return <GoalDetailSkeleton />;
 
   const displayProgress = localProgress ?? goal.progress;
   const displayMode     = localMode ?? goal.progress_mode;
@@ -106,24 +102,33 @@ export function GoalDetailPage({ id }: Props) {
     });
   }
 
+
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-4">
+    <div className="w-full  px-6 py-4">
       {/* Back */}
-      <button
+      <motion.button
         type="button"
         onClick={() => router.push("/life/goals")}
         className="mb-4 flex items-center gap-2 text-sm text-text-tertiary hover:text-text-secondary transition-colors"
+        initial={{ opacity: 0, x: -6 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
       >
         <ArrowLeft size={14} />
         Goals
-      </button>
+      </motion.button>
 
       <div className="flex gap-6 items-start">
         {/* ── LEFT COLUMN ── */}
-        <div className="flex-1 min-w-0 space-y-4">
+        <div className="flex-1 min-w-0 space-y-3">
 
           {/* Hero card */}
-          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: 0 }}
+            className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1"
+          >
             <div className="relative p-3">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex-1 min-w-0">
@@ -189,15 +194,25 @@ export function GoalDetailPage({ id }: Props) {
                 </p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Milestones */}
-          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: 0.06 }}
+            className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4"
+          >
             <MilestoneList goalId={id} />
-          </div>
+          </motion.div>
 
           {/* Linked tasks */}
-          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: 0.12 }}
+            className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4"
+          >
             <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">
               Fueling this Goal
             </h3>
@@ -231,11 +246,16 @@ export function GoalDetailPage({ id }: Props) {
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
 
         {/* ── RIGHT COLUMN — sticky ── */}
-        <div className="w-72 shrink-0 space-y-3 sticky top-6">
+        <motion.div
+          className="w-72 shrink-0 space-y-3 sticky top-6"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, delay: 0.06 }}
+        >
 
           {/* Progress Control */}
           <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4">
@@ -371,7 +391,7 @@ export function GoalDetailPage({ id }: Props) {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Edit modal */}

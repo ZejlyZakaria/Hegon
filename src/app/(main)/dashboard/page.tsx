@@ -48,7 +48,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#09090b] overflow-y-auto">
-      <DashboardContent userName={userName} />
+      <DashboardContent />
     </div>
   );
 }

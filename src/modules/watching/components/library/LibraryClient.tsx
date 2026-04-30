@@ -11,7 +11,7 @@ import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Button } from "@/shared/components/ui/button";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import { toast } from "@/shared/utils/toast";
-const ITEMS_PER_PAGE = 32;
+const ITEMS_PER_PAGE = 40;
 
 type MediaType = "all" | "film" | "serie" | "anime";
 type SortKey   = "added" | "rating" | "title" | "year" | "favorite";

@@ -14,7 +14,7 @@ import {
   Pencil,
 } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
-import { cn } from "@/shared/utils/utils"
+import { cn } from "@/shared/utils/utils";
 import MediaDetailModal from "../modals/MediaDetailModal";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 
@@ -23,9 +23,13 @@ import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 function computeProgress(item: WatchingMedia): number {
   if (!item.season_episodes?.length) return 0;
   const seasonIdx = (item.current_season ?? 1) - 1;
-  const prevEps = item.season_episodes.slice(0, seasonIdx).reduce((s, n) => s + n, 0);
+  const prevEps = item.season_episodes
+    .slice(0, seasonIdx)
+    .reduce((s, n) => s + n, 0);
   const total = item.season_episodes.reduce((s, n) => s + n, 0);
-  return total ? Math.round(((prevEps + (item.current_episode ?? 0)) / total) * 100) : 0;
+  return total
+    ? Math.round(((prevEps + (item.current_episode ?? 0)) / total) * 100)
+    : 0;
 }
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -79,8 +83,6 @@ function PriorityBadge({ level }: { level: string | null | undefined }) {
 
 // ─── context menu ─────────────────────────────────────────────────────────────
 
-
-
 function CardMenu({
   item,
   onView,
@@ -93,13 +95,13 @@ function CardMenu({
   onMarkWatched?: (id: string) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);  
-  const [isDeleting, setIsDeleting] = useState(false);  
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Handler de confirmation de suppression
   const handleConfirmDelete = async () => {
     if (!onDelete) return;
-    
+
     setIsDeleting(true);
     try {
       await onDelete(item.id);
@@ -127,7 +129,10 @@ function CardMenu({
 
         {open && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setOpen(false)}
+            />
             <div className="absolute right-0 top-8 z-50 w-52 bg-surface-3 border border-border-default rounded-xl shadow-2xl overflow-hidden">
               <button
                 onClick={(e) => {
@@ -165,7 +170,7 @@ function CardMenu({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setShowDeleteConfirm(true);  // ✅ MODIFIÉ : Ouvre le modal au lieu de supprimer directement
+                    setShowDeleteConfirm(true); // ✅ MODIFIÉ : Ouvre le modal au lieu de supprimer directement
                     setOpen(false);
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-red-500/10 transition-colors text-sm text-red-400 group border-t border-border-default"
@@ -202,7 +207,7 @@ function MovieCard({
   onDelete,
   onMarkWatched,
   showEpisodeBadge,
-  showRankBadge
+  showRankBadge,
 }: {
   item: WatchingMedia;
   onView: () => void;
@@ -228,7 +233,7 @@ function MovieCard({
         <div className="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent" />
 
         {/* rank badge — top10 only */}
-        {showRankBadge && item.priority &&(
+        {showRankBadge && item.priority && (
           <div className="absolute top-3 left-3 flex h-8 w-8 items-center justify-center rounded-full bg-black border-2 border-white text-xs font-bold text-white shadow-lg z-10">
             {item.priority}
           </div>
@@ -261,44 +266,47 @@ function MovieCard({
         </div>
 
         <div className="absolute bottom-0 inset-x-0 p-4">
-          <h4 className="text-base font-semibold text-white line-clamp-1">
+          <h4 className="text-sm font-semibold text-white line-clamp-1">
             {item.title}
           </h4>
 
           {/* episode progress */}
-          {showEpisodeBadge && item.current_episode != null && item.current_episode > 0 && (
-            <div className="mt-1 space-y-1.5">
-              <span className="text-[10px] font-semibold bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
-                {"S" +
-                  String(item.current_season ?? 1).padStart(2, "0") +
-                  " E" +
-                  String(item.current_episode).padStart(2, "0")}
-              </span>
-              {computeProgress(item) > 0 && (
-                <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-400 rounded-full"
-                    style={{ width: `${computeProgress(item)}%` }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
+          {showEpisodeBadge &&
+            item.current_episode != null &&
+            item.current_episode > 0 && (
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-semibold bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
+                  {"S" +
+                    String(item.current_season ?? 1).padStart(2, "0") +
+                    " E" +
+                    String(item.current_episode).padStart(2, "0")}
+                </span>
+                {computeProgress(item) > 0 && (
+                  <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-400 rounded-full"
+                      style={{ width: `${computeProgress(item)}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
-          <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+          <div className="mt-1.5 flex items-center gap-2 min-w-0">
             {item.tags?.slice(0, 2).map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white"
+                className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white max-w-20 truncate"
               >
                 {tag}
               </span>
             ))}
-            <span className="text-xs text-text-tertiary">{item.year}</span>
+            <span className="text-xs text-text-tertiary shrink-0">
+              {item.year}
+            </span>
 
-            {/* rating — only if not null/0 */}
             {item.user_rating != null && item.user_rating > 0 && (
-              <div className="flex items-center gap-1 text-xs text-white">
+              <div className="flex items-center gap-1 text-xs text-white shrink-0">
                 <Star size={12} className="fill-amber-400 text-amber-400" />
                 {item.user_rating}
               </div>
@@ -343,7 +351,7 @@ export function MediaCarousel({
 }: MediaCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [cardsPerView, setCardsPerView] = useState(4);
+  const [cardsPerView, setCardsPerView] = useState(5);
   const [selectedItem, setSelectedItem] = useState<WatchingMedia | null>(null);
   const [localItems, setLocalItems] = useState(items);
   const gap = 16;
@@ -358,7 +366,7 @@ export function MediaCarousel({
       if (w < 768) setCardsPerView(1);
       else if (w < 1024) setCardsPerView(2);
       else if (w < 1280) setCardsPerView(3);
-      else setCardsPerView(4);
+      else setCardsPerView(5);
     };
     handleResize();
     window.addEventListener("resize", handleResize);
@@ -366,7 +374,8 @@ export function MediaCarousel({
   }, []);
 
   const sortedItems = useMemo(
-    () => [...localItems].sort((a, b) => (a.priority || 999) - (b.priority || 999)),
+    () =>
+      [...localItems].sort((a, b) => (a.priority || 999) - (b.priority || 999)),
     [localItems],
   );
 
@@ -408,8 +417,12 @@ export function MediaCarousel({
       <section className="mb-3">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h3 className="text-base font-semibold text-text-primary tracking-tight">{title}</h3>
-            {subtitle && <p className="mt-1 text-sm text-text-tertiary">{subtitle}</p>}
+            <h3 className="text-base font-semibold text-text-primary tracking-tight">
+              {title}
+            </h3>
+            {subtitle && (
+              <p className="mt-1 text-sm text-text-tertiary">{subtitle}</p>
+            )}
           </div>
         </div>
         <div
@@ -419,9 +432,14 @@ export function MediaCarousel({
           {onAddClick ? (
             <>
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/5 group-hover:bg-white/10 transition-colors">
-                <Plus size={22} className="text-text-tertiary group-hover:text-text-secondary transition-colors" />
+                <Plus
+                  size={22}
+                  className="text-text-tertiary group-hover:text-text-secondary transition-colors"
+                />
               </div>
-              <p className="text-sm text-text-tertiary group-hover:text-text-secondary transition-colors">Add your first item</p>
+              <p className="text-sm text-text-tertiary group-hover:text-text-secondary transition-colors">
+                Add your first item
+              </p>
             </>
           ) : (
             <p className="text-sm text-text-tertiary">Nothing here yet</p>
@@ -435,8 +453,12 @@ export function MediaCarousel({
     <section className="mb-3">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-text-primary tracking-tight">{title}</h3>
-          {subtitle && <p className="mt-1 text-sm text-text-tertiary">{subtitle}</p>}
+          <h3 className="text-base font-semibold text-text-primary tracking-tight">
+            {title}
+          </h3>
+          {subtitle && (
+            <p className="mt-1 text-sm text-text-tertiary">{subtitle}</p>
+          )}
         </div>
         <div className="flex gap-2">
           <button

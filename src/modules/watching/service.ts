@@ -291,7 +291,7 @@ export async function getWatchingHeroData(type: MediaType) {
     (m: any) => m.vote_average >= 7 && m.vote_count >= 100
   ) ?? trendingData.results?.[0] ?? null;
 
-  const recommendations = (recoData.results ?? []).slice(0, 3);
+  const recommendations = (recoData.results ?? []).slice(0, 8);
 
   return { trending, recommendations };
 }

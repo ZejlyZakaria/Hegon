@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, startTransition } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCommandCenter } from "@/modules/command-center/store";
 import { Search } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
@@ -17,6 +18,7 @@ import { GoalCard } from "./GoalCard";
 import { GoalModal } from "./GoalModal";
 import { GoalsEmptyState } from "./GoalsEmptyState";
 import { GoalRightPanel } from "./GoalFocusPanel";
+import { GoalsLoadingSkeleton } from "./GoalsSkeleton";
 import { useGoals } from "../hooks/useGoals";
 import type { Goal, GoalSort, GoalCategory } from "../types";
 
@@ -121,127 +123,136 @@ export function GoalsPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto flex min-h-full flex-col">
-      {/* ── Topbar ── */}
-      <div className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b border-white/4 bg-[#09090b]/80 px-4 backdrop-blur-sm shrink-0">
-        <div className="relative flex-1 max-w-xs">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-          <Input
-            variant="tasks"
-            placeholder="Search goals…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-8 pl-8 bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-4 px-4 py-5">
-        {/* ── Module header ── */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold leading-tight text-text-primary">Goals</h1>
-            <p className="mt-0.5 text-sm text-text-tertiary">
-              Big picture. Clear path.
-            </p>
-          </div>
-          <Button
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-            style={{ backgroundColor: ACCENT }}
-            className="h-8 shrink-0 px-3 text-sm font-medium text-white hover:opacity-90"
-          >
-            + New Goal
-          </Button>
-        </div>
-
-        {/* ── Content ── */}
+    <div className="flex min-h-full flex-col">
+      <div className="space-y-4 px-6 py-5">
         {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-14 rounded-lg bg-surface-1 animate-pulse" />
-            ))}
-          </div>
-        ) : goals.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center py-20">
-            <GoalsEmptyState onCreateClick={() => setIsModalOpen(true)} />
-          </div>
+          <GoalsLoadingSkeleton />
         ) : (
-          <div className="flex gap-6 items-start">
-            {/* Left — tabs + list */}
-            <div className="flex-1 min-w-0">
-              {/* Tabs row */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  {STATUS_TABS.map(({ value, label }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setStatus(value)}
-                      className={cn(
-                        "relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
-                        status === value ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary"
-                      )}
-                    >
-                      {label}
-                      {status === value && (
-                        <span
-                          className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm"
-                          style={{ backgroundColor: ACCENT }}
+          <>
+            {/* ── Module header ── */}
+            <motion.div
+              className="flex items-start justify-between gap-4"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              <div>
+                <h1 className="text-xl font-bold leading-tight text-text-primary">Goals</h1>
+                <p className="mt-0.5 text-sm text-text-tertiary">Big picture. Clear path.</p>
+              </div>
+              <Button
+                type="button"
+                onClick={() => setIsModalOpen(true)}
+                style={{ backgroundColor: ACCENT }}
+                className="h-8 shrink-0 px-3 text-sm font-medium text-white hover:opacity-90"
+              >
+                + New Goal
+              </Button>
+            </motion.div>
+
+            {goals.length === 0 ? (
+              <div className="flex flex-1 items-center justify-center py-20">
+                <GoalsEmptyState onCreateClick={() => setIsModalOpen(true)} />
+              </div>
+            ) : (
+              <div className="flex gap-6 items-start">
+                {/* Left — tabs + list */}
+                <div className="flex-1 min-w-0">
+                  {/* Tabs row */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      {STATUS_TABS.map(({ value, label }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setStatus(value)}
+                          className={cn(
+                            "relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
+                            status === value ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary"
+                          )}
+                        >
+                          {label}
+                          {status === value && (
+                            <span
+                              className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm"
+                              style={{ backgroundColor: ACCENT }}
+                            />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 pb-1">
+                      <div className="relative flex items-center">
+                        <Search size={14} className="absolute left-2.5 text-text-tertiary pointer-events-none" />
+                        <Input
+                          variant="tasks"
+                          placeholder="Search goals…"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          className="h-9 py-0 pl-8 w-48 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
                         />
-                      )}
-                    </button>
-                  ))}
+                      </div>
+
+                      <Select value={category} onValueChange={(v) => setCategory(v as GoalCategory | "all")}>
+                        <SelectTrigger variant="tasks" className="h-7 w-36 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent variant="tasks">
+                          {CATEGORIES.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={sort} onValueChange={(v) => setSort(v as GoalSort)}>
+                        <SelectTrigger variant="tasks" className="h-7 w-28 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent variant="tasks">
+                          {SORTS.map((s) => (
+                            <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* List */}
+                  <div className="mt-3 space-y-3">
+                    {displayed.length === 0 ? (
+                      <p className="py-16 text-center text-sm text-text-tertiary">
+                        No goals match this filter.
+                      </p>
+                    ) : (
+                      <AnimatePresence mode="popLayout">
+                        {displayed.map((goal, i) => (
+                          <motion.div
+                            key={goal.id}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={{ duration: 0.18, delay: i * 0.04, ease: "easeOut" }}
+                          >
+                            <GoalCard goal={goal} />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 pb-1">
-                  <Select value={category} onValueChange={(v) => setCategory(v as GoalCategory | "all")}>
-                    <SelectTrigger variant="tasks" className="h-7 w-36 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent variant="tasks">
-                      {CATEGORIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={sort} onValueChange={(v) => setSort(v as GoalSort)}>
-                    <SelectTrigger variant="tasks" className="h-7 w-28 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent variant="tasks">
-                      {SORTS.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Right panel */}
+                <div className="w-72 shrink-0">
+                  <GoalRightPanel
+                    goals={goals}
+                    activeCategory={activeCategory}
+                    onCategoryClick={handleCompassClick}
+                  />
                 </div>
               </div>
-
-              {/* List */}
-              <div className="mt-3 space-y-3">
-                {displayed.length === 0 ? (
-                  <p className="py-16 text-center text-sm text-text-tertiary">
-                    No goals match this filter.
-                  </p>
-                ) : (
-                  displayed.map((goal) => (
-                    <GoalCard key={goal.id} goal={goal} />
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Right panel — xl+ only, sticky */}
-            <div className="w-72 shrink-0">
-              <GoalRightPanel
-                goals={goals}
-                activeCategory={activeCategory}
-                onCategoryClick={handleCompassClick}
-              />
-            </div>
-          </div>
+            )}
+          </>
         )}
       </div>
 

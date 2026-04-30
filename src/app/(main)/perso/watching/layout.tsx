@@ -1,6 +1,5 @@
 // app/perso/watching/layout.tsx
-import { Tv } from "lucide-react";
-import SectionHeader from "@/shared/components/layout/SectionHeader"
+import SectionHeader from "@/shared/components/layout/SectionHeader";
 
 const TABS = [
   { label: "Movies",   href: "/perso/watching/movies" },
@@ -13,8 +12,8 @@ export default function WatchingLayout({ children }: { children: React.ReactNode
   return (
     <div className="min-h-screen bg-zinc-950">
       <SectionHeader
-        icon={<Tv size={16} />}
         title="Watching"
+        subtitle="Movies, series, animes — everything you watch, tracked."
         accent="#8b5cf6"
         tabs={TABS}
       />

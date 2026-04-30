@@ -28,6 +28,7 @@ import {
   useReorderMilestones,
 } from "../hooks/useMilestones";
 import type { GoalMilestone } from "../types";
+import { MilestoneListSkeleton } from "./GoalDetailSkeleton";
 
 const ACCENT = "var(--color-accent-goals)";
 
@@ -210,7 +211,7 @@ export function MilestoneList({ goalId }: Props) {
       </div>
 
       {isLoading ? (
-        <div className="h-9 rounded-lg bg-[#0e0e10] animate-pulse" />
+        <MilestoneListSkeleton />
       ) : (
         <DndContext
           sensors={sensors}

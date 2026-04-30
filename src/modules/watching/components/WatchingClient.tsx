@@ -153,7 +153,7 @@ export default function WatchingClient({ config, children }: Props) {
 
   return (
     <WatchingContext.Provider value={contextValue}>
-      <section className="max-w-7xl mx-auto p-6 space-y-2">
+      <section className="p-6 space-y-2">
         {children}
       </section>
 

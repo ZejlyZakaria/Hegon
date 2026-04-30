@@ -7,17 +7,12 @@ import ContinueWatchingSection from "./continue-watching/ContinueWatchingSection
 import UpcomingSportsSection from "./upcoming-sports/UpcomingSportsSection";
 import TasksSection from "./tasks/TasksSection";
 
-interface Props {
-  userName: string;
-}
-
-export default function DashboardContent({ userName }: Props) {
+export default function DashboardContent() {
   const { data, isLoading } = useDashboardData();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-3 space-y-6">
+    <div className="px-6 py-3 space-y-6">
       <DashboardHeader
-        userName={userName}
         hasTask={!!data?.tasks?.length}
         hasMatch={!!data?.todaySportEvents?.length}
       />

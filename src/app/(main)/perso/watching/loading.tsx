@@ -2,10 +2,10 @@ import { MoviesHeroSkeleton, CarouselSkeleton } from "@/modules/watching/compone
 
 export default function WatchingLoading() {
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-2">
+    <div className="p-6 space-y-2">
       <MoviesHeroSkeleton />
-      <CarouselSkeleton cards={4} />
-      <CarouselSkeleton cards={4} />
+      <CarouselSkeleton cards={5} />
+      <CarouselSkeleton cards={5} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { motion } from "framer-motion";
 import { ArrowLeft, BookOpen, MoreHorizontal, Star, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -9,6 +10,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { useBook, useUpdateBook, useUpdateProgress } from "../hooks/useBooks";
 import { DeleteBookModal } from "./DeleteBookModal";
+import { BookDetailSkeleton } from "./BookDetailSkeleton";
 import type { BookStatus } from "../types";
 
 const SKY = "#0ea5e9";
@@ -158,20 +160,28 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
     <>
       <div className="flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <div className="px-4 pt-4 pb-3 shrink-0 flex items-center">
-          <button
+        <div className="px-6 pt-4 pb-3 shrink-0 flex items-center">
+          <motion.button
             type="button"
             onClick={handleBack}
             className="flex items-center gap-1.5 text-sm text-text-tertiary hover:text-text-primary transition-colors"
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
           >
             <ArrowLeft className="w-4 h-4" />
             Books
-          </button>
+          </motion.button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-5">
-          <div className="flex gap-6 max-w-4xl">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <motion.div
+            className="flex gap-6 max-w-4xl"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
 
             {/* ── Left: Cover + metadata ── */}
             <div className="w-44 shrink-0 flex flex-col gap-3">
@@ -418,7 +428,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
 
@@ -433,31 +443,3 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
   );
 }
 
-function BookDetailSkeleton() {
-  return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-4 pt-4 pb-3 shrink-0 flex items-center">
-        <div className="h-4 w-16 bg-surface-2 rounded animate-pulse" />
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-5">
-        <div className="flex gap-6 max-w-4xl">
-          <div className="w-44 shrink-0">
-            <div className="w-full aspect-2/3 bg-surface-1 rounded-lg border border-border-subtle animate-pulse" />
-          </div>
-          <div className="flex-1 flex flex-col gap-3">
-            <div className="flex flex-col gap-2">
-              <div className="h-7 w-3/4 bg-surface-2 rounded animate-pulse" />
-              <div className="h-4 w-1/3 bg-surface-2 rounded animate-pulse" />
-            </div>
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-20 bg-surface-1 rounded-lg border border-border-subtle animate-pulse"
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}

@@ -3,6 +3,7 @@
 import { BookOpen, Star } from "lucide-react";
 import Image from "next/image";
 import { useBooksRightPanel } from "../hooks/useBooks";
+import { BooksRightPanelLoadingSkeleton } from "./BooksSkeleton";
 
 const SKY = "#0ea5e9";
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
@@ -12,18 +13,7 @@ const RING_C = 2 * Math.PI * RING_R;
 export function BooksRightPanel() {
   const { data, isLoading } = useBooksRightPanel();
 
-  if (isLoading) {
-    return (
-      <div className="w-full flex flex-col gap-3">
-        {[72, 112, 120].map((h, i) => (
-          <div key={i} className="bg-surface-1 rounded-lg p-4">
-            <div className="h-3 w-24 rounded bg-surface-2 animate-pulse mb-3" />
-            <div className={`h-${h === 72 ? '10' : h === 112 ? '28' : '20'} rounded bg-surface-2 animate-pulse`} />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  if (isLoading) return <BooksRightPanelLoadingSkeleton />;
 
   if (!data) return null;
 

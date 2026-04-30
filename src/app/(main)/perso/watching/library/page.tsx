@@ -19,7 +19,7 @@ export default async function LibraryPage() {
     .order("watched_at", { ascending: false });
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="p-6">
       <LibraryClient initialItems={data ?? []} />
     </div>
   );

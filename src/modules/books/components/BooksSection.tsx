@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useBooks } from "../hooks/useBooks";
 import { BookCard } from "./BookCard";
+import { BookCardSkeleton } from "./BooksSkeleton";
 import type { BookStatus, BookSort } from "../types";
 
 interface BooksSectionProps {
@@ -36,7 +38,7 @@ export function BooksSection({
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-32 bg-surface-1 rounded-lg animate-pulse" />
+          <BookCardSkeleton key={i} />
         ))}
       </div>
     );
@@ -54,9 +56,19 @@ export function BooksSection({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      {books.map((book) => (
-        <BookCard key={book.id} book={book} />
-      ))}
+      <AnimatePresence mode="popLayout">
+        {books.map((book, i) => (
+          <motion.div
+            key={book.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18, delay: i * 0.04, ease: "easeOut" }}
+          >
+            <BookCard book={book} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }

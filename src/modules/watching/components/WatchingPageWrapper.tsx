@@ -1,7 +1,7 @@
 "use client";
 
 import WatchingClient from "@/modules/watching/components/WatchingClient";
-import WatchingHero from "@/modules/watching/components/WatchingHero";
+import DontMissSectionClient from "./sections/DontMissSectionClient";
 import TopTenSectionClient from "./sections/TopTenSectionClient";
 import InProgressSectionClient from "./sections/InProgressSectionClient";
 import RecentlyWatchedSectionClient from "./sections/RecentlyWatchedSectionClient";
@@ -18,7 +18,7 @@ export default function WatchingPageWrapper({ type }: { type: MediaType }) {
 
   return (
     <WatchingClient userId={userId} config={config}>
-      <WatchingHero config={config} />
+      <DontMissSectionClient config={config} />
       <TopTenSectionClient userId={userId} config={config} />
       {config.hasInProgress && <InProgressSectionClient userId={userId} config={config} />}
       <RecentlyWatchedSectionClient userId={userId} config={config} />

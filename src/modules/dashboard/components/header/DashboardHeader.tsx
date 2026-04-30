@@ -1,16 +1,8 @@
 "use client";
 
 interface DashboardHeaderProps {
-  userName: string;
   hasTask: boolean;
   hasMatch: boolean;
-}
-
-function getGreeting(hour: number): string {
-  if (hour >= 5 && hour < 12) return "Good morning";
-  if (hour >= 12 && hour < 18) return "Good afternoon";
-  if (hour >= 18 && hour < 22) return "Good evening";
-  return "Good night";
 }
 
 function getSubtitle(hasTask: boolean, hasMatch: boolean): string {
@@ -20,26 +12,13 @@ function getSubtitle(hasTask: boolean, hasMatch: boolean): string {
   return "Nothing urgent today. Make it yours.";
 }
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-}
-
-export default function DashboardHeader({ userName, hasTask, hasMatch }: DashboardHeaderProps) {
-  const now = new Date();
-  const greeting = getGreeting(now.getHours());
+export default function DashboardHeader({ hasTask, hasMatch }: DashboardHeaderProps) {
   const subtitle = getSubtitle(hasTask, hasMatch);
 
   return (
     <div>
-      <h1 className="text-xl font-semibold text-white tracking-tight" suppressHydrationWarning>
-        {formatDate(now)}
-      </h1>
-      <p className="text-xs text-zinc-500 mt-0.5" suppressHydrationWarning>
-        {greeting}, {userName}&nbsp;&nbsp;·&nbsp;&nbsp;{subtitle}
+      <p className="text-xs text-zinc-500" suppressHydrationWarning>
+        {subtitle}
       </p>
     </div>
   );
