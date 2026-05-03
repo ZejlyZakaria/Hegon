@@ -14,8 +14,8 @@ const TMDB_W500 = "https://image.tmdb.org/t/p/w500";
 const CARD_BG   = "#0e0e10";
 const EXP       = 22;   // 22/(22+7×4) = 44%
 const COL       = 7;    // 7/50         = 14%
-// card row height = h-72 = 288px → portrait poster width = 288 × 2/3 = 192px
-const POSTER_W  = 192;
+// card row height = h-60 = 240px → portrait poster width = 240 × 2/3 = 160px
+const POSTER_W  = 160;
 
 // ─── skeleton ─────────────────────────────────────────────────────────────────
 
@@ -26,8 +26,8 @@ export function DontMissSkeleton() {
         <div className="w-3.5 h-3.5 rounded-full bg-surface-2 animate-pulse" />
         <div className="w-20 h-3 rounded bg-surface-2 animate-pulse" />
       </div>
-      <div className="flex gap-3 h-72">
-        {[EXP, COL, COL, COL, COL].map((f, i) => (
+      <div className="flex gap-3 h-60">
+        {[EXP, COL, COL, COL, COL, COL].map((f, i) => (
           <div key={i} className="rounded-2xl bg-surface-1 animate-pulse" style={{ flex: f }} />
         ))}
       </div>
@@ -204,7 +204,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
   // dedup: never show the same item twice (trending may appear in recommendations)
   const trendingId = data.trending?.id;
   const recs  = (data.recommendations as any[]).filter((r) => r.id !== trendingId);
-  const items = [data.trending, ...recs].filter(Boolean).slice(0, 5);
+  const items = [data.trending, ...recs].filter(Boolean).slice(0, 6);
   if (items.length === 0) return null;
 
   return (
@@ -217,7 +217,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
       </div>
 
       <div
-        className="flex gap-3 h-72"
+        className="flex gap-3 h-60"
         onMouseLeave={() => setActiveIndex(0)}
       >
         {items.map((item, i) => (

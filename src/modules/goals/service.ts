@@ -19,7 +19,7 @@ export async function getGoals(): Promise<Goal[]> {
   const orgId = await getCurrentOrgId();
   const { data, error } = await supabase
     .from("goals")
-    .select("*, milestones:goal_milestones(id, status)")
+    .select("*, milestones:goal_milestones(id, title, status, due_date, order_index)")
     .eq("org_id", orgId)
     .order("target_date", { ascending: true, nullsFirst: false });
 

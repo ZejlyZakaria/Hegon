@@ -3,7 +3,6 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { Search, X, Plus } from "lucide-react";
-import LibraryFilters from "@/modules/watching/components/library/LibraryFilters";
 import LibraryGrid from "@/modules/watching/components/library/LibraryGrid";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import type { WatchingMedia } from "@/modules/watching/types";
@@ -11,10 +10,33 @@ import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Button } from "@/shared/components/ui/button";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import { toast } from "@/shared/utils/toast";
+import { cn } from "@/shared/utils/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 const ITEMS_PER_PAGE = 40;
 
 type MediaType = "all" | "film" | "serie" | "anime";
 type SortKey   = "added" | "rating" | "title" | "year" | "favorite";
+
+const MEDIA_TYPES: { value: MediaType; label: string }[] = [
+  { value: "all",   label: "All" },
+  { value: "film",  label: "Films" },
+  { value: "serie", label: "Series" },
+  { value: "anime", label: "Animes" },
+];
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "added",    label: "Date added" },
+  { value: "rating",   label: "Rating" },
+  { value: "title",    label: "Title" },
+  { value: "year",     label: "Year" },
+  { value: "favorite", label: "Favorite" },
+];
 
 interface Props {
   initialItems: WatchingMedia[];
@@ -28,18 +50,11 @@ export default function LibraryClient({ initialItems }: Props) {
   const [search, setSearch]           = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [modalOpen, setModalOpen]     = useState(false);
-  // track which media type to use in modal based on current filter
   const modalMediaType = mediaType === "all" ? "film" : mediaType as "film" | "serie" | "anime";
 
   const debouncedSearch = useDebounce(search, 300);
 
-  const handleFilterChange = useCallback((filters: { mediaType: MediaType; sortBy: SortKey }) => {
-    setMediaType(filters.mediaType);
-    setSortBy(filters.sortBy);
-    setCurrentPage(1);
-  }, []);
-
-  const { paginatedItems, totalPages, totalCount } = useMemo(() => {
+  const { paginatedItems, totalPages } = useMemo(() => {
     let result = [...allItems];
 
     if (mediaType !== "all") {
@@ -102,48 +117,85 @@ export default function LibraryClient({ initialItems }: Props) {
   return (
     <div className="space-y-6">
       {/* header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-text-primary">My Library</h1>
-          <p className="text-sm text-text-tertiary mt-0.5">
-            {totalCount} media{totalCount > 1 ? "s" : ""}
-          </p>
-        </div>
-
+      <div className="space-y-2">
         <div className="flex items-center gap-3">
-          {/* search */}
-          <div className="relative w-full sm:w-64">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-            <input
-              type="text"
-              placeholder="Search for a title, or genre..."
-              value={search}
-              onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-              className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-9 pr-9 py-2 text-sm text-text-primary placeholder:text-text-tertiary outline-none focus:border-border-focus transition-all"
-            />
-            {search && (
+          {/* type chips */}
+          <div className="flex gap-2">
+            {MEDIA_TYPES.map(({ value, label }) => (
               <button
-                onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
+                key={value}
+                onClick={() => { setMediaType(value); setCurrentPage(1); }}
+                className={cn(
+                  "rounded-md px-4 py-1.5 text-sm font-medium transition-all duration-150",
+                  mediaType === value
+                    ? "bg-white text-black"
+                    : "bg-surface-1 border border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default"
+                )}
               >
-                <X size={14} />
+                {label}
               </button>
-            )}
+            ))}
           </div>
 
-          {/* add button */}
-          <Button
-            onClick={() => setModalOpen(true)}
-            className="gap-2 bg-violet-600 hover:bg-violet-500 text-white shrink-0"
-          >
-            <Plus size={15} />
-            Add
-          </Button>
-        </div>
-      </div>
+          {/* right controls */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* search */}
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                className="w-56 bg-surface-1 border border-border-subtle rounded-lg pl-8 pr-8 h-9 text-xs text-text-primary placeholder:text-text-tertiary outline-none focus:border-border-focus transition-all"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
 
-      {/* filters */}
-      <LibraryFilters onFilterChange={handleFilterChange} />
+            {/* sort select */}
+            <Select value={sortBy} onValueChange={v => { setSortBy(v as SortKey); setCurrentPage(1); }}>
+              <SelectTrigger className="w-36 h-9 bg-surface-1 border-border-subtle text-text-secondary text-xs hover:border-border-default focus:ring-0 focus:ring-offset-0 transition-colors">
+                <SelectValue placeholder="Sort by..." />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
+                {SORT_OPTIONS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* add button */}
+            <Button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white h-9 text-xs shrink-0"
+            >
+              <Plus size={13} />
+              Add
+            </Button>
+          </div>
+        </div>
+
+        {/* count — adapts to active filter */}
+        <p className="text-xs text-text-tertiary">
+          {mediaType === "all"
+            ? `${allItems.length} médias`
+            : mediaType === "film"
+            ? `${allItems.filter(i => i.type === "film").length} films`
+            : mediaType === "serie"
+            ? `${allItems.filter(i => i.type === "serie").length} séries`
+            : `${allItems.filter(i => i.type === "anime").length} animes`}
+        </p>
+      </div>
 
       {/* grid */}
       <LibraryGrid items={paginatedItems} onUpdate={handleUpdate} onDelete={handleDelete} />

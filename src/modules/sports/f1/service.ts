@@ -31,7 +31,7 @@ export async function getNextRace(): Promise<any | null> {
       )
     `)
     .eq("status", "upcoming")
-    .gte("race_date", new Date().toISOString())
+    .gte("race_date", new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" }))
     .order("race_date", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -67,7 +67,7 @@ export async function getUpcomingRaces(limit: number = 3): Promise<any[]> {
       )
     `)
     .eq("status", "upcoming")
-    .gte("race_date", new Date().toISOString())
+    .gte("race_date", new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" }))
     .order("race_date", { ascending: true })
     .range(1, limit);
 

@@ -1,8 +1,35 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Button } from "@/shared/components/ui/button";
 
-const ACCENT = "var(--color-accent-habits)";
+const ACCENT_HEX = "#f43f5e";
+const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
+const FILLS = [0.25, 0.55, 1, 0.8, 0.45, 0.1, 0];
+
+function MiniRing({ pct }: { pct: number }) {
+  const r = 13;
+  const circumference = 2 * Math.PI * r;
+  const dash = pct * circumference;
+
+  return (
+    <svg width="34" height="34" viewBox="0 0 34 34">
+      <circle cx="17" cy="17" r={r} fill="none" stroke="#27272a" strokeWidth="3" />
+      {pct > 0 && (
+        <circle
+          cx="17" cy="17" r={r}
+          fill="none"
+          stroke={ACCENT_HEX}
+          strokeWidth="3"
+          strokeDasharray={`${dash} ${circumference}`}
+          strokeLinecap="round"
+          strokeOpacity={0.25 + pct * 0.75}
+          transform="rotate(-90 17 17)"
+        />
+      )}
+    </svg>
+  );
+}
 
 interface Props {
   onCreateClick: () => void;
@@ -10,58 +37,36 @@ interface Props {
 
 export function HabitsEmptyState({ onCreateClick }: Props) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-
-      {/* Icon */}
-      <div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
-        style={{
-          backgroundColor: "var(--color-surface-2)",
-          border: "1px solid var(--color-border-subtle)",
-        }}
-      >
-        <svg
-          width="28"
-          height="28"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ color: ACCENT }}
-        >
-          <path d="M12 2a10 10 0 1 0 10 10" />
-          <path d="M12 6v6l4 2" />
-          <circle cx="19" cy="5" r="3" fill={ACCENT} stroke="none" />
-        </svg>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="flex flex-col items-center text-center max-w-xs mx-auto py-16"
+    >
+      <div className="flex items-center gap-2 mb-7">
+        {FILLS.map((fill, i) => (
+          <div key={i} className="flex flex-col items-center gap-1.5">
+            <MiniRing pct={fill} />
+            <span className="text-[9px] font-medium text-text-tertiary">{DAYS[i]}</span>
+          </div>
+        ))}
       </div>
 
-      {/* Title */}
-      <h3
-        className="text-base font-semibold mb-2"
-        style={{ color: "var(--color-text-primary)" }}
-      >
-        Start building your routines
+      <h3 className="text-base font-semibold text-text-primary mb-2">
+        Build your daily rhythm
       </h3>
-
-      {/* Description */}
-      <p
-        className="text-sm mb-6 max-w-sm leading-relaxed"
-        style={{ color: "var(--color-text-tertiary)" }}
-      >
-        Small daily actions compound into the life you want. Track your first habit.
+      <p className="text-sm text-text-tertiary leading-relaxed mb-7 px-2">
+        Small consistent actions compound into big results.
+        Start tracking your first habit today.
       </p>
-
-      {/* Action */}
       <Button
         type="button"
         onClick={onCreateClick}
-        className="h-9 px-4 text-sm font-medium text-white hover:opacity-90 transition-all"
-        style={{ backgroundColor: ACCENT }}
+        className="h-8 px-4 text-sm font-medium text-white hover:opacity-90"
+        style={{ backgroundColor: "var(--color-accent-habits)" }}
       >
-        + New Habit
+        + Add New Habit
       </Button>
-    </div>
+    </motion.div>
   );
 }

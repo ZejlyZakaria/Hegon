@@ -8,7 +8,7 @@ import {
 
 export default function FootballLoading() {
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <FootballHeroSkeleton />
       <FootballUpcomingSkeleton />
       <FootballRecentResultsSkeleton />

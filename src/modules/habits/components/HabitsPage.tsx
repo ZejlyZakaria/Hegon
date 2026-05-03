@@ -133,18 +133,9 @@ export function HabitsPage() {
 
   if (isLoading) return <HabitsLoadingSkeleton />;
 
-  if (allHabits.length === 0) {
-    return (
-      <div className="px-6 py-5 flex flex-1 items-center justify-center min-h-full">
-        <HabitsEmptyState onCreateClick={() => setModalOpen(true)} />
-        <HabitModal open={modalOpen} onClose={() => setModalOpen(false)} />
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-full flex-col px-6 py-5 space-y-4">
-      {/* Header */}
+      {/* Header — always visible */}
       <motion.div
         className="flex items-start justify-between gap-4"
         initial={{ opacity: 0, y: -6 }}
@@ -166,111 +157,122 @@ export function HabitsPage() {
         </Button>
       </motion.div>
 
-      {totalCount > 0 && <TodayProgress completed={completedCount} total={totalCount} />}
+      {allHabits.length === 0 && (
+        <>
+          <HabitsEmptyState onCreateClick={() => setModalOpen(true)} />
+          <HabitModal open={modalOpen} onClose={() => setModalOpen(false)} />
+        </>
+      )}
 
-      {/* Main layout: left + right */}
-      <div className="flex gap-6 items-start">
-        {/* Left column */}
-        <div className="flex-1 min-w-0">
-          {/* Tabs row + search */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              {([
-                { value: "today",    label: "Today" },
-                { value: "calendar", label: "Calendar" },
-                { value: "all",      label: "All Habits" },
-              ] as const).map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setTab(value)}
-                  className={cn(
-                    "relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
-                    tab === value
-                      ? "text-text-primary"
-                      : "text-text-tertiary hover:text-text-secondary",
-                  )}
-                >
-                  {label}
-                  {tab === value && (
-                    <span
-                      className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm"
-                      style={{ backgroundColor: ACCENT }}
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
+      {allHabits.length > 0 && (
+        <>
+          {totalCount > 0 && <TodayProgress completed={completedCount} total={totalCount} />}
 
-            <div className="relative flex items-center pb-1">
-              <Search
-                size={14}
-                className="absolute left-2.5 text-text-tertiary pointer-events-none"
-              />
-              <Input
-                variant="tasks"
-                type="text"
-                placeholder="Search habits…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-9 py-0 pl-8 w-48 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
-              />
-            </div>
-          </div>
-
-          {/* Tab content */}
-          <div className="mt-3 space-y-3">
-            {tab === "today" && (
-              filteredTodayHabits.length === 0 ? (
-                <p className="py-6 text-center text-sm text-text-tertiary">
-                  {search.trim()
-                    ? "No habits match your search."
-                    : "No habits scheduled for today."}
-                </p>
-              ) : (
-                <AnimatePresence mode="popLayout">
-                  {filteredTodayHabits.map((habit, i) => (
-                    <motion.div
-                      key={habit.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.18, delay: i * 0.04, ease: "easeOut" }}
+          {/* Main layout: left + right */}
+          <div className="flex gap-6 items-start">
+            {/* Left column */}
+            <div className="flex-1 min-w-0">
+              {/* Tabs row + search */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  {([
+                    { value: "today",    label: "Today" },
+                    { value: "calendar", label: "Calendar" },
+                    { value: "all",      label: "All Habits" },
+                  ] as const).map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setTab(value)}
+                      className={cn(
+                        "relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
+                        tab === value
+                          ? "text-text-primary"
+                          : "text-text-tertiary hover:text-text-secondary",
+                      )}
                     >
-                      <HabitCard
-                        habit={habit}
-                        onComplete={(id) =>
-                          completeHabit({ habit_id: id, completed_date: todayStr })
-                        }
-                        onUncomplete={(id) =>
-                          uncompleteHabit({ habitId: id, date: todayStr })
-                        }
-                        isPending={
-                          (completing && completeVars?.habit_id === habit.id) ||
-                          (uncompleting && uncompleteVars?.habitId === habit.id)
-                        }
-                      />
-                    </motion.div>
+                      {label}
+                      {tab === value && (
+                        <span
+                          className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm"
+                          style={{ backgroundColor: ACCENT }}
+                        />
+                      )}
+                    </button>
                   ))}
-                </AnimatePresence>
-              )
+                </div>
+
+                <div className="relative flex items-center pb-1">
+                  <Search
+                    size={14}
+                    className="absolute left-2.5 text-text-tertiary pointer-events-none"
+                  />
+                  <Input
+                    variant="tasks"
+                    type="text"
+                    placeholder="Search habits…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="h-9 py-0 pl-8 w-48 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
+                  />
+                </div>
+              </div>
+
+              {/* Tab content */}
+              <div className="mt-3 space-y-3">
+                {tab === "today" && (
+                  filteredTodayHabits.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-text-tertiary">
+                      {search.trim()
+                        ? "No habits match your search."
+                        : "No habits scheduled for today."}
+                    </p>
+                  ) : (
+                    <AnimatePresence mode="popLayout">
+                      {filteredTodayHabits.map((habit, i) => (
+                        <motion.div
+                          key={habit.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.18, delay: i * 0.04, ease: "easeOut" }}
+                        >
+                          <HabitCard
+                            habit={habit}
+                            onComplete={(id) =>
+                              completeHabit({ habit_id: id, completed_date: todayStr })
+                            }
+                            onUncomplete={(id) =>
+                              uncompleteHabit({ habitId: id, date: todayStr })
+                            }
+                            isPending={
+                              (completing && completeVars?.habit_id === habit.id) ||
+                              (uncompleting && uncompleteVars?.habitId === habit.id)
+                            }
+                          />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  )
+                )}
+
+                {tab === "calendar" && <HabitsCalendarView />}
+                {tab === "all" && <AllHabitsHeatmap />}
+              </div>
+            </div>
+
+            {/* Right panel — Today tab only */}
+            {tab === "today" && (
+              <div className="w-72 shrink-0">
+                <HabitsRightPanel
+                  habits={todayHabits}
+                  recentCompletions={recentCompletions}
+                />
+              </div>
             )}
-
-            {tab === "calendar" && <HabitsCalendarView />}
-            {tab === "all" && <AllHabitsHeatmap />}
           </div>
-        </div>
-
-        {/* Right panel — Today tab only */}
-        {tab === "today" && (
-          <div className="w-72 shrink-0">
-            <HabitsRightPanel
-              habits={todayHabits}
-              recentCompletions={recentCompletions}
-            />
-          </div>
-        )}
-      </div>
+        </>
+      )}
 
       <HabitModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>

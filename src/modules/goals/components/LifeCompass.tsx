@@ -93,7 +93,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
     <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1">
       <div className="relative p-3">
         <h3
-          className="text-xs mb-2 font-semibold text-text-secondary"
+          className="mb-3 text-xs font-semibold text-text-secondary"
         >
           Life Compass
         </h3>

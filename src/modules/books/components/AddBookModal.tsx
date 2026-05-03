@@ -185,7 +185,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                     >
                       <div className="relative w-10 h-14 shrink-0 bg-surface-overlay rounded overflow-hidden">
                         {result.cover_url ? (
-                          <Image src={result.cover_url} alt={result.title} fill className="object-contain" />
+                          <Image src={result.cover_url} alt={result.title} fill sizes="40px" className="object-contain" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <BookOpen className="w-4 h-4 text-text-tertiary" />

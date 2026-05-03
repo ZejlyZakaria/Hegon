@@ -8,22 +8,43 @@ export interface SectionTab {
   href: string;
 }
 
+export interface SectionStat {
+  value: number | string;
+  label: string;
+}
+
 export interface SectionHeaderProps {
   title: string;
   subtitle: string;
   accent: string;
   tabs: SectionTab[];
+  stats?: SectionStat[];
 }
 
-export default function SectionHeader({ title, subtitle, accent, tabs }: SectionHeaderProps) {
+export default function SectionHeader({ title, subtitle, accent, tabs, stats }: SectionHeaderProps) {
   const pathname = usePathname();
 
   return (
     <div className="px-6 pt-5 pb-0 shrink-0">
       {/* Module header */}
-      <div className="mb-4">
-        <h1 className="text-xl font-bold leading-tight text-text-primary">{title}</h1>
-        <p className="mt-0.5 text-sm text-text-tertiary">{subtitle}</p>
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold leading-tight text-text-primary">{title}</h1>
+          <p className="mt-0.5 text-sm text-text-tertiary">{subtitle}</p>
+        </div>
+        {stats && stats.length > 0 && (
+          <div className="flex items-center gap-2.5 mt-1">
+            {stats.map((stat, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                {i > 0 && <span className="text-text-tertiary/30 select-none">·</span>}
+                <span className="text-xs text-text-tertiary">
+                  <span className="font-semibold text-text-secondary">{stat.value}</span>
+                  {" "}{stat.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Tabs */}

@@ -66,33 +66,31 @@ export function BooksPage() {
 
   return (
     <div className="flex min-h-full flex-col px-6 py-5 space-y-4">
-      {isEmpty ? (
-        <div className="flex flex-1 items-center justify-center">
-          <BooksEmptyState showAddButton onAddClick={() => setModalOpen(true)} />
+      {/* Header — always visible */}
+      <motion.div
+        className="flex items-start justify-between gap-4"
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+      >
+        <div>
+          <h1 className="text-xl font-bold leading-tight text-text-primary">Books</h1>
+          <p className="mt-0.5 text-sm text-text-tertiary">Read deeply. Think clearly.</p>
         </div>
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          className="h-8 shrink-0 px-3 text-sm font-medium text-white rounded-md hover:opacity-90 transition-opacity"
+          style={{ backgroundColor: SKY }}
+        >
+          + New Book
+        </button>
+      </motion.div>
+
+      {isEmpty ? (
+        <BooksEmptyState onAddClick={() => setModalOpen(true)} />
       ) : (
         <>
-          {/* Header */}
-          <motion.div
-            className="flex items-start justify-between gap-4"
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-          >
-            <div>
-              <h1 className="text-xl font-bold leading-tight text-[#e2e2e6]">Books</h1>
-              <p className="mt-0.5 text-sm text-[#71717a]">Read deeply. Think clearly.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="h-8 shrink-0 px-3 text-sm font-medium text-white rounded-md hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: SKY }}
-            >
-              + New Book
-            </button>
-          </motion.div>
-
           {/* Stats zone */}
           <BooksStatsZone />
 

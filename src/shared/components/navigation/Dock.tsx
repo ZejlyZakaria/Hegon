@@ -213,6 +213,7 @@ export default function Dock() {
             src="/logo/Hegon_black_logo2.png"
             alt="HEGON"
             fill
+            sizes="32px"
             priority
             className="object-contain"
           />

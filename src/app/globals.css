@@ -35,6 +35,7 @@
   --color-border-focus: var(--color-border-focus);
 
   /* ── Module accents ─────────────────────────────────────────────────── */
+  --color-accent-dashboard: var(--color-accent-dashboard);
   --color-accent-goals: var(--color-accent-goals);
   --color-accent-habits: var(--color-accent-habits);
   --color-accent-journal: var(--color-accent-journal);
@@ -140,6 +141,7 @@
   --color-sidebar-bg: #0e0e10;
   --color-sidebar-active: #141416;
 
+  --color-accent-dashboard: #60a5fa;
   --color-accent-goals: #22c55e;
   --color-accent-habits: #f43f5e;
   --color-accent-journal: #f97316;

@@ -42,6 +42,7 @@ export function BookCard({ book }: BookCardProps) {
               src={book.cover_url}
               alt={book.title}
               fill
+              sizes="80px"
               className="object-contain"
             />
           ) : (

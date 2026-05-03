@@ -89,7 +89,7 @@ export function BooksRightPanel() {
               <div key={book.id} className="flex gap-3">
                 <div className="relative w-10 h-14 shrink-0 bg-surface-2 rounded overflow-hidden">
                   {book.cover_url ? (
-                    <Image src={book.cover_url} alt={book.title} fill className="object-contain" />
+                    <Image src={book.cover_url} alt={book.title} fill sizes="40px" className="object-contain" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <BookOpen className="w-4 h-4 text-text-tertiary" />

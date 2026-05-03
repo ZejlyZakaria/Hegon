@@ -86,31 +86,29 @@ export function CarouselSkeleton({ cards = 4 }: { cards?: number }) {
 export function LibrarySkeleton() {
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1.5">
-          <Pulse className="h-6 w-32 bg-surface-2" />
-          <Pulse className="h-3.5 w-20 bg-surface-2" />
-        </div>
+      {/* Header — chips left + search/sort/add right + count below */}
+      <div className="space-y-2">
         <div className="flex items-center gap-3">
-          <Pulse className="h-9 w-64 rounded-xl bg-surface-2" />
-          <Pulse className="h-9 w-20 rounded-lg bg-surface-2" />
+          {/* chips */}
+          <div className="flex gap-2">
+            <Pulse className="h-9 w-10 rounded-md bg-surface-2" />
+            <Pulse className="h-9 w-14 rounded-md bg-surface-2" />
+            <Pulse className="h-9 w-16 rounded-md bg-surface-2" />
+            <Pulse className="h-9 w-16 rounded-md bg-surface-2" />
+          </div>
+          {/* right controls */}
+          <div className="flex items-center gap-2 ml-auto">
+            <Pulse className="h-9 w-56 rounded-lg bg-surface-2" />
+            <Pulse className="h-9 w-36 rounded-lg bg-surface-2" />
+            <Pulse className="h-9 w-16 rounded-lg bg-surface-2" />
+          </div>
         </div>
-      </div>
-
-      {/* Filters — 4 chips + sort select */}
-      <div className="flex items-center gap-3">
-        <div className="flex gap-2">
-          <Pulse className="h-8 w-10 rounded-full bg-surface-2" />
-          <Pulse className="h-8 w-14 rounded-full bg-surface-2" />
-          <Pulse className="h-8 w-16 rounded-full bg-surface-2" />
-          <Pulse className="h-8 w-16 rounded-full bg-surface-2" />
-        </div>
-        <Pulse className="h-9 w-40 rounded-lg bg-surface-2 ml-auto" />
+        {/* count */}
+        <Pulse className="h-3 w-16 bg-surface-2" />
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
         {Array.from({ length: 20 }).map((_, i) => (
           <div key={i} className="animate-pulse space-y-2">
             <Pulse className="aspect-2/3 w-full bg-surface-2 rounded-xl" />

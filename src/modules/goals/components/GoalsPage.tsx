@@ -151,9 +151,7 @@ export function GoalsPage() {
             </motion.div>
 
             {goals.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center py-20">
-                <GoalsEmptyState onCreateClick={() => setIsModalOpen(true)} />
-              </div>
+              <GoalsEmptyState onCreateClick={() => setIsModalOpen(true)} />
             ) : (
               <div className="flex gap-6 items-start">
                 {/* Left — tabs + list */}

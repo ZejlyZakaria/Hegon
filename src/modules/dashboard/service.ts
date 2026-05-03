@@ -123,11 +123,11 @@ export async function getInProgressMedia(userId: string): Promise<DashboardMedia
     .eq("user_id", userId)
     .eq("in_progress", true)
     .order("updated_at", { ascending: false })
-    .limit(10);
+    .limit(3);
 
   if (!data?.length) return [];
 
-  return data.slice(0, 3);
+  return data;
 }
 
 // ─── Today football events (main team first) ──────────────────────────────────
@@ -280,9 +280,9 @@ export async function getNextFootballEvents(userId: string): Promise<DashboardSp
 
   if (!allFavoriteTeamIds.length) return [];
 
-  // Fetch matches starting tomorrow+ (today's matches are in Today section)
-  const tomorrowStart = new Date();
-  tomorrowStart.setHours(23, 59, 59, 999);
+  // Fetch matches starting after today Paris time (today's matches are in Today section)
+  const { end: todayEnd } = getTodayRange();
+  const tomorrowStart = new Date(todayEnd.getTime() + 1);
 
   const { data } = await supabase
     .schema("sport")
@@ -327,11 +327,16 @@ export async function getNextF1Event(): Promise<DashboardSportEvent | null> {
   if (!race) return null;
 
   const circuit = race.f1_circuits as any;
+  const raceTime = race.race_time as string | null;
+  const raceDateTime = raceTime
+    ? `${race.race_date}T${raceTime.endsWith("Z") || raceTime.includes("+") ? raceTime : raceTime + "Z"}`
+    : race.race_date;
+
   return {
     type: "f1",
     title: race.race_name,
-    subtitle: formatEventDate(race.race_date),
-    date: race.race_date,
+    subtitle: formatEventDate(raceDateTime),
+    date: raceDateTime,
     badge: "RACING",
     href: "/perso/sports/f1",
     circuit: circuit?.circuit_name ?? null,
@@ -365,6 +370,36 @@ export async function getNextTennisEvent(): Promise<DashboardSportEvent | null> 
     location: data.country ?? null,
     endDate: data.end_date ?? null,
   };
+}
+
+// ─── Task activity per day (for WeeklyActivity chart) ────────────────────────
+
+export async function getTasksActivityByDay(
+  fromDate: string,
+  toDate: string
+): Promise<Record<string, { completed: number; total: number }>> {
+  const userId = await getCurrentUserId();
+  if (!userId) return {};
+
+  const supabase = createClient();
+
+  const { data } = await supabase
+    .from("tasks")
+    .select("due_date, status:statuses(is_completed)")
+    .eq("created_by", userId)
+    .eq("is_archived", false)
+    .gte("due_date", fromDate)
+    .lte("due_date", toDate);
+
+  const result: Record<string, { completed: number; total: number }> = {};
+  for (const t of (data ?? []) as any[]) {
+    const date = t.due_date?.slice(0, 10);
+    if (!date) continue;
+    if (!result[date]) result[date] = { completed: 0, total: 0 };
+    result[date].total++;
+    if (t.status?.is_completed) result[date].completed++;
+  }
+  return result;
 }
 
 // ─── Main aggregator ──────────────────────────────────────────────────────────

@@ -71,7 +71,7 @@ export function TasksLayout({ children }: TasksLayoutProps) {
         {selectedProjectId && <TasksTopbar />}
         {selectedProjectId && <TasksHeader />}
 
-        <div className="relative flex-1 overflow-y-auto">{children}</div>
+        <div className="relative flex-1 overflow-auto">{children}</div>
       </div>
     </div>
   );

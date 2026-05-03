@@ -110,6 +110,7 @@ export function useCompleteHabit() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.today(today) });
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.completionsRange('all', from90, today) });
+      queryClient.invalidateQueries({ queryKey: [...HABIT_KEYS.all, 'heatmap'] });
     },
     onError: () => {
       toast.error("Failed to complete habit.");
@@ -128,6 +129,7 @@ export function useUncompleteHabit() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.today(today) });
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.completionsRange('all', from90, today) });
+      queryClient.invalidateQueries({ queryKey: [...HABIT_KEYS.all, 'heatmap'] });
     },
     onError: () => {
       toast.error("Failed to undo completion.");

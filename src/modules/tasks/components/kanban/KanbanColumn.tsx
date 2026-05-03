@@ -36,8 +36,8 @@ export function KanbanColumn({
 
   return (
     <>
-      <div className="flex h-full min-w-[320px] max-w-[320px] flex-col">
-        <div className="mb-2 flex items-center justify-between px-1">
+      <div className="flex w-[320px] flex-col">
+        <div className="sticky top-0 z-10 mb-2 flex items-center justify-between px-1 py-1 bg-[#09090b]">
           <div className="flex items-center gap-2">
             <StatusIcon status={status.name} size={14} />
             <h2
@@ -82,7 +82,7 @@ export function KanbanColumn({
         <div
           ref={setNodeRef}
           className={cn(
-            "flex-1 space-y-2 rounded-lg border p-2 transition-colors duration-100 overflow-y-auto",
+            "space-y-2 rounded-lg border p-2 transition-colors duration-100",
           )}
           style={{
             backgroundColor: isActive

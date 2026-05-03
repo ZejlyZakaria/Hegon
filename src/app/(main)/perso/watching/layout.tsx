@@ -16,6 +16,11 @@ export default function WatchingLayout({ children }: { children: React.ReactNode
         subtitle="Movies, series, animes — everything you watch, tracked."
         accent="#8b5cf6"
         tabs={TABS}
+        stats={[
+          { value: 127, label: "films" },
+          { value: 23,  label: "séries" },
+          { value: 8,   label: "en cours" },
+        ]}
       />
       <div>{children}</div>
     </div>

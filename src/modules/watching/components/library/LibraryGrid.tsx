@@ -18,12 +18,6 @@ export default function LibraryGrid({
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm text-text-tertiary">
-          {items.length} media{items.length > 1 ? "s" : ""}
-        </p>
-      </div>
-
       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 space-y-4">
         {items.map((item) => (
           <LibraryCard
