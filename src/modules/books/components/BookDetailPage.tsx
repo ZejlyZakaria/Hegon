@@ -192,6 +192,8 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
                     src={book.cover_url}
                     alt={book.title}
                     fill
+                    priority
+                    sizes="176px"
                     className="object-contain"
                   />
                 ) : (

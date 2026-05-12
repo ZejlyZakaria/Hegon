@@ -7,9 +7,10 @@ import type { WatchingMedia } from "@/modules/watching/types";
 interface Props {
   item: WatchingMedia;
   onClick: () => void;
+  eagerLoad?: boolean;
 }
 
-export default function LibraryCard({ item, onClick }: Props) {
+export default function LibraryCard({ item, onClick, eagerLoad }: Props) {
   return (
     <div
       className="group relative cursor-pointer overflow-hidden rounded-lg"
@@ -23,6 +24,8 @@ export default function LibraryCard({ item, onClick }: Props) {
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 50vw"
           quality={75}
+          loading={eagerLoad ? "eager" : "lazy"}
+          priority={eagerLoad}
         />
 
         {/* Favorite heart */}

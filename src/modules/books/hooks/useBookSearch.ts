@@ -10,12 +10,13 @@ async function searchGoogleBooks(query: string): Promise<BookSearchResult[]> {
 }
 
 export function useBookSearch(query: string) {
-  const debouncedQuery = useDebounce(query.trim(), 400);
+  const debouncedQuery = useDebounce(query.trim(), 700);
 
   return useQuery({
     queryKey: BOOK_KEYS.search(debouncedQuery),
     queryFn:  () => searchGoogleBooks(debouncedQuery),
-    enabled:  debouncedQuery.length >= 2,
-    staleTime: 1000 * 60 * 10,  // search results cached 10min
+    enabled:  debouncedQuery.length >= 3,
+    staleTime: 1000 * 60 * 10,
+    retry: false,
   });
 }

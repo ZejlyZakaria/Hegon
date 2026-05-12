@@ -6,7 +6,7 @@ import { createClient } from "@/infrastructure/supabase/client";
 import FootballLegends from "./FootballLegends";
 
 export default function FootballLegendsServer({ userId }: { userId: string }) {
-  const [legends, setLegends] = useState<any[]>([]);
+  const [legends, setLegends] = useState<any[] | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -18,6 +18,8 @@ export default function FootballLegendsServer({ userId }: { userId: string }) {
       .order("display_order", { ascending: true })
       .then(({ data }) => setLegends(data ?? []));
   }, [userId]);
+
+  if (legends === null) return null;
 
   return <FootballLegends userId={userId} initialLegends={legends} />;
 }

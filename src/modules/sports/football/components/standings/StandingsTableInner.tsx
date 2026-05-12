@@ -106,6 +106,7 @@ function StandingRow({
                 src={row.football_teams.crest_url}
                 alt={row.football_teams.name ?? ""}
                 fill
+                sizes="20px"
                 className="object-contain"
               />
             </div>
@@ -230,6 +231,7 @@ export default function StandingsTableInner({
                         src={comp.competition.emblem_url}
                         alt={comp.competition.name}
                         fill
+                        sizes="16px"
                         className="object-contain"
                       />
                     </div>

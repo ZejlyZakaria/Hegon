@@ -43,6 +43,7 @@ export function BookCard({ book }: BookCardProps) {
               alt={book.title}
               fill
               sizes="80px"
+              priority
               className="object-contain"
             />
           ) : (

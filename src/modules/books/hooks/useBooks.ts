@@ -16,7 +16,6 @@ import type {
 
 export function useBooks(opts?: {
   status?: BookStatus;
-  search?: string;
   favorite?: boolean;
   sort?: BookSort;
 }) {
@@ -81,6 +80,7 @@ export function useUpdateBook() {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.stats() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.rightPanel() });
+      toast.success("Book updated.");
     },
     onError: () => {
       toast.error("Failed to update book.");

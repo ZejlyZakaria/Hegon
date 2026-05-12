@@ -38,7 +38,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
   const [manualAuthor, setManualAuthor] = useState("");
   const [manualPages, setManualPages] = useState("");
 
-  const { data: searchResults, isLoading: isSearching } = useBookSearch(searchQuery);
+  const { data: searchResults, isLoading: isSearching, isError: searchError } = useBookSearch(searchQuery);
   const createBook = useCreateBook();
 
   const handleSelectBook = async (result: BookSearchResult) => {
@@ -92,7 +92,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg bg-surface-3 border-border-strong flex flex-col max-h-[80vh] gap-0 p-0">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-lg bg-surface-3 border-border-strong flex flex-col max-h-[80vh] gap-0 p-0">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-4 shrink-0">
           <DialogTitle className="text-sm font-semibold text-text-primary">
@@ -157,8 +157,8 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                 </div>
               )}
 
-              {/* No results */}
-              {!isSearching && searchResults && searchResults.length === 0 && searchQuery.length >= 2 && (
+              {/* No results or error */}
+              {!isSearching && (searchError || (searchResults && searchResults.length === 0)) && searchQuery.length >= 3 && (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">
                   <p className="text-sm text-text-tertiary">No results found</p>
                   <button
@@ -185,7 +185,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                     >
                       <div className="relative w-10 h-14 shrink-0 bg-surface-overlay rounded overflow-hidden">
                         {result.cover_url ? (
-                          <Image src={result.cover_url} alt={result.title} fill sizes="40px" className="object-contain" />
+                          <Image src={result.cover_url} alt={result.title} fill sizes="40px" loading="eager" className="object-contain" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <BookOpen className="w-4 h-4 text-text-tertiary" />

@@ -90,7 +90,7 @@ function MatchCard({ match, index }: { match: UpcomingMatch; index: number }) {
             {match.competition_emblem_url && (
               <div className="w-6 h-6 shrink-0 bg-white rounded-sm p-1 flex items-center justify-center">
                 <div className="relative w-full h-full">
-                  <Image src={match.competition_emblem_url} alt={compName} fill className="object-contain" />
+                  <Image src={match.competition_emblem_url} alt={compName} fill sizes="16px" className="object-contain" />
                 </div>
               </div>
             )}
@@ -114,7 +114,7 @@ function MatchCard({ match, index }: { match: UpcomingMatch; index: number }) {
               {match.home_team_crest ? (
                 <>
                   {isHome && <div className="absolute inset-0 bg-indigo-400/10 rounded-full blur-xl scale-150" />}
-                  <Image src={match.home_team_crest} alt={match.home_team_name} fill className="object-contain relative z-10" />
+                  <Image src={match.home_team_crest} alt={match.home_team_name} fill sizes="44px" className="object-contain relative z-10" />
                 </>
               ) : (
                 <div className="w-full h-full rounded-full bg-zinc-800 flex items-center justify-center text-base">⚽</div>
@@ -147,7 +147,7 @@ function MatchCard({ match, index }: { match: UpcomingMatch; index: number }) {
               {match.away_team_crest ? (
                 <>
                   {!isHome && <div className="absolute inset-0 bg-indigo-400/10 rounded-full blur-xl scale-150" />}
-                  <Image src={match.away_team_crest} alt={match.away_team_name} fill className="object-contain relative z-10" />
+                  <Image src={match.away_team_crest} alt={match.away_team_name} fill sizes="44px" className="object-contain relative z-10" />
                 </>
               ) : (
                 <div className="w-full h-full rounded-full bg-zinc-800 flex items-center justify-center text-base">⚽</div>
@@ -213,7 +213,7 @@ export default function UpcomingMatchesInner({ matches, followedTeams }: Upcomin
               <span className="relative z-10 flex items-center gap-2">
                 {team.crest_url && (
                   <div className="relative w-5 h-5 shrink-0">
-                    <Image src={team.crest_url} alt={team.name} fill className="object-contain" />
+                    <Image src={team.crest_url} alt={team.name} fill sizes="20px" className="object-contain" />
                   </div>
                 )}
                 <span className="text-xs font-semibold whitespace-nowrap">{team.name}</span>

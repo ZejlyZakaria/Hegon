@@ -240,14 +240,24 @@ export async function getUserFavoriteTeams(): Promise<F1Team[]> {
   const supabase = createClient();
   const userId = await getCurrentUserId();
   if (!userId) return [];
-  const { data } = await supabase
+
+  const { data: favorites } = await supabase
     .schema("sport")
     .from("user_favorites")
-    .select(`entity_id, team:f1_teams(*)`)
+    .select("entity_id")
     .eq("user_id", userId)
     .eq("entity_type", "f1_team");
 
-  return data?.map((f: { team: any }) => f.team) || [];
+  const ids = favorites?.map((f: any) => f.entity_id) ?? [];
+  if (!ids.length) return [];
+
+  const { data: teams } = await supabase
+    .schema("sport")
+    .from("f1_teams")
+    .select("*")
+    .in("id", ids);
+
+  return teams ?? [];
 }
 
 // ─── Master page data ─────────────────────────────────────────────────────────

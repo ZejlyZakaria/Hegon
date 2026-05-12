@@ -41,12 +41,14 @@ function DontMissCard({
   item,
   isActive,
   isTrending,
+  isFirst,
   onHover,
   onAdd,
 }: {
   item: any;
   isActive: boolean;
   isTrending: boolean;
+  isFirst: boolean;
   onHover: () => void;
   onAdd: (e: React.MouseEvent) => void;
 }) {
@@ -78,6 +80,8 @@ function DontMissCard({
             fill
             className="object-cover"
             sizes="25vw"
+            loading="eager"
+            priority={isFirst}
           />
         ) : (
           <div className="w-full h-full bg-surface-2" />
@@ -226,6 +230,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
             item={item}
             isActive={activeIndex === i}
             isTrending={i === 0}
+            isFirst={i === 0}
             onHover={() => setActiveIndex(i)}
             onAdd={(e) => {
               e.stopPropagation();

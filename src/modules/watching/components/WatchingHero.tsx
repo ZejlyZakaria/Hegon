@@ -62,7 +62,7 @@ export default function WatchingHero({ config }: { config: WatchingConfig }) {
       <div className="lg:col-span-2 relative rounded-2xl overflow-hidden bg-zinc-900 min-h-56 lg:min-h-64">
         {backdropUrl && (
           <Image src={backdropUrl} alt={title ?? "Trending"} fill
-            className="object-cover" sizes="(max-width: 1024px) 100vw, 66vw" priority />
+            className="object-cover" sizes="(max-width: 1024px) 100vw, 66vw" priority loading="eager" />
         )}
         <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent" />
 

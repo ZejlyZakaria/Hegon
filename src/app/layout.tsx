@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 },
               }}
             />
-            <Analytics />
+            <Analytics debug={false} />
           </QueryProvider>
         </ThemeProvider>
       </body>

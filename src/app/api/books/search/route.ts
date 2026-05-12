@@ -36,11 +36,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Query too short" }, { status: 400 });
     }
 
-    const url = `${GOOGLE_BOOKS_BASE}?q=${encodeURIComponent(q)}&maxResults=10&key=${API_KEY}`;
+    const normalizedQ = q.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/-/g, " ");
+    const url = `${GOOGLE_BOOKS_BASE}?q=${encodeURIComponent(normalizedQ)}&maxResults=20&key=${API_KEY}`;
 
-    const res = await fetch(url, { next: { revalidate: 600 } });
+    const res = await fetch(url);
     if (!res.ok) {
-      return NextResponse.json({ error: `Google Books error: ${res.status}` }, { status: res.status });
+      return NextResponse.json([]);
     }
 
     const data = await res.json();

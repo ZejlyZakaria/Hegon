@@ -214,7 +214,7 @@ export default function MediaDetailModal({
                     alt=""
                     fill
                     className="object-cover object-top opacity-60"
-                    sizes="100vw"
+                    sizes="(max-width: 896px) 100vw, 896px"
                   />
                   <div className="absolute inset-0 bg-linear-to-t from-[#121212] via-[#121212]/40 to-transparent" />
 

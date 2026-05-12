@@ -17,7 +17,6 @@ import type {
 
 export async function getBooks(opts?: {
   status?: BookStatus;
-  search?: string;
   favorite?: boolean;
   sort?: "recently_added" | "rating" | "title" | "most_read";
 }): Promise<Book[]> {
@@ -28,11 +27,6 @@ export async function getBooks(opts?: {
 
   if (opts?.status) query = query.eq("status", opts.status);
   if (opts?.favorite) query = query.eq("favorite", true);
-  if (opts?.search) {
-    // Escape PostgREST special chars to prevent filter injection via the or() string
-    const safe = opts.search.replace(/[%,]/g, "\\$&");
-    query = query.or(`title.ilike.%${safe}%,author.ilike.%${safe}%`);
-  }
 
   switch (opts?.sort) {
     case "rating":
@@ -122,7 +116,7 @@ export async function getRightPanelData(): Promise<BooksRightPanelData> {
   const dateSet = new Set<string>();
   for (const b of books) {
     if (b.status === "reading" && b.current_page === 0) continue;
-    const dateStr = b.updated_at.split("T")[0];
+    const dateStr = toLocalDateStr(new Date(b.updated_at));
     if (dateStr >= yearAgoStr) dateSet.add(dateStr);
   }
   const streak = computeStreak(dateSet);

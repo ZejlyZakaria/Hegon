@@ -208,6 +208,7 @@ function MovieCard({
   onMarkWatched,
   showEpisodeBadge,
   showRankBadge,
+  eagerLoad,
 }: {
   item: WatchingMedia;
   onView: () => void;
@@ -215,6 +216,7 @@ function MovieCard({
   onMarkWatched?: (id: string) => Promise<void>;
   showEpisodeBadge?: boolean;
   showRankBadge?: boolean;
+  eagerLoad?: boolean;
 }) {
   return (
     <div
@@ -229,6 +231,8 @@ function MovieCard({
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 768px) 100vw, 50vw"
           quality={75}
+          loading={eagerLoad ? "eager" : "lazy"}
+          priority={eagerLoad}
         />
         <div className="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent" />
 
@@ -495,7 +499,7 @@ export function MediaCarousel({
       >
         {onAddClick && addCardPosition === "start" && AddCardWrapper}
 
-        {sortedItems.map((item) => (
+        {sortedItems.map((item, i) => (
           <div
             key={item.id}
             className="shrink-0 snap-start transition-all duration-500 ease-in-out"
@@ -508,6 +512,7 @@ export function MediaCarousel({
               onMarkWatched={onMarkWatched}
               showEpisodeBadge={showEpisodeBadge}
               showRankBadge={showRankBadge}
+              eagerLoad={i < cardsPerView}
             />
           </div>
         ))}

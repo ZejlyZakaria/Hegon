@@ -89,7 +89,7 @@ function EmptyHero({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="relative h-72 md:h-60 rounded-2xl overflow-hidden border border-white/10">
       <div className="absolute inset-0 bg-zinc-900" />
-      <Image src="/image.png" alt="Football" fill priority
+      <Image src="/image.png" alt="Football" fill priority sizes="100vw"
         className="object-cover opacity-30" quality={75} />
       <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent" />
       <div className="absolute top-4 left-4 z-10">
@@ -203,7 +203,7 @@ export default function HeroSwiper({ teamHeroes, userId, favoriteTeamIds }: Hero
           {localHeroes.map(({ team, isMainTeam, nextMatch }) => (
             <SwiperSlide key={team.id} className="relative">
               <div className="absolute inset-0 bg-zinc-900" />
-              <Image src="/image.png" alt="Background" fill priority
+              <Image src="/image.png" alt="Background" fill priority sizes="100vw"
                 className="object-cover" quality={75} />
               <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.2),rgba(0,0,0,0.8))]" />
@@ -224,7 +224,7 @@ export default function HeroSwiper({ teamHeroes, userId, favoriteTeamIds }: Hero
                       className="relative h-16 w-16 md:h-24 md:w-24 shrink-0"
                     >
                       <Image src={team.crest_url || "/placeholder-logo.svg"} alt={team.name}
-                        fill priority className="object-contain drop-shadow-2xl" />
+                        fill priority sizes="(max-width: 768px) 64px, 96px" className="object-contain drop-shadow-2xl" />
                     </motion.div>
 
                     {/* bouton suppression au hover du crest */}
@@ -277,7 +277,7 @@ export default function HeroSwiper({ teamHeroes, userId, favoriteTeamIds }: Hero
                         </div>
                         <div className="relative w-10 h-10 shrink-0 order-1 md:order-2">
                           <Image src={getCompetitionLogo(nextMatch.competition_name)}
-                            alt={nextMatch.competition_name} fill priority
+                            alt={nextMatch.competition_name} fill priority sizes="40px"
                             className="object-contain bg-white rounded-md p-1" />
                         </div>
                       </div>
