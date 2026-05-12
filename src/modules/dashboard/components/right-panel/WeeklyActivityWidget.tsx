@@ -7,11 +7,9 @@ import { DASH } from "../../constants";
 export default function WeeklyActivityWidget() {
   const { recentCompletions, totalCount, isLoading: habitsLoading } = useHabitsToday();
 
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const from = new Date(today);
-  from.setDate(today.getDate() - 6);
-  const fromDate = from.toISOString().slice(0, 10);
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const fromDate = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const { data: tasksByDay = {}, isLoading: tasksLoading } = useWeeklyActivity(fromDate, todayStr);
   const isLoading = habitsLoading || tasksLoading;
@@ -23,8 +21,7 @@ export default function WeeklyActivityWidget() {
   }, {});
 
   const last7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (6 - i));
+    const d = new Date(now.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
     const dateStr = d.toISOString().slice(0, 10);
 
     const habitsCompleted = habitsByDate[dateStr] ?? 0;
@@ -45,7 +42,7 @@ export default function WeeklyActivityWidget() {
       dateStr,
       score: dailyScore,
       isToday: dateStr === todayStr,
-      label: d.toLocaleDateString("en-US", { weekday: "short" }),
+      label: d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }),
     };
   });
 

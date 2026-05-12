@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery, } from "@tanstack/react-query";
-import { useId } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useId, useState, useEffect } from "react";
 import { Droplets, Wind, MapPin } from "lucide-react";
 
 // ─── Theme system ─────────────────────────────────────────────────────────────
@@ -702,7 +702,12 @@ interface Props {
 
 export default function TodayWeatherCard({ variant }: Props) {
   const { data, loading } = useWeather();
-  const hour = new Date().getHours();
+  const [hour, setHour] = useState(12);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHour(new Date().getHours());
+  }, []);
 
   if (loading || !data) {
     const theme = getWeatherTheme("Clear", hour);
