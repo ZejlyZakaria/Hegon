@@ -185,7 +185,7 @@ function InProgressGoalColumn() {
           ))}
           {remaining > 0 && (
             <Link
-              href="/perso/goals"
+              href="/life/goals"
               className="text-[10px] text-zinc-700 hover:text-zinc-400 transition-colors pt-1.5 border-t border-zinc-800/50"
             >
               +{remaining} more goal{remaining > 1 ? "s" : ""}
