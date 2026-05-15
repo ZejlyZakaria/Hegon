@@ -138,18 +138,31 @@ export async function updateTask(task: UpdateTaskInput): Promise<Task> {
     throw new Error("Unauthorized");
   }
 
+  // Resolve completed_at from the new status
+  const { data: status } = await supabase
+    .from("statuses")
+    .select("is_completed")
+    .eq("id", task.status_id)
+    .single();
+
   // Update
+  const updatePayload: Record<string, unknown> = {
+    title:           task.title.trim(),
+    description:     task.description?.trim() || null,
+    priority:        task.priority || "medium",
+    status_id:       task.status_id,
+    due_date:        task.due_date,
+    estimated_hours: task.estimated_hours,
+    completed_at:    status?.is_completed ? new Date().toISOString() : null,
+    updated_at:      new Date().toISOString(),
+  };
+  if (task.goal_id !== undefined) {
+    updatePayload.goal_id = task.goal_id;
+  }
+
   const { data, error } = await supabase
     .from("tasks")
-    .update({
-      title: task.title.trim(),
-      description: task.description?.trim() || null,
-      priority: task.priority || "medium",
-      status_id: task.status_id,
-      due_date: task.due_date,
-      estimated_hours: task.estimated_hours,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", task.id)
     .select()
     .single();
@@ -186,13 +199,21 @@ export async function moveTask({
     throw new Error("Unauthorized");
   }
 
+  // Resolve completed_at from the new status
+  const { data: status } = await supabase
+    .from("statuses")
+    .select("is_completed")
+    .eq("id", newStatusId)
+    .single();
+
   // Move
   const { error } = await supabase
     .from("tasks")
     .update({
-      status_id: newStatusId,
-      position: newPosition,
-      updated_at: new Date().toISOString(),
+      status_id:    newStatusId,
+      position:     newPosition,
+      completed_at: status?.is_completed ? new Date().toISOString() : null,
+      updated_at:   new Date().toISOString(),
     })
     .eq("id", taskId);
 

@@ -1,8 +1,14 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Flame, Link2 } from "lucide-react";
+import { Check, Flame, Link2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
 import { cn } from "@/shared/utils/utils";
 import { resolveIcon } from "@/shared/constants/icons";
 import type { HabitWithStatus } from "../types";
@@ -15,6 +21,8 @@ interface Props {
   onComplete: (habitId: string) => void;
   onUncomplete: (habitId: string) => void;
   isPending?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export function HabitCard({
@@ -22,6 +30,8 @@ export function HabitCard({
   onComplete,
   onUncomplete,
   isPending = false,
+  onEdit,
+  onDelete,
 }: Props) {
   const {
     completed_today,
@@ -163,6 +173,44 @@ export function HabitCard({
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {(onEdit || onDelete) && (
+        <div
+          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex h-7 w-7 items-center justify-center rounded text-text-tertiary hover:text-text-secondary hover:bg-surface-2 transition-colors"
+              >
+                <MoreHorizontal size={14} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-36 rounded-xl bg-surface-3 border-border-strong">
+              {onEdit && (
+                <DropdownMenuItem
+                  onClick={onEdit}
+                  className="cursor-pointer text-text-secondary focus:text-text-primary focus:bg-surface-2"
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-2 shrink-0" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <DropdownMenuItem
+                  onClick={onDelete}
+                  className="cursor-pointer text-red-400 focus:text-red-300 focus:bg-red-500/10"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-2 shrink-0" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
     </motion.div>
   );
 }

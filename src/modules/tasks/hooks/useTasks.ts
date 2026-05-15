@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as TaskService from "../service";
+import * as GoalService from "@/modules/goals/service";
 import { TASK_KEYS } from "./query-keys";
+import { GOAL_KEYS, LINKED_TASK_KEYS } from "@/modules/goals/hooks/query-keys";
 import type { MoveTaskInput } from "../types";
+import type { Task } from "../types";
 import { toast } from "@/shared/utils/toast";
 
 // =====================================================
@@ -70,9 +73,21 @@ export function useUpdateTask() {
       }
       toast.error(`Failed to update task: ${error.message}`);
     },
-    onSuccess: (updatedTask) => {
+    onSuccess: async (updatedTask) => {
       queryClient.invalidateQueries({ queryKey: TASK_KEYS.byProject(updatedTask.project_id) });
       toast.success("Task updated");
+      if (updatedTask.goal_id) {
+        let goalMode = queryClient.getQueryData<{ progress_mode: string }>(GOAL_KEYS.detail(updatedTask.goal_id))?.progress_mode;
+        if (!goalMode) {
+          try { goalMode = (await GoalService.getGoal(updatedTask.goal_id)).progress_mode; } catch { /* ignore */ }
+        }
+        if (goalMode === "auto") {
+          await GoalService.recalculateProgress(updatedTask.goal_id);
+          queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(updatedTask.goal_id) });
+          queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
+        }
+        queryClient.invalidateQueries({ queryKey: LINKED_TASK_KEYS.byGoal(updatedTask.goal_id) });
+      }
     },
   });
 }
@@ -115,7 +130,23 @@ export function useMoveTask() {
       }
       toast.error(`Failed to move task`);
     },
-    // Pas d'onSettled — pas de refetch après move = pas de second snap-back
+    onSuccess: async (_, variables) => {
+      const tasks = queryClient.getQueryData<Task[]>(TASK_KEYS.byProject(variables.projectId));
+      const task  = tasks?.find((t) => t.id === variables.taskId);
+      if (task?.goal_id) {
+        let goalMode = queryClient.getQueryData<{ progress_mode: string }>(GOAL_KEYS.detail(task.goal_id))?.progress_mode;
+        if (!goalMode) {
+          try { goalMode = (await GoalService.getGoal(task.goal_id)).progress_mode; } catch { /* ignore */ }
+        }
+        if (goalMode === "auto") {
+          await GoalService.recalculateProgress(task.goal_id);
+          queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(task.goal_id) });
+          queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
+        }
+        queryClient.invalidateQueries({ queryKey: LINKED_TASK_KEYS.byGoal(task.goal_id) });
+      }
+    },
+    // Intentionally no invalidateQueries for TASK_KEYS — avoids snap-back animation after drag
   });
 }
 
@@ -128,9 +159,23 @@ export function useDeleteTask() {
 
   return useMutation({
     mutationFn: ({ taskId }: { taskId: string; projectId: string }) => TaskService.deleteTask(taskId),
-    onSuccess: (data, variables) => {
+    onSuccess: async (_, variables) => {
+      const tasks = queryClient.getQueryData<Task[]>(TASK_KEYS.byProject(variables.projectId));
+      const task  = tasks?.find((t) => t.id === variables.taskId);
       queryClient.invalidateQueries({ queryKey: TASK_KEYS.byProject(variables.projectId) });
       toast.success("Task deleted");
+      if (task?.goal_id) {
+        let goalMode = queryClient.getQueryData<{ progress_mode: string }>(GOAL_KEYS.detail(task.goal_id))?.progress_mode;
+        if (!goalMode) {
+          try { goalMode = (await GoalService.getGoal(task.goal_id)).progress_mode; } catch { /* ignore */ }
+        }
+        if (goalMode === "auto") {
+          await GoalService.recalculateProgress(task.goal_id);
+          queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(task.goal_id) });
+          queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
+        }
+        queryClient.invalidateQueries({ queryKey: LINKED_TASK_KEYS.byGoal(task.goal_id) });
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete task: ${error.message}`);
@@ -147,9 +192,23 @@ export function useArchiveTask() {
 
   return useMutation({
     mutationFn: ({ taskId }: { taskId: string; projectId: string }) => TaskService.archiveTask(taskId),
-    onSuccess: (data, variables) => {
+    onSuccess: async (_, variables) => {
+      const tasks = queryClient.getQueryData<Task[]>(TASK_KEYS.byProject(variables.projectId));
+      const task  = tasks?.find((t) => t.id === variables.taskId);
       queryClient.invalidateQueries({ queryKey: TASK_KEYS.byProject(variables.projectId) });
       toast.success("Task archived");
+      if (task?.goal_id) {
+        let goalMode = queryClient.getQueryData<{ progress_mode: string }>(GOAL_KEYS.detail(task.goal_id))?.progress_mode;
+        if (!goalMode) {
+          try { goalMode = (await GoalService.getGoal(task.goal_id)).progress_mode; } catch { /* ignore */ }
+        }
+        if (goalMode === "auto") {
+          await GoalService.recalculateProgress(task.goal_id);
+          queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(task.goal_id) });
+          queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
+        }
+        queryClient.invalidateQueries({ queryKey: LINKED_TASK_KEYS.byGoal(task.goal_id) });
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to archive task: ${error.message}`);

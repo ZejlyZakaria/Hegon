@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as HabitService from "../service";
 import { HABIT_KEYS } from "./query-keys";
+import { GOAL_KEYS, LINKED_HABIT_KEYS } from "@/modules/goals/hooks/query-keys";
 import { toast } from "@/shared/utils/toast";
 import {
   getTodayStr,
@@ -107,10 +108,18 @@ export function useCompleteHabit() {
 
   return useMutation({
     mutationFn: (input: CompleteHabitInput) => HabitService.completeHabit(input),
-    onSuccess: () => {
+    onSuccess: (_, input) => {
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.today(today) });
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.completionsRange('all', from90, today) });
       queryClient.invalidateQueries({ queryKey: [...HABIT_KEYS.all, 'heatmap'] });
+
+      // Cross-module: if this habit is linked to a goal, refresh goal detail + linked habits
+      const habits = queryClient.getQueryData<Habit[]>(HABIT_KEYS.lists());
+      const habit  = habits?.find((h) => h.id === input.habit_id);
+      if (habit?.goal_id) {
+        queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(habit.goal_id) });
+        queryClient.invalidateQueries({ queryKey: LINKED_HABIT_KEYS.byGoal(habit.goal_id) });
+      }
     },
     onError: () => {
       toast.error("Failed to complete habit.");
@@ -126,10 +135,18 @@ export function useUncompleteHabit() {
   return useMutation({
     mutationFn: ({ habitId, date }: { habitId: string; date: string }) =>
       HabitService.uncompleteHabit(habitId, date),
-    onSuccess: () => {
+    onSuccess: (_, { habitId }) => {
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.today(today) });
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.completionsRange('all', from90, today) });
       queryClient.invalidateQueries({ queryKey: [...HABIT_KEYS.all, 'heatmap'] });
+
+      // Cross-module: if this habit is linked to a goal, refresh goal detail + linked habits
+      const habits = queryClient.getQueryData<Habit[]>(HABIT_KEYS.lists());
+      const habit  = habits?.find((h) => h.id === habitId);
+      if (habit?.goal_id) {
+        queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(habit.goal_id) });
+        queryClient.invalidateQueries({ queryKey: LINKED_HABIT_KEYS.byGoal(habit.goal_id) });
+      }
     },
     onError: () => {
       toast.error("Failed to undo completion.");

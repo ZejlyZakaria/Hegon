@@ -53,6 +53,7 @@ import { useAddTagToTask, useRemoveTagFromTask } from "@/modules/tasks/hooks/use
 import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
 import { StatusIcon } from "@/shared/components/icons/StatusIcon";
+import { useGoals } from "@/modules/goals/hooks/useGoals";
 import type { Task, Priority } from "@/modules/tasks/types";
 
 const editTaskSchema = z.object({
@@ -62,6 +63,7 @@ const editTaskSchema = z.object({
   due_date: z.date().optional().nullable(),
   status_id: z.string().min(1, "Status is required"),
   estimated_hours: z.number().min(0).optional().nullable(),
+  goal_id: z.string().optional().nullable(),
 });
 
 type EditTaskFormData = z.infer<typeof editTaskSchema>;
@@ -80,6 +82,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
   const { data: statuses } = useStatuses(task.project_id);
   const addTagMutation = useAddTagToTask(task.project_id);
   const removeTagMutation = useRemoveTagFromTask(task.project_id);
+  const { data: goals = [] } = useGoals();
 
   // Track last saved values to avoid duplicate/unnecessary saves
   // due_date is normalized via toISOString() to match autoSave's computed value
@@ -90,6 +93,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
     due_date: task.due_date ? new Date(task.due_date).toISOString() : null,
     status_id: task.status_id,
     estimated_hours: task.estimated_hours ?? null,
+    goal_id: task.goal_id ?? null,
   });
 
   const form = useForm<EditTaskFormData>({
@@ -102,6 +106,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
       due_date: task.due_date ? new Date(task.due_date) : null,
       status_id: task.status_id,
       estimated_hours: task.estimated_hours || null,
+      goal_id: task.goal_id ?? null,
     },
   });
 
@@ -115,6 +120,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
         due_date: task.due_date ? new Date(task.due_date) : null,
         status_id: task.status_id,
         estimated_hours: task.estimated_hours || null,
+        goal_id: task.goal_id ?? null,
       });
       lastSaved.current = {
         title: task.title,
@@ -123,6 +129,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
         due_date: task.due_date ? new Date(task.due_date).toISOString() : null,
         status_id: task.status_id,
         estimated_hours: task.estimated_hours ?? null,
+        goal_id: task.goal_id ?? null,
       };
     }
   }, [open, task.id]); // Only depend on open and task.id to avoid infinite loops
@@ -139,6 +146,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
     const due_date = values.due_date ? values.due_date.toISOString() : null;
     const status_id = values.status_id;
     const estimated_hours = values.estimated_hours || null;
+    const goal_id = values.goal_id ?? null;
 
     const hasChanges =
       title !== lastSaved.current.title ||
@@ -146,12 +154,13 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
       priority !== lastSaved.current.priority ||
       due_date !== lastSaved.current.due_date ||
       status_id !== lastSaved.current.status_id ||
-      estimated_hours !== lastSaved.current.estimated_hours;
+      estimated_hours !== lastSaved.current.estimated_hours ||
+      goal_id !== lastSaved.current.goal_id;
 
     if (!hasChanges) return;
 
     // Update ref before mutating so re-entrant calls don't double-save
-    lastSaved.current = { title, description, priority, due_date, status_id, estimated_hours };
+    lastSaved.current = { title, description, priority, due_date, status_id, estimated_hours, goal_id };
 
     updateTaskMutation.mutate({
       id: task.id,
@@ -162,6 +171,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
       due_date,
       status_id,
       estimated_hours,
+      goal_id,
     });
   };
 
@@ -336,6 +346,40 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
               onAdd={(tagId) => addTagMutation.mutate({ taskId: task.id, tagId })}
               onRemove={(tagId) => removeTagMutation.mutate({ taskId: task.id, tagId })}
             />
+
+            {/* Goal link */}
+            {goals.filter((g) => g.status === "active" || g.id === task.goal_id).length > 0 && (
+              <FormField
+                control={form.control}
+                name="goal_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium text-text-secondary">
+                      Goal <span className="text-text-tertiary font-normal">(optional)</span>
+                    </FormLabel>
+                    <Select
+                      onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                      value={field.value ?? "none"}
+                    >
+                      <FormControl>
+                        <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
+                          <SelectValue placeholder="No goal" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent variant="tasks">
+                        <SelectItem value="none">No goal</SelectItem>
+                        {goals
+                          .filter((g) => g.status === "active" || g.id === task.goal_id)
+                          .map((g) => (
+                            <SelectItem key={g.id} value={g.id}>{g.title}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <FormField

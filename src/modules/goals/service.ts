@@ -4,6 +4,9 @@ import type {
   Goal,
   GoalMilestone,
   LinkedTask,
+  LinkedHabit,
+  AvailableTask,
+  AvailableHabit,
   CreateGoalInput,
   UpdateGoalInput,
   CreateMilestoneInput,
@@ -211,13 +214,21 @@ export async function getLinkedTasks(goalId: string): Promise<LinkedTask[]> {
 
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, title, priority, completed_at, status:statuses(name, color, is_completed)")
+    .select("id, title, priority, completed_at, due_date, status:statuses(name, color, is_completed), project:projects(name)")
     .eq("goal_id", goalId)
     .order("created_at", { ascending: true });
 
   if (error) throw error;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data ?? []) as any[];
+  return (data ?? []).map((t: any) => ({
+    id:           t.id,
+    title:        t.title,
+    priority:     t.priority,
+    completed_at: t.completed_at,
+    due_date:     t.due_date ?? null,
+    project_name: t.project?.name ?? null,
+    status:       t.status,
+  }));
 }
 
 export async function linkTaskToGoal(taskId: string, goalId: string): Promise<void> {
@@ -250,4 +261,171 @@ export async function unlinkTaskFromGoal(taskId: string): Promise<void> {
     .eq("id", taskId)
     .eq("org_id", orgId);
   if (error) throw error;
+}
+
+// =====================================================
+// LINKED HABITS
+// =====================================================
+
+function calcHabitStreak(
+  habitId: string,
+  completions: { habit_id: string; completed_date: string }[],
+  isDaily: boolean,
+): number {
+  const dates = new Set(
+    completions.filter((c) => c.habit_id === habitId).map((c) => c.completed_date),
+  );
+  if (dates.size === 0) return 0;
+  if (!isDaily) return 1;
+
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const startFrom = dates.has(todayStr) ? 0 : 1;
+
+  let streak = 0;
+  for (let i = startFrom; i < 30; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const s = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    if (dates.has(s)) streak++;
+    else break;
+  }
+  return streak;
+}
+
+export async function getLinkedHabits(goalId: string): Promise<LinkedHabit[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data: goal } = await supabase
+    .from("goals")
+    .select("id")
+    .eq("id", goalId)
+    .eq("org_id", orgId)
+    .single();
+
+  if (!goal) return [];
+
+  const { data: habits, error } = await supabase
+    .from("habits")
+    .select("id, title, icon, color, frequency")
+    .eq("goal_id", goalId)
+    .eq("org_id", orgId)
+    .eq("archived", false)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  if (!habits || habits.length === 0) return [];
+
+  const habitIds = habits.map((h) => h.id);
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const from30 = new Date();
+  from30.setDate(from30.getDate() - 29);
+  const from30Str = `${from30.getFullYear()}-${String(from30.getMonth() + 1).padStart(2, "0")}-${String(from30.getDate()).padStart(2, "0")}`;
+
+  const [todayRes, recentRes] = await Promise.all([
+    supabase
+      .from("habit_completions")
+      .select("habit_id")
+      .eq("completed_date", todayStr)
+      .in("habit_id", habitIds),
+    supabase
+      .from("habit_completions")
+      .select("habit_id, completed_date")
+      .in("habit_id", habitIds)
+      .gte("completed_date", from30Str)
+      .lte("completed_date", todayStr),
+  ]);
+
+  const todaySet = new Set((todayRes.data ?? []).map((c) => c.habit_id));
+  const recent = recentRes.data ?? [];
+
+  return habits.map((h) => ({
+    id:              h.id,
+    title:           h.title,
+    icon:            h.icon,
+    color:           h.color,
+    completed_today: todaySet.has(h.id),
+    current_streak:  calcHabitStreak(h.id, recent, h.frequency === "daily"),
+  }));
+}
+
+export async function linkHabitToGoal(habitId: string, goalId: string): Promise<void> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data: habit } = await supabase
+    .from("habits")
+    .select("id")
+    .eq("id", habitId)
+    .eq("org_id", orgId)
+    .single();
+
+  if (!habit) throw new Error("Habit not found or access denied.");
+
+  const { error } = await supabase
+    .from("habits")
+    .update({ goal_id: goalId })
+    .eq("id", habitId)
+    .eq("org_id", orgId);
+
+  if (error) throw error;
+}
+
+export async function unlinkHabitFromGoal(habitId: string): Promise<void> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { error } = await supabase
+    .from("habits")
+    .update({ goal_id: null })
+    .eq("id", habitId)
+    .eq("org_id", orgId);
+  if (error) throw error;
+}
+
+// =====================================================
+// AVAILABLE ITEMS (for link pickers)
+// =====================================================
+
+export async function getAvailableTasksForGoal(): Promise<AvailableTask[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("id, title, project_id, projects(name, workspaces(name))")
+    .eq("org_id", orgId)
+    .is("goal_id", null)
+    .eq("is_archived", false)
+    .is("completed_at", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error) throw error;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data ?? []).map((t: any) => ({
+    id:             t.id,
+    title:          t.title,
+    project_id:     t.project_id,
+    project_name:   t.projects?.name             ?? "Unknown",
+    workspace_name: t.projects?.workspaces?.name ?? "Unknown",
+  }));
+}
+
+export async function getAvailableHabitsForGoal(): Promise<AvailableHabit[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data, error } = await supabase
+    .from("habits")
+    .select("id, title, icon")
+    .eq("org_id", orgId)
+    .is("goal_id", null)
+    .eq("archived", false)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+  return (data ?? []) as AvailableHabit[];
 }

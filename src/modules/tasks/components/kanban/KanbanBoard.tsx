@@ -18,6 +18,7 @@ import { TaskCard } from "./TaskCard";
 import { useTasksStore } from "@/modules/tasks/store";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useTasks, useMoveTask } from "@/modules/tasks/hooks/useTasks";
+import { useRealtimeTasks } from "@/modules/tasks/hooks/useRealtimeTasks";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
 import { useProjects } from "@/modules/tasks/hooks/useProjects";
@@ -32,6 +33,7 @@ export function KanbanBoard() {
   const { data: statuses, isLoading: statusesLoading } = useStatuses(selectedProjectId);
   const { data: tasks, isLoading: tasksLoading } = useTasks(selectedProjectId);
   const moveMutation = useMoveTask();
+  useRealtimeTasks(selectedProjectId);
 
   const { data: workspaces, isLoading: workspacesLoading } = useWorkspaces(userId || "");
   const firstWorkspaceId = workspaces?.[0]?.id ?? null;

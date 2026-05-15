@@ -72,6 +72,8 @@ export interface Task {
   is_archived: boolean;
   recurring_pattern: Record<string, any> | null;
   
+  goal_id?: string | null;
+
   // Relationships (for joins)
   status?: Status;
   project?: Project;
@@ -162,6 +164,7 @@ export interface CreateTaskInput {
   start_date?: string | null;
   estimated_hours?: number | null;
   parent_task_id?: string | null;
+  goal_id?: string | null;
 }
 
 export interface UpdateTaskInput extends Partial<CreateTaskInput> {

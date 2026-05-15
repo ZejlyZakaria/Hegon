@@ -43,6 +43,7 @@ import { useCreateTask } from "@/modules/tasks/hooks/useTasks";
 import { useAddTagToTask } from "@/modules/tasks/hooks/useTags";
 import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
+import { useGoals } from "@/modules/goals/hooks/useGoals";
 import type { CreateTaskInput, Priority } from "@/modules/tasks/types";
 
 const ACCENT = "var(--color-accent-tasks)";
@@ -55,6 +56,7 @@ const createTaskSchema = z.object({
     .optional()
     .default("medium"),
   due_date: z.date().optional().nullable(),
+  goal_id: z.string().optional().nullable(),
 });
 
 type CreateTaskFormData = {
@@ -62,6 +64,7 @@ type CreateTaskFormData = {
   description?: string;
   priority?: "critical" | "high" | "medium" | "low";
   due_date?: Date | null;
+  goal_id?: string | null;
 };
 
 interface CreateTaskModalProps {
@@ -83,6 +86,7 @@ export function CreateTaskModal({
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const createTaskMutation = useCreateTask();
   const addTagMutation = useAddTagToTask(projectId);
+  const { data: goals = [] } = useGoals();
 
   const form = useForm<CreateTaskFormData>({
     resolver: zodResolver(createTaskSchema),
@@ -91,6 +95,7 @@ export function CreateTaskModal({
       description: "",
       priority: "medium",
       due_date: undefined,
+      goal_id: null,
     },
   });
 
@@ -102,6 +107,7 @@ export function CreateTaskModal({
       description: data.description || null,
       priority: data.priority as Priority,
       due_date: data.due_date ? data.due_date.toISOString() : null,
+      goal_id: data.goal_id || null,
     };
 
     createTaskMutation.mutate(taskInput, {
@@ -109,7 +115,7 @@ export function CreateTaskModal({
         selectedTagIds.forEach((tagId) => {
           addTagMutation.mutate({ taskId: createdTask.id, tagId });
         });
-        form.reset();
+        form.reset({ title: "", description: "", priority: "medium", due_date: undefined, goal_id: null });
         setSelectedTagIds([]);
         onOpenChange(false);
       },
@@ -263,6 +269,40 @@ export function CreateTaskModal({
                 )}
               />
             </div>
+
+            {/* Goal link */}
+            {goals.filter((g) => g.status === "active").length > 0 && (
+              <FormField
+                control={form.control}
+                name="goal_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium text-text-secondary">
+                      Goal <span className="text-text-tertiary font-normal">(optional)</span>
+                    </FormLabel>
+                    <Select
+                      onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                      value={field.value ?? "none"}
+                    >
+                      <FormControl>
+                        <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
+                          <SelectValue placeholder="No goal" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent variant="tasks">
+                        <SelectItem value="none">No goal</SelectItem>
+                        {goals
+                          .filter((g) => g.status === "active")
+                          .map((g) => (
+                            <SelectItem key={g.id} value={g.id}>{g.title}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <TagSelector
               selectedIds={selectedTagIds}

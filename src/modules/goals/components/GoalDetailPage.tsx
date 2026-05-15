@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MoreHorizontal, Unlink, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Unlink, Pencil, Trash2, Plus, Search, Folder } from "lucide-react";
+import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
+import { StatusIcon } from "@/shared/components/icons/StatusIcon";
+import { resolveIcon } from "@/shared/constants/icons";
 import { Slider } from "@/shared/components/ui/slider";
 import { cn } from "@/shared/utils/utils";
 import {
@@ -14,6 +17,11 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/shared/components/ui/popover";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -21,7 +29,14 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { useGoal } from "../hooks/useGoal";
 import { useUpdateGoal } from "../hooks/useGoals";
-import { useLinkedTasks, useUnlinkTask } from "../hooks/useLinkedTasks";
+import { useLinkedTasks, useLinkTask, useUnlinkTask } from "../hooks/useLinkedTasks";
+import {
+  useLinkedHabits,
+  useLinkHabit,
+  useUnlinkHabit,
+  useAvailableTasksForGoal,
+  useAvailableHabitsForGoal,
+} from "../hooks/useLinkedHabits";
 import { MilestoneList } from "./MilestoneList";
 import { GoalModal } from "./GoalModal";
 import { DeleteGoalModal } from "./DeleteGoalModal";
@@ -29,6 +44,7 @@ import { GoalDetailSkeleton } from "./GoalDetailSkeleton";
 import * as GoalService from "../service";
 import { useQueryClient } from "@tanstack/react-query";
 import { GOAL_KEYS } from "../hooks/query-keys";
+import { useRealtimeGoals } from "../hooks/useRealtimeGoals";
 import type { GoalStatus } from "../types";
 
 const ACCENT = "var(--color-accent-goals)";
@@ -49,15 +65,25 @@ export function GoalDetailPage({ id }: Props) {
   const queryClient = useQueryClient();
 
   const { data: goal, isLoading } = useGoal(id);
-  const { data: linkedTasks = [] } = useLinkedTasks(id);
+  const { data: linkedTasks   = [] } = useLinkedTasks(id);
+  const { data: linkedHabits  = [] } = useLinkedHabits(id);
+  const { data: availableTasks  = [] } = useAvailableTasksForGoal();
+  const { data: availableHabits = [] } = useAvailableHabitsForGoal();
 
-  const updateGoal = useUpdateGoal();
-  const unlinkTask = useUnlinkTask(id);
+  useRealtimeGoals(id, linkedHabits.map((h) => h.id));
 
-  const [isEditOpen,     setIsEditOpen]     = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [localProgress, setLocalProgress] = useState<number | null>(null);
-  const [localMode,     setLocalMode]     = useState<"manual" | "auto" | null>(null);
+  const updateGoal  = useUpdateGoal();
+  const linkTask    = useLinkTask(id);
+  const unlinkTask  = useUnlinkTask(id);
+  const linkHabit   = useLinkHabit(id);
+  const unlinkHabit = useUnlinkHabit(id);
+
+  const [isEditOpen,      setIsEditOpen]      = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen]  = useState(false);
+  const [localProgress,   setLocalProgress]    = useState<number | null>(null);
+  const [localMode,       setLocalMode]        = useState<"manual" | "auto" | null>(null);
+  const [taskPickerOpen,  setTaskPickerOpen]   = useState(false);
+  const [taskSearch,      setTaskSearch]       = useState("");
 
   // Reset local draft when DB value confirms — prevents flicker after save
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -67,12 +93,36 @@ export function GoalDetailPage({ id }: Props) {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setLocalMode(null); }, [goal?.progress_mode]);
 
+  const filteredAvailableTasks = useMemo(() => {
+    const q = taskSearch.trim().toLowerCase();
+    if (!q) return availableTasks;
+    return availableTasks.filter((t) =>
+      t.title.toLowerCase().includes(q) ||
+      t.project_name.toLowerCase().includes(q) ||
+      t.workspace_name.toLowerCase().includes(q)
+    );
+  }, [availableTasks, taskSearch]);
+
+  const groupedAvailableTasks = useMemo(() => {
+    const map = new Map<string, { projectId: string; workspace: string; project: string; tasks: typeof availableTasks }>();
+    filteredAvailableTasks.forEach((t) => {
+      if (!map.has(t.project_id)) {
+        map.set(t.project_id, { projectId: t.project_id, workspace: t.workspace_name, project: t.project_name, tasks: [] });
+      }
+      map.get(t.project_id)!.tasks.push(t);
+    });
+    return Array.from(map.values());
+  }, [filteredAvailableTasks]);
+
   if (isLoading || !goal) return <GoalDetailSkeleton />;
 
-  const displayProgress = localProgress ?? goal.progress;
   const displayMode     = localMode ?? goal.progress_mode;
   const tasksTotal      = linkedTasks.length;
   const tasksCompleted  = linkedTasks.filter((t) => t.completed_at !== null).length;
+  const autoProgress    = tasksTotal > 0 ? Math.round((tasksCompleted / tasksTotal) * 100) : 0;
+  const displayProgress = displayMode === "auto"
+    ? autoProgress
+    : (localProgress ?? goal.progress);
   const isOverdue       = goal.target_date && goal.status === "active" && new Date(goal.target_date) < new Date();
 
   async function handleProgressSave(value: number) {
@@ -206,46 +256,240 @@ export function GoalDetailPage({ id }: Props) {
             <MilestoneList goalId={id} />
           </motion.div>
 
-          {/* Linked tasks */}
+          {/* Fueling this Goal */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, delay: 0.12 }}
             className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4"
           >
-            <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-4">
               Fueling this Goal
             </h3>
-            {linkedTasks.length === 0 ? (
-              <p className="text-sm text-text-tertiary">No tasks linked yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {linkedTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="group flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-1 px-3 py-2"
+
+            {/* Tasks sub-section */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">Tasks</span>
+                {availableTasks.length > 0 && (
+                  <Popover
+                    open={taskPickerOpen}
+                    onOpenChange={(o) => { setTaskPickerOpen(o); if (!o) setTaskSearch(""); }}
                   >
-                    <div
-                      className="h-1.5 w-1.5 rounded-full shrink-0"
-                      style={{ backgroundColor: task.completed_at ? ACCENT : "#52525b" }}
-                    />
-                    <span className={cn("flex-1 text-sm", task.completed_at ? "line-through text-text-tertiary" : "text-text-primary")}>
-                      {task.title}
-                    </span>
-                    {task.status && (
-                      <span className="text-xs text-text-tertiary shrink-0">{task.status.name}</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => unlinkTask.mutateAsync(task.id)}
-                      className="text-text-tertiary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex h-6 items-center gap-1 rounded-md px-2 text-[11px] text-text-tertiary hover:bg-surface-2 hover:text-text-secondary transition-colors"
+                      >
+                        <Plus size={10} />
+                        Link task
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="end"
+                      className="w-72 p-0 bg-surface-3 border-border-strong rounded-lg shadow-lg overflow-hidden"
                     >
-                      <Unlink size={12} />
-                    </button>
-                  </div>
-                ))}
+                      {/* Search */}
+                      <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2">
+                        <Search size={12} className="shrink-0 text-text-tertiary" />
+                        <input
+                          autoFocus
+                          placeholder="Search tasks..."
+                          value={taskSearch}
+                          onChange={(e) => setTaskSearch(e.target.value)}
+                          className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-tertiary outline-none"
+                        />
+                      </div>
+                      {/* Grouped results */}
+                      <div className="max-h-56 overflow-y-auto py-1">
+                        {groupedAvailableTasks.length === 0 ? (
+                          <p className="px-3 py-4 text-center text-xs text-text-tertiary">No tasks found.</p>
+                        ) : (
+                          groupedAvailableTasks.map((grp) => (
+                            <div key={grp.projectId}>
+                              <div className="flex items-center gap-1.5 px-3 pb-0.5 pt-2">
+                                <Folder size={10} className="shrink-0 text-text-tertiary" />
+                                <span className="truncate text-[10px] font-medium text-text-tertiary">
+                                  {grp.workspace} / {grp.project}
+                                </span>
+                              </div>
+                              {grp.tasks.map((t) => (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => { linkTask.mutate(t.id); setTaskPickerOpen(false); setTaskSearch(""); }}
+                                  className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 transition-colors hover:bg-surface-2"
+                                >
+                                  <span className="h-1 w-1 shrink-0 rounded-full bg-text-tertiary" />
+                                  <span className="flex-1 truncate text-left text-xs text-text-secondary">
+                                    {t.title}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
-            )}
+              {linkedTasks.length === 0 ? (
+                <p className="text-xs text-text-tertiary">No tasks linked yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {linkedTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface-2 transition-colors border border-border-subtle"
+                    >
+                      {/* Status icon — kanban style */}
+                      <div className="shrink-0">
+                        <StatusIcon status={task.status?.name ?? ""} size={14} />
+                      </div>
+
+                      {/* Title · project name inline */}
+                      <p className={cn(
+                        "min-w-0 flex-1 truncate text-xs",
+                        task.completed_at ? "line-through text-text-tertiary" : "text-text-primary"
+                      )}>
+                        {task.title}
+                        {task.project_name && (
+                          <span className="text-text-tertiary"> · {task.project_name}</span>
+                        )}
+                      </p>
+
+                      {/* Priority */}
+                      <PriorityIcon priority={(task.priority ?? "medium") as "low" | "medium" | "high" | "critical" | "none"} />
+
+                      {/* Due date */}
+                      {task.due_date && (
+                        <span className="shrink-0 text-[10px] text-text-tertiary">
+                          {new Date(task.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </span>
+                      )}
+
+                      {/* Unlink with tooltip */}
+                      <div className="relative group/unlink shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => unlinkTask.mutateAsync(task.id)}
+                          className="flex h-5 w-5 items-center justify-center rounded opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-all"
+                        >
+                          <Unlink size={11} />
+                        </button>
+                        <div className="pointer-events-none absolute bottom-full right-0 mb-1.5 opacity-0 group-hover/unlink:opacity-100 transition-opacity z-20">
+                          <div className="rounded-md bg-zinc-900 border border-zinc-700/50 px-2 py-1 text-[10px] text-zinc-100 whitespace-nowrap shadow-lg">
+                            Unlink task
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-border-subtle mb-4" />
+
+            {/* Habits sub-section */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">Habits</span>
+                {availableHabits.length > 0 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex h-6 items-center gap-1 rounded-md px-2 text-[11px] text-text-tertiary hover:bg-surface-2 hover:text-text-secondary transition-colors"
+                      >
+                        <Plus size={10} />
+                        Link habit
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="end"
+                      className="w-60 p-1 bg-surface-3 border-border-strong rounded-lg shadow-lg"
+                    >
+                      <div className="max-h-48 overflow-y-auto">
+                        {availableHabits.map((h) => {
+                          const { icon: HabitIcon, color: habitIconColor } = resolveIcon(h.icon);
+                          return (
+                            <button
+                              key={h.id}
+                              type="button"
+                              onClick={() => linkHabit.mutate(h.id)}
+                              className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-2"
+                            >
+                              <HabitIcon size={12} className="mt-0.5 shrink-0" style={{ color: habitIconColor }} />
+                              <span className="flex-1 text-left text-xs leading-snug text-text-secondary">{h.title}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+              {linkedHabits.length === 0 ? (
+                <p className="text-xs text-text-tertiary">No habits linked yet.</p>
+              ) : (
+                <div className="space-y-0.5">
+                  {linkedHabits.map((habit) => {
+                    const { icon: HabitIcon, color: iconColor } = resolveIcon(habit.icon);
+                    return (
+                      <div
+                        key={habit.id}
+                        className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface-2 transition-colors"
+                      >
+                        {/* Colored icon box */}
+                        <div
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded"
+                          style={{ color: iconColor, backgroundColor: iconColor + "20" }}
+                        >
+                          <HabitIcon size={11} />
+                        </div>
+
+                        {/* Title */}
+                        <span className="flex-1 truncate text-xs text-text-primary">{habit.title}</span>
+
+                        {/* Streak */}
+                        {habit.current_streak > 0 && (
+                          <span className="shrink-0 text-[10px] text-text-tertiary">{habit.current_streak}🔥</span>
+                        )}
+
+                        {/* Done badge */}
+                        <span className={cn(
+                          "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
+                          habit.completed_today
+                            ? "bg-green-500/10 text-green-400"
+                            : "text-text-tertiary"
+                        )}>
+                          {habit.completed_today ? "Done" : "—"}
+                        </span>
+
+                        {/* Unlink with tooltip */}
+                        <div className="relative group/unlink shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => unlinkHabit.mutateAsync(habit.id)}
+                            className="flex h-5 w-5 items-center justify-center rounded opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-all"
+                          >
+                            <Unlink size={11} />
+                          </button>
+                          <div className="pointer-events-none absolute bottom-full right-0 mb-1.5 opacity-0 group-hover/unlink:opacity-100 transition-opacity z-20">
+                            <div className="rounded-md bg-zinc-900 border border-zinc-700/50 px-2 py-1 text-[10px] text-zinc-100 whitespace-nowrap shadow-lg">
+                              Unlink habit
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </motion.div>
         </div>
 
@@ -318,7 +562,7 @@ export function GoalDetailPage({ id }: Props) {
               </div>
             ) : (
               <p className="text-xs text-text-tertiary text-center">
-                Calculated from linked tasks &amp; milestones
+                Calculated from linked tasks
               </p>
             )}
           </div>
@@ -388,6 +632,16 @@ export function GoalDetailPage({ id }: Props) {
               <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
                 <div className="text-lg font-bold" style={{ color: ACCENT }}>{tasksCompleted}</div>
                 <div className="text-xs text-text-tertiary">Done</div>
+              </div>
+              <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                <div className="text-lg font-bold text-text-primary">{linkedHabits.length}</div>
+                <div className="text-xs text-text-tertiary">Habits</div>
+              </div>
+              <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                <div className="text-lg font-bold" style={{ color: "#f43f5e" }}>
+                  {linkedHabits.filter((h) => h.completed_today).length}
+                </div>
+                <div className="text-xs text-text-tertiary">Today</div>
               </div>
             </div>
           </div>

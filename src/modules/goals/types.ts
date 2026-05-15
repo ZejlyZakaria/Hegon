@@ -46,11 +46,36 @@ export interface LinkedTask {
   title:        string;
   priority:     string;
   completed_at: string | null;
+  due_date:     string | null;
+  project_name: string | null;
   status?: {
     name:         string;
     color:        string | null;
     is_completed: boolean;
   };
+}
+
+export interface LinkedHabit {
+  id:              string;
+  title:           string;
+  icon:            string;
+  color:           string;
+  completed_today: boolean;
+  current_streak:  number;
+}
+
+export interface AvailableTask {
+  id:             string;
+  title:          string;
+  project_id:     string;
+  project_name:   string;
+  workspace_name: string;
+}
+
+export interface AvailableHabit {
+  id:    string;
+  title: string;
+  icon:  string;
 }
 
 // =====================================================

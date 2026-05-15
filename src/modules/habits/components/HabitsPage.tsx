@@ -15,12 +15,20 @@ import {
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/utils";
-import { useHabits } from "../hooks/useHabits";
+import { useHabits, useDeleteHabit } from "../hooks/useHabits";
 import {
   useHabitsToday,
   useCompleteHabit,
   useUncompleteHabit,
 } from "../hooks/useHabitsToday";
+import { useRealtimeHabits } from "../hooks/useRealtimeHabits";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/components/ui/dialog";
+import type { Habit } from "../types";
 import { HabitsEmptyState } from "./HabitsEmptyState";
 import { HabitCard } from "./HabitCard";
 import { HabitModal } from "./HabitModal";
@@ -92,7 +100,14 @@ export function HabitsPage() {
   const [tab, setTab] = useState<HabitTab>("today");
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [deletingHabit, setDeletingHabit] = useState<Habit | null>(null);
 
+  const today    = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const deleteHabit = useDeleteHabit();
+  useRealtimeHabits();
   const { pendingAction, clearPendingAction } = useCommandCenter();
   useEffect(() => {
     if (pendingAction === "new-habit") {
@@ -121,9 +136,6 @@ export function HabitsPage() {
     isPending: uncompleting,
     variables: uncompleteVars,
   } = useUncompleteHabit();
-
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const isLoading = habitsLoading || todayLoading;
 
@@ -249,6 +261,8 @@ export function HabitsPage() {
                               (completing && completeVars?.habit_id === habit.id) ||
                               (uncompleting && uncompleteVars?.habitId === habit.id)
                             }
+                            onEdit={() => setEditingHabit(habit)}
+                            onDelete={() => setDeletingHabit(habit)}
                           />
                         </motion.div>
                       ))}
@@ -274,7 +288,48 @@ export function HabitsPage() {
         </>
       )}
 
-      <HabitModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <HabitModal
+        open={modalOpen || !!editingHabit}
+        onClose={() => { setModalOpen(false); setEditingHabit(null); }}
+        habit={editingHabit ?? undefined}
+      />
+
+      <Dialog open={!!deletingHabit} onOpenChange={(v) => !v && setDeletingHabit(null)}>
+        <DialogContent className="sm:max-w-sm bg-surface-3 border-border-strong">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold text-text-primary">
+              Delete habit
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-text-secondary">
+            Delete{" "}
+            <span className="font-medium text-text-primary">&quot;{deletingHabit?.title}&quot;</span>?
+            {" "}All completion history will be lost.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeletingHabit(null)}
+              className="h-8 px-3 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (deletingHabit) {
+                  deleteHabit.mutate(deletingHabit.id);
+                  setDeletingHabit(null);
+                }
+              }}
+              disabled={deleteHabit.isPending}
+              className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"
+              style={{ backgroundColor: "#ef4444" }}
+            >
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

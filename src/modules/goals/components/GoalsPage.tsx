@@ -20,6 +20,7 @@ import { GoalsEmptyState } from "./GoalsEmptyState";
 import { GoalRightPanel } from "./GoalFocusPanel";
 import { GoalsLoadingSkeleton } from "./GoalsSkeleton";
 import { useGoals } from "../hooks/useGoals";
+import { useRealtimeGoals } from "../hooks/useRealtimeGoals";
 import type { Goal, GoalSort, GoalCategory } from "../types";
 
 const ACCENT = "var(--color-accent-goals)";
@@ -96,6 +97,7 @@ function filterAndSort(
 
 export function GoalsPage() {
   const { data: goals = [], isLoading } = useGoals();
+  useRealtimeGoals();
 
   const [status, setStatus]         = useState<StatusFilter>("all");
   const [category, setCategory]     = useState<GoalCategory | "all">("all");
