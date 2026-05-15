@@ -51,6 +51,13 @@ export interface Tag {
   created_at: string;
 }
 
+export interface Assignee {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 export interface Task {
   id: string;
   project_id: string;
@@ -78,6 +85,7 @@ export interface Task {
   status?: Status;
   project?: Project;
   tags?: Tag[];
+  assignee?: Assignee | null;
   subtasks?: Task[];
 }
 
@@ -165,6 +173,7 @@ export interface CreateTaskInput {
   estimated_hours?: number | null;
   parent_task_id?: string | null;
   goal_id?: string | null;
+  assignee_id?: string | null;
 }
 
 export interface UpdateTaskInput extends Partial<CreateTaskInput> {

@@ -41,22 +41,24 @@ import { cn } from "@/shared/utils/utils";
 
 import { useCreateTask } from "@/modules/tasks/hooks/useTasks";
 import { useAddTagToTask } from "@/modules/tasks/hooks/useTags";
+import { useOrgMembers } from "@/modules/tasks/hooks/useOrgMembers";
+import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
+import { MemberAvatar } from "@/modules/tasks/components/shared/MemberAvatar";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
 import { useGoals } from "@/modules/goals/hooks/useGoals";
 import type { CreateTaskInput, Priority } from "@/modules/tasks/types";
+import { Check, User } from "lucide-react";
 
 const ACCENT = "var(--color-accent-tasks)";
 
 const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(255, "Title too long"),
   description: z.string().optional(),
-  priority: z
-    .enum(["critical", "high", "medium", "low"])
-    .optional()
-    .default("medium"),
+  priority: z.enum(["critical", "high", "medium", "low"]).optional().default("medium"),
   due_date: z.date().optional().nullable(),
   goal_id: z.string().optional().nullable(),
+  assignee_id: z.string().optional().nullable(),
 });
 
 type CreateTaskFormData = {
@@ -65,6 +67,7 @@ type CreateTaskFormData = {
   priority?: "critical" | "high" | "medium" | "low";
   due_date?: Date | null;
   goal_id?: string | null;
+  assignee_id?: string | null;
 };
 
 interface CreateTaskModalProps {
@@ -83,10 +86,13 @@ export function CreateTaskModal({
   statusName,
 }: CreateTaskModalProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const createTaskMutation = useCreateTask();
   const addTagMutation = useAddTagToTask(projectId);
   const { data: goals = [] } = useGoals();
+  const { data: orgMembers = [] } = useOrgMembers();
+  const currentUserId = useCurrentUserId();
 
   const form = useForm<CreateTaskFormData>({
     resolver: zodResolver(createTaskSchema),
@@ -96,6 +102,7 @@ export function CreateTaskModal({
       priority: "medium",
       due_date: undefined,
       goal_id: null,
+      assignee_id: currentUserId ?? null,
     },
   });
 
@@ -108,6 +115,7 @@ export function CreateTaskModal({
       priority: data.priority as Priority,
       due_date: data.due_date ? data.due_date.toISOString() : null,
       goal_id: data.goal_id || null,
+      assignee_id: data.assignee_id || null,
     };
 
     createTaskMutation.mutate(taskInput, {
@@ -115,7 +123,7 @@ export function CreateTaskModal({
         selectedTagIds.forEach((tagId) => {
           addTagMutation.mutate({ taskId: createdTask.id, tagId });
         });
-        form.reset({ title: "", description: "", priority: "medium", due_date: undefined, goal_id: null });
+        form.reset({ title: "", description: "", priority: "medium", due_date: undefined, goal_id: null, assignee_id: currentUserId ?? null });
         setSelectedTagIds([]);
         onOpenChange(false);
       },
@@ -303,6 +311,67 @@ export function CreateTaskModal({
                 )}
               />
             )}
+
+            {/* Assignee */}
+            <FormField
+              control={form.control}
+              name="assignee_id"
+              render={({ field }) => {
+                const selectedMember = orgMembers.find((m) => m.id === field.value) ?? null;
+                return (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium text-text-secondary">Assignee</FormLabel>
+                    <Popover open={isAssigneeOpen} onOpenChange={setIsAssigneeOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <button
+                            type="button"
+                            className="w-full h-9 px-3 flex items-center gap-2 rounded-lg border border-border-default bg-surface-overlay hover:bg-surface-2 text-sm transition-colors"
+                          >
+                            {selectedMember ? (
+                              <>
+                                <MemberAvatar member={selectedMember} size="sm" />
+                                <span className="text-text-primary">{selectedMember.full_name ?? selectedMember.email}</span>
+                              </>
+                            ) : (
+                              <>
+                                <User size={14} className="text-text-tertiary shrink-0" />
+                                <span className="text-text-tertiary">Unassigned</span>
+                              </>
+                            )}
+                          </button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-56 p-1 bg-surface-3 border-border-strong">
+                        <div className="space-y-0.5">
+                          <button
+                            type="button"
+                            onClick={() => { field.onChange(null); setIsAssigneeOpen(false); }}
+                            className={cn("w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors", !field.value ? "text-text-primary bg-surface-2" : "text-text-secondary hover:bg-surface-2")}
+                          >
+                            <User size={14} className="shrink-0" />
+                            <span>Unassigned</span>
+                            {!field.value && <Check size={12} className="ml-auto" />}
+                          </button>
+                          {orgMembers.map((member) => (
+                            <button
+                              key={member.id}
+                              type="button"
+                              onClick={() => { field.onChange(member.id); setIsAssigneeOpen(false); }}
+                              className={cn("w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors", field.value === member.id ? "text-text-primary bg-surface-2" : "text-text-secondary hover:bg-surface-2")}
+                            >
+                              <MemberAvatar member={member} size="sm" />
+                              <span>{member.full_name ?? member.email}</span>
+                              {field.value === member.id && <Check size={12} className="ml-auto" />}
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </FormItem>
+                );
+              }}
+            />
 
             <TagSelector
               selectedIds={selectedTagIds}

@@ -73,6 +73,10 @@ export function KanbanBoard() {
         if (!hasMatchingTag) return false;
       }
 
+      if (filters.assignees.length > 0 && !filters.assignees.includes(task.assignee_id ?? "")) {
+        return false;
+      }
+
       return true;
     });
   }, [tasks, filters]);

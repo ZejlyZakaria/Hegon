@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Bell, Sun, Moon, LogOut } from "lucide-react";
+import { Search, Bell, Sun, Moon, LogOut, Settings } from "lucide-react";
 import { createClient } from "@/infrastructure/supabase/client";
 import { useTheme } from "next-themes";
 import { signOut } from "@/infrastructure/auth/actions";
@@ -13,6 +13,7 @@ import { cn } from "@/shared/utils/utils";
 // ─── breadcrumb ───────────────────────────────────────────────────────────────
 
 const SECTION_BREADCRUMBS: Array<[string, string[]]> = [
+  ["/settings",               ["Settings"]],
   ["/dashboard",              ["Dashboard"]],
   ["/life/goals",             ["Life", "Goals"]],
   ["/life/habits",            ["Life", "Habits"]],
@@ -67,15 +68,18 @@ function ProfileMenu({
   onClose,
   anchorRef,
   userEmail,
+  avatarUrl,
 }: {
   open: boolean;
   onClose: () => void;
   anchorRef: React.RefObject<HTMLDivElement | null>;
   userEmail: string | null;
+  avatarUrl: string | null;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, right: 0 });
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
 
   useEffect(() => {
     if (!open || !anchorRef.current) return;
@@ -106,8 +110,14 @@ function ProfileMenu({
           style={{ top: pos.top, right: pos.right, minWidth: 200 }}
         >
           <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border-subtle">
-            <div className="w-8 h-8 rounded-full bg-linear-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
-              Z
+            <div className={cn(
+              "w-8 h-8 rounded-full overflow-hidden shrink-0",
+              !avatarUrl && "bg-linear-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white"
+            )}>
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+              ) : "Z"}
             </div>
             <p className="text-[11px] text-text-tertiary truncate">
               {userEmail ?? "—"}
@@ -115,6 +125,14 @@ function ProfileMenu({
           </div>
 
           <div className="p-1.5">
+            <div
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer group"
+              onClick={() => { router.push("/settings"); onClose(); }}
+            >
+              <Settings size={14} className="text-text-tertiary group-hover:text-text-secondary" />
+              <span className="text-[13px] text-text-secondary group-hover:text-text-primary">Settings</span>
+            </div>
+
             <div
               className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer group"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -170,6 +188,7 @@ export default function TopBar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
   const openCmdK = useCommandCenter((s) => s.open);
 
@@ -186,6 +205,7 @@ export default function TopBar() {
           "there";
         setUserName(name);
         setUserEmail(user.email ?? null);
+        setAvatarUrl(user.user_metadata?.avatar_url ?? null);
       });
   }, []);
 
@@ -199,6 +219,7 @@ export default function TopBar() {
         onClose={() => setProfileOpen(false)}
         anchorRef={avatarRef}
         userEmail={userEmail}
+        avatarUrl={avatarUrl}
       />
 
       <header className="shrink-0 bg-[#09090b]">
@@ -230,15 +251,17 @@ export default function TopBar() {
               ref={avatarRef}
               onClick={() => setProfileOpen((p) => !p)}
               className={cn(
-                "w-8 h-8 rounded-full bg-linear-to-br from-violet-500 to-indigo-600",
-                "flex items-center justify-center text-xs font-bold text-white cursor-pointer",
-                "transition-all duration-150",
-                profileOpen
-                  ? "ring-2 ring-white/25"
-                  : "hover:ring-2 hover:ring-white/15",
+                "w-8 h-8 rounded-full overflow-hidden cursor-pointer transition-all duration-150",
+                !avatarUrl && "bg-linear-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white",
+                profileOpen ? "ring-2 ring-white/25" : "hover:ring-2 hover:ring-white/15",
               )}
             >
-              {initial}
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt={userName ?? "avatar"} className="w-full h-full object-cover" />
+              ) : (
+                initial
+              )}
             </div>
           </div>
         </div>

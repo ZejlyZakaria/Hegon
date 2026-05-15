@@ -8,7 +8,7 @@ const CSP = [
   // Next.js App Router requires unsafe-inline for hydration scripts (no nonce without middleware)
   "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://image.tmdb.org https://crests.football-data.org https://cdn.thesportsdb.com https://r2.thesportsdb.com https://femvhonlpafdajyamvcu.supabase.co https://books.google.com",
+  "img-src 'self' data: blob: https://image.tmdb.org https://crests.football-data.org https://cdn.thesportsdb.com https://r2.thesportsdb.com https://femvhonlpafdajyamvcu.supabase.co https://books.google.com https://lh3.googleusercontent.com",
   "font-src 'self'",
   "connect-src 'self' https://femvhonlpafdajyamvcu.supabase.co wss://femvhonlpafdajyamvcu.supabase.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://www.thesportsdb.com",
   "worker-src 'self' blob:",

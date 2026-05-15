@@ -108,6 +108,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Invite pages are public (user may not be logged in yet)
+  if (pathname.startsWith("/invite")) {
+    return NextResponse.next();
+  }
+
   const response = NextResponse.next({
     request: {
       headers: request.headers,

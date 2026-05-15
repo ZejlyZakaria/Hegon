@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { cn } from "@/shared/utils/utils";
 import { format, isPast, differenceInDays } from "date-fns";
-import { Calendar, Tag, MoreHorizontal, AlertTriangle } from "lucide-react";
+import { Calendar, Tag, MoreHorizontal, AlertTriangle, User } from "lucide-react";
 import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
 import { StatusIcon } from "../../../../shared/components/icons/StatusIcon";
+import { MemberAvatar } from "../shared/MemberAvatar";
 import { EditTaskModal } from "../modals/EditTaskModal";
 import type { Task } from "@/modules/tasks/types";
 
@@ -30,7 +31,7 @@ export function ListRow({ task }: ListRowProps) {
       <div
         onClick={() => setIsEditModalOpen(true)}
         className={cn(
-          "group grid cursor-pointer grid-cols-[20px_16px_minmax(0,1fr)_auto_92px_32px] items-center gap-3 px-3 py-2 transition-colors duration-100",
+          "group grid cursor-pointer grid-cols-[20px_16px_minmax(0,1fr)_auto_92px_20px_32px] items-center gap-3 px-3 py-2 transition-colors duration-100",
           "border-b last:border-b-0"
         )}
         style={{
@@ -108,6 +109,19 @@ export function ListRow({ task }: ListRowProps) {
             >
               —
             </span>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center justify-center">
+          {task.assignee ? (
+            <MemberAvatar member={task.assignee} size="sm" />
+          ) : (
+            <div
+              className="w-5 h-5 rounded-full border border-dashed flex items-center justify-center"
+              style={{ borderColor: "var(--color-border-subtle)" }}
+            >
+              <User size={9} style={{ color: "var(--color-text-tertiary)" }} />
+            </div>
           )}
         </div>
 

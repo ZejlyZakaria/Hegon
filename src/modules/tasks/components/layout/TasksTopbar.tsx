@@ -9,6 +9,7 @@ import {
   X,
   PanelLeftOpen,
   Tag,
+  User,
 } from "lucide-react";
 import { useTasksStore } from "@/modules/tasks/store";
 import { cn } from "@/shared/utils/utils";
@@ -26,8 +27,10 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useTags } from "@/modules/tasks/hooks/useTags";
+import { useOrgMembers } from "@/modules/tasks/hooks/useOrgMembers";
 import { StatusIcon } from "../../../../shared/components/icons/StatusIcon";
 import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
+import { MemberAvatar } from "../shared/MemberAvatar";
 
 export function TasksTopbar() {
   const {
@@ -43,6 +46,7 @@ export function TasksTopbar() {
 
   const { data: statuses } = useStatuses(selectedProjectId);
   const { data: tags } = useTags();
+  const { data: orgMembers = [] } = useOrgMembers();
 
   const toggleTag = (tagId: string) => {
     const current = filters.tags;
@@ -58,8 +62,16 @@ export function TasksTopbar() {
     { mode: "calendar", icon: <Calendar size={16} />, label: "Calendar" },
   ];
 
+  const toggleAssignee = (assigneeId: string) => {
+    const current = filters.assignees;
+    const updated = current.includes(assigneeId)
+      ? current.filter((a: string) => a !== assigneeId)
+      : [...current, assigneeId];
+    setFilters({ assignees: updated });
+  };
+
   const activeFiltersCount =
-    filters.statuses.length + filters.priorities.length + filters.tags.length;
+    filters.statuses.length + filters.priorities.length + filters.tags.length + filters.assignees.length;
 
   const priorityOptions: { value: Priority; label: string }[] = [
     { value: "critical", label: "Critical" },
@@ -269,6 +281,40 @@ export function TasksTopbar() {
                           style={{ backgroundColor: tag.color ?? "#71717a" }}
                         />
                         <span>{tag.name}</span>
+                      </div>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+
+            {orgMembers.length > 0 && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <User size={14} style={{ color: "var(--color-text-tertiary)" }} />
+                    <span>Assignee</span>
+                  </div>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent
+                  className="min-w-48 rounded-lg"
+                  sideOffset={4}
+                  style={{
+                    backgroundColor: "var(--color-surface-3)",
+                    borderColor: "var(--color-border-default)",
+                    color: "var(--color-text-secondary)",
+                  }}
+                >
+                  {orgMembers.map((member) => (
+                    <DropdownMenuCheckboxItem
+                      key={member.id}
+                      checked={filters.assignees.includes(member.id)}
+                      onCheckedChange={() => toggleAssignee(member.id)}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <div className="flex items-center gap-2">
+                        <MemberAvatar member={member} size="sm" />
+                        <span>{member.full_name ?? member.email}</span>
                       </div>
                     </DropdownMenuCheckboxItem>
                   ))}

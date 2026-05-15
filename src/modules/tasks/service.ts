@@ -6,6 +6,7 @@ import type {
   Project,
   Workspace,
   Status,
+  Assignee,
   CreateTaskInput,
   UpdateTaskInput,
   MoveTaskInput,
@@ -15,33 +16,37 @@ import type {
 // TASKS
 // =====================================================
 
-export async function getTasks(projectId: string) {
+export async function getTasks(projectId: string): Promise<Task[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("tasks")
-    .select(
-      `
-      *,
-      status:statuses(*),
-      project:projects(*),
-      task_tags(
-        tag:tags(*)
-      )
-    `,
-    )
+    .select(`*, status:statuses(*), project:projects(*), task_tags(tag:tags(*))`)
     .eq("project_id", projectId)
     .eq("is_archived", false)
     .order("position", { ascending: true });
 
   if (error) throw error;
 
-  // Transform tags structure
   const tasks = (data || []).map((task: any) => ({
     ...task,
     tags: task.task_tags?.map((tt: any) => tt.tag).filter(Boolean) || [],
   }));
 
-  return tasks as Task[];
+  // Fetch assignee profiles in a single query
+  const assigneeIds = [...new Set(tasks.filter((t) => t.assignee_id).map((t) => t.assignee_id as string))];
+  if (assigneeIds.length === 0) return tasks as Task[];
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, avatar_url")
+    .in("id", assigneeIds);
+
+  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+  return tasks.map((task) => ({
+    ...task,
+    assignee: task.assignee_id ? (profileMap.get(task.assignee_id) ?? null) : null,
+  })) as Task[];
 }
 
 export async function createTask(input: CreateTaskInput) {
@@ -86,7 +91,7 @@ export async function createTask(input: CreateTaskInput) {
       title: input.title.trim(),
       description: input.description?.trim() || null,
       created_by: user.id,
-      assignee_id: user.id,
+      assignee_id: input.assignee_id ?? user.id,
       position: newPosition,
       org_id: orgId,
     })
@@ -119,23 +124,17 @@ export async function updateTask(task: UpdateTaskInput): Promise<Task> {
     throw new Error("Status is required");
   }
 
-  // Verify ownership
+  // Verify task belongs to current org
+  const orgId = await getCurrentOrgId();
   const { data: existingTask, error: fetchError } = await supabase
     .from("tasks")
-    .select("id, created_by")
+    .select("id")
     .eq("id", task.id)
+    .eq("org_id", orgId)
     .single();
 
   if (fetchError || !existingTask) {
     throw new Error("Task not found");
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user || existingTask.created_by !== user.id) {
-    throw new Error("Unauthorized");
   }
 
   // Resolve completed_at from the new status
@@ -156,9 +155,8 @@ export async function updateTask(task: UpdateTaskInput): Promise<Task> {
     completed_at:    status?.is_completed ? new Date().toISOString() : null,
     updated_at:      new Date().toISOString(),
   };
-  if (task.goal_id !== undefined) {
-    updatePayload.goal_id = task.goal_id;
-  }
+  if (task.goal_id !== undefined) updatePayload.goal_id = task.goal_id;
+  if (task.assignee_id !== undefined) updatePayload.assignee_id = task.assignee_id;
 
   const { data, error } = await supabase
     .from("tasks")
@@ -180,23 +178,16 @@ export async function moveTask({
 }: MoveTaskInput) {
   const supabase = createClient();
 
-  // Verify ownership
+  const orgId = await getCurrentOrgId();
   const { data: existingTask, error: fetchError } = await supabase
     .from("tasks")
-    .select("id, created_by")
+    .select("id")
     .eq("id", taskId)
+    .eq("org_id", orgId)
     .single();
 
   if (fetchError || !existingTask) {
     throw new Error("Task not found");
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user || existingTask.created_by !== user.id) {
-    throw new Error("Unauthorized");
   }
 
   // Resolve completed_at from the new status
@@ -226,23 +217,16 @@ export async function moveTask({
 export async function deleteTask(taskId: string) {
   const supabase = createClient();
 
-  // Verify ownership
+  const orgId = await getCurrentOrgId();
   const { data: existingTask, error: fetchError } = await supabase
     .from("tasks")
-    .select("id, created_by")
+    .select("id")
     .eq("id", taskId)
+    .eq("org_id", orgId)
     .single();
 
   if (fetchError || !existingTask) {
     throw new Error("Task not found");
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user || existingTask.created_by !== user.id) {
-    throw new Error("Unauthorized");
   }
 
   // Delete
@@ -254,23 +238,16 @@ export async function deleteTask(taskId: string) {
 export async function archiveTask(taskId: string) {
   const supabase = createClient();
 
-  // Verify ownership
+  const orgId = await getCurrentOrgId();
   const { data: existingTask, error: fetchError } = await supabase
     .from("tasks")
-    .select("id, created_by")
+    .select("id")
     .eq("id", taskId)
+    .eq("org_id", orgId)
     .single();
 
   if (fetchError || !existingTask) {
     throw new Error("Task not found");
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user || existingTask.created_by !== user.id) {
-    throw new Error("Unauthorized");
   }
 
   // Archive
@@ -283,6 +260,17 @@ export async function archiveTask(taskId: string) {
     .eq("id", taskId);
 
   if (error) throw error;
+}
+
+export async function getOrgMembers(): Promise<Assignee[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, avatar_url")
+    .order("full_name", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
 }
 
 // =====================================================

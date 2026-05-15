@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, MoreHorizontal } from "lucide-react";
+import { CalendarIcon, Check, MoreHorizontal, User } from "lucide-react";
 import { DeleteTaskModal } from "./DeleteTaskModal";
 
 import {
@@ -50,7 +50,9 @@ import { cn } from "@/shared/utils/utils";
 import { useUpdateTask } from "@/modules/tasks/hooks/useTasks";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useAddTagToTask, useRemoveTagFromTask } from "@/modules/tasks/hooks/useTags";
+import { useOrgMembers } from "@/modules/tasks/hooks/useOrgMembers";
 import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
+import { MemberAvatar } from "@/modules/tasks/components/shared/MemberAvatar";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
 import { StatusIcon } from "@/shared/components/icons/StatusIcon";
 import { useGoals } from "@/modules/goals/hooks/useGoals";
@@ -64,6 +66,7 @@ const editTaskSchema = z.object({
   status_id: z.string().min(1, "Status is required"),
   estimated_hours: z.number().min(0).optional().nullable(),
   goal_id: z.string().optional().nullable(),
+  assignee_id: z.string().optional().nullable(),
 });
 
 type EditTaskFormData = z.infer<typeof editTaskSchema>;
@@ -76,6 +79,7 @@ interface EditTaskModalProps {
 
 export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const updateTaskMutation = useUpdateTask();
@@ -83,9 +87,8 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
   const addTagMutation = useAddTagToTask(task.project_id);
   const removeTagMutation = useRemoveTagFromTask(task.project_id);
   const { data: goals = [] } = useGoals();
+  const { data: orgMembers = [] } = useOrgMembers();
 
-  // Track last saved values to avoid duplicate/unnecessary saves
-  // due_date is normalized via toISOString() to match autoSave's computed value
   const lastSaved = useRef({
     title: task.title,
     description: task.description ?? null,
@@ -94,6 +97,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
     status_id: task.status_id,
     estimated_hours: task.estimated_hours ?? null,
     goal_id: task.goal_id ?? null,
+    assignee_id: task.assignee_id ?? null,
   });
 
   const form = useForm<EditTaskFormData>({
@@ -107,10 +111,10 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
       status_id: task.status_id,
       estimated_hours: task.estimated_hours || null,
       goal_id: task.goal_id ?? null,
+      assignee_id: task.assignee_id ?? null,
     },
   });
 
-  // Reset form + lastSaved ref when modal opens with new task data
   useEffect(() => {
     if (open) {
       form.reset({
@@ -121,6 +125,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
         status_id: task.status_id,
         estimated_hours: task.estimated_hours || null,
         goal_id: task.goal_id ?? null,
+        assignee_id: task.assignee_id ?? null,
       });
       lastSaved.current = {
         title: task.title,
@@ -130,11 +135,11 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
         status_id: task.status_id,
         estimated_hours: task.estimated_hours ?? null,
         goal_id: task.goal_id ?? null,
+        assignee_id: task.assignee_id ?? null,
       };
     }
-  }, [open, task.id]); // Only depend on open and task.id to avoid infinite loops
+  }, [open, task.id]);
 
-  // Auto-save — only fires if values actually changed since last save
   const autoSave = async () => {
     const isValid = await form.trigger();
     if (!isValid) return;
@@ -147,6 +152,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
     const status_id = values.status_id;
     const estimated_hours = values.estimated_hours || null;
     const goal_id = values.goal_id ?? null;
+    const assignee_id = values.assignee_id ?? null;
 
     const hasChanges =
       title !== lastSaved.current.title ||
@@ -155,12 +161,12 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
       due_date !== lastSaved.current.due_date ||
       status_id !== lastSaved.current.status_id ||
       estimated_hours !== lastSaved.current.estimated_hours ||
-      goal_id !== lastSaved.current.goal_id;
+      goal_id !== lastSaved.current.goal_id ||
+      assignee_id !== lastSaved.current.assignee_id;
 
     if (!hasChanges) return;
 
-    // Update ref before mutating so re-entrant calls don't double-save
-    lastSaved.current = { title, description, priority, due_date, status_id, estimated_hours, goal_id };
+    lastSaved.current = { title, description, priority, due_date, status_id, estimated_hours, goal_id, assignee_id };
 
     updateTaskMutation.mutate({
       id: task.id,
@@ -172,6 +178,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
       status_id,
       estimated_hours,
       goal_id,
+      assignee_id,
     });
   };
 
@@ -239,9 +246,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-text-secondary">
-                    Title
-                  </FormLabel>
+                  <FormLabel className="text-xs font-medium text-text-secondary">Title</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -261,9 +266,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-medium text-text-secondary">
-                    Description
-                  </FormLabel>
+                  <FormLabel className="text-xs font-medium text-text-secondary">Description</FormLabel>
                   <FormControl>
                     <Textarea
                       {...field}
@@ -284,9 +287,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-text-secondary">
-                      Priority
-                    </FormLabel>
+                    <FormLabel className="text-xs font-medium text-text-secondary">Priority</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
@@ -314,9 +315,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                 name="status_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-text-secondary">
-                      Status
-                    </FormLabel>
+                    <FormLabel className="text-xs font-medium text-text-secondary">Status</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
@@ -340,7 +339,76 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
               />
             </div>
 
-            {/* Tags — immediate mutations, outside form auto-save */}
+            {/* Assignee */}
+            <FormField
+              control={form.control}
+              name="assignee_id"
+              render={({ field }) => {
+                const selectedMember = orgMembers.find((m) => m.id === field.value) ?? null;
+                return (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium text-text-secondary">Assignee</FormLabel>
+                    <Popover open={isAssigneeOpen} onOpenChange={setIsAssigneeOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <button
+                            type="button"
+                            className="w-full h-9 px-3 flex items-center gap-2 rounded-lg border border-border-default bg-surface-overlay hover:bg-surface-2 text-sm transition-colors"
+                          >
+                            {selectedMember ? (
+                              <>
+                                <MemberAvatar member={selectedMember} size="sm" />
+                                <span className="text-text-primary">
+                                  {selectedMember.full_name ?? selectedMember.email}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <User size={14} className="text-text-tertiary shrink-0" />
+                                <span className="text-text-tertiary">Unassigned</span>
+                              </>
+                            )}
+                          </button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-56 p-1 bg-surface-3 border-border-strong">
+                        <div className="space-y-0.5">
+                          <button
+                            type="button"
+                            onClick={() => { field.onChange(null); setIsAssigneeOpen(false); }}
+                            className={cn(
+                              "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors",
+                              !field.value ? "text-text-primary bg-surface-2" : "text-text-secondary hover:bg-surface-2"
+                            )}
+                          >
+                            <User size={14} className="shrink-0" />
+                            <span>Unassigned</span>
+                            {!field.value && <Check size={12} className="ml-auto" />}
+                          </button>
+                          {orgMembers.map((member) => (
+                            <button
+                              key={member.id}
+                              type="button"
+                              onClick={() => { field.onChange(member.id); setIsAssigneeOpen(false); }}
+                              className={cn(
+                                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors",
+                                field.value === member.id ? "text-text-primary bg-surface-2" : "text-text-secondary hover:bg-surface-2"
+                              )}
+                            >
+                              <MemberAvatar member={member} size="sm" />
+                              <span>{member.full_name ?? member.email}</span>
+                              {field.value === member.id && <Check size={12} className="ml-auto" />}
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </FormItem>
+                );
+              }}
+            />
+
+            {/* Tags */}
             <TagSelector
               selectedTags={task.tags}
               onAdd={(tagId) => addTagMutation.mutate({ taskId: task.id, tagId })}
@@ -387,9 +455,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                 name="due_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-text-secondary">
-                      Due date
-                    </FormLabel>
+                    <FormLabel className="text-xs font-medium text-text-secondary">Due date</FormLabel>
                     <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -402,28 +468,16 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                             )}
                           >
                             <CalendarIcon size={14} className="shrink-0" />
-                            {field.value ? (
-                              format(field.value, "MMM d, yyyy")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
+                            {field.value ? format(field.value, "MMM d, yyyy") : <span>Pick a date</span>}
                           </button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent
-                        className="w-auto p-0 bg-surface-3 border-border-strong"
-                        align="start"
-                      >
+                      <PopoverContent className="w-auto p-0 bg-surface-3 border-border-strong" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value ?? undefined}
-                          onSelect={(date) => {
-                            field.onChange(date ?? null);
-                            setIsCalendarOpen(false);
-                          }}
-                          disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
+                          onSelect={(date) => { field.onChange(date ?? null); setIsCalendarOpen(false); }}
+                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                           initialFocus
                           className="bg-surface-3"
                         />
@@ -439,9 +493,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
                 name="estimated_hours"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-text-secondary">
-                      Estimated hours
-                    </FormLabel>
+                    <FormLabel className="text-xs font-medium text-text-secondary">Estimated hours</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
@@ -471,9 +523,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
         open={isDeleteModalOpen}
         onOpenChange={(open) => {
           setIsDeleteModalOpen(open);
-          if (!open && !isDeleteModalOpen) {
-            onOpenChange(false);
-          }
+          if (!open && !isDeleteModalOpen) onOpenChange(false);
         }}
         taskId={task.id}
         taskTitle={task.title}

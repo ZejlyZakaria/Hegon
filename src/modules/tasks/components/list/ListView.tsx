@@ -27,6 +27,7 @@ export function ListView() {
         const ids = task.tags?.map((t) => t.id) || [];
         if (!filters.tags.some((id: string) => ids.includes(id))) return false;
       }
+      if (filters.assignees.length && !filters.assignees.includes(task.assignee_id ?? "")) return false;
       return true;
     });
   }, [tasks, filters]);

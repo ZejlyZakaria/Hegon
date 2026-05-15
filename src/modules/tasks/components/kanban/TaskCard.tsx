@@ -5,7 +5,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { format, isPast, differenceInDays } from "date-fns";
 import { useState } from "react";
-import { AlertTriangle, Calendar, GripVertical, MoreHorizontal, Pencil, Tag, Trash2 } from "lucide-react";
+import { AlertTriangle, Calendar, GripVertical, MoreHorizontal, Pencil, Tag, Trash2, User } from "lucide-react";
+import { MemberAvatar } from "../shared/MemberAvatar";
 import { cn } from "@/shared/utils/utils";
 import type { Task } from "@/modules/tasks/types";
 import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
@@ -121,15 +122,24 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
           </div>
         </div>
 
-        {dueDate && (
-          <div
-            className="inline-flex items-center gap-1 text-[10px] font-medium"
-            style={{ color: dueTone }}
-          >
-            {overdue ? <AlertTriangle size={10} /> : <Calendar size={10} />}
-            {format(dueDate, "MMM d")}
-          </div>
-        )}
+        <div className="flex items-center gap-1.5 ml-auto shrink-0">
+          {dueDate && (
+            <div
+              className="inline-flex items-center gap-1 text-[10px] font-medium"
+              style={{ color: dueTone }}
+            >
+              {overdue ? <AlertTriangle size={10} /> : <Calendar size={10} />}
+              {format(dueDate, "MMM d")}
+            </div>
+          )}
+          {task.assignee ? (
+            <MemberAvatar member={task.assignee} size="sm" />
+          ) : (
+            <div className="w-5 h-5 rounded-full border border-dashed flex items-center justify-center" style={{ borderColor: "var(--color-border-subtle)" }}>
+              <User size={10} style={{ color: "var(--color-text-tertiary)" }} />
+            </div>
+          )}
+        </div>
       </div>
 
       {!isOverlay && (
