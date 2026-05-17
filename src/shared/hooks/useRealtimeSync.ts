@@ -36,12 +36,12 @@ export function useRealtimeSync({
 
     const channel = supabase
       .channel(`${channelName}-${instanceId}`)
-      .on<Record<string, unknown>>(
-        "postgres_changes",
-        { event: "*", schema, table, ...(filter ? { filter } : {}) },
-        (payload) => { callbackRef.current(payload); }
+      .on(
+        "postgres_changes" as never,
+        { event: "*", schema, table, ...(filter ? { filter } : {}) } as never,
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => { callbackRef.current(payload); }
       )
-      .subscribe((status, err) => {
+      .subscribe((status: string, err?: Error) => {
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           console.warn(`[useRealtimeSync] "${channelName}" status=${status}`, err);
         }

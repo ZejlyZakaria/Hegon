@@ -18,14 +18,14 @@ export function useRealtimeStatuses(projectId: string | null) {
       const key = STATUS_KEYS.byProject(projectId);
 
       if (payload.eventType === "INSERT") {
-        const newStatus = payload.new as Status;
+        const newStatus = payload.new as unknown as Status;
         queryClient.setQueryData<Status[]>(key, (old) => {
           if (!old) return old;
           if (old.some((s) => s.id === newStatus.id)) return old;
           return [...old, newStatus].sort((a, b) => a.position - b.position);
         });
       } else if (payload.eventType === "UPDATE") {
-        const updated = payload.new as Status;
+        const updated = payload.new as unknown as Status;
         queryClient.setQueryData<Status[]>(key, (old) => {
           if (!old) return old;
           return old.map((s) => (s.id === updated.id ? { ...s, ...updated } : s));

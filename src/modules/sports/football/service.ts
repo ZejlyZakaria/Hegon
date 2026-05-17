@@ -133,7 +133,7 @@ export async function getFootballPageData(): Promise<any> {
     getCrestsByExternalIds(allExternalIds),
     bestXiData?.id
       ? supabase.schema("sport").from("football_best_xi_players")
-          .select("*").eq("best_xi_id", bestXiData.id).then((r) => r.data ?? [])
+          .select("*").eq("best_xi_id", bestXiData.id).then((r: { data: unknown[] | null }) => r.data ?? [])
       : Promise.resolve([]),
   ]);
 

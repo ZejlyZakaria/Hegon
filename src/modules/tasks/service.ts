@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type {
@@ -27,13 +26,16 @@ export async function getTasks(projectId: string): Promise<Task[]> {
 
   if (error) throw error;
 
-  const tasks = (data || []).map((task: any) => ({
+  type TaskRow = { assignee_id: string | null; task_tags?: { tag: unknown }[]; [key: string]: unknown };
+  type ProfileRow = { id: string; email: string; full_name: string | null; avatar_url: string | null };
+
+  const tasks = (data || []).map((task: TaskRow) => ({
     ...task,
-    tags: task.task_tags?.map((tt: any) => tt.tag).filter(Boolean) || [],
+    tags: task.task_tags?.map((tt: { tag: unknown }) => tt.tag).filter(Boolean) || [],
   }));
 
   // Fetch assignee profiles in a single query
-  const assigneeIds = [...new Set(tasks.filter((t) => t.assignee_id).map((t) => t.assignee_id as string))];
+  const assigneeIds = [...new Set(tasks.filter((t: TaskRow) => t.assignee_id).map((t: TaskRow) => t.assignee_id as string))];
   if (assigneeIds.length === 0) return tasks as Task[];
 
   const { data: profiles } = await supabase
@@ -41,9 +43,9 @@ export async function getTasks(projectId: string): Promise<Task[]> {
     .select("id, email, full_name, avatar_url")
     .in("id", assigneeIds);
 
-  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+  const profileMap = new Map(((profiles ?? []) as ProfileRow[]).map((p: ProfileRow) => [p.id, p]));
 
-  return tasks.map((task) => ({
+  return tasks.map((task: TaskRow) => ({
     ...task,
     assignee: task.assignee_id ? (profileMap.get(task.assignee_id) ?? null) : null,
   })) as Task[];
@@ -377,15 +379,17 @@ export async function getWorkspaceMembers(workspaceId: string): Promise<import("
   if (error) throw error;
   if (!members || members.length === 0) return [];
 
-  const userIds = members.map((m) => m.user_id);
+  type WMemberRow = { workspace_id: string; user_id: string; role: string; invited_by: string | null; created_at: string };
+  type WProfileRow = { id: string; email: string; full_name: string | null; avatar_url: string | null };
+  const userIds = (members as WMemberRow[]).map((m: WMemberRow) => m.user_id);
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, email, full_name, avatar_url")
     .in("id", userIds);
 
-  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+  const profileMap = new Map(((profiles ?? []) as WProfileRow[]).map((p: WProfileRow) => [p.id, p]));
 
-  return members.map((m) => ({
+  return (members as WMemberRow[]).map((m: WMemberRow) => ({
     ...m,
     profile: profileMap.get(m.user_id) ?? null,
   }));

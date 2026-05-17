@@ -514,7 +514,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     import("@/infrastructure/supabase/client").then(({ createClient }) => {
-      createClient().auth.getUser().then(({ data }) => {
+      createClient().auth.getUser().then(({ data }: { data: { user: { email?: string } | null } }) => {
         setUserEmail(data.user?.email ?? null);
       });
     });

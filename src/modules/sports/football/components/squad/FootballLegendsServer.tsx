@@ -16,7 +16,7 @@ export default function FootballLegendsServer({ userId }: { userId: string }) {
       .select("*")
       .eq("user_id", userId)
       .order("display_order", { ascending: true })
-      .then(({ data }) => setLegends(data ?? []));
+      .then(({ data }: { data: unknown[] | null }) => setLegends((data as never) ?? []));
   }, [userId]);
 
   if (legends === null) return null;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@/infrastructure/supabase/client";
 import { useDashboardData } from "@/modules/dashboard/hooks/useDashboardData";
 import DashboardHeader from "./header/DashboardHeader";
@@ -21,7 +22,7 @@ export default function DashboardContent() {
   useEffect(() => {
     createClient()
       .auth.getSession()
-      .then(({ data: { session } }) => {
+      .then(({ data: { session } }: { data: { session: Session | null } }) => {
         const user = session?.user;
         const name =
           user?.user_metadata?.full_name?.split(" ")[0] ??

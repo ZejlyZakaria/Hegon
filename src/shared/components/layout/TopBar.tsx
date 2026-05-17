@@ -230,7 +230,7 @@ export default function TopBar() {
   useEffect(() => {
     createClient()
       .auth.getUser()
-      .then(({ data }) => {
+      .then(({ data }: { data: { user: { user_metadata?: { full_name?: string; name?: string; avatar_url?: string }; email?: string } | null } }) => {
         const user = data.user;
         if (!user) return;
         const name =

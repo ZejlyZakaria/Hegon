@@ -14,15 +14,17 @@ export async function getOrgMembers(): Promise<OrgMember[]> {
   if (error) throw error;
   if (!members || members.length === 0) return [];
 
-  const userIds = members.map((m) => m.user_id);
+  type MemberRow = { org_id: string; user_id: string; role: "owner" | "admin" | "member" | "viewer"; created_at: string };
+  type ProfileRow = { id: string; email: string; full_name: string | null; avatar_url: string | null };
+  const userIds = (members as MemberRow[]).map((m: MemberRow) => m.user_id);
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, email, full_name, avatar_url")
     .in("id", userIds);
 
-  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+  const profileMap = new Map(((profiles ?? []) as ProfileRow[]).map((p: ProfileRow) => [p.id, p]));
 
-  return members.map((m) => ({
+  return (members as MemberRow[]).map((m: MemberRow) => ({
     ...m,
     profile: profileMap.get(m.user_id) ?? null,
   }));

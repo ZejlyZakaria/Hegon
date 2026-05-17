@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import type { AuthChangeEvent } from "@supabase/supabase-js";
 import { createClient } from "@/infrastructure/supabase/client";
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
@@ -25,7 +26,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const supabase = createClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent) => {
       if (event === "SIGNED_OUT") {
         queryClient.clear();
       }

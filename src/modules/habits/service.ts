@@ -232,7 +232,7 @@ export async function getHeatmapData(from: string, to: string): Promise<HeatmapD
 
   if (!habits || habits.length === 0) return [];
 
-  const habitIds = habits.map((h) => h.id);
+  const habitIds = (habits as { id: string }[]).map((h: { id: string }) => h.id);
 
   const { data, error } = await supabase
     .from("habit_completions")
@@ -244,10 +244,12 @@ export async function getHeatmapData(from: string, to: string): Promise<HeatmapD
   if (error) throw error;
 
   // Group by date and count
-  const grouped = (data ?? []).reduce<Record<string, number>>((acc, row) => {
+  type CompletionRow = { completed_date: string };
+  const rows = (data ?? []) as CompletionRow[];
+  const grouped: Record<string, number> = rows.reduce((acc: Record<string, number>, row: CompletionRow) => {
     acc[row.completed_date] = (acc[row.completed_date] ?? 0) + 1;
     return acc;
-  }, {});
+  }, {} as Record<string, number>);
 
   return Object.entries(grouped).map(([date, count]) => ({ date, count }));
 }

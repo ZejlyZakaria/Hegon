@@ -105,7 +105,7 @@ export async function getRecentRaces(limit: number = 3): Promise<any[]> {
   }
 
   const results = await Promise.all(
-    races.map(async (race) => {
+    races.map(async (race: { id: string; [key: string]: unknown }) => {
       const [podiumRes, fastestLapRes] = await Promise.all([
         supabase
           .schema("sport")

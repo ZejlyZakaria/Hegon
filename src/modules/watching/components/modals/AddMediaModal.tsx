@@ -112,7 +112,7 @@ export default function AddMediaModal({
       .not("priority", "is", null);
 
     if (!error && data) {
-      setTakenPriorities(data.map((item) => item.priority));
+      setTakenPriorities(data.map((item: { priority: number }) => item.priority));
     }
   }, [listContext, defaultType, supabase]);
 

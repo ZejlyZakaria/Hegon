@@ -331,7 +331,7 @@ export function TasksSidebar() {
 
   useEffect(() => {
     import("@/infrastructure/supabase/client").then(({ createClient }) => {
-      createClient().auth.getUser().then(({ data }) => {
+      createClient().auth.getUser().then(({ data }: { data: { user: { id: string } | null } }) => {
         setCurrentUserId(data.user?.id ?? null);
       });
     });

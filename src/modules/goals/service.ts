@@ -109,7 +109,7 @@ export async function recalculateProgress(goalId: string): Promise<number> {
   if (error) throw error;
   if (!tasks || tasks.length === 0) return 0;
 
-  const completed = tasks.filter((t) => t.completed_at !== null).length;
+  const completed = tasks.filter((t: { completed_at: string | null }) => t.completed_at !== null).length;
   const progress = Math.round((completed / tasks.length) * 100);
 
   await supabase
@@ -317,7 +317,8 @@ export async function getLinkedHabits(goalId: string): Promise<LinkedHabit[]> {
   if (error) throw error;
   if (!habits || habits.length === 0) return [];
 
-  const habitIds = habits.map((h) => h.id);
+  type HabitRow = { id: string; title: string; icon: string; color: string; frequency: string };
+  const habitIds = (habits as HabitRow[]).map((h: HabitRow) => h.id);
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const from30 = new Date();
@@ -338,10 +339,10 @@ export async function getLinkedHabits(goalId: string): Promise<LinkedHabit[]> {
       .lte("completed_date", todayStr),
   ]);
 
-  const todaySet = new Set((todayRes.data ?? []).map((c) => c.habit_id));
+  const todaySet = new Set((todayRes.data ?? []).map((c: { habit_id: string }) => c.habit_id));
   const recent = recentRes.data ?? [];
 
-  return habits.map((h) => ({
+  return (habits as HabitRow[]).map((h: HabitRow) => ({
     id:              h.id,
     title:           h.title,
     icon:            h.icon,

@@ -123,7 +123,7 @@ export async function getStreak(): Promise<JournalStreak> {
 
   if (error) throw error;
 
-  const dates = new Set((data ?? []).map((r) => r.entry_date));
+  const dates = new Set((data ?? []).map((r: { entry_date: string }) => r.entry_date));
 
   const todayStr = toLocalDate();
   const yesterday = new Date();
