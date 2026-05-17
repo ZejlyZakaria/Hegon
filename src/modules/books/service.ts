@@ -74,19 +74,20 @@ export async function getBookStats(): Promise<BookStats> {
     .eq("org_id", orgId);
 
   if (error) throw error;
-  const books = data ?? [];
+  type BookStatsRow = Pick<Book, "status" | "rating" | "finished_at">;
+  const books = (data ?? []) as BookStatsRow[];
 
-  const reading = books.filter((b) => b.status === "reading").length;
-  const want_to_read = books.filter((b) => b.status === "want_to_read").length;
+  const reading = books.filter((b: BookStatsRow) => b.status === "reading").length;
+  const want_to_read = books.filter((b: BookStatsRow) => b.status === "want_to_read").length;
   const completed_this_year = books.filter(
-    (b) => b.status === "read" && b.finished_at && b.finished_at >= thisYearStart
+    (b: BookStatsRow) => b.status === "read" && b.finished_at && b.finished_at >= thisYearStart
   ).length;
 
-  const rated = books.filter((b) => b.status === "read" && b.rating !== null);
+  const rated = books.filter((b: BookStatsRow) => b.status === "read" && b.rating !== null);
   const avg_rating =
     rated.length > 0
       ? Math.round(
-          (rated.reduce((sum, b) => sum + b.rating!, 0) / rated.length) * 10
+          (rated.reduce((sum: number, b: BookStatsRow) => sum + b.rating!, 0) / rated.length) * 10
         ) / 10
       : null;
 

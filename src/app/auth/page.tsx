@@ -14,6 +14,7 @@ import {
   Grid3x3,
   Sparkles,
 } from "lucide-react";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/infrastructure/supabase/client";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -307,7 +308,7 @@ function AuthPageInner() {
   // We listen and forward to finalize so the middleware timing issue is avoided.
   useEffect(() => {
     if (urlError) return;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session && !hasRedirected.current) {
         hasRedirected.current = true;
         router.replace(`/auth/finalize?target=${encodeURIComponent(next)}`);

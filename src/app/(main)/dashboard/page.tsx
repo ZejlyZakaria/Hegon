@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/infrastructure/supabase/client";
 import DashboardContent from "@/modules/dashboard/components/DashboardContent";
 
@@ -12,7 +13,7 @@ export default function DashboardPage() {
     const supabase = createClient();
 
     // Auth + onboarding check — non-blocking for render
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }: { data: { session: Session | null } }) => {
       if (!session?.user) {
         router.replace("/auth");
         return;
@@ -26,7 +27,7 @@ export default function DashboardPage() {
       if (!workspace) router.replace("/onboarding");
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent) => {
       if (event === "SIGNED_OUT") router.replace("/auth");
     });
 
