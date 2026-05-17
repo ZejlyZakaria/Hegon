@@ -41,7 +41,7 @@ import { cn } from "@/shared/utils/utils";
 
 import { useCreateTask } from "@/modules/tasks/hooks/useTasks";
 import { useAddTagToTask } from "@/modules/tasks/hooks/useTags";
-import { useOrgMembers } from "@/modules/tasks/hooks/useOrgMembers";
+import { useProjectAssignees } from "@/modules/tasks/hooks/useOrgMembers";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
 import { MemberAvatar } from "@/modules/tasks/components/shared/MemberAvatar";
@@ -91,7 +91,7 @@ export function CreateTaskModal({
   const createTaskMutation = useCreateTask();
   const addTagMutation = useAddTagToTask(projectId);
   const { data: goals = [] } = useGoals();
-  const { data: orgMembers = [] } = useOrgMembers();
+  const { data: orgMembers = [] } = useProjectAssignees(projectId);
   const currentUserId = useCurrentUserId();
 
   const form = useForm<CreateTaskFormData>({
@@ -374,6 +374,7 @@ export function CreateTaskModal({
             />
 
             <TagSelector
+              projectId={projectId}
               selectedIds={selectedTagIds}
               onChange={setSelectedTagIds}
             />

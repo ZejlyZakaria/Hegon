@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/infrastructure/supabase/client";
 import * as TaskService from "../service";
 import { WORKSPACE_KEYS } from "./query-keys";
 import { toast } from "@/shared/utils/toast";
@@ -11,10 +10,7 @@ import { toast } from "@/shared/utils/toast";
 export function useWorkspaces(userId?: string) {
   return useQuery({
     queryKey: WORKSPACE_KEYS.lists(),
-    queryFn: async () => {
-      const id = userId || (await createClient().auth.getUser()).data.user?.id || "";
-      return TaskService.getWorkspaces(id);
-    },
+    queryFn: () => TaskService.getWorkspaces(),
     enabled: userId !== undefined ? !!userId : true,
     staleTime: 1000 * 60 * 10,
   });

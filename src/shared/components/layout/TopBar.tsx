@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Bell, Sun, Moon, LogOut, Settings } from "lucide-react";
+import { Search, Bell, Sun, Moon, LogOut, Settings, Check, Building2 } from "lucide-react";
 import { createClient } from "@/infrastructure/supabase/client";
 import { useTheme } from "next-themes";
 import { signOut } from "@/infrastructure/auth/actions";
 import { useCommandCenter } from "@/modules/command-center/store";
 import { cn } from "@/shared/utils/utils";
+import { useOrgStore } from "@/shared/stores/useOrgStore";
 
 // ─── breadcrumb ───────────────────────────────────────────────────────────────
 
@@ -80,6 +81,13 @@ function ProfileMenu({
   const [pos, setPos] = useState({ top: 0, right: 0 });
   const { theme, setTheme } = useTheme();
   const router = useRouter();
+  const { orgId, orgs, setOrg } = useOrgStore();
+
+  const handleSwitchOrg = (id: string, name: string) => {
+    setOrg(id, name);
+    router.refresh();
+    onClose();
+  };
 
   useEffect(() => {
     if (!open || !anchorRef.current) return;
@@ -116,13 +124,40 @@ function ProfileMenu({
             )}>
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                <img
+                  src={avatarUrl}
+                  alt="avatar"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  className="w-full h-full object-cover"
+                />
               ) : "Z"}
             </div>
             <p className="text-[11px] text-text-tertiary truncate">
               {userEmail ?? "—"}
             </p>
           </div>
+
+          {orgs.length > 1 && (
+            <div className="border-b border-border-subtle px-2 py-1.5">
+              <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+                Workspaces
+              </p>
+              {orgs.map((org) => (
+                <div
+                  key={org.id}
+                  onClick={() => handleSwitchOrg(org.id, org.name)}
+                  className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Building2 size={13} className="text-text-tertiary shrink-0" />
+                    <span className="text-[13px] text-text-secondary truncate max-w-32.5">{org.name}</span>
+                  </div>
+                  {orgId === org.id && <Check size={12} className="text-violet-400 shrink-0" />}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="p-1.5">
             <div
@@ -258,7 +293,13 @@ export default function TopBar() {
             >
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={userName ?? "avatar"} className="w-full h-full object-cover" />
+                <img
+                  src={avatarUrl}
+                  alt={userName ?? "avatar"}
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 initial
               )}

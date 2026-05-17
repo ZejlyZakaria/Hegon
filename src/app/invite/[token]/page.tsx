@@ -47,6 +47,10 @@ export default function InvitePage() {
     try {
       await OrgService.acceptInvitation(token);
       setState("accepted");
+      // refresh() avant push() pour que le middleware/RSC voient
+      // la nouvelle ligne workspace_members et que /pro/tasks rende
+      // le sidebar complet sans flash vide.
+      router.refresh();
       setTimeout(() => router.push("/pro/tasks"), 2000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";

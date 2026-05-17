@@ -1,7 +1,6 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronRight,
   Plus,
@@ -10,12 +9,14 @@ import {
   PanelLeftClose,
   Pencil,
   Trash2,
-  Tag,
+  Settings,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTasksStore } from "@/modules/tasks/store";
 import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
 import { useProjects } from "@/modules/tasks/hooks/useProjects";
+import { useRealtimeProjects } from "@/modules/tasks/hooks/useRealtimeProjects";
+import { useRealtimeWorkspaces } from "@/modules/tasks/hooks/useRealtimeWorkspaces";
 import { cn } from "@/shared/utils/utils";
 import {
   DropdownMenu,
@@ -28,34 +29,49 @@ import { WorkspaceModal } from "@/modules/tasks/components/modals/WorkspaceModal
 import { ProjectModal } from "@/modules/tasks/components/modals/ProjectModal";
 import { DeleteWorkspaceModal } from "@/modules/tasks/components/modals/DeleteWorkspaceModal";
 import { DeleteProjectModal } from "@/modules/tasks/components/modals/DeleteProjectModal";
-import { ManageTagsModal } from "@/modules/tasks/components/modals/ManageTagsModal";
+import { WorkspaceInvitePanel } from "@/modules/tasks/components/panels/WorkspaceInvitePanel";
 import type { Workspace, Project } from "@/modules/tasks/types";
 
 interface WorkspaceItemProps {
   workspace: Workspace;
   isExpanded: boolean;
   onToggle: () => void;
+  currentUserId: string | null;
 }
 
 function WorkspaceItem({
   workspace,
   isExpanded,
   onToggle,
+  currentUserId,
 }: WorkspaceItemProps) {
   const { selectedProjectId, setSelectedProjectId } = useTasksStore();
   const { data: projects, isLoading } = useProjects(workspace.id);
+  useRealtimeProjects(workspace.id);
 
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+  const [invitePanelOpen, setInvitePanelOpen] = useState(false);
+
+  const isOwner = workspace.user_id === currentUserId;
 
   useEffect(() => {
     if (!selectedProjectId && projects && projects.length > 0) {
       setSelectedProjectId(projects[0].id);
     }
   }, [projects, selectedProjectId, setSelectedProjectId]);
+
+  const hasAutoExpandedRef = useRef(false);
+  useEffect(() => {
+    if (hasAutoExpandedRef.current) return;
+    if (!projects || !selectedProjectId) return;
+    if (!projects.some((p) => p.id === selectedProjectId)) return;
+    hasAutoExpandedRef.current = true;
+    if (!isExpanded) onToggle();
+  }, [projects, selectedProjectId, isExpanded, onToggle]);
 
   return (
     <div className="space-y-0.5">
@@ -118,14 +134,23 @@ function WorkspaceItem({
               New project
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setRenameOpen(true)} className="gap-2 text-xs">
-              <Pencil size={13} />
-              Rename
+            <DropdownMenuItem onClick={() => setInvitePanelOpen(true)} className="gap-2 text-xs">
+              <Settings size={13} />
+              Workspace settings
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="gap-2 text-xs text-red-400">
-              <Trash2 size={13} />
-              Delete
-            </DropdownMenuItem>
+            {isOwner && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setRenameOpen(true)} className="gap-2 text-xs">
+                  <Pencil size={13} />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="gap-2 text-xs text-red-400">
+                  <Trash2 size={13} />
+                  Delete
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -145,7 +170,7 @@ function WorkspaceItem({
             <div
               key={project.id}
               className={cn(
-                "group flex h-8 items-center gap-2 rounded-md px-2 text-sm transition-colors duration-100",
+                "group flex h-7 items-center gap-2 rounded-md px-2 text-xs transition-colors duration-100",
                 selectedProjectId === project.id && ""
               )}
               style={{
@@ -175,7 +200,7 @@ function WorkspaceItem({
                 className="flex min-w-0 flex-1 items-center gap-2"
               >
                 <Folder
-                  size={14}
+                  size={12}
                   className="shrink-0"
                   style={{
                     color:
@@ -184,7 +209,7 @@ function WorkspaceItem({
                         : "var(--color-text-tertiary)",
                   }}
                 />
-                <span className="truncate text-left text-sm">{project.name}</span>
+                <span className="truncate text-left text-xs">{project.name}</span>
               </button>
 
               <div className="flex shrink-0 items-center gap-1">
@@ -230,7 +255,7 @@ function WorkspaceItem({
           <button
             type="button"
             onClick={() => setCreateProjectOpen(true)}
-            className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-sm transition-colors duration-100"
+            className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs transition-colors duration-100"
             style={{ color: "var(--color-text-tertiary)" }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
@@ -241,12 +266,18 @@ function WorkspaceItem({
               e.currentTarget.style.color = "var(--color-text-tertiary)";
             }}
           >
-            <Plus size={14} />
+            <Plus size={12} />
             <span>New Project</span>
           </button>
         </div>
       )}
 
+      <WorkspaceInvitePanel
+        workspace={workspace}
+        currentUserId={currentUserId}
+        open={invitePanelOpen}
+        onClose={() => setInvitePanelOpen(false)}
+      />
       <WorkspaceModal
         open={renameOpen}
         onOpenChange={setRenameOpen}
@@ -294,14 +325,27 @@ export function TasksSidebar() {
   const { data: workspaces } = useWorkspaces();
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(new Set());
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
-  const [manageTagsOpen, setManageTagsOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useRealtimeWorkspaces(currentUserId);
 
   useEffect(() => {
+    import("@/infrastructure/supabase/client").then(({ createClient }) => {
+      createClient().auth.getUser().then(({ data }) => {
+        setCurrentUserId(data.user?.id ?? null);
+      });
+    });
+  }, []);
+
+  const selectedProjectId = useTasksStore((s) => s.selectedProjectId);
+
+  useEffect(() => {
+    if (selectedProjectId) return;
     const firstId = workspaces?.[0]?.id;
     if (firstId && !expandedWorkspaces.has(firstId)) {
       setExpandedWorkspaces(new Set([firstId]));
     }
-  }, [workspaces?.[0]?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [workspaces?.[0]?.id, selectedProjectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleWorkspace = (workspaceId: string) => {
     setExpandedWorkspaces((prev) => {
@@ -363,6 +407,7 @@ export function TasksSidebar() {
                 workspace={workspace}
                 isExpanded={expandedWorkspaces.has(workspace.id)}
                 onToggle={() => toggleWorkspace(workspace.id)}
+                currentUserId={currentUserId}
               />
             ))}
           </div>
@@ -391,23 +436,6 @@ export function TasksSidebar() {
               <span>New Workspace</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setManageTagsOpen(true)}
-              className="flex h-8 w-full items-center justify-center gap-2 rounded-md text-sm transition-colors duration-100"
-              style={{ color: "var(--color-text-tertiary)" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-                e.currentTarget.style.color = "var(--color-text-secondary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.color = "var(--color-text-tertiary)";
-              }}
-            >
-              <Tag size={13} />
-              <span>Manage Tags</span>
-            </button>
           </div>
         </div>
       </motion.aside>
@@ -415,10 +443,6 @@ export function TasksSidebar() {
       <WorkspaceModal
         open={createWorkspaceOpen}
         onOpenChange={setCreateWorkspaceOpen}
-      />
-      <ManageTagsModal
-        open={manageTagsOpen}
-        onOpenChange={setManageTagsOpen}
       />
     </>
   );

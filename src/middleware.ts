@@ -150,7 +150,6 @@ export async function middleware(request: NextRequest) {
     const { data: workspace } = await supabase
       .from("workspaces")
       .select("id")
-      .eq("user_id", user.id)
       .limit(1)
       .maybeSingle();
 
@@ -180,11 +179,24 @@ export async function middleware(request: NextRequest) {
   const { data: workspace } = await supabase
     .from("workspaces")
     .select("id")
-    .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
   if (!workspace && pathname !== "/onboarding") {
+    const { data: pendingInvite } = await supabase
+      .from("org_invitations")
+      .select("token")
+      .eq("email", user.email ?? "")
+      .is("used_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .not("workspace_id", "is", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (pendingInvite) {
+      return NextResponse.redirect(new URL(`/invite/${pendingInvite.token}`, request.url));
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/onboarding";
     url.searchParams.delete("next");

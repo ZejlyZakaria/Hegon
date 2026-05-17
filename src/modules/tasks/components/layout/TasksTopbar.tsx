@@ -26,8 +26,8 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Button } from "@/shared/components/ui/button";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
-import { useTags } from "@/modules/tasks/hooks/useTags";
-import { useOrgMembers } from "@/modules/tasks/hooks/useOrgMembers";
+import { useTagsForProject } from "@/modules/tasks/hooks/useTags";
+import { useProjectAssignees } from "@/modules/tasks/hooks/useOrgMembers";
 import { StatusIcon } from "../../../../shared/components/icons/StatusIcon";
 import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
 import { MemberAvatar } from "../shared/MemberAvatar";
@@ -45,8 +45,8 @@ export function TasksTopbar() {
   } = useTasksStore();
 
   const { data: statuses } = useStatuses(selectedProjectId);
-  const { data: tags } = useTags();
-  const { data: orgMembers = [] } = useOrgMembers();
+  const { data: tags } = useTagsForProject(selectedProjectId);
+  const { data: orgMembers = [] } = useProjectAssignees(selectedProjectId);
 
   const toggleTag = (tagId: string) => {
     const current = filters.tags;

@@ -73,7 +73,60 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
         </div>
       )}
 
-      <div className="pr-7">
+      {/* Top-right: assignee avatar (always) + ... menu on hover */}
+      <div className="absolute right-2 top-2 flex items-center gap-1">
+        {!isOverlay && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                className="flex h-6 w-6 items-center justify-center rounded-md opacity-0 transition-all duration-100 group-hover:opacity-100 text-text-tertiary hover:bg-surface-2 hover:text-text-primary"
+              >
+                <MoreHorizontal size={13} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-36 rounded-lg"
+              style={{
+                backgroundColor: "var(--color-surface-3)",
+                borderColor: "var(--color-border-default)",
+                color: "var(--color-text-secondary)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <DropdownMenuItem
+                className="gap-2 text-xs cursor-pointer"
+                onClick={(e) => { e.stopPropagation(); setIsEditModalOpen(true); }}
+              >
+                <Pencil size={12} />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="gap-2 text-xs cursor-pointer text-red-400 focus:text-red-300 focus:bg-red-500/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteTask.mutate({ taskId: task.id, projectId: task.project_id });
+                }}
+              >
+                <Trash2 size={12} />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {task.assignee ? (
+          <MemberAvatar member={task.assignee} size="sm" />
+        ) : (
+          <div className="w-5 h-5 rounded-full border border-dashed flex items-center justify-center" style={{ borderColor: "var(--color-border-subtle)" }}>
+            <User size={10} style={{ color: "var(--color-text-tertiary)" }} />
+          </div>
+        )}
+      </div>
+
+      <div className="pr-14">
         <h3
           className="truncate text-sm font-medium leading-tight"
           style={{
@@ -122,68 +175,17 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 ml-auto shrink-0">
-          {dueDate && (
-            <div
-              className="inline-flex items-center gap-1 text-[10px] font-medium"
-              style={{ color: dueTone }}
-            >
-              {overdue ? <AlertTriangle size={10} /> : <Calendar size={10} />}
-              {format(dueDate, "MMM d")}
-            </div>
-          )}
-          {task.assignee ? (
-            <MemberAvatar member={task.assignee} size="sm" />
-          ) : (
-            <div className="w-5 h-5 rounded-full border border-dashed flex items-center justify-center" style={{ borderColor: "var(--color-border-subtle)" }}>
-              <User size={10} style={{ color: "var(--color-text-tertiary)" }} />
-            </div>
-          )}
-        </div>
+        {dueDate && (
+          <div
+            className="inline-flex items-center gap-1 text-[10px] font-medium shrink-0"
+            style={{ color: dueTone }}
+          >
+            {overdue ? <AlertTriangle size={10} /> : <Calendar size={10} />}
+            {format(dueDate, "MMM d")}
+          </div>
+        )}
       </div>
 
-      {!isOverlay && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              onClick={(e) => e.stopPropagation()}
-              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-md opacity-0 transition-all duration-100 group-hover:opacity-100 text-text-tertiary hover:bg-surface-2 hover:text-text-primary"
-            >
-              <MoreHorizontal size={14} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="w-36 rounded-lg"
-            style={{
-              backgroundColor: "var(--color-surface-3)",
-              borderColor: "var(--color-border-default)",
-              color: "var(--color-text-secondary)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <DropdownMenuItem
-              className="gap-2 text-xs cursor-pointer"
-              onClick={(e) => { e.stopPropagation(); setIsEditModalOpen(true); }}
-            >
-              <Pencil size={12} />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="gap-2 text-xs cursor-pointer text-red-400 focus:text-red-300 focus:bg-red-500/10"
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteTask.mutate({ taskId: task.id, projectId: task.project_id });
-              }}
-            >
-              <Trash2 size={12} />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
     </div>
   );
 

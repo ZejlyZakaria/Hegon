@@ -57,8 +57,6 @@ export async function createTask(input: CreateTaskInput) {
 
   if (!user) throw new Error("Not authenticated");
 
-  const orgId = await getCurrentOrgId();
-
   // Validation
   if (!input.title || input.title.trim().length === 0) {
     throw new Error("Title is required");
@@ -84,6 +82,7 @@ export async function createTask(input: CreateTaskInput) {
 
   const newPosition = (maxPosData?.position || 0) + 1;
 
+  // org_id is derived by a BEFORE INSERT trigger from project_id → workspace.org_id
   const { data, error } = await supabase
     .from("tasks")
     .insert({
@@ -93,7 +92,6 @@ export async function createTask(input: CreateTaskInput) {
       created_by: user.id,
       assignee_id: input.assignee_id ?? user.id,
       position: newPosition,
-      org_id: orgId,
     })
     .select(
       `
@@ -122,19 +120,6 @@ export async function updateTask(task: UpdateTaskInput): Promise<Task> {
 
   if (!task.status_id) {
     throw new Error("Status is required");
-  }
-
-  // Verify task belongs to current org
-  const orgId = await getCurrentOrgId();
-  const { data: existingTask, error: fetchError } = await supabase
-    .from("tasks")
-    .select("id")
-    .eq("id", task.id)
-    .eq("org_id", orgId)
-    .single();
-
-  if (fetchError || !existingTask) {
-    throw new Error("Task not found");
   }
 
   // Resolve completed_at from the new status
@@ -178,18 +163,6 @@ export async function moveTask({
 }: MoveTaskInput) {
   const supabase = createClient();
 
-  const orgId = await getCurrentOrgId();
-  const { data: existingTask, error: fetchError } = await supabase
-    .from("tasks")
-    .select("id")
-    .eq("id", taskId)
-    .eq("org_id", orgId)
-    .single();
-
-  if (fetchError || !existingTask) {
-    throw new Error("Task not found");
-  }
-
   // Resolve completed_at from the new status
   const { data: status } = await supabase
     .from("statuses")
@@ -197,7 +170,7 @@ export async function moveTask({
     .eq("id", newStatusId)
     .single();
 
-  // Move
+  // Move — RLS enforces access control
   const { error } = await supabase
     .from("tasks")
     .update({
@@ -217,19 +190,7 @@ export async function moveTask({
 export async function deleteTask(taskId: string) {
   const supabase = createClient();
 
-  const orgId = await getCurrentOrgId();
-  const { data: existingTask, error: fetchError } = await supabase
-    .from("tasks")
-    .select("id")
-    .eq("id", taskId)
-    .eq("org_id", orgId)
-    .single();
-
-  if (fetchError || !existingTask) {
-    throw new Error("Task not found");
-  }
-
-  // Delete
+  // Delete — RLS enforces access control
   const { error } = await supabase.from("tasks").delete().eq("id", taskId);
 
   if (error) throw error;
@@ -238,19 +199,7 @@ export async function deleteTask(taskId: string) {
 export async function archiveTask(taskId: string) {
   const supabase = createClient();
 
-  const orgId = await getCurrentOrgId();
-  const { data: existingTask, error: fetchError } = await supabase
-    .from("tasks")
-    .select("id")
-    .eq("id", taskId)
-    .eq("org_id", orgId)
-    .single();
-
-  if (fetchError || !existingTask) {
-    throw new Error("Task not found");
-  }
-
-  // Archive
+  // Archive — RLS enforces access control
   const { error } = await supabase
     .from("tasks")
     .update({
@@ -271,6 +220,57 @@ export async function getOrgMembers(): Promise<Assignee[]> {
 
   if (error) throw error;
   return data ?? [];
+}
+
+export async function getProjectAssignees(projectId: string): Promise<Assignee[]> {
+  const supabase = createClient();
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("workspace_id")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (!project) return [];
+
+  const [{ data: workspace }, { data: members }] = await Promise.all([
+    supabase
+      .from("workspaces")
+      .select("user_id")
+      .eq("id", project.workspace_id)
+      .maybeSingle(),
+    supabase
+      .from("workspace_members")
+      .select("user_id")
+      .eq("workspace_id", project.workspace_id),
+  ]);
+
+  const userIds = new Set<string>();
+  if (workspace?.user_id) userIds.add(workspace.user_id);
+  for (const m of members ?? []) userIds.add(m.user_id);
+
+  if (userIds.size === 0) return [];
+
+  const { data: profiles, error } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, avatar_url")
+    .in("id", Array.from(userIds))
+    .order("full_name", { ascending: true });
+
+  if (error) throw error;
+  return profiles ?? [];
+}
+
+export async function getProfileById(userId: string): Promise<Assignee | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, avatar_url")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
 }
 
 // =====================================================
@@ -295,7 +295,6 @@ export async function getProjects(workspaceId: string) {
 
 export async function createProject(input: { workspace_id: string; name: string; description?: string | null }) {
   const supabase = createClient();
-  const orgId = await getCurrentOrgId();
 
   // Get max position in workspace
   const { data: maxPosData } = await supabase
@@ -308,15 +307,16 @@ export async function createProject(input: { workspace_id: string; name: string;
 
   const newPosition = (maxPosData?.position || 0) + 1;
 
+  // org_id derived by BEFORE INSERT trigger from workspace_id
   const { data, error } = await supabase
     .from("projects")
-    .insert({ ...input, position: newPosition, status: "active", org_id: orgId })
+    .insert({ ...input, position: newPosition, status: "active" })
     .select()
     .single();
 
   if (error) throw error;
 
-  // Auto-create default statuses for the new project
+  // Auto-create default statuses (org_id also derived by trigger from project_id)
   const defaultStatuses = [
     { name: "Backlog",     color: "#4b5563", position: 1, is_completed: false },
     { name: "To Do",       color: "#6b7280", position: 2, is_completed: false },
@@ -325,7 +325,7 @@ export async function createProject(input: { workspace_id: string; name: string;
   ];
 
   await supabase.from("statuses").insert(
-    defaultStatuses.map((s) => ({ ...s, project_id: data.id, org_id: orgId }))
+    defaultStatuses.map((s) => ({ ...s, project_id: data.id }))
   );
 
   return data as Project;
@@ -354,16 +354,92 @@ export async function deleteProject(projectId: string) {
 // WORKSPACES
 // =====================================================
 
-export async function getWorkspaces(userId: string) {
+export async function getWorkspaces() {
   const supabase = createClient();
+  // RLS retourne automatiquement : owned workspaces (org_isolation) + member workspaces (workspace_member_read)
   const { data, error } = await supabase
     .from("workspaces")
     .select("*")
-    .eq("user_id", userId)
     .order("position", { ascending: true });
 
   if (error) throw error;
   return data as Workspace[];
+}
+
+export async function getWorkspaceMembers(workspaceId: string): Promise<import("./types").WorkspaceMember[]> {
+  const supabase = createClient();
+
+  const { data: members, error } = await supabase
+    .from("workspace_members")
+    .select("workspace_id, user_id, role, invited_by, created_at")
+    .eq("workspace_id", workspaceId);
+
+  if (error) throw error;
+  if (!members || members.length === 0) return [];
+
+  const userIds = members.map((m) => m.user_id);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, avatar_url")
+    .in("id", userIds);
+
+  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+  return members.map((m) => ({
+    ...m,
+    profile: profileMap.get(m.user_id) ?? null,
+  }));
+}
+
+export async function createWorkspaceInvitation(workspaceId: string, email: string): Promise<import("./types").WorkspaceInvitation> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("org_id")
+    .eq("id", workspaceId)
+    .single();
+
+  if (!workspace) throw new Error("Workspace not found");
+
+  const { data, error } = await supabase
+    .from("org_invitations")
+    .insert({
+      org_id: workspace.org_id,
+      workspace_id: workspaceId,
+      invited_by: user.id,
+      email: email.trim().toLowerCase(),
+      role: "member",
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getWorkspaceInvitations(workspaceId: string): Promise<import("./types").WorkspaceInvitation[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("org_invitations")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function revokeWorkspaceInvitation(invitationId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("org_invitations")
+    .delete()
+    .eq("id", invitationId);
+
+  if (error) throw error;
 }
 
 export async function createWorkspace(name: string) {
@@ -416,36 +492,43 @@ export async function deleteWorkspace(workspaceId: string) {
 // TAGS
 // =====================================================
 
-export async function getTags() {
+export async function getTags(workspaceId: string) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
 
   const { data, error } = await supabase
     .from("tags")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("workspace_id", workspaceId)
     .order("name", { ascending: true });
 
   if (error) throw error;
   return data as import("./types").Tag[];
 }
 
-export async function createTag(name: string, color: string) {
+export async function createTag(workspaceId: string, name: string, color: string) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const orgId = await getCurrentOrgId();
-
+  // org_id derived by BEFORE INSERT trigger from workspace_id
   const { data, error } = await supabase
     .from("tags")
-    .insert({ name: name.trim(), color, user_id: user.id, org_id: orgId })
+    .insert({ name: name.trim(), color, user_id: user.id, workspace_id: workspaceId })
     .select()
     .single();
 
   if (error) throw error;
   return data as import("./types").Tag;
+}
+
+export async function getProjectWorkspaceId(projectId: string): Promise<string | null> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("projects")
+    .select("workspace_id")
+    .eq("id", projectId)
+    .maybeSingle();
+  return data?.workspace_id ?? null;
 }
 
 export async function deleteTag(tagId: string) {
@@ -454,12 +537,24 @@ export async function deleteTag(tagId: string) {
   if (error) throw error;
 }
 
+export async function updateTag(tagId: string, updates: { name?: string; color?: string }) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("tags")
+    .update(updates)
+    .eq("id", tagId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as import("./types").Tag;
+}
+
 export async function addTagToTask(taskId: string, tagId: string) {
   const supabase = createClient();
-  const orgId = await getCurrentOrgId();
+  // org_id derived by BEFORE INSERT trigger from task_id
   const { error } = await supabase
     .from("task_tags")
-    .insert({ task_id: taskId, tag_id: tagId, org_id: orgId });
+    .insert({ task_id: taskId, tag_id: tagId });
   if (error) throw error;
 }
 

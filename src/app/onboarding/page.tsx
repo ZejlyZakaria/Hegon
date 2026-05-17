@@ -10,15 +10,28 @@ export default async function OnboardingPage() {
 
   if (!user) redirect("/auth");
 
-  // Workspace exists → onboarding already done
+  // Workspace exists (owned or shared via workspace_members) → onboarding already done.
+  // RLS gère le filtrage — pas besoin de .eq("user_id").
   const { data: workspace } = await supabase
     .from("workspaces")
     .select("id")
-    .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
   if (workspace) redirect("/dashboard");
+
+  // Invited user → redirect to invite page instead of onboarding
+  const { data: pendingInvite } = await supabase
+    .from("org_invitations")
+    .select("token")
+    .eq("email", user.email ?? "")
+    .is("used_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .not("workspace_id", "is", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (pendingInvite) redirect(`/invite/${pendingInvite.token}`);
 
   const userName =
     user.user_metadata?.full_name?.split(" ")[0] ??

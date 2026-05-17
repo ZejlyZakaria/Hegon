@@ -50,7 +50,7 @@ import { cn } from "@/shared/utils/utils";
 import { useUpdateTask } from "@/modules/tasks/hooks/useTasks";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useAddTagToTask, useRemoveTagFromTask } from "@/modules/tasks/hooks/useTags";
-import { useOrgMembers } from "@/modules/tasks/hooks/useOrgMembers";
+import { useProjectAssignees } from "@/modules/tasks/hooks/useOrgMembers";
 import { TagSelector } from "@/modules/tasks/components/shared/TagSelector";
 import { MemberAvatar } from "@/modules/tasks/components/shared/MemberAvatar";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
@@ -87,7 +87,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
   const addTagMutation = useAddTagToTask(task.project_id);
   const removeTagMutation = useRemoveTagFromTask(task.project_id);
   const { data: goals = [] } = useGoals();
-  const { data: orgMembers = [] } = useOrgMembers();
+  const { data: orgMembers = [] } = useProjectAssignees(task.project_id);
 
   const lastSaved = useRef({
     title: task.title,
@@ -410,6 +410,7 @@ export function EditTaskModal({ open, onOpenChange, task }: EditTaskModalProps) 
 
             {/* Tags */}
             <TagSelector
+              projectId={task.project_id}
               selectedTags={task.tags}
               onAdd={(tagId) => addTagMutation.mutate({ taskId: task.id, tagId })}
               onRemove={(tagId) => removeTagMutation.mutate({ taskId: task.id, tagId })}

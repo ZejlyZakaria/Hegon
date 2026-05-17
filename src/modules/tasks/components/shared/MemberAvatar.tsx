@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { Assignee } from "@/modules/tasks/types";
 
 const COLORS = ["#6366f1","#8b5cf6","#ec4899","#f43f5e","#f97316","#22c55e","#0ea5e9","#14b8a6"];
@@ -12,7 +13,7 @@ function getInitials(member: Assignee) {
   if (member.full_name) {
     return member.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
   }
-  return member.email[0].toUpperCase();
+  return (member.email?.[0] ?? "?").toUpperCase();
 }
 
 interface Props {
@@ -21,14 +22,17 @@ interface Props {
 }
 
 export function MemberAvatar({ member, size = "sm" }: Props) {
+  const [imageFailed, setImageFailed] = useState(false);
   const dim = size === "sm" ? "w-5 h-5 text-[9px]" : "w-6 h-6 text-[10px]";
 
-  if (member.avatar_url) {
+  if (member.avatar_url && !imageFailed) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={member.avatar_url}
         alt={member.full_name ?? member.email}
+        referrerPolicy="no-referrer"
+        onError={() => setImageFailed(true)}
         className={`${dim} rounded-full object-cover shrink-0`}
       />
     );

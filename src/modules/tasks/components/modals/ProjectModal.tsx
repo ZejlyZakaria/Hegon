@@ -22,6 +22,7 @@ import {
 import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
 import { useCreateProject, useUpdateProject } from "@/modules/tasks/hooks/useProjects";
+import { useTasksStore } from "@/modules/tasks/store";
 import type { Project } from "@/modules/tasks/types";
 
 const ACCENT = "var(--color-accent-tasks)";
@@ -44,6 +45,7 @@ export function ProjectModal({ open, onOpenChange, workspaceId, project }: Proje
   const createMutation = useCreateProject();
   const updateMutation = useUpdateProject();
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const setSelectedProjectId = useTasksStore((s) => s.setSelectedProjectId);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -64,7 +66,8 @@ export function ProjectModal({ open, onOpenChange, workspaceId, project }: Proje
       createMutation.mutate(
         { workspace_id: workspaceId, name: data.name.trim() },
         {
-          onSuccess: () => {
+          onSuccess: (newProject) => {
+            setSelectedProjectId(newProject.id);
             form.reset();
             onOpenChange(false);
           },

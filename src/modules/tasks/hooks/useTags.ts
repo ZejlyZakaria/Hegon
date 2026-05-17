@@ -1,27 +1,38 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as TaskService from "../service";
-import { TAG_KEYS, TASK_KEYS } from "./query-keys";
+import { TAG_KEYS, TASK_KEYS, PROJECT_KEYS } from "./query-keys";
 import { toast } from "@/shared/utils/toast";
 
-// =====================================================
-// HOOK: useTags
-// =====================================================
-
-export function useTags() {
+export function useProjectWorkspaceId(projectId: string | null) {
   return useQuery({
-    queryKey: TAG_KEYS.lists(),
-    queryFn: () => TaskService.getTags(),
+    queryKey: [...PROJECT_KEYS.all, "workspace-id", projectId ?? ""] as const,
+    queryFn: () => TaskService.getProjectWorkspaceId(projectId!),
+    enabled: !!projectId,
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useTags(workspaceId: string | null) {
+  return useQuery({
+    queryKey: TAG_KEYS.byWorkspace(workspaceId ?? ""),
+    queryFn: () => TaskService.getTags(workspaceId!),
+    enabled: !!workspaceId,
     staleTime: 1000 * 60 * 10,
   });
 }
 
-export function useCreateTag() {
+export function useTagsForProject(projectId: string | null) {
+  const { data: workspaceId } = useProjectWorkspaceId(projectId);
+  return useTags(workspaceId ?? null);
+}
+
+export function useCreateTag(workspaceId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ name, color }: { name: string; color: string }) =>
-      TaskService.createTag(name, color),
+      TaskService.createTag(workspaceId!, name, color),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TAG_KEYS.lists() });
+      queryClient.invalidateQueries({ queryKey: TAG_KEYS.byWorkspace(workspaceId ?? "") });
       toast.success("Tag created.");
     },
     onError: () => {
@@ -30,16 +41,32 @@ export function useCreateTag() {
   });
 }
 
-export function useDeleteTag() {
+export function useDeleteTag(workspaceId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (tagId: string) => TaskService.deleteTag(tagId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TAG_KEYS.lists() });
+      queryClient.invalidateQueries({ queryKey: TAG_KEYS.byWorkspace(workspaceId ?? "") });
+      queryClient.invalidateQueries({ queryKey: TASK_KEYS.all });
       toast("Tag deleted.");
     },
     onError: () => {
       toast.error("Failed to delete tag.");
+    },
+  });
+}
+
+export function useUpdateTag(workspaceId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tagId, updates }: { tagId: string; updates: { name?: string; color?: string } }) =>
+      TaskService.updateTag(tagId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TAG_KEYS.byWorkspace(workspaceId ?? "") });
+      queryClient.invalidateQueries({ queryKey: TASK_KEYS.all });
+    },
+    onError: () => {
+      toast.error("Failed to update tag.");
     },
   });
 }

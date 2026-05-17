@@ -7,6 +7,7 @@ import { GOAL_KEYS, LINKED_TASK_KEYS } from "@/modules/goals/hooks/query-keys";
 import type { MoveTaskInput } from "../types";
 import type { Task } from "../types";
 import { toast } from "@/shared/utils/toast";
+import { markOptimistic, clearOptimistic } from "./optimistic-tracker";
 
 // =====================================================
 // HOOK: useTasks (fetch)
@@ -105,6 +106,10 @@ export function useMoveTask() {
     // React batchera setActiveTask(null) + setQueryData dans le même render
     // → zéro flash de la carte à son ancienne position
     onMutate: ({ taskId, newStatusId, newPosition, projectId }: MoveTaskInput) => {
+      // Marque la task comme in-flight pour que useRealtimeTasks
+      // n'invalide pas en réaction au self-echo postgres_changes.
+      markOptimistic(taskId);
+
       // Fire-and-forget cancel (pas d'await — évite de rendre onMutate async)
       queryClient.cancelQueries({ queryKey: TASK_KEYS.byProject(projectId) });
 
@@ -129,6 +134,9 @@ export function useMoveTask() {
         queryClient.setQueryData(TASK_KEYS.byProject(variables.projectId), context.previousTasks);
       }
       toast.error(`Failed to move task`);
+    },
+    onSettled: (_data, _err, variables) => {
+      clearOptimistic(variables.taskId);
     },
     onSuccess: async (_, variables) => {
       const tasks = queryClient.getQueryData<Task[]>(TASK_KEYS.byProject(variables.projectId));

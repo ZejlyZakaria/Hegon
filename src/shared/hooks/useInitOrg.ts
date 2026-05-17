@@ -4,27 +4,35 @@ import { useEffect } from "react";
 import { createClient } from "@/infrastructure/supabase/client";
 import { useOrgStore } from "@/shared/stores/useOrgStore";
 
-/**
- * Initialise le store Zustand avec l'org de l'utilisateur connecté.
- * À appeler une seule fois haut dans l'arbre (ex: Sidebar).
- */
 export function useInitOrg() {
-  const { orgId, setOrg } = useOrgStore();
+  const { setOrg, setOrgs } = useOrgStore();
 
   useEffect(() => {
-    if (orgId) return; // déjà chargé
-
     const supabase = createClient();
     supabase
       .from("memberships")
-      .select("org_id, organizations(name)")
-      .limit(1)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          const org = data.organizations as unknown as { name: string } | null;
-          setOrg(data.org_id, org?.name ?? "My Workspace");
+      .select("org_id, role, organizations(id, name)")
+      .then(({ data, error }) => {
+        if (error) {
+          console.warn("[useInitOrg] memberships query failed:", error.message);
+          return;
+        }
+        if (!data || data.length === 0) return;
+
+        const orgs = data.map((m) => {
+          const org = m.organizations as unknown as { id: string; name: string } | null;
+          return { id: m.org_id, name: org?.name ?? "Workspace", role: m.role };
+        });
+
+        setOrgs(orgs);
+
+        // Keep persisted org if still valid, otherwise pick first
+        const current = useOrgStore.getState().orgId;
+        const isValid = orgs.some((o) => o.id === current);
+        if (!isValid) {
+          setOrg(orgs[0].id, orgs[0].name);
         }
       });
-  }, [orgId, setOrg]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }

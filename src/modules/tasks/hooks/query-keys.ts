@@ -18,6 +18,8 @@ export const WORKSPACE_KEYS = {
   all: ['workspaces'] as const,
   lists: () => [...WORKSPACE_KEYS.all, 'list'] as const,
   detail: (id: string) => [...WORKSPACE_KEYS.all, 'detail', id] as const,
+  members: (id: string) => [...WORKSPACE_KEYS.all, 'members', id] as const,
+  invitations: (id: string) => [...WORKSPACE_KEYS.all, 'invitations', id] as const,
 } as const;
 
 export const STATUS_KEYS = {
@@ -29,4 +31,5 @@ export const STATUS_KEYS = {
 export const TAG_KEYS = {
   all: ['tags'] as const,
   lists: () => [...TAG_KEYS.all, 'list'] as const,
+  byWorkspace: (workspaceId: string) => [...TAG_KEYS.all, 'workspace', workspaceId] as const,
 } as const;

@@ -33,14 +33,15 @@ const PRESET_COLORS = [
 ];
 
 interface ManageTagsModalProps {
+  workspaceId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function ManageTagsModal({ open, onOpenChange }: ManageTagsModalProps) {
-  const { data: tags } = useTags();
-  const createTagMutation = useCreateTag();
-  const deleteTagMutation = useDeleteTag();
+export function ManageTagsModal({ workspaceId, open, onOpenChange }: ManageTagsModalProps) {
+  const { data: tags } = useTags(workspaceId);
+  const createTagMutation = useCreateTag(workspaceId);
+  const deleteTagMutation = useDeleteTag(workspaceId);
 
   const [newName, setNewName] = useState("");
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[9]); // blue default

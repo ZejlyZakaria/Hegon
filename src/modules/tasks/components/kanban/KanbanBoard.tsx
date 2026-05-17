@@ -19,6 +19,9 @@ import { useTasksStore } from "@/modules/tasks/store";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useTasks, useMoveTask } from "@/modules/tasks/hooks/useTasks";
 import { useRealtimeTasks } from "@/modules/tasks/hooks/useRealtimeTasks";
+import { useRealtimeStatuses } from "@/modules/tasks/hooks/useRealtimeStatuses";
+import { useRealtimeTags } from "@/modules/tasks/hooks/useRealtimeTags";
+import { useProjectWorkspaceId } from "@/modules/tasks/hooks/useTags";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
 import { useProjects } from "@/modules/tasks/hooks/useProjects";
@@ -34,6 +37,9 @@ export function KanbanBoard() {
   const { data: tasks, isLoading: tasksLoading } = useTasks(selectedProjectId);
   const moveMutation = useMoveTask();
   useRealtimeTasks(selectedProjectId);
+  useRealtimeStatuses(selectedProjectId);
+  const { data: currentWorkspaceId } = useProjectWorkspaceId(selectedProjectId);
+  useRealtimeTags(currentWorkspaceId ?? null);
 
   const { data: workspaces, isLoading: workspacesLoading } = useWorkspaces(userId || "");
   const firstWorkspaceId = workspaces?.[0]?.id ?? null;

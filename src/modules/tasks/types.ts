@@ -190,3 +190,30 @@ export interface MoveTaskInput {
   newPosition: number;
   projectId: string;
 }
+
+export interface WorkspaceMember {
+  workspace_id: string;
+  user_id: string;
+  role: string;
+  invited_by: string | null;
+  created_at: string;
+  profile?: {
+    id: string;
+    email: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
+export interface WorkspaceInvitation {
+  id: string;
+  org_id: string;
+  workspace_id: string;
+  invited_by: string;
+  email: string;
+  token: string;
+  role: string;
+  expires_at: string;
+  used_at: string | null;
+  created_at: string;
+}

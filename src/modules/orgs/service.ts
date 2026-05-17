@@ -90,14 +90,10 @@ export async function revokeInvitation(invitationId: string): Promise<void> {
 
 export async function getInvitationByToken(token: string): Promise<OrgInvitation | null> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("org_invitations")
-    .select("*, org:organizations(name, slug)")
-    .eq("token", token)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("get_invitation_by_token", { p_token: token });
 
   if (error) throw error;
-  return data;
+  return (data as OrgInvitation | null) ?? null;
 }
 
 export async function acceptInvitation(token: string): Promise<{ success: boolean; org_id: string }> {

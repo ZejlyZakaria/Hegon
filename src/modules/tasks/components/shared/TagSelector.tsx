@@ -1,21 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { Tag, Check, ChevronDown } from "lucide-react";
+import { Tag, Check, ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/components/ui/popover";
-import { useTags } from "@/modules/tasks/hooks/useTags";
+import { useTagsForProject, useProjectWorkspaceId, useCreateTag } from "@/modules/tasks/hooks/useTags";
 import type { Tag as TagType } from "@/modules/tasks/types";
+
+const TAG_COLOR_PALETTE = [
+  "#ef4444","#f97316","#f59e0b","#84cc16","#22c55e","#10b981",
+  "#14b8a6","#06b6d4","#3b82f6","#6366f1","#8b5cf6","#ec4899",
+];
+
+function pickColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return TAG_COLOR_PALETTE[Math.abs(hash) % TAG_COLOR_PALETTE.length];
+}
 
 // Two modes:
 //   - "immediate": fires onAdd/onRemove callbacks instantly (EditTaskModal)
 //   - "controlled": manages selectedIds locally, parent reads via onChange (CreateTaskModal)
 
 interface TagSelectorProps {
+  projectId: string;
   selectedTags?: TagType[];
   selectedIds?: string[];
   onChange?: (ids: string[]) => void;
@@ -25,6 +37,7 @@ interface TagSelectorProps {
 }
 
 export function TagSelector({
+  projectId,
   selectedTags,
   selectedIds,
   onChange,
@@ -33,7 +46,10 @@ export function TagSelector({
   disabled,
 }: TagSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { data: allTags } = useTags();
+  const [search, setSearch] = useState("");
+  const { data: allTags } = useTagsForProject(projectId);
+  const { data: workspaceId } = useProjectWorkspaceId(projectId);
+  const createTag = useCreateTag(workspaceId ?? null);
 
   const currentIds: string[] = selectedIds ?? selectedTags?.map((t) => t.id) ?? [];
 
@@ -53,6 +69,20 @@ export function TagSelector({
         onChange([...currentIds, tag.id]);
       }
     }
+  };
+
+  const trimmedSearch = search.trim();
+  const lowerSearch = trimmedSearch.toLowerCase();
+  const filteredTags = (allTags ?? []).filter((t) => t.name.toLowerCase().includes(lowerSearch));
+  const exactMatch = (allTags ?? []).some((t) => t.name.toLowerCase() === lowerSearch);
+  const canCreate = !!trimmedSearch && !exactMatch && !!workspaceId && !createTag.isPending;
+
+  const handleCreate = async () => {
+    if (!canCreate) return;
+    const tag = await createTag.mutateAsync({ name: trimmedSearch, color: pickColor(trimmedSearch) });
+    if (onAdd) onAdd(tag.id);
+    else if (onChange) onChange([...currentIds, tag.id]);
+    setSearch("");
   };
 
   return (
@@ -104,38 +134,71 @@ export function TagSelector({
         </PopoverTrigger>
 
         <PopoverContent
-          className="w-56 p-1.5 bg-surface-3 border-border-strong"
+          className="w-64 p-0 bg-surface-3 border-border-strong"
           align="start"
         >
-          {!allTags || allTags.length === 0 ? (
-            <p className="text-xs text-text-tertiary px-2 py-2 text-center">
-              No tags yet. Create one below.
-            </p>
-          ) : (
-            <div className="space-y-0.5">
-              {allTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => handleToggle(tag)}
-                  className={cn(
-                    "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs",
-                    "hover:bg-surface-2 transition-colors text-left",
-                    isSelected(tag.id) ? "text-text-primary" : "text-text-tertiary",
-                  )}
-                >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: tag.color ?? "#71717a" }}
-                  />
-                  <span className="flex-1 truncate">{tag.name}</span>
-                  {isSelected(tag.id) && (
-                    <Check size={12} className="shrink-0 text-text-tertiary" />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="p-1.5 border-b border-border-subtle">
+            <input
+              type="text"
+              autoFocus
+              placeholder="Search or create..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canCreate) {
+                  e.preventDefault();
+                  void handleCreate();
+                }
+              }}
+              className="w-full h-7 px-2 text-xs bg-transparent text-text-primary placeholder:text-text-tertiary outline-none"
+            />
+          </div>
+
+          <div className="p-1.5 max-h-64 overflow-y-auto">
+            {filteredTags.length === 0 && !canCreate ? (
+              <p className="text-xs text-text-tertiary px-2 py-2 text-center">
+                {trimmedSearch ? "No matches." : "No tags yet. Type a name to create one."}
+              </p>
+            ) : (
+              <div className="space-y-0.5">
+                {filteredTags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => handleToggle(tag)}
+                    className={cn(
+                      "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs",
+                      "hover:bg-surface-2 transition-colors text-left",
+                      isSelected(tag.id) ? "text-text-primary" : "text-text-tertiary",
+                    )}
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: tag.color ?? "#71717a" }}
+                    />
+                    <span className="flex-1 truncate">{tag.name}</span>
+                    {isSelected(tag.id) && (
+                      <Check size={12} className="shrink-0 text-text-tertiary" />
+                    )}
+                  </button>
+                ))}
+
+                {canCreate && (
+                  <button
+                    type="button"
+                    onClick={() => void handleCreate()}
+                    disabled={createTag.isPending}
+                    className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs hover:bg-surface-2 transition-colors text-left text-text-secondary disabled:opacity-50"
+                  >
+                    <Plus size={12} className="shrink-0 text-text-tertiary" />
+                    <span className="flex-1 truncate">
+                      Create <span className="text-text-primary font-medium">&quot;{trimmedSearch}&quot;</span>
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </PopoverContent>
       </Popover>
     </div>
