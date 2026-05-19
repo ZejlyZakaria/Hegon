@@ -98,7 +98,11 @@ export async function getInvitationByToken(token: string): Promise<OrgInvitation
   return (data as OrgInvitation | null) ?? null;
 }
 
+const TOKEN_REGEX = /^[A-Za-z0-9_-]{20,128}$/;
+
 export async function acceptInvitation(token: string): Promise<{ success: boolean; org_id: string }> {
+  if (!TOKEN_REGEX.test(token)) throw new Error("Invalid invitation token format");
+
   const supabase = createClient();
   const { data, error } = await supabase.rpc("accept_invitation", { p_token: token });
 

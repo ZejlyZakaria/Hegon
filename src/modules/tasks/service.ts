@@ -72,19 +72,7 @@ export async function createTask(input: CreateTaskInput) {
     throw new Error("Status is required");
   }
 
-  // Get max position in status
-  const { data: maxPosData } = await supabase
-    .from("tasks")
-    .select("position")
-    .eq("project_id", input.project_id)
-    .eq("status_id", input.status_id)
-    .order("position", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const newPosition = (maxPosData?.position || 0) + 1;
-
-  // org_id is derived by a BEFORE INSERT trigger from project_id → workspace.org_id
+  // position is set atomically by the set_task_position BEFORE INSERT trigger (§1.3)
   const { data, error } = await supabase
     .from("tasks")
     .insert({
@@ -93,7 +81,6 @@ export async function createTask(input: CreateTaskInput) {
       description: input.description?.trim() || null,
       created_by: user.id,
       assignee_id: input.assignee_id ?? user.id,
-      position: newPosition,
     })
     .select(
       `
@@ -213,17 +200,6 @@ export async function archiveTask(taskId: string) {
   if (error) throw error;
 }
 
-export async function getOrgMembers(): Promise<Assignee[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, email, full_name, avatar_url")
-    .order("full_name", { ascending: true });
-
-  if (error) throw error;
-  return data ?? [];
-}
-
 export async function getProjectAssignees(projectId: string): Promise<Assignee[]> {
   const supabase = createClient();
 
@@ -298,21 +274,10 @@ export async function getProjects(workspaceId: string) {
 export async function createProject(input: { workspace_id: string; name: string; description?: string | null }) {
   const supabase = createClient();
 
-  // Get max position in workspace
-  const { data: maxPosData } = await supabase
-    .from("projects")
-    .select("position")
-    .eq("workspace_id", input.workspace_id)
-    .order("position", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const newPosition = (maxPosData?.position || 0) + 1;
-
-  // org_id derived by BEFORE INSERT trigger from workspace_id
+  // position is set atomically by the set_project_position BEFORE INSERT trigger (§1.3)
   const { data, error } = await supabase
     .from("projects")
-    .insert({ ...input, position: newPosition, status: "active" })
+    .insert({ ...input, status: "active" })
     .select()
     .single();
 
@@ -400,18 +365,31 @@ export async function createWorkspaceInvitation(workspaceId: string, email: stri
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
+  // §5.3: owner-only check — members cannot invite
+  type WorkspaceRow = { org_id: string; user_id: string };
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("org_id")
+    .select("org_id, user_id")
     .eq("id", workspaceId)
     .single();
 
   if (!workspace) throw new Error("Workspace not found");
+  if ((workspace as WorkspaceRow).user_id !== user.id) throw new Error("Only the workspace owner can invite members");
+
+  // §5.4: rate limit — max 10 invitations per hour per user (DB-level count, no external service needed)
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count } = await supabase
+    .from("org_invitations")
+    .select("id", { count: "exact", head: true })
+    .eq("invited_by", user.id)
+    .gt("created_at", oneHourAgo);
+
+  if ((count ?? 0) >= 10) throw new Error("Too many invitations sent. Please wait before sending more.");
 
   const { data, error } = await supabase
     .from("org_invitations")
     .insert({
-      org_id: workspace.org_id,
+      org_id: (workspace as WorkspaceRow).org_id,
       workspace_id: workspaceId,
       invited_by: user.id,
       email: email.trim().toLowerCase(),

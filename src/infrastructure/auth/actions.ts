@@ -23,5 +23,7 @@ export async function signOut() {
   );
 
   await supabase.auth.signOut();
+  // Garde-fou 1: clear workspace cookie so middleware re-checks on next login
+  cookieStore.delete("hegon_has_workspace");
   redirect("/auth");
 }

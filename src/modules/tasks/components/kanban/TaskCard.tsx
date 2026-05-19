@@ -11,6 +11,7 @@ import { cn } from "@/shared/utils/utils";
 import type { Task } from "@/modules/tasks/types";
 import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
 import { EditTaskModal } from "../modals/EditTaskModal";
+import { DeleteTaskModal } from "../modals/DeleteTaskModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +19,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { useDeleteTask } from "@/modules/tasks/hooks/useTasks";
 
 interface TaskCardProps {
   task: Task;
@@ -30,7 +30,7 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
     useSortable({ id: task.id });
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const deleteTask = useDeleteTask();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const dueDate = task.due_date ? new Date(task.due_date) : null;
   const overdue =
@@ -62,12 +62,7 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          className="absolute -left-2 top-3 flex h-8 w-5 items-center justify-center rounded-md border opacity-0 transition-opacity group-hover:opacity-100 cursor-grab active:cursor-grabbing"
-          style={{
-            backgroundColor: "var(--color-surface-2)",
-            borderColor: "var(--color-border-subtle)",
-            color: "var(--color-text-tertiary)",
-          }}
+          className="absolute -left-2 top-3 flex h-8 w-5 items-center justify-center rounded-md border opacity-0 transition-opacity group-hover:opacity-100 cursor-grab active:cursor-grabbing bg-surface-2 border-border-subtle text-text-tertiary [@media(hover:none)]:opacity-50"
         >
           <GripVertical size={12} />
         </div>
@@ -106,10 +101,7 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="gap-2 text-xs cursor-pointer text-red-400 focus:text-red-300 focus:bg-red-500/10"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteTask.mutate({ taskId: task.id, projectId: task.project_id });
-                }}
+                onClick={(e) => { e.stopPropagation(); setIsDeleteModalOpen(true); }}
               >
                 <Trash2 size={12} />
                 Delete
@@ -120,8 +112,8 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
         {task.assignee ? (
           <MemberAvatar member={task.assignee} size="sm" />
         ) : (
-          <div className="w-5 h-5 rounded-full border border-dashed flex items-center justify-center" style={{ borderColor: "var(--color-border-subtle)" }}>
-            <User size={10} style={{ color: "var(--color-text-tertiary)" }} />
+          <div className="w-5 h-5 rounded-full border border-dashed border-border-subtle flex items-center justify-center">
+            <User size={10} className="text-text-tertiary" />
           </div>
         )}
       </div>
@@ -181,7 +173,7 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
             style={{ color: dueTone }}
           >
             {overdue ? <AlertTriangle size={10} /> : <Calendar size={10} />}
-            {format(dueDate, "MMM d")}
+            {format(dueDate, dueDate.getFullYear() === new Date().getFullYear() ? "MMM d" : "MMM d, yyyy")}
           </div>
         )}
       </div>
@@ -204,6 +196,15 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
           open={isEditModalOpen}
           onOpenChange={setIsEditModalOpen}
           task={task}
+        />
+      )}
+      {!isOverlay && (
+        <DeleteTaskModal
+          open={isDeleteModalOpen}
+          onOpenChange={setIsDeleteModalOpen}
+          taskId={task.id}
+          taskTitle={task.title}
+          projectId={task.project_id}
         />
       )}
     </>

@@ -114,7 +114,7 @@ function ProfileMenu({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -6, scale: 0.97 }}
           transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
-          className="fixed z-9999 bg-surface-3 backdrop-blur-xl border border-border-strong rounded-xl shadow-2xl overflow-hidden"
+          className="fixed z-20 bg-surface-3 backdrop-blur-xl border border-border-strong rounded-xl shadow-2xl overflow-hidden"
           style={{ top: pos.top, right: pos.right, minWidth: 200 }}
         >
           <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border-subtle">
@@ -228,10 +228,12 @@ export default function TopBar() {
   const openCmdK = useCommandCenter((s) => s.open);
 
   useEffect(() => {
+    // getSession() reads from localStorage (0ms), getUser() makes a network round
+    // trip (~150ms) → flash de avatar/name à chaque mount. Audit §2.6.
     createClient()
-      .auth.getUser()
-      .then(({ data }: { data: { user: { user_metadata?: { full_name?: string; name?: string; avatar_url?: string }; email?: string } | null } }) => {
-        const user = data.user;
+      .auth.getSession()
+      .then(({ data: { session } }: { data: { session: { user: { user_metadata?: { full_name?: string; name?: string; avatar_url?: string }; email?: string } } | null } }) => {
+        const user = session?.user;
         if (!user) return;
         const name =
           user.user_metadata?.full_name?.split(" ")[0] ??

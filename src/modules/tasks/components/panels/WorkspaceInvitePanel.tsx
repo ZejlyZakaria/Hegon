@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Copy, Check, Trash2, Plus, Mail, Crown, Users, Tag as TagIcon } from "lucide-react";
 import { formatDistanceToNow, isPast } from "date-fns";
@@ -9,10 +9,11 @@ import { MemberAvatar } from "../shared/MemberAvatar";
 import { useWorkspaceMembers, useWorkspaceInvitations, useCreateWorkspaceInvitation, useRevokeWorkspaceInvitation } from "@/modules/tasks/hooks/useWorkspaceMembers";
 import { useTags, useCreateTag, useDeleteTag, useUpdateTag } from "@/modules/tasks/hooks/useTags";
 import { useRealtimeTags } from "@/modules/tasks/hooks/useRealtimeTags";
+import { useRealtimeSync } from "@/shared/hooks/useRealtimeSync";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { Input } from "@/shared/components/ui/input";
 import { WORKSPACE_KEYS } from "@/modules/tasks/hooks/query-keys";
 import * as TaskService from "@/modules/tasks/service";
-import { createClient } from "@/infrastructure/supabase/client";
 import { cn } from "@/shared/utils/utils";
 import type { Workspace } from "@/modules/tasks/types";
 
@@ -68,28 +69,21 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
     staleTime: 1000 * 60 * 5,
   });
 
-  const instanceId = useId();
+  useRealtimeSync({
+    channelName: `workspace-members-panel-${workspace.id}`,
+    table: "workspace_members",
+    filter: `workspace_id=eq.${workspace.id}`,
+    enabled: open,
+    onchange: () => { queryClient.invalidateQueries({ queryKey: WORKSPACE_KEYS.members(workspace.id) }); },
+  });
 
-  useEffect(() => {
-    if (!open) return;
-
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`workspace-panel-${workspace.id}-${instanceId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "workspace_members", filter: `workspace_id=eq.${workspace.id}` },
-        () => { queryClient.invalidateQueries({ queryKey: WORKSPACE_KEYS.members(workspace.id) }); }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "org_invitations", filter: `workspace_id=eq.${workspace.id}` },
-        () => { queryClient.invalidateQueries({ queryKey: WORKSPACE_KEYS.invitations(workspace.id) }); }
-      )
-      .subscribe();
-
-    return () => { void supabase.removeChannel(channel); };
-  }, [open, workspace.id, queryClient, instanceId]);
+  useRealtimeSync({
+    channelName: `workspace-invitations-panel-${workspace.id}`,
+    table: "org_invitations",
+    filter: `workspace_id=eq.${workspace.id}`,
+    enabled: open,
+    onchange: () => { queryClient.invalidateQueries({ queryKey: WORKSPACE_KEYS.invitations(workspace.id) }); },
+  });
 
   const pendingInvitations = invitations.filter(
     (inv) => !inv.used_at && !isPast(new Date(inv.expires_at))
@@ -143,7 +137,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 280 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-110 flex-col border-l shadow-2xl"
+            className="fixed right-0 top-0 z-50 flex h-full w-120 flex-col border-l shadow-2xl"
             style={{
               backgroundColor: "var(--color-surface-0)",
               borderColor: "var(--color-border-subtle)",
@@ -165,10 +159,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-md transition-colors"
-                style={{ color: "var(--color-text-tertiary)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--color-surface-2)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-2"
               >
                 <X size={16} />
               </button>
@@ -187,10 +178,10 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                     key={tab}
                     type="button"
                     onClick={() => setActiveTab(tab)}
-                    className="relative flex items-center gap-2 px-3 py-3 text-xs font-medium transition-colors"
-                    style={{ color: active ? "var(--color-text-primary)" : "var(--color-text-tertiary)" }}
-                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "var(--color-text-secondary)"; }}
-                    onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "var(--color-text-tertiary)"; }}
+                    className={cn(
+                      "relative flex items-center gap-2 px-3 py-3 text-xs font-medium transition-colors",
+                      active ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary",
+                    )}
                   >
                     {tab === "members" ? <Users size={13} /> : <TagIcon size={13} />}
                     <span className="capitalize">{tab}</span>
@@ -302,23 +293,19 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                   </p>
 
                   <form onSubmit={handleInvite} className="flex gap-2">
-                    <input
+                    <Input
+                      variant="tasks"
                       type="email"
                       value={email}
                       onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(null); }}
                       placeholder="colleague@email.com"
-                      className="flex-1 h-8 rounded-lg px-3 text-sm outline-none"
-                      style={{
-                        backgroundColor: "var(--color-surface-2)",
-                        border: `1px solid ${emailError ? "#ef4444" : "var(--color-border-default)"}`,
-                        color: "var(--color-text-primary)",
-                      }}
+                      aria-invalid={!!emailError}
+                      className="h-8 text-xs"
                     />
                     <button
                       type="submit"
                       disabled={createInvitation.isPending || !email.trim()}
-                      className="h-8 px-3 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 disabled:opacity-50"
-                      style={{ backgroundColor: "#71717a" }}
+                      className="h-8 px-3 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 bg-zinc-600 hover:bg-zinc-500 transition-colors disabled:opacity-50"
                     >
                       <Plus size={13} />
                       Invite
@@ -380,10 +367,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                           <button
                             type="button"
                             onClick={() => handleCopy(`${window.location.origin}/invite/${inv.token}`)}
-                            className="h-6 w-6 rounded flex items-center justify-center transition-colors shrink-0"
-                            style={{ color: "var(--color-text-tertiary)" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-text-primary)"; e.currentTarget.style.backgroundColor = "var(--color-surface-3)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-text-tertiary)"; e.currentTarget.style.backgroundColor = "transparent"; }}
+                            className="h-6 w-6 rounded flex items-center justify-center shrink-0 text-text-tertiary transition-colors hover:text-text-primary hover:bg-surface-3"
                             title="Copy link"
                           >
                             <Copy size={11} />
@@ -391,10 +375,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                           <button
                             type="button"
                             onClick={() => revokeInvitation.mutate(inv.id)}
-                            className="h-6 w-6 rounded flex items-center justify-center transition-colors shrink-0"
-                            style={{ color: "var(--color-text-tertiary)" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.backgroundColor = "rgba(239,68,68,0.1)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-text-tertiary)"; e.currentTarget.style.backgroundColor = "transparent"; }}
+                            className="h-6 w-6 rounded flex items-center justify-center shrink-0 text-text-tertiary transition-colors hover:text-red-400 hover:bg-red-500/10"
                             title="Revoke"
                           >
                             <Trash2 size={11} />
@@ -435,10 +416,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                   </div>
 
                   <div className="flex gap-2">
-                    <div
-                      className="flex items-center gap-2 flex-1 rounded-lg px-2.5"
-                      style={{ backgroundColor: "var(--color-surface-2)", border: "1px solid var(--color-border-default)" }}
-                    >
+                    <div className="flex items-center gap-2 flex-1 rounded-lg px-2.5 bg-zinc-800/50 border border-zinc-700/50">
                       <span
                         className="w-2 h-2 rounded-full shrink-0"
                         style={{ backgroundColor: newTagColor }}
@@ -449,16 +427,14 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                         onChange={(e) => setNewTagName(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleCreateTag(); } }}
                         placeholder="Tag name..."
-                        className="flex-1 h-8 bg-transparent text-xs outline-none"
-                        style={{ color: "var(--color-text-primary)" }}
+                        className="flex-1 h-8 bg-transparent text-xs text-zinc-100 placeholder:text-zinc-600 outline-none"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => void handleCreateTag()}
                       disabled={!newTagName.trim() || createTag.isPending}
-                      className="h-8 px-3 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 disabled:opacity-50"
-                      style={{ backgroundColor: "#71717a" }}
+                      className="h-8 px-3 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 bg-zinc-600 hover:bg-zinc-500 transition-colors disabled:opacity-50"
                     >
                       <Plus size={13} />
                       Add
@@ -515,10 +491,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                             type="button"
                             onClick={() => deleteTag.mutate(tag.id)}
                             disabled={deleteTag.isPending}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 rounded flex items-center justify-center disabled:opacity-50"
-                            style={{ color: "var(--color-text-tertiary)" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.backgroundColor = "rgba(239,68,68,0.1)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--color-text-tertiary)"; e.currentTarget.style.backgroundColor = "transparent"; }}
+                            className="opacity-0 group-hover:opacity-100 h-6 w-6 rounded flex items-center justify-center text-text-tertiary transition-colors hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50"
                             title="Delete tag"
                           >
                             <Trash2 size={11} />

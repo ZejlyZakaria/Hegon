@@ -270,7 +270,7 @@ function Tooltip({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.1 }}
-            className="fixed z-9999 pointer-events-none"
+            className="fixed z-20 pointer-events-none"
             style={{
               left: W_CLOSED + 8,
               top: y,
@@ -405,7 +405,7 @@ function ProfileMenu({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -6, scale: 0.97 }}
           transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
-          className="fixed z-9999 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-xl shadow-2xl overflow-hidden"
+          className="fixed z-20 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-xl shadow-2xl overflow-hidden"
           style={{
             left: pos.x,
             bottom: `calc(100vh - ${pos.y}px + 8px)`,

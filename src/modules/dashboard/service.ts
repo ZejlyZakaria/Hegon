@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
+// Remaining `any` casts are isolated to Supabase nested join inference (cf. audit §4.1).
+// Each is annotated with an inline eslint-disable-next-line.
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import { getNextRace } from "@/modules/sports/f1/service";
@@ -30,7 +30,6 @@ function getParisDateStrings(): { today: string; tomorrow: string } {
 
 function formatEventDate(dateStr: string): string {
   const date = new Date(dateStr);
-  const now = new Date();
   const time = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: PARIS_TZ });
 
   const dateParisStr = date.toLocaleDateString("en-CA", { timeZone: PARIS_TZ });
@@ -39,8 +38,10 @@ function formatEventDate(dateStr: string): string {
   if (dateParisStr === today) return `Today · ${time}`;
   if (dateParisStr === tomorrow) return `Tomorrow · ${time}`;
 
-  const diff = date.getTime() - now.getTime();
-  const days = Math.ceil(diff / 86400000);
+  // Use calendar-day diff via Paris date strings (not wall-clock ms) to avoid DST glitch §1.7
+  const days = Math.round(
+    (new Date(dateParisStr).getTime() - new Date(today).getTime()) / 86400000
+  );
   return `In ${days} days · ${date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: PARIS_TZ })}`;
 }
 
@@ -85,30 +86,35 @@ function getTodayRange(): { start: Date; end: Date } {
 export async function getTodayTasks(userId: string): Promise<DashboardTask[]> {
   const supabase = createClient();
 
+  // Inner join + server-side filter on statuses.is_completed: avoids fetching
+  // 50 tasks then dropping the completed ones client-side (could lose visible
+  // tasks if the user has many completed ones). Audit §3.4.
+  // Order by priority_rank first so CRITICAL tasks without due_date are never pushed past LIMIT 50 (§1.5)
   const { data } = await supabase
     .from("tasks")
     .select(`
       id, title, priority, due_date,
-      status:statuses(name, color, is_completed),
+      status:statuses!inner(name, color, is_completed),
       project:projects(name)
     `)
-    .eq("created_by", userId)
+    .or(`created_by.eq.${userId},assignee_id.eq.${userId}`)
     .eq("is_archived", false)
+    .eq("statuses.is_completed", false)
+    .order("priority_rank", { ascending: true })
     .order("due_date", { ascending: true, nullsFirst: false })
     .limit(50);
 
-  return ((data ?? []) as any[])
-    .filter((t) => !t.status?.is_completed)
-    .map((t) => ({
-      id: t.id,
-      title: t.title,
-      priority: (t.priority ?? "medium").toLowerCase(),
-      due_date: t.due_date,
-      project_name: t.project?.name ?? "Unknown",
-      status_name: t.status?.name ?? "",
-      status_color: t.status?.color ?? null,
-      is_completed: t.status?.is_completed ?? false,
-    }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase nested join inference fails on status + project
+  return ((data ?? []) as any[]).map((t) => ({
+    id: t.id,
+    title: t.title,
+    priority: (t.priority ?? "medium").toLowerCase(),
+    due_date: t.due_date,
+    project_name: t.project?.name ?? "Unknown",
+    status_name: t.status?.name ?? "",
+    status_color: t.status?.color ?? null,
+    is_completed: false,
+  }));
 }
 
 // ─── In-progress media ────────────────────────────────────────────────────────
@@ -153,7 +159,9 @@ export async function getTodayFootballEvents(userId: string): Promise<DashboardS
   if (!data?.length) return [];
 
   // Deduplicate: same match can appear for multiple followed teams
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase match row shape varies with joins
   const matchMap = new Map<string, { match: any; isMainTeam: boolean }>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase select() with joins doesn't propagate types
   for (const m of data as any[]) {
     const key = `${m.home_team_name}-${m.away_team_name}-${m.match_date}`;
     if (!matchMap.has(key)) {
@@ -173,6 +181,7 @@ export async function getTodayFootballEvents(userId: string): Promise<DashboardS
   const crestMap = await getCrestsByExternalIds(externalIds);
 
   const events: DashboardSportEvent[] = unique.map(({ match: m, isMainTeam }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase nested join
     const comp = m.football_competitions as any;
     return {
       type: "football" as const,
@@ -222,25 +231,29 @@ export async function getTodayTennisEvents(userId: string): Promise<DashboardSpo
   if (!matches?.length) return [];
 
   // Fetch tournament names
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase select row shape
   const tournamentIds = [...new Set((matches as any[]).map((m) => m.tournament_id).filter(Boolean))];
   const { data: tournaments } = tournamentIds.length
     ? await supabase.schema("sport").from("tennis_tournaments").select("id, name, surface").in("id", tournamentIds)
     : { data: [] };
 
-  const tournamentMap: Record<string, any> = {};
-  for (const t of tournaments ?? []) tournamentMap[t.id] = t;
+  type TournamentRow = { id: string; name: string; surface: string | null };
+  type PlayerRow = { id: string; name: string; photo_url: string | null };
+  const tournamentMap: Record<string, TournamentRow> = {};
+  for (const t of (tournaments ?? []) as TournamentRow[]) tournamentMap[t.id] = t;
 
-  const playerMap: Record<string, any> = {};
-  for (const p of favoritePlayers) playerMap[p.id] = p;
+  const playerMap: Record<string, PlayerRow> = {};
+  for (const p of favoritePlayers as PlayerRow[]) playerMap[p.id] = p;
 
   // Deduplicate favorites duels: same match_date = same match between two favorites
   const processedDuelKeys = new Set<string>();
   const events: DashboardSportEvent[] = [];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase select row shape
   for (const m of matches as any[]) {
     if (!m.match_date || !playerMap[m.player_id]) continue;
 
-    const opponentFavorite = (matches as any[]).find(
+    const opponentFavorite = (matches as { player_id: string; match_date: string | null }[]).find(
       (other) => other.player_id !== m.player_id && other.match_date === m.match_date
     );
 
@@ -295,16 +308,18 @@ export async function getNextFootballEvents(userId: string): Promise<DashboardSp
 
   if (!data?.length) return [];
 
+  type FootballMatchRow = { team_id: string; home_team_name: string; away_team_name: string; home_team_external_id: string | null; away_team_external_id: string | null; match_date: string; football_competitions: { name: string | null } | null };
+  const matchRows = data as unknown as FootballMatchRow[];
   const externalIds = [...new Set([
-    ...(data).map((m: any) => m.home_team_external_id),
-    ...(data).map((m: any) => m.away_team_external_id),
-  ].filter(Boolean))];
+    ...matchRows.map((m) => m.home_team_external_id),
+    ...matchRows.map((m) => m.away_team_external_id),
+  ].filter((x): x is string => !!x))];
 
   const crestMap = await getCrestsByExternalIds(externalIds);
 
-  return (data as any[]).map((m) => {
+  return matchRows.map((m) => {
     const followedTeam = allTeams[m.team_id];
-    const comp = m.football_competitions as any;
+    const comp = m.football_competitions;
     return {
       type: "football" as const,
       title: `${m.home_team_name} vs ${m.away_team_name}`,
@@ -314,8 +329,8 @@ export async function getNextFootballEvents(userId: string): Promise<DashboardSp
       href: "/perso/sports/football",
       homeTeam: m.home_team_name,
       awayTeam: m.away_team_name,
-      homeTeamCrest: crestMap[m.home_team_external_id] ?? null,
-      awayTeamCrest: crestMap[m.away_team_external_id] ?? null,
+      homeTeamCrest: m.home_team_external_id ? (crestMap[m.home_team_external_id] ?? null) : null,
+      awayTeamCrest: m.away_team_external_id ? (crestMap[m.away_team_external_id] ?? null) : null,
       competition: comp?.name ?? null,
       _followedTeamName: followedTeam?.name ?? null,
     };
@@ -326,6 +341,7 @@ export async function getNextF1Event(): Promise<DashboardSportEvent | null> {
   const race = await getNextRace();
   if (!race) return null;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase nested join (f1_circuits)
   const circuit = race.f1_circuits as any;
   const raceTime = race.race_time as string | null;
   const raceDateTime = raceTime
@@ -386,12 +402,13 @@ export async function getTasksActivityByDay(
   const { data } = await supabase
     .from("tasks")
     .select("due_date, status:statuses(is_completed)")
-    .eq("created_by", userId)
+    .or(`created_by.eq.${userId},assignee_id.eq.${userId}`)
     .eq("is_archived", false)
     .gte("due_date", fromDate)
     .lte("due_date", toDate);
 
   const result: Record<string, { completed: number; total: number }> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase nested join (status:statuses)
   for (const t of (data ?? []) as any[]) {
     const date = t.due_date?.slice(0, 10);
     if (!date) continue;
@@ -408,15 +425,16 @@ export async function getDashboardData(): Promise<DashboardData> {
   const userId = await getCurrentUserId();
   if (!userId) throw new Error("Not authenticated");
 
+  // allSettled so one failing section (e.g. sport API down) doesn't crash the whole dashboard (§4.8)
   const [
-    tasks,
-    inProgressMediaList,
-    todayFootballEvents,
-    todayTennisEvents,
-    upcomingFootballEvents,
-    f1Event,
-    nextTennisEvent,
-  ] = await Promise.all([
+    tasksResult,
+    mediaResult,
+    todayFootballResult,
+    todayTennisResult,
+    upcomingFootballResult,
+    f1Result,
+    nextTennisResult,
+  ] = await Promise.allSettled([
     getTodayTasks(userId),
     getInProgressMedia(userId),
     getTodayFootballEvents(userId),
@@ -425,6 +443,18 @@ export async function getDashboardData(): Promise<DashboardData> {
     getNextF1Event(),
     getNextTennisEvent(),
   ]);
+
+  const SECTION_NAMES = ["tasks", "media", "todayFootball", "todayTennis", "upcomingFootball", "f1", "nextTennis"];
+  [tasksResult, mediaResult, todayFootballResult, todayTennisResult, upcomingFootballResult, f1Result, nextTennisResult]
+    .forEach((r, i) => { if (r.status === "rejected") console.error(`[getDashboardData] ${SECTION_NAMES[i]} failed:`, r.reason); });
+
+  const tasks               = tasksResult.status          === "fulfilled" ? tasksResult.value          : [];
+  const inProgressMediaList = mediaResult.status          === "fulfilled" ? mediaResult.value          : [];
+  const todayFootballEvents = todayFootballResult.status  === "fulfilled" ? todayFootballResult.value  : [];
+  const todayTennisEvents   = todayTennisResult.status    === "fulfilled" ? todayTennisResult.value    : [];
+  const upcomingFootballEvents = upcomingFootballResult.status === "fulfilled" ? upcomingFootballResult.value : [];
+  const f1Event             = f1Result.status             === "fulfilled" ? f1Result.value             : null;
+  const nextTennisEvent     = nextTennisResult.status     === "fulfilled" ? nextTennisResult.value     : null;
 
   const { start: todayStart, end: todayEnd } = getTodayRange();
 

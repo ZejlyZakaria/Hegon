@@ -45,7 +45,9 @@ export async function getMediaItems(
     query = query.order("updated_at", { ascending: false });
   }
 
-  if (options.limit) query = query.limit(options.limit);
+  // Default safety limit: a user with 500+ films would otherwise fetch everything.
+  // Library view should opt-in to a higher limit explicitly. Audit §3.5.
+  query = query.limit(options.limit ?? 100);
 
   const { data, error } = await query;
   if (error) throw error;

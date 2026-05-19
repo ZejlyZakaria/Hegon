@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { createClient } from "@/infrastructure/supabase/client";
 import { useOrgStore } from "@/shared/stores/useOrgStore";
+import { toast } from "@/shared/utils/toast";
 
 type MembershipRow = {
   org_id: string;
@@ -25,7 +26,8 @@ export function useInitOrg() {
       .select("org_id, role, organizations(id, name)")
       .then(({ data, error }: MembershipQueryResult) => {
         if (error) {
-          console.warn("[useInitOrg] memberships query failed:", error.message);
+          console.error("[useInitOrg] memberships query failed:", error.message);
+          toast.error("Couldn't load your workspace. Please refresh.");
           return;
         }
         if (!data || data.length === 0) return;

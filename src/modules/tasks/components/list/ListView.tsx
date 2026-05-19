@@ -11,7 +11,7 @@ import { TasksSkeleton } from "../TasksSkeletons";
 export function ListView() {
   const { selectedProjectId, filters } = useTasksStore();
   const { data: statuses, isLoading: statusesLoading } = useStatuses(selectedProjectId);
-  const { data: tasks, isLoading: tasksLoading } = useTasks(selectedProjectId);
+  const { data: tasks, isLoading: tasksLoading, isError: tasksError, refetch: refetchTasks } = useTasks(selectedProjectId);
 
   const filteredTasks = useMemo(() => {
     if (!tasks) return [];
@@ -38,6 +38,23 @@ export function ListView() {
       .sort((a, b) => a.position - b.position);
 
   if (statusesLoading || tasksLoading) return <TasksSkeleton />;
+
+  if (tasksError) {
+    return (
+      <div className="flex flex-1 items-center justify-center py-20">
+        <div className="rounded-xl border border-red-800/40 bg-red-950/20 p-6 text-center max-w-sm">
+          <p className="text-sm text-red-400 mb-3">Failed to load tasks.</p>
+          <button
+            type="button"
+            onClick={() => void refetchTasks()}
+            className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors underline"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!selectedProjectId) {
     return (

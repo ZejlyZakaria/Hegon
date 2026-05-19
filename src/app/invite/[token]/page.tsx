@@ -6,10 +6,11 @@ import Image from "next/image";
 import { createClient } from "@/infrastructure/supabase/client";
 import * as OrgService from "@/modules/orgs/service";
 import type { OrgInvitation } from "@/modules/orgs/types";
+import { useOrgStore } from "@/shared/stores/useOrgStore";
 import { Loader2, CheckCircle, XCircle, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-type PageState = "loading" | "valid" | "invalid" | "expired" | "used" | "already_member" | "accepted";
+type PageState = "loading" | "valid" | "invalid" | "expired" | "used" | "already_member" | "accepted" | "network_error";
 
 export default function InvitePage() {
   const { token } = useParams<{ token: string }>();
@@ -19,8 +20,10 @@ export default function InvitePage() {
   const [invitation, setInvitation] = useState<OrgInvitation | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
+    setState("loading");
     async function load() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -35,17 +38,26 @@ export default function InvitePage() {
 
         setInvitation(inv);
         setState("valid");
-      } catch {
-        setState("invalid");
+      } catch (err) {
+        // Distinguish network failure (retry makes sense) from actual invalid token (§1.6)
+        const msg = err instanceof Error ? err.message : "";
+        const isNetwork = err instanceof TypeError || msg.toLowerCase().includes("fetch") || msg.toLowerCase().includes("network");
+        setState(isNetwork ? "network_error" : "invalid");
       }
     }
     load();
-  }, [token]);
+  }, [token, retryKey]);
 
   async function handleAccept() {
     setIsAccepting(true);
     try {
-      await OrgService.acceptInvitation(token);
+      const result = await OrgService.acceptInvitation(token);
+      // Switch active org to the joined one immediately — bypass getCurrentOrgId
+      // race where a multi-org user could land in their personal (empty) org first.
+      const joinedOrgName = (invitation?.org as { name: string } | undefined)?.name ?? "Workspace";
+      useOrgStore.getState().setOrg(result.org_id, joinedOrgName);
+      // Garde-fou 4: set workspace cookie so middleware skips workspace query on first nav
+      document.cookie = `hegon_has_workspace=1; max-age=${7 * 24 * 60 * 60}; path=/; samesite=lax`;
       setState("accepted");
       // refresh() avant push() pour que le middleware/RSC voient
       // la nouvelle ligne workspace_members et que /pro/tasks rende
@@ -137,6 +149,27 @@ export default function InvitePage() {
               </div>
             )}
           </>
+        )}
+
+        {state === "network_error" && (
+          <div className="flex flex-col items-center gap-3 text-center py-4">
+            <XCircle size={36} style={{ color: "#f59e0b" }} />
+            <div>
+              <h1 className="text-base font-semibold" style={{ color: "var(--color-text-primary)" }}>
+                Connection error
+              </h1>
+              <p className="mt-1 text-sm" style={{ color: "var(--color-text-tertiary)" }}>
+                Couldn&apos;t reach the server. Check your connection and try again.
+              </p>
+            </div>
+            <button
+              onClick={() => setRetryKey(k => k + 1)}
+              className="mt-2 h-9 px-4 rounded-lg text-sm font-medium text-white"
+              style={{ backgroundColor: "#f59e0b" }}
+            >
+              Retry
+            </button>
+          </div>
         )}
 
         {(state === "invalid" || state === "expired" || state === "used") && (

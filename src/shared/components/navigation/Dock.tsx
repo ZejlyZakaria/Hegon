@@ -109,7 +109,7 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.1 }}
-            className="fixed z-9999 pointer-events-none"
+            className="fixed z-20 pointer-events-none"
             style={{ left: DOCK_W + 8, top: y, transform: "translateY(-50%)" }}
           >
             <div className="bg-surface-3 border border-border-default text-text-primary text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap">

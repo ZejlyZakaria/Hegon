@@ -70,6 +70,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "books.google.com",
       },
+      {
+        // Google OAuth profile avatars (lh3 = Google's image CDN for user photos)
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
     ],
   },
 };

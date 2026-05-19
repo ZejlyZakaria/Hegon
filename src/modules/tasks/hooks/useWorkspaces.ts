@@ -50,6 +50,12 @@ export function useDeleteWorkspace() {
   return useMutation({
     mutationFn: (workspaceId: string) => TaskService.deleteWorkspace(workspaceId),
     onSuccess: () => {
+      // Garde-fou 5: if this was the last workspace, clear cookie before redirect
+      // so middleware re-checks and routes to /onboarding instead of trusting stale cache
+      const cached = queryClient.getQueryData<{ id: string }[]>(WORKSPACE_KEYS.lists()) ?? [];
+      if (cached.length <= 1 && typeof document !== "undefined") {
+        document.cookie = "hegon_has_workspace=; max-age=0; path=/; samesite=lax";
+      }
       queryClient.invalidateQueries({ queryKey: WORKSPACE_KEYS.lists() });
       toast("Workspace deleted.");
     },

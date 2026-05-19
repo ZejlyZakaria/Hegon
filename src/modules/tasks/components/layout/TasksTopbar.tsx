@@ -12,7 +12,6 @@ import {
   User,
 } from "lucide-react";
 import { useTasksStore } from "@/modules/tasks/store";
-import { cn } from "@/shared/utils/utils";
 import type { ViewMode, Priority } from "@/modules/tasks/types";
 import {
   DropdownMenu,
@@ -25,6 +24,7 @@ import {
   DropdownMenuSubContent,
 } from "@/shared/components/ui/dropdown-menu";
 import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useTagsForProject } from "@/modules/tasks/hooks/useTags";
 import { useProjectAssignees } from "@/modules/tasks/hooks/useOrgMembers";
@@ -109,20 +109,7 @@ export function TasksTopbar() {
           <button
             type="button"
             onClick={toggleSidebar}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100"
-            style={{
-              backgroundColor: "var(--color-surface-2)",
-              border: "1px solid var(--color-border-default)",
-              color: "var(--color-text-tertiary)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-surface-3)";
-              e.currentTarget.style.color = "var(--color-text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-              e.currentTarget.style.color = "var(--color-text-tertiary)";
-            }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100 bg-surface-2 hover:bg-surface-3 border border-border-default text-text-tertiary hover:text-text-primary"
           >
             <PanelLeftOpen size={16} />
           </button>
@@ -131,22 +118,15 @@ export function TasksTopbar() {
         <div className="relative flex-1">
           <Search
             size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2"
-            style={{ color: "var(--color-text-tertiary)" }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-zinc-500"
           />
-          <input
+          <Input
+            variant="tasks"
             type="text"
             placeholder="Search tasks..."
             value={filters.search}
             onChange={(e) => setFilters({ search: e.target.value })}
-            className={cn(
-              "h-8 w-full rounded-md pl-8 pr-3 text-sm outline-none transition-colors duration-100"
-            )}
-            style={{
-              backgroundColor: "var(--color-surface-2)",
-              border: "1px solid var(--color-border-default)",
-              color: "var(--color-text-primary)",
-            }}
+            className="h-8 pl-8"
           />
         </div>
       </div>

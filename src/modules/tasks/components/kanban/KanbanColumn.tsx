@@ -40,20 +40,10 @@ export function KanbanColumn({
         <div className="sticky top-0 z-10 mb-2 flex items-center justify-between px-1 py-1 bg-[#09090b]">
           <div className="flex items-center gap-2">
             <StatusIcon status={status.name} size={14} />
-            <h2
-              className="text-sm font-semibold"
-              style={{ color: "var(--color-text-primary)" }}
-            >
+            <h2 className="text-sm font-semibold text-text-primary">
               {status.name}
             </h2>
-            <span
-              className="rounded px-2 py-0.5 text-xs font-medium"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                border: "1px solid var(--color-border-subtle)",
-                color: "var(--color-text-tertiary)",
-              }}
-            >
+            <span className="rounded px-2 py-0.5 text-xs font-medium bg-surface-2 border border-border-subtle text-text-tertiary">
               {tasks.length}
             </span>
           </div>
@@ -61,19 +51,7 @@ export function KanbanColumn({
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors duration-100"
-            style={{
-              backgroundColor: "transparent",
-              color: "var(--color-text-tertiary)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-              e.currentTarget.style.color = "var(--color-text-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "var(--color-text-tertiary)";
-            }}
+            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors duration-100 text-text-tertiary hover:bg-surface-2 hover:text-text-primary"
           >
             <Plus size={14} />
           </button>
@@ -83,15 +61,8 @@ export function KanbanColumn({
           ref={setNodeRef}
           className={cn(
             "space-y-2 rounded-lg border p-2 transition-colors duration-100",
+            isActive ? "bg-surface-2 border-border-default" : "bg-surface-1 border-border-subtle"
           )}
-          style={{
-            backgroundColor: isActive
-              ? "var(--color-surface-2)"
-              : "var(--color-surface-1)",
-            borderColor: isActive
-              ? "var(--color-border-default)"
-              : "var(--color-border-subtle)",
-          }}
         >
           <SortableContext
             items={taskIds}
@@ -102,33 +73,14 @@ export function KanbanColumn({
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg transition-colors duration-100"
-                  style={{
-                    backgroundColor: "var(--color-surface-2)",
-                    border: "1px solid var(--color-border-subtle)",
-                    color: "var(--color-text-tertiary)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "var(--color-surface-3)";
-                    e.currentTarget.style.color = "var(--color-text-primary)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-                    e.currentTarget.style.color = "var(--color-text-tertiary)";
-                  }}
+                  className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg transition-colors duration-100 bg-surface-2 border border-border-subtle text-text-tertiary hover:bg-surface-3 hover:text-text-primary"
                 >
                   <Plus size={18} />
                 </button>
-                <p
-                  className="text-sm font-medium"
-                  style={{ color: "var(--color-text-secondary)" }}
-                >
+                <p className="text-sm font-medium text-text-secondary">
                   No tasks
                 </p>
-                <p
-                  className="mt-1 text-xs"
-                  style={{ color: "var(--color-text-tertiary)" }}
-                >
+                <p className="mt-1 text-xs text-text-tertiary">
                   Drag tasks here or click + to add
                 </p>
               </div>

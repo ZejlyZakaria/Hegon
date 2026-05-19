@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // =====================================================
 // DATABASE TYPES (matching Supabase schema)
 // =====================================================
@@ -77,7 +76,7 @@ export interface Task {
   actual_hours: number | null;
   position: number;
   is_archived: boolean;
-  recurring_pattern: Record<string, any> | null;
+  recurring_pattern: Record<string, unknown> | null;
   
   goal_id?: string | null;
 

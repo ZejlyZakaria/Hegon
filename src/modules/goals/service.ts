@@ -97,28 +97,13 @@ export async function deleteGoal(id: string): Promise<void> {
 // PROGRESS
 // =====================================================
 
+// Returns the new progress (0-100) on auto goals, or -1 if the goal is in manual mode / not found.
+// Caller can use -1 to skip cache invalidation. (audit §3.2 v2)
 export async function recalculateProgress(goalId: string): Promise<number> {
   const supabase = createClient();
-  const orgId = await getCurrentOrgId();
-
-  const { data: tasks, error } = await supabase
-    .from("tasks")
-    .select("id, completed_at")
-    .eq("goal_id", goalId);
-
+  const { data, error } = await supabase.rpc("recalc_goal_progress", { p_goal_id: goalId });
   if (error) throw error;
-  if (!tasks || tasks.length === 0) return 0;
-
-  const completed = tasks.filter((t: { completed_at: string | null }) => t.completed_at !== null).length;
-  const progress = Math.round((completed / tasks.length) * 100);
-
-  await supabase
-    .from("goals")
-    .update({ progress })
-    .eq("id", goalId)
-    .eq("org_id", orgId);
-
-  return progress;
+  return (data as number) ?? -1;
 }
 
 // =====================================================

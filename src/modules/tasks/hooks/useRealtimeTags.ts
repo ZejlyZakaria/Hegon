@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRealtimeSync } from "@/shared/hooks/useRealtimeSync";
 import { TAG_KEYS, TASK_KEYS } from "./query-keys";
+import type { Task } from "../types";
 
 export function useRealtimeTags(workspaceId: string | null) {
   const queryClient = useQueryClient();
@@ -12,10 +13,26 @@ export function useRealtimeTags(workspaceId: string | null) {
     table: "tags",
     filter: workspaceId ? `workspace_id=eq.${workspaceId}` : undefined,
     enabled: !!workspaceId,
-    onchange: () => {
+    onchange: (payload) => {
       if (!workspaceId) return;
+      // Tag list always changes
       queryClient.invalidateQueries({ queryKey: TAG_KEYS.byWorkspace(workspaceId) });
-      queryClient.invalidateQueries({ queryKey: TASK_KEYS.all });
+
+      // Tag rename/color/delete affects task cards that show this tag.
+      // INSERT alone doesn't touch any task → skip the heavy task invalidation.
+      if (payload.eventType === "INSERT") return;
+
+      // For UPDATE/DELETE: only invalidate task caches that actually contain this tag.
+      const tagId = (payload.new as { id?: string } | null)?.id
+                 ?? (payload.old as { id?: string } | null)?.id;
+      if (!tagId) return;
+
+      const allTaskCaches = queryClient.getQueriesData<Task[]>({ queryKey: TASK_KEYS.all });
+      for (const [key, tasks] of allTaskCaches) {
+        if (tasks?.some((t) => t.tags?.some((tag) => tag.id === tagId))) {
+          queryClient.invalidateQueries({ queryKey: key });
+        }
+      }
     },
   });
 
@@ -25,8 +42,20 @@ export function useRealtimeTags(workspaceId: string | null) {
     channelName: `task-tags-workspace-${workspaceId ?? "none"}`,
     table: "task_tags",
     enabled: !!workspaceId,
-    onchange: () => {
-      queryClient.invalidateQueries({ queryKey: TASK_KEYS.all });
+    onchange: (payload) => {
+      // Only invalidate the task cache that actually contains the changed task.
+      // Avoids repainting all kanban columns on every tag toggle (audit §2.2).
+      const taskId = (payload.new as { task_id?: string } | null)?.task_id
+                  ?? (payload.old as { task_id?: string } | null)?.task_id;
+      if (!taskId) return;
+
+      const allTaskCaches = queryClient.getQueriesData<Task[]>({ queryKey: TASK_KEYS.all });
+      for (const [key, tasks] of allTaskCaches) {
+        if (tasks?.some((t) => t.id === taskId)) {
+          queryClient.invalidateQueries({ queryKey: key });
+          return;
+        }
+      }
     },
   });
 }

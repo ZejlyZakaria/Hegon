@@ -75,15 +75,7 @@ function WorkspaceItem({
 
   return (
     <div className="space-y-0.5">
-      <div
-        className="group flex h-8 items-center gap-2 rounded-md px-2 transition-colors duration-100"
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = "transparent";
-        }}
-      >
+      <div className="group flex h-8 items-center gap-2 rounded-md px-2 transition-colors duration-100 hover:bg-surface-2">
         <button
           type="button"
           onClick={onToggle}
@@ -109,15 +101,9 @@ function WorkspaceItem({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md opacity-0 transition-opacity group-hover:opacity-100"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md opacity-0 transition-opacity group-hover:opacity-100 hover:bg-surface-2"
             >
-              <MoreHorizontal size={12} style={{ color: "var(--color-text-tertiary)" }} />
+              <MoreHorizontal size={12} className="text-text-tertiary" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -171,28 +157,10 @@ function WorkspaceItem({
               key={project.id}
               className={cn(
                 "group flex h-7 items-center gap-2 rounded-md px-2 text-xs transition-colors duration-100",
-                selectedProjectId === project.id && ""
+                selectedProjectId === project.id
+                  ? "bg-surface-2 text-text-primary"
+                  : "text-text-secondary hover:bg-surface-2"
               )}
-              style={{
-                backgroundColor:
-                  selectedProjectId === project.id
-                    ? "var(--color-surface-2)"
-                    : "transparent",
-                color:
-                  selectedProjectId === project.id
-                    ? "var(--color-text-primary)"
-                    : "var(--color-text-secondary)",
-              }}
-              onMouseEnter={(e) => {
-                if (selectedProjectId !== project.id) {
-                  e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedProjectId !== project.id) {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                }
-              }}
             >
               <button
                 type="button"
@@ -255,16 +223,7 @@ function WorkspaceItem({
           <button
             type="button"
             onClick={() => setCreateProjectOpen(true)}
-            className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs transition-colors duration-100"
-            style={{ color: "var(--color-text-tertiary)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-              e.currentTarget.style.color = "var(--color-text-secondary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "var(--color-text-tertiary)";
-            }}
+            className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs transition-colors duration-100 text-text-tertiary hover:bg-surface-2 hover:text-text-secondary"
           >
             <Plus size={12} />
             <span>New Project</span>
@@ -385,16 +344,7 @@ export function TasksSidebar() {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="flex h-8 w-8 items-center justify-center rounded-md transition-colors duration-100"
-              style={{ color: "var(--color-text-tertiary)" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-                e.currentTarget.style.color = "var(--color-text-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.color = "var(--color-text-tertiary)";
-              }}
+              className="flex h-8 w-8 items-center justify-center rounded-md transition-colors duration-100 text-text-tertiary hover:bg-surface-2 hover:text-text-primary"
             >
               <PanelLeftClose size={16} />
             </button>
@@ -419,18 +369,7 @@ export function TasksSidebar() {
             <button
               type="button"
               onClick={() => setCreateWorkspaceOpen(true)}
-              className="flex h-8 w-full items-center justify-center gap-2 rounded-md transition-colors duration-100 text-sm font-medium"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                border: "1px solid var(--color-border-default)",
-                color: "var(--color-text-primary)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--color-surface-3)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--color-surface-2)";
-              }}
+              className="flex h-8 w-full items-center justify-center gap-2 rounded-md transition-colors duration-100 text-sm font-medium bg-surface-2 hover:bg-surface-3 border border-border-default text-text-primary"
             >
               <Plus size={14} />
               <span>New Workspace</span>

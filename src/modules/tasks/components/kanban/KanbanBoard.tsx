@@ -33,15 +33,15 @@ export function KanbanBoard() {
   const userId = useCurrentUserId();
 
   const { selectedProjectId, filters } = useTasksStore();
-  const { data: statuses, isLoading: statusesLoading } = useStatuses(selectedProjectId);
-  const { data: tasks, isLoading: tasksLoading } = useTasks(selectedProjectId);
+  const { data: statuses } = useStatuses(selectedProjectId);
+  const { data: tasks, isError: tasksError, refetch: refetchTasks } = useTasks(selectedProjectId);
   const moveMutation = useMoveTask();
   useRealtimeTasks(selectedProjectId);
   useRealtimeStatuses(selectedProjectId);
   const { data: currentWorkspaceId } = useProjectWorkspaceId(selectedProjectId);
   useRealtimeTags(currentWorkspaceId ?? null);
 
-  const { data: workspaces, isLoading: workspacesLoading } = useWorkspaces(userId || "");
+  const { data: workspaces } = useWorkspaces(userId || "");
   const firstWorkspaceId = workspaces?.[0]?.id ?? null;
   const { data: allProjects, isLoading: projectsLoading } = useProjects(firstWorkspaceId);
   const hasProjects = !!allProjects && allProjects.length > 0;
@@ -150,18 +150,33 @@ export function KanbanBoard() {
       .filter((t) => t.status_id === statusId)
       .sort((a, b) => a.position - b.position);
 
-  if (
-    workspacesLoading ||
-    projectsLoading ||
-    (hasProjects && !selectedProjectId) ||
-    statusesLoading ||
-    tasksLoading
-  ) {
-    return <TasksSkeleton />;
+  // §2.1 chirurgical : ne pas attendre workspaces/projects en arrière-plan.
+  // Empty state seulement une fois que projects est résolu et vide.
+  if (!projectsLoading && !hasProjects) {
+    return <TasksEmptyState />;
   }
 
-  if (!hasProjects) {
-    return <TasksEmptyState />;
+  if (tasksError) {
+    return (
+      <div className="flex flex-1 items-center justify-center py-20">
+        <div className="rounded-xl border border-red-800/40 bg-red-950/20 p-6 text-center max-w-sm">
+          <p className="text-sm text-red-400 mb-3">Failed to load tasks.</p>
+          <button
+            type="button"
+            onClick={() => void refetchTasks()}
+            className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors underline"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Skeleton tant qu'on n'a pas tasks+statuses, peu importe l'état de workspaces/projects.
+  // Cache chaud → render immédiat, pas de flash.
+  if (!tasks || !statuses) {
+    return <TasksSkeleton />;
   }
 
   return (
