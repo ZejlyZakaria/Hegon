@@ -54,6 +54,7 @@ export function useCreateTask() {
     mutationFn: TaskService.createTask,
     onSuccess: (newTask) => {
       queryClient.invalidateQueries({ queryKey: TASK_KEYS.byProject(newTask.project_id) });
+      TaskService.logActivity({ task_id: newTask.id, action: "created" }).catch(() => {});
       toast.success("Task created successfully");
     },
     onError: (error: Error) => {
@@ -115,10 +116,43 @@ export function useUpdateTask() {
       console.error("[useUpdateTask]", error);
       toast.error("Couldn't update task. Try again.");
     },
-    onSuccess: async (updatedTask) => {
+    onSuccess: async (updatedTask, input, context) => {
       queryClient.invalidateQueries({ queryKey: TASK_KEYS.byProject(updatedTask.project_id) });
       if (updatedTask.goal_id) {
         await recalcGoalIfAuto(queryClient, updatedTask.goal_id);
+      }
+
+      // Activity logging — fire and forget, non-blocking
+      const prevTask = (context?.previousTasks as Task[] | undefined)?.find(
+        (t) => t.id === input.id,
+      );
+      if (!prevTask) return;
+
+      const statuses = queryClient.getQueryData<Status[]>(STATUS_KEYS.byProject(input.project_id));
+
+      if (input.status_id !== undefined && input.status_id !== prevTask.status_id) {
+        const from = statuses?.find((s) => s.id === prevTask.status_id)?.name ?? prevTask.status_id;
+        const to   = statuses?.find((s) => s.id === input.status_id)?.name ?? input.status_id;
+        TaskService.logActivity({ task_id: input.id, action: "status_changed", changes: { from, to } }).catch(() => {});
+      }
+      if (input.priority !== undefined && input.priority !== prevTask.priority) {
+        TaskService.logActivity({ task_id: input.id, action: "priority_changed", changes: { from: prevTask.priority, to: input.priority } }).catch(() => {});
+      }
+      if (input.assignee_id !== undefined && input.assignee_id !== prevTask.assignee_id) {
+        const action = input.assignee_id === null ? "unassigned" : "assigned";
+        TaskService.logActivity({ task_id: input.id, action }).catch(() => {});
+      }
+      if (input.due_date !== undefined && input.due_date !== prevTask.due_date) {
+        const action = input.due_date === null ? "due_date_cleared" : "due_date_set";
+        const changes = input.due_date ? { to: input.due_date } : {};
+        TaskService.logActivity({ task_id: input.id, action, changes }).catch(() => {});
+      }
+      if (input.goal_id !== undefined && input.goal_id !== prevTask.goal_id) {
+        const action = input.goal_id === null ? "goal_unlinked" : "goal_linked";
+        TaskService.logActivity({ task_id: input.id, action }).catch(() => {});
+      }
+      if (input.title !== undefined && input.title.trim() !== prevTask.title) {
+        TaskService.logActivity({ task_id: input.id, action: "title_changed", changes: { from: prevTask.title, to: input.title.trim() } }).catch(() => {});
       }
     },
   });
@@ -170,9 +204,25 @@ export function useMoveTask() {
     onSettled: (_data, _err, variables) => {
       clearOptimistic(variables.taskId);
     },
-    onSuccess: async (_, variables) => {
-      const tasks = queryClient.getQueryData<Task[]>(TASK_KEYS.byProject(variables.projectId));
-      const task  = tasks?.find((t) => t.id === variables.taskId);
+    onSuccess: async (_, variables, context) => {
+      const previousTasks = (context as { previousTasks?: Task[] } | undefined)?.previousTasks;
+      const prevTask = previousTasks?.find((t) => t.id === variables.taskId);
+
+      // Log status change from drag & drop (previousTasks needed — cache already has new status)
+      if (prevTask && prevTask.status_id !== variables.newStatusId) {
+        const statuses = queryClient.getQueryData<Status[]>(STATUS_KEYS.byProject(variables.projectId));
+        TaskService.logActivity({
+          task_id: variables.taskId,
+          action: "status_changed",
+          changes: {
+            from: statuses?.find((s) => s.id === prevTask.status_id)?.name ?? prevTask.status_id,
+            to:   statuses?.find((s) => s.id === variables.newStatusId)?.name ?? variables.newStatusId,
+          },
+        }).catch(() => {});
+      }
+
+      const currentTasks = queryClient.getQueryData<Task[]>(TASK_KEYS.byProject(variables.projectId));
+      const task = currentTasks?.find((t) => t.id === variables.taskId);
       if (task?.goal_id) {
         await recalcGoalIfAuto(queryClient, task.goal_id);
       }

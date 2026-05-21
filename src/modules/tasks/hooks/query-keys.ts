@@ -3,8 +3,6 @@ export const TASK_KEYS = {
   lists: () => [...TASK_KEYS.all, 'list'] as const,
   list: (filters: string) => [...TASK_KEYS.lists(), { filters }] as const,
   byProject: (projectId: string) => [...TASK_KEYS.all, 'project', projectId] as const,
-  byWorkspace: (workspaceId: string) => [...TASK_KEYS.all, 'workspace', workspaceId] as const,
-  byStatus: (statusId: string) => [...TASK_KEYS.all, 'status', statusId] as const,
 } as const;
 
 export const PROJECT_KEYS = {
@@ -32,4 +30,16 @@ export const TAG_KEYS = {
   all: ['tags'] as const,
   lists: () => [...TAG_KEYS.all, 'list'] as const,
   byWorkspace: (workspaceId: string) => [...TAG_KEYS.all, 'workspace', workspaceId] as const,
+} as const;
+
+export const ACTIVITY_KEYS = {
+  byTask: (taskId: string) => ['task_activities', taskId] as const,
+} as const;
+
+export const SUBTASK_KEYS = {
+  byParent: (parentId: string) => ['subtasks', parentId] as const,
+} as const;
+
+export const NOW_TASK_KEYS = {
+  all: ['now-tasks'] as const,
 } as const;

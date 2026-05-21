@@ -27,6 +27,8 @@ export const useTasksStore = create<TasksState>()(
         // Selection
         selectedProjectId: null,
         setSelectedProjectId: (id: string | null) => set({ selectedProjectId: id }),
+        activeWorkspaceId: null,
+        setActiveWorkspaceId: (id: string | null) => set({ activeWorkspaceId: id }),
 
         // Filters
         filters: initialFilters,
@@ -58,6 +60,7 @@ export const useTasksStore = create<TasksState>()(
           viewMode: state.viewMode,
           isSidebarCollapsed: state.isSidebarCollapsed,
           selectedProjectId: state.selectedProjectId,
+          activeWorkspaceId: state.activeWorkspaceId,
         }),
         onRehydrateStorage: () => (state) => {
           state?.setHasHydrated(true);

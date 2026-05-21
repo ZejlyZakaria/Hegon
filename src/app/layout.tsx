@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "@/shared/providers/QueryProvider";
+import { TooltipProvider } from "@/shared/components/ui/tooltip";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.variable} antialiased overflow-hidden`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <QueryProvider>
+            <TooltipProvider>
             {children}
             <Toaster
               position="bottom-right"
@@ -41,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               }}
             />
             <Analytics debug={false} />
+            </TooltipProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

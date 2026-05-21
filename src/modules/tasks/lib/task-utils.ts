@@ -31,6 +31,11 @@ export function filterTasks(tasks: Task[], filters: TaskFilters): Task[] {
       if (!hasMatchingTag) return false;
     }
 
+    // Assignees filter
+    if (filters.assignees.length > 0) {
+      if (!filters.assignees.includes(task.assignee_id ?? "")) return false;
+    }
+
     return true;
   });
 }

@@ -2,9 +2,11 @@ import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type {
   Task,
+  TaskActivity,
   Project,
   Workspace,
   Status,
+  StatusType,
   Assignee,
   CreateTaskInput,
   UpdateTaskInput,
@@ -22,6 +24,7 @@ export async function getTasks(projectId: string): Promise<Task[]> {
     .select(`*, status:statuses(*), project:projects(*), task_tags(tag:tags(*))`)
     .eq("project_id", projectId)
     .eq("is_archived", false)
+    .is("parent_task_id", null)
     .order("position", { ascending: true });
 
   if (error) throw error;
@@ -49,6 +52,19 @@ export async function getTasks(projectId: string): Promise<Task[]> {
     ...task,
     assignee: task.assignee_id ? (profileMap.get(task.assignee_id) ?? null) : null,
   })) as Task[];
+}
+
+export async function getAllActiveTasks(): Promise<Task[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*, status:statuses(*), project:projects(id, name, color, icon)")
+    .eq("is_archived", false)
+    .is("parent_task_id", null)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return ((data ?? []) as Task[]).filter((t) => !t.status?.is_completed);
 }
 
 export async function createTask(input: CreateTaskInput) {
@@ -98,39 +114,34 @@ export async function createTask(input: CreateTaskInput) {
 export async function updateTask(task: UpdateTaskInput): Promise<Task> {
   const supabase = createClient();
 
-  // Validation
-  if (!task.title || task.title.trim().length === 0) {
-    throw new Error("Title is required");
+  if (task.title !== undefined) {
+    if (!task.title || task.title.trim().length === 0) throw new Error("Title is required");
+    if (task.title.length > 255) throw new Error("Title is too long (max 255 characters)");
   }
 
-  if (task.title.length > 255) {
-    throw new Error("Title is too long (max 255 characters)");
-  }
-
-  if (!task.status_id) {
-    throw new Error("Status is required");
-  }
-
-  // Resolve completed_at from the new status
-  const { data: status } = await supabase
-    .from("statuses")
-    .select("is_completed")
-    .eq("id", task.status_id)
-    .single();
-
-  // Update
   const updatePayload: Record<string, unknown> = {
-    title:           task.title.trim(),
-    description:     task.description?.trim() || null,
-    priority:        task.priority || "medium",
-    status_id:       task.status_id,
-    due_date:        task.due_date,
-    estimated_hours: task.estimated_hours,
-    completed_at:    status?.is_completed ? new Date().toISOString() : null,
-    updated_at:      new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
-  if (task.goal_id !== undefined) updatePayload.goal_id = task.goal_id;
+
+  if (task.title !== undefined)       updatePayload.title       = task.title.trim();
+  if (task.description !== undefined) updatePayload.description = task.description?.trim() || null;
+  if (task.priority !== undefined)    updatePayload.priority    = task.priority;
+  if (task.due_date !== undefined)    updatePayload.due_date    = task.due_date;
+  if (task.start_date !== undefined)  updatePayload.start_date  = task.start_date;
+  if (task.goal_id !== undefined)     updatePayload.goal_id     = task.goal_id;
   if (task.assignee_id !== undefined) updatePayload.assignee_id = task.assignee_id;
+  if (task.is_archived !== undefined) updatePayload.is_archived = task.is_archived;
+
+  // Status change requires resolving completed_at
+  if (task.status_id !== undefined) {
+    const { data: status } = await supabase
+      .from("statuses")
+      .select("is_completed")
+      .eq("id", task.status_id)
+      .single();
+    updatePayload.status_id   = task.status_id;
+    updatePayload.completed_at = status?.is_completed ? new Date().toISOString() : null;
+  }
 
   const { data, error } = await supabase
     .from("tasks")
@@ -271,29 +282,41 @@ export async function getProjects(workspaceId: string) {
   return data as Project[];
 }
 
-export async function createProject(input: { workspace_id: string; name: string; description?: string | null }) {
-  const supabase = createClient();
 
-  // position is set atomically by the set_project_position BEFORE INSERT trigger (§1.3)
+const DEFAULT_WORKFLOW: { type: StatusType; name: string; color: string; icon: string }[] = [
+  { type: "backlog",     name: "Backlog",      color: "#6b7280", icon: "circle_dashed"       },
+  { type: "todo",        name: "Todo",          color: "#94a3b8", icon: "circle_empty"        },
+  { type: "in_progress", name: "In Progress",   color: "#3b82f6", icon: "circle_quarter"      },
+  { type: "done",        name: "Done",          color: "#22c55e", icon: "circle_check"        },
+];
+
+export async function createProject(input: {
+  workspace_id: string;
+  name: string;
+  description?: string | null;
+  workflow?: { type: StatusType; name: string; color: string; icon?: string }[];
+}) {
+  const supabase = createClient();
+  const { workflow, ...projectInput } = input;
+
   const { data, error } = await supabase
     .from("projects")
-    .insert({ ...input, status: "active" })
+    .insert({ ...projectInput, status: "active" })
     .select()
     .single();
 
   if (error) throw error;
 
-  // Auto-create default statuses (org_id also derived by trigger from project_id)
-  const defaultStatuses = [
-    { name: "Backlog",     color: "#4b5563", position: 1, is_completed: false },
-    { name: "To Do",       color: "#6b7280", position: 2, is_completed: false },
-    { name: "In Progress", color: "#f59e0b", position: 3, is_completed: false },
-    { name: "Done",        color: "#3b82f6", position: 4, is_completed: true  },
-  ];
+  const statusRows = (workflow ?? DEFAULT_WORKFLOW).map((s, i) => ({
+    project_id: data.id,
+    name:     s.name,
+    color:    s.color,
+    type:     s.type,
+    icon:     s.icon ?? null,
+    position: i + 1,
+  }));
 
-  await supabase.from("statuses").insert(
-    defaultStatuses.map((s) => ({ ...s, project_id: data.id }))
-  );
+  await supabase.from("statuses").insert(statusRows);
 
   return data as Project;
 }
@@ -551,6 +574,117 @@ export async function removeTagFromTask(taskId: string, tagId: string) {
 }
 
 // =====================================================
+// ACTIVITY LOG
+// =====================================================
+
+export async function logActivity(input: {
+  task_id: string;
+  action: string;
+  changes?: Record<string, unknown>;
+}): Promise<void> {
+  const supabase = createClient();
+  // Use the task's own org_id so collaborators' activities are visible to the workspace owner
+  const { data: taskRow } = await supabase.from("tasks").select("org_id").eq("id", input.task_id).single();
+  const orgId = taskRow?.org_id;
+  if (!orgId) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase.from("task_activities").insert({
+    task_id: input.task_id,
+    user_id: user.id,
+    org_id:  orgId,
+    action:  input.action,
+    changes: input.changes ?? {},
+  });
+
+  if (error) console.error("[logActivity]", error);
+}
+
+export async function getTaskActivities(taskId: string): Promise<TaskActivity[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("task_activities")
+    .select("*, user:profiles(id, full_name, avatar_url, email)")
+    .eq("task_id", taskId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+  return (data ?? []) as TaskActivity[];
+}
+
+export async function updateComment(activityId: string, text: string): Promise<void> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { error } = await supabase
+    .from("task_activities")
+    .update({ changes: { text } })
+    .eq("id", activityId)
+    .eq("user_id", user.id)
+    .eq("action", "commented");
+  if (error) throw error;
+}
+
+export async function deleteComment(activityId: string): Promise<void> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { error } = await supabase
+    .from("task_activities")
+    .delete()
+    .eq("id", activityId)
+    .eq("user_id", user.id)
+    .eq("action", "commented");
+  if (error) throw error;
+}
+
+// =====================================================
+// SUB-TASKS
+// =====================================================
+
+export async function getSubTasks(parentTaskId: string): Promise<Task[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*, status:statuses(*)")
+    .eq("parent_task_id", parentTaskId)
+    .eq("is_archived", false)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as Task[];
+}
+
+export async function createSubTask(input: {
+  parent_task_id: string;
+  project_id: string;
+  title: string;
+  status_id: string;
+}): Promise<Task> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert({
+      parent_task_id: input.parent_task_id,
+      project_id: input.project_id,
+      title: input.title.trim(),
+      status_id: input.status_id,
+      priority: "medium",
+      created_by: user.id,
+    })
+    .select("*, status:statuses(*)")
+    .single();
+
+  if (error) throw error;
+  return data as Task;
+}
+
+// =====================================================
 // STATUSES
 // =====================================================
 
@@ -564,4 +698,54 @@ export async function getStatuses(projectId: string) {
 
   if (error) throw error;
   return data as Status[];
+}
+
+export async function createStatus(input: {
+  project_id: string;
+  name: string;
+  type: StatusType;
+  color: string;
+  icon: string | null;
+  position: number;
+}): Promise<Status> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("statuses")
+    .insert(input)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Status;
+}
+
+export async function updateStatus(
+  id: string,
+  updates: Partial<Pick<Status, "name" | "type" | "color" | "icon">>
+): Promise<Status> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("statuses")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Status;
+}
+
+export async function deleteStatus(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("statuses").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function reorderStatuses(
+  updates: { id: string; position: number }[]
+): Promise<void> {
+  const supabase = createClient();
+  await Promise.all(
+    updates.map(({ id, position }) =>
+      supabase.from("statuses").update({ position }).eq("id", id)
+    )
+  );
 }

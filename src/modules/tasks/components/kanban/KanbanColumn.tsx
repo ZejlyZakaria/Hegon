@@ -39,7 +39,7 @@ export function KanbanColumn({
       <div className="flex w-[320px] flex-col">
         <div className="sticky top-0 z-10 mb-2 flex items-center justify-between px-1 py-1 bg-[#09090b]">
           <div className="flex items-center gap-2">
-            <StatusIcon status={status.name} size={14} />
+            <StatusIcon status={status} size={14} />
             <h2 className="text-sm font-semibold text-text-primary">
               {status.name}
             </h2>
@@ -60,9 +60,10 @@ export function KanbanColumn({
         <div
           ref={setNodeRef}
           className={cn(
-            "space-y-2 rounded-lg border p-2 transition-colors duration-100",
+            "space-y-2 rounded-lg border p-2 transition-colors duration-100 overflow-hidden",
             isActive ? "bg-surface-2 border-border-default" : "bg-surface-1 border-border-subtle"
           )}
+          style={status.color ? { borderTopColor: status.color, borderTopWidth: "2px" } : undefined}
         >
           <SortableContext
             items={taskIds}

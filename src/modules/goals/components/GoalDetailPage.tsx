@@ -345,7 +345,7 @@ export function GoalDetailPage({ id }: Props) {
                     >
                       {/* Status icon — kanban style */}
                       <div className="shrink-0">
-                        <StatusIcon status={task.status?.name ?? ""} size={14} />
+                        <StatusIcon status={task.status} size={14} />
                       </div>
 
                       {/* Title · project name inline */}

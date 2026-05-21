@@ -13,6 +13,7 @@ import { useDeleteTask } from "@/modules/tasks/hooks/useTasks";
 interface DeleteTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onDeleted?: () => void;
   taskId: string;
   taskTitle: string;
   projectId: string;
@@ -21,6 +22,7 @@ interface DeleteTaskModalProps {
 export function DeleteTaskModal({
   open,
   onOpenChange,
+  onDeleted,
   taskId,
   taskTitle,
   projectId,
@@ -33,6 +35,7 @@ export function DeleteTaskModal({
       {
         onSuccess: () => {
           onOpenChange(false);
+          onDeleted?.();
         },
       },
     );

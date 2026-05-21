@@ -13,7 +13,9 @@
     "test:ui": "vitest --ui"
   },
   "lint-staged": {
-    "*.{ts,tsx}": ["eslint --max-warnings 0"]
+    "*.{ts,tsx}": [
+      "eslint --max-warnings 0"
+    ]
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -199,7 +199,7 @@ export async function getLinkedTasks(goalId: string): Promise<LinkedTask[]> {
 
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, title, priority, completed_at, due_date, status:statuses(name, color, is_completed), project:projects(name)")
+    .select("id, title, priority, completed_at, due_date, status:statuses(name, color, type, is_completed), project:projects(name)")
     .eq("goal_id", goalId)
     .order("created_at", { ascending: true });
 

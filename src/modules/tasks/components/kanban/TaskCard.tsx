@@ -10,8 +10,8 @@ import { MemberAvatar } from "../shared/MemberAvatar";
 import { cn } from "@/shared/utils/utils";
 import type { Task } from "@/modules/tasks/types";
 import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
-import { EditTaskModal } from "../modals/EditTaskModal";
 import { DeleteTaskModal } from "../modals/DeleteTaskModal";
+import { useTasksStore } from "@/modules/tasks/store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,13 +29,23 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id });
 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const { openEditModal } = useTasksStore();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const dueDate = task.due_date ? new Date(task.due_date) : null;
   const overdue =
-    !!dueDate && isPast(dueDate) && task.status?.name?.toLowerCase() !== "done";
+    !!dueDate && isPast(dueDate) && !task.status?.is_completed;
   const daysUntilDue = dueDate ? differenceInDays(dueDate, new Date()) : null;
+
+  // Staleness — only when no due_date (due_date already signals urgency visually)
+  const stalenessDays = !task.due_date
+    ? differenceInDays(new Date(), new Date(task.updated_at))
+    : null;
+  const stalenessColor =
+    stalenessDays === null || stalenessDays < 3 ? null
+    : stalenessDays < 7  ? "#f59e0b"
+    : stalenessDays < 14 ? "#f97316"
+    : "#ef4444";
 
   const style = isOverlay
     ? undefined
@@ -57,6 +67,16 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
         isDragging && !isOverlay && "opacity-0"
       )}
     >
+      {stalenessColor && (
+        <div
+          className={cn(
+            "absolute inset-y-0 left-0 w-0.5 rounded-l-lg",
+            stalenessDays !== null && stalenessDays >= 14 && "animate-pulse"
+          )}
+          style={{ backgroundColor: stalenessColor }}
+        />
+      )}
+
       {!isOverlay && (
         <div
           {...attributes}
@@ -93,7 +113,7 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
             >
               <DropdownMenuItem
                 className="gap-2 text-xs cursor-pointer"
-                onClick={(e) => { e.stopPropagation(); setIsEditModalOpen(true); }}
+                onClick={(e) => { e.stopPropagation(); openEditModal(task.id); }}
               >
                 <Pencil size={12} />
                 Edit
@@ -186,18 +206,11 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
       <div
         ref={isOverlay ? undefined : setNodeRef}
         style={style}
-        onClick={isOverlay ? undefined : () => setIsEditModalOpen(true)}
+        onClick={isOverlay ? undefined : () => openEditModal(task.id)}
       >
         {content}
       </div>
 
-      {!isOverlay && (
-        <EditTaskModal
-          open={isEditModalOpen}
-          onOpenChange={setIsEditModalOpen}
-          task={task}
-        />
-      )}
       {!isOverlay && (
         <DeleteTaskModal
           open={isDeleteModalOpen}

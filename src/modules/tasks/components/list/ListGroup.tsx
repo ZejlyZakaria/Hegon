@@ -28,7 +28,7 @@ export function ListGroup({ status, tasks, projectId }: ListGroupProps) {
             {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
           </div>
 
-          <StatusIcon status={status.name} size={14} />
+          <StatusIcon status={status} size={14} />
 
           <span className="text-sm font-medium text-text-primary">
             {status.name}

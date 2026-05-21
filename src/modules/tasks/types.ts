@@ -3,8 +3,9 @@
 // =====================================================
 
 export type Priority = 'critical' | 'high' | 'medium' | 'low';
+export type StatusType = 'backlog' | 'todo' | 'in_progress' | 'done' | 'cancelled';
 export type ProjectStatus = 'active' | 'archived' | 'completed';
-export type ViewMode = 'kanban' | 'list' | 'calendar' | 'timeline';
+export type ViewMode = 'kanban' | 'list' | 'calendar' | 'now';
 
 export interface Workspace {
   id: string;
@@ -37,6 +38,8 @@ export interface Status {
   project_id: string;
   name: string;
   color: string | null;
+  type: StatusType;
+  icon: string | null;
   position: number;
   is_completed: boolean;
   created_at: string;
@@ -72,8 +75,6 @@ export interface Task {
   due_date: string | null;
   start_date: string | null;
   completed_at: string | null;
-  estimated_hours: number | null;
-  actual_hours: number | null;
   position: number;
   is_archived: boolean;
   recurring_pattern: Record<string, unknown> | null;
@@ -86,26 +87,6 @@ export interface Task {
   tags?: Tag[];
   assignee?: Assignee | null;
   subtasks?: Task[];
-}
-
-export interface Comment {
-  id: string;
-  task_id: string;
-  user_id: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Attachment {
-  id: string;
-  task_id: string;
-  user_id: string;
-  file_name: string;
-  file_url: string;
-  file_type: string | null;
-  file_size: number | null;
-  created_at: string;
 }
 
 // =====================================================
@@ -137,6 +118,8 @@ export interface TasksState {
   // Selection
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
+  activeWorkspaceId: string | null;
+  setActiveWorkspaceId: (id: string | null) => void;
   
   // Filters
   filters: TaskFilters;
@@ -169,17 +152,41 @@ export interface CreateTaskInput {
   priority?: Priority;
   due_date?: string | null;
   start_date?: string | null;
-  estimated_hours?: number | null;
   parent_task_id?: string | null;
   goal_id?: string | null;
   assignee_id?: string | null;
+}
+
+// =====================================================
+// ACTIVITY LOG
+// =====================================================
+
+export type TaskActivityAction =
+  | "created" | "title_changed" | "status_changed" | "priority_changed"
+  | "assigned" | "unassigned" | "due_date_set" | "due_date_cleared"
+  | "start_date_set" | "start_date_cleared" | "goal_linked" | "goal_unlinked"
+  | "commented";
+
+export interface TaskActivity {
+  id: string;
+  task_id: string;
+  user_id: string;
+  action: TaskActivityAction;
+  changes: Record<string, unknown>;
+  created_at: string;
+  org_id: string;
+  user?: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    email: string;
+  };
 }
 
 export interface UpdateTaskInput extends Partial<CreateTaskInput> {
   id: string;
    project_id: string; 
   completed_at?: string | null;
-  actual_hours?: number | null;
   is_archived?: boolean;
 }
 

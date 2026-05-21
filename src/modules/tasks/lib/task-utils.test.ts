@@ -14,8 +14,6 @@ function makeTask(overrides: Partial<Task>): Task {
     due_date: null,
     start_date: null,
     completed_at: null,
-    estimated_hours: null,
-    actual_hours: null,
     position: 0,
     is_archived: false,
     recurring_pattern: null,

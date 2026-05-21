@@ -6,6 +6,7 @@ import { useTasks } from "@/modules/tasks/hooks/useTasks";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { ListGroup } from "./ListGroup";
 import type { Task } from "@/modules/tasks/types";
+import { filterTasks } from "@/modules/tasks/lib/task-utils";
 import { TasksSkeleton } from "../TasksSkeletons";
 
 export function ListView() {
@@ -13,24 +14,7 @@ export function ListView() {
   const { data: statuses, isLoading: statusesLoading } = useStatuses(selectedProjectId);
   const { data: tasks, isLoading: tasksLoading, isError: tasksError, refetch: refetchTasks } = useTasks(selectedProjectId);
 
-  const filteredTasks = useMemo(() => {
-    if (!tasks) return [];
-
-    return tasks.filter((task) => {
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        if (!task.title.toLowerCase().includes(q) && !task.description?.toLowerCase().includes(q)) return false;
-      }
-      if (filters.priorities.length && !filters.priorities.includes(task.priority)) return false;
-      if (filters.statuses.length && !filters.statuses.includes(task.status_id)) return false;
-      if (filters.tags.length) {
-        const ids = task.tags?.map((t) => t.id) || [];
-        if (!filters.tags.some((id: string) => ids.includes(id))) return false;
-      }
-      if (filters.assignees.length && !filters.assignees.includes(task.assignee_id ?? "")) return false;
-      return true;
-    });
-  }, [tasks, filters]);
+  const filteredTasks = useMemo(() => filterTasks(tasks ?? [], filters), [tasks, filters]);
 
   const getTasksByStatus = (statusId: string): Task[] =>
     filteredTasks

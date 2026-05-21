@@ -17,16 +17,11 @@ interface SetupResult {
 }
 
 export async function createFirstProject(): Promise<SetupResult> {
-  console.log("🚀 [AUTO-SETUP] Starting...");
-  
   const supabase = await createServerClient();
 
-  // 1. Check authentication
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  console.log("👤 [AUTO-SETUP] User:", user?.id);
 
   if (!user) {
     console.error("❌ [AUTO-SETUP] Not authenticated");
@@ -36,27 +31,17 @@ export async function createFirstProject(): Promise<SetupResult> {
   const orgId = await getServerOrgId(user.id);
 
   try {
-    // 2. Check if user already has a workspace
-    console.log("📁 [AUTO-SETUP] Checking for existing workspace...");
-    
     const { data: existingWorkspaces } = await supabase
       .from("workspaces")
       .select("id")
       .eq("user_id", user.id)
       .limit(1);
 
-    console.log("📁 [AUTO-SETUP] Existing workspaces:", existingWorkspaces);
-
     let workspaceId: string;
 
     if (existingWorkspaces && existingWorkspaces.length > 0) {
-      // Use existing workspace
       workspaceId = existingWorkspaces[0].id;
-      console.log("✅ [AUTO-SETUP] Using existing workspace:", workspaceId);
     } else {
-      // Create first workspace
-      console.log("🆕 [AUTO-SETUP] Creating new workspace...");
-      
       const { data: newWorkspace, error: workspaceError } = await supabase
         .from("workspaces")
         .insert({
@@ -73,12 +58,8 @@ export async function createFirstProject(): Promise<SetupResult> {
       }
 
       workspaceId = newWorkspace.id;
-      console.log("✅ [AUTO-SETUP] Workspace created:", workspaceId);
     }
 
-    // 3. Create the first project
-    console.log("🆕 [AUTO-SETUP] Creating project...");
-    
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .insert({
@@ -95,16 +76,11 @@ export async function createFirstProject(): Promise<SetupResult> {
       return { success: false, error: "Failed to create project" };
     }
 
-    console.log("✅ [AUTO-SETUP] Project created:", project.id);
-
-    // 4. Create default statuses (Linear-style)
-    console.log("🆕 [AUTO-SETUP] Creating statuses...");
-    
     const defaultStatuses = [
-      { name: "Backlog", color: "#6b7280", position: 0 },
-      { name: "To Do", color: "#6b7280", position: 1 },
-      { name: "In Progress", color: "#f59e0b", position: 2 },
-      { name: "Done", color: "#3b82f6", position: 3 },
+      { name: "Backlog", color: "#6b7280", type: "backlog", position: 0 },
+      { name: "To Do", color: "#6b7280", type: "todo", position: 1 },
+      { name: "In Progress", color: "#f59e0b", type: "in_progress", position: 2 },
+      { name: "Done", color: "#3b82f6", type: "done", position: 3 },
     ];
 
     const statusInserts = defaultStatuses.map((status) => ({
@@ -126,12 +102,7 @@ export async function createFirstProject(): Promise<SetupResult> {
       };
     }
 
-    console.log("✅ [AUTO-SETUP] Statuses created successfully");
-
-    // 5. Revalidate cache
     revalidatePath("/tasks");
-
-    console.log("🎉 [AUTO-SETUP] Complete! Project ID:", project.id);
 
     return {
       success: true,

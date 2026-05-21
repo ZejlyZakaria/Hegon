@@ -51,6 +51,7 @@ export interface LinkedTask {
   status?: {
     name:         string;
     color:        string | null;
+    type:         import("@/modules/tasks/types").StatusType;
     is_completed: boolean;
   };
 }

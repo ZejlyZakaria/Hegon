@@ -7,8 +7,8 @@ import { Calendar, Tag, MoreHorizontal, AlertTriangle, User, Pencil, Trash2 } fr
 import { PriorityIcon } from "../../../../shared/components/icons/PriorityIcon";
 import { StatusIcon } from "../../../../shared/components/icons/StatusIcon";
 import { MemberAvatar } from "../shared/MemberAvatar";
-import { EditTaskModal } from "../modals/EditTaskModal";
 import { DeleteTaskModal } from "../modals/DeleteTaskModal";
+import { useTasksStore } from "@/modules/tasks/store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,18 +23,18 @@ interface ListRowProps {
 }
 
 export function ListRow({ task }: ListRowProps) {
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const { openEditModal } = useTasksStore();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const dueDate = task.due_date ? new Date(task.due_date) : null;
-  const overdue = !!dueDate && isPast(dueDate) && task.status?.name?.toLowerCase() !== "done";
+  const overdue = !!dueDate && isPast(dueDate) && !task.status?.is_completed;
   const daysUntilDue = dueDate ? differenceInDays(dueDate, new Date()) : null;
   const urgent = overdue || (daysUntilDue !== null && daysUntilDue <= 3);
 
   return (
     <>
       <div
-        onClick={() => setIsEditModalOpen(true)}
+        onClick={() => openEditModal(task.id)}
         className={cn(
           "group grid cursor-pointer grid-cols-[20px_16px_minmax(0,1fr)_auto_92px_20px_32px] items-center gap-3 px-3 py-2 transition-colors duration-100",
           "border-b last:border-b-0 border-border-subtle hover:bg-surface-2"
@@ -45,7 +45,7 @@ export function ListRow({ task }: ListRowProps) {
         </div>
 
         <div className="flex w-4 shrink-0 items-center justify-center">
-          <StatusIcon status={task.status?.name ?? ""} size={14} />
+          <StatusIcon status={task.status} size={14} />
         </div>
 
         <div className="min-w-0">
@@ -121,7 +121,7 @@ export function ListRow({ task }: ListRowProps) {
           >
             <DropdownMenuItem
               className="gap-2 text-xs cursor-pointer"
-              onClick={(e) => { e.stopPropagation(); setIsEditModalOpen(true); }}
+              onClick={(e) => { e.stopPropagation(); openEditModal(task.id); }}
             >
               <Pencil size={12} />
               Edit
@@ -138,11 +138,6 @@ export function ListRow({ task }: ListRowProps) {
         </DropdownMenu>
       </div>
 
-      <EditTaskModal
-        open={isEditModalOpen}
-        onOpenChange={setIsEditModalOpen}
-        task={task}
-      />
       <DeleteTaskModal
         open={isDeleteModalOpen}
         onOpenChange={setIsDeleteModalOpen}

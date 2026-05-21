@@ -15,12 +15,8 @@ import { Input } from "@/shared/components/ui/input";
 import { WORKSPACE_KEYS } from "@/modules/tasks/hooks/query-keys";
 import * as TaskService from "@/modules/tasks/service";
 import { cn } from "@/shared/utils/utils";
+import { ColorPalette, HEGON_COLORS } from "@/shared/components/ui/color-palette";
 import type { Workspace } from "@/modules/tasks/types";
-
-const TAG_COLOR_PRESETS = [
-  "#ef4444","#f97316","#f59e0b","#eab308","#84cc16","#22c55e",
-  "#10b981","#14b8a6","#06b6d4","#3b82f6","#6366f1","#8b5cf6","#ec4899","#71717a",
-];
 
 const ROLE_ICONS: Record<string, React.ReactNode> = {
   owner:  <Crown size={11} style={{ color: "#f59e0b" }} />,
@@ -47,7 +43,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [newTagName, setNewTagName] = useState("");
-  const [newTagColor, setNewTagColor] = useState(TAG_COLOR_PRESETS[9]);
+  const [newTagColor, setNewTagColor] = useState(HEGON_COLORS[3]);
 
   const queryClient = useQueryClient();
   const { data: members = [] } = useWorkspaceMembers(open ? workspace.id : null);
@@ -116,7 +112,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
     if (!trimmed) return;
     await createTag.mutateAsync({ name: trimmed, color: newTagColor });
     setNewTagName("");
-    setNewTagColor(TAG_COLOR_PRESETS[9]);
+    setNewTagColor(HEGON_COLORS[3]);
   }
 
   return (
@@ -400,20 +396,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                     New tag
                   </p>
 
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {TAG_COLOR_PRESETS.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setNewTagColor(color)}
-                        className={cn(
-                          "w-4 h-4 rounded-full transition-all",
-                          newTagColor === color ? "ring-2 ring-offset-1 ring-offset-surface-1 ring-white/60 scale-110" : "hover:scale-110",
-                        )}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
+                  <ColorPalette selected={newTagColor} onChange={setNewTagColor} />
 
                   <div className="flex gap-2">
                     <div className="flex items-center gap-2 flex-1 rounded-lg px-2.5 bg-zinc-800/50 border border-zinc-700/50">
@@ -466,22 +449,12 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                             </PopoverTrigger>
                             <PopoverContent
                               align="start"
-                              className="w-auto p-2 bg-surface-3 border-border-strong"
+                              className="w-auto p-3 bg-surface-3 border-border-strong"
                             >
-                              <div className="grid grid-cols-7 gap-1.5">
-                                {TAG_COLOR_PRESETS.map((color) => (
-                                  <button
-                                    key={color}
-                                    type="button"
-                                    onClick={() => updateTag.mutate({ tagId: tag.id, updates: { color } })}
-                                    className={cn(
-                                      "w-5 h-5 rounded-full transition-all",
-                                      tag.color === color ? "ring-2 ring-offset-1 ring-offset-surface-3 ring-white/60" : "hover:scale-110",
-                                    )}
-                                    style={{ backgroundColor: color }}
-                                  />
-                                ))}
-                              </div>
+                              <ColorPalette
+                                selected={tag.color ?? "#6b7280"}
+                                onChange={(color) => updateTag.mutate({ tagId: tag.id, updates: { color } })}
+                              />
                             </PopoverContent>
                           </Popover>
                           <span className="text-xs flex-1 truncate" style={{ color: "var(--color-text-primary)" }}>

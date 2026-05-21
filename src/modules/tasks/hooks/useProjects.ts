@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as TaskService from "../service";
 import { PROJECT_KEYS, WORKSPACE_KEYS } from "./query-keys";
 import { toast } from "@/shared/utils/toast";
+import type { StatusType } from "../types";
 
 // =====================================================
 // HOOK: useProjects
@@ -19,7 +20,7 @@ export function useProjects(workspaceId: string | null) {
 export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { workspace_id: string; name: string }) =>
+    mutationFn: (input: { workspace_id: string; name: string; workflow?: { type: StatusType; name: string; color: string }[] }) =>
       TaskService.createProject(input),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: PROJECT_KEYS.byWorkspace(variables.workspace_id) });

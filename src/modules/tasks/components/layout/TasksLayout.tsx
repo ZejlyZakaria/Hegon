@@ -5,7 +5,8 @@ import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { TasksSidebar } from "./TasksSidebar";
 import { TasksTopbar } from "./TasksTopbar";
 import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
-import { useProjects } from "@/modules/tasks/hooks/useProjects";
+import { TaskDetailPanel } from "@/modules/tasks/components/panels/TaskDetailPanel";
+import { NoProjectSelected } from "@/modules/tasks/components/NoProjectSelected";
 
 interface TasksLayoutProps {
   children: React.ReactNode;
@@ -15,11 +16,10 @@ function TasksHeader() {
   const { viewMode } = useTasksStore();
 
   const viewLabel =
-    viewMode === "kanban"
-      ? "Kanban"
-      : viewMode === "list"
-      ? "List"
-      : "Calendar";
+    viewMode === "kanban" ? "Kanban"
+    : viewMode === "list" ? "List"
+    : viewMode === "calendar" ? "Calendar"
+    : "";
 
   return (
     <div className="px-4 pb-4 pt-5">
@@ -56,23 +56,27 @@ function TasksHeader() {
 
 export function TasksLayout({ children }: TasksLayoutProps) {
   const userId = useCurrentUserId();
-  const { selectedProjectId } = useTasksStore();
+  const { selectedProjectId, viewMode } = useTasksStore();
 
   const { data: workspaces } = useWorkspaces(userId || "");
-  const firstWorkspaceId = workspaces?.[0]?.id ?? null;
-  const { data: allProjects } = useProjects(firstWorkspaceId);
-  const hasProjects = !!allProjects && allProjects.length > 0;
+  const hasWorkspaces = !!workspaces && workspaces.length > 0;
+
+  const showNoProjectSelected = hasWorkspaces && !selectedProjectId && viewMode !== "now";
 
   return (
     <div className="flex h-full w-full overflow-hidden">
-      {hasProjects && <TasksSidebar />}
+      {hasWorkspaces && <TasksSidebar />}
 
       <div className="flex h-full flex-1 flex-col overflow-hidden">
-        {selectedProjectId && <TasksTopbar />}
-        {selectedProjectId && <TasksHeader />}
+        {(selectedProjectId || viewMode === "now") && <TasksTopbar />}
+        {selectedProjectId && viewMode !== "now" && <TasksHeader />}
 
-        <div className="relative flex-1 overflow-auto">{children}</div>
+        <div className="relative flex-1 overflow-auto">
+          {showNoProjectSelected ? <NoProjectSelected /> : children}
+        </div>
       </div>
+
+      <TaskDetailPanel />
     </div>
   );
 }

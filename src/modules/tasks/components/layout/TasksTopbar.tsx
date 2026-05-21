@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   List,
   Calendar,
+  Zap,
   X,
   PanelLeftOpen,
   Tag,
@@ -60,6 +61,7 @@ export function TasksTopbar() {
     { mode: "kanban", icon: <LayoutGrid size={16} />, label: "Kanban" },
     { mode: "list", icon: <List size={16} />, label: "List" },
     { mode: "calendar", icon: <Calendar size={16} />, label: "Calendar" },
+    { mode: "now", icon: <Zap size={16} />, label: "Now" },
   ];
 
   const toggleAssignee = (assigneeId: string) => {
@@ -104,35 +106,52 @@ export function TasksTopbar() {
         borderColor: "var(--color-border-subtle)",
       }}
     >
-      <div className="flex max-w-md flex-1 items-center gap-2">
-        {isSidebarCollapsed && (
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100 bg-surface-2 hover:bg-surface-3 border border-border-default text-text-tertiary hover:text-text-primary"
-          >
-            <PanelLeftOpen size={16} />
-          </button>
-        )}
-
-        <div className="relative flex-1">
-          <Search
-            size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-zinc-500"
-          />
-          <Input
-            variant="tasks"
-            type="text"
-            placeholder="Search tasks..."
-            value={filters.search}
-            onChange={(e) => setFilters({ search: e.target.value })}
-            className="h-8 pl-8"
-          />
+      {viewMode !== "now" ? (
+        <div className="flex max-w-md flex-1 items-center gap-2">
+          {isSidebarCollapsed && (
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100 bg-surface-2 hover:bg-surface-3 border border-border-default text-text-tertiary hover:text-text-primary"
+            >
+              <PanelLeftOpen size={16} />
+            </button>
+          )}
+          <div className="relative flex-1">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-zinc-500"
+            />
+            <Input
+              variant="tasks"
+              type="text"
+              placeholder="Search tasks..."
+              value={filters.search}
+              onChange={(e) => setFilters({ search: e.target.value })}
+              className="h-8 pl-8"
+            />
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-1 items-center gap-2">
+          {isSidebarCollapsed && (
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100 bg-surface-2 hover:bg-surface-3 border border-border-default text-text-tertiary hover:text-text-primary"
+            >
+              <PanelLeftOpen size={16} />
+            </button>
+          )}
+          <div className="flex items-center gap-1.5">
+            <Zap size={13} className="text-amber-400" />
+            <span className="text-xs text-text-tertiary">Ranked by priority, due date, and goals</span>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
-        <DropdownMenu>
+        {viewMode !== "now" && <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
@@ -170,7 +189,7 @@ export function TasksTopbar() {
             <DropdownMenuSub>
               <DropdownMenuSubTrigger className="cursor-pointer">
                 <div className="flex items-center gap-2">
-                  <StatusIcon status="To Do" size={16} />
+                  <StatusIcon status={{ type: "todo", color: "#94a3b8" }} size={16} />
                   <span>Status</span>
                 </div>
               </DropdownMenuSubTrigger>
@@ -191,7 +210,7 @@ export function TasksTopbar() {
                     onSelect={(e) => e.preventDefault()}
                   >
                     <div className="flex items-center gap-2">
-                      <StatusIcon status={status.name} size={16} />
+                      <StatusIcon status={status} size={16} />
                       <span>{status.name}</span>
                     </div>
                   </DropdownMenuCheckboxItem>
@@ -319,7 +338,7 @@ export function TasksTopbar() {
               </>
             )}
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu>}
 
         <div
           className="flex items-center rounded-md p-1"

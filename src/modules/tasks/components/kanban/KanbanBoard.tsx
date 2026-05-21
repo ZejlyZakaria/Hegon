@@ -26,6 +26,7 @@ import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
 import { useProjects } from "@/modules/tasks/hooks/useProjects";
 import type { Task } from "@/modules/tasks/types";
+import { filterTasks } from "@/modules/tasks/lib/task-utils";
 import { TasksSkeleton } from "../TasksSkeletons";
 import { TasksEmptyState } from "../TasksEmptyState";
 
@@ -54,38 +55,7 @@ export function KanbanBoard() {
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
   );
 
-  const filteredTasks = useMemo(() => {
-    if (!tasks) return [];
-
-    return tasks.filter((task) => {
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const matchesTitle = task.title.toLowerCase().includes(searchLower);
-        const matchesDescription = task.description?.toLowerCase().includes(searchLower);
-        if (!matchesTitle && !matchesDescription) return false;
-      }
-
-      if (filters.priorities.length > 0 && !filters.priorities.includes(task.priority)) {
-        return false;
-      }
-
-      if (filters.statuses.length > 0 && !filters.statuses.includes(task.status_id)) {
-        return false;
-      }
-
-      if (filters.tags.length > 0) {
-        const taskTagIds = task.tags?.map((t) => t.id) || [];
-        const hasMatchingTag = filters.tags.some((tagId: string) => taskTagIds.includes(tagId));
-        if (!hasMatchingTag) return false;
-      }
-
-      if (filters.assignees.length > 0 && !filters.assignees.includes(task.assignee_id ?? "")) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [tasks, filters]);
+  const filteredTasks = useMemo(() => filterTasks(tasks ?? [], filters), [tasks, filters]);
 
   const handleDragOver = (event: DragOverEvent) => {
     const { over, active } = event;

@@ -10,6 +10,7 @@ import {
   Pencil,
   Trash2,
   Settings,
+  SlidersHorizontal,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTasksStore } from "@/modules/tasks/store";
@@ -17,6 +18,7 @@ import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
 import { useProjects } from "@/modules/tasks/hooks/useProjects";
 import { useRealtimeProjects } from "@/modules/tasks/hooks/useRealtimeProjects";
 import { useRealtimeWorkspaces } from "@/modules/tasks/hooks/useRealtimeWorkspaces";
+import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { cn } from "@/shared/utils/utils";
 import {
   DropdownMenu,
@@ -29,6 +31,7 @@ import { WorkspaceModal } from "@/modules/tasks/components/modals/WorkspaceModal
 import { ProjectModal } from "@/modules/tasks/components/modals/ProjectModal";
 import { DeleteWorkspaceModal } from "@/modules/tasks/components/modals/DeleteWorkspaceModal";
 import { DeleteProjectModal } from "@/modules/tasks/components/modals/DeleteProjectModal";
+import { ProjectStatusesPanel } from "@/modules/tasks/components/panels/ProjectStatusesPanel";
 import { WorkspaceInvitePanel } from "@/modules/tasks/components/panels/WorkspaceInvitePanel";
 import type { Workspace, Project } from "@/modules/tasks/types";
 
@@ -45,8 +48,8 @@ function WorkspaceItem({
   onToggle,
   currentUserId,
 }: WorkspaceItemProps) {
-  const { selectedProjectId, setSelectedProjectId } = useTasksStore();
-  const { data: projects, isLoading } = useProjects(workspace.id);
+  const { selectedProjectId, setSelectedProjectId, activeWorkspaceId, setActiveWorkspaceId } = useTasksStore();
+  const { data: projects, isLoading, isFetching } = useProjects(workspace.id);
   useRealtimeProjects(workspace.id);
 
   const [renameOpen, setRenameOpen] = useState(false);
@@ -54,15 +57,19 @@ function WorkspaceItem({
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+  const [statusesProject, setStatusesProject] = useState<Project | null>(null);
   const [invitePanelOpen, setInvitePanelOpen] = useState(false);
 
   const isOwner = workspace.user_id === currentUserId;
 
+  // Auto-select first project after deletion — guarded by isFetching to avoid stale-data selection
   useEffect(() => {
-    if (!selectedProjectId && projects && projects.length > 0) {
-      setSelectedProjectId(projects[0].id);
-    }
-  }, [projects, selectedProjectId, setSelectedProjectId]);
+    if (isFetching) return;
+    if (selectedProjectId) return;
+    if (!projects || projects.length === 0) return;
+    if (workspace.id !== activeWorkspaceId) return;
+    setSelectedProjectId(projects[0].id);
+  }, [projects, isFetching, selectedProjectId, workspace.id, setSelectedProjectId, activeWorkspaceId]);
 
   const hasAutoExpandedRef = useRef(false);
   useEffect(() => {
@@ -164,7 +171,7 @@ function WorkspaceItem({
             >
               <button
                 type="button"
-                onClick={() => setSelectedProjectId(project.id)}
+                onClick={() => { setSelectedProjectId(project.id); setActiveWorkspaceId(workspace.id); }}
                 className="flex min-w-0 flex-1 items-center gap-2"
               >
                 <Folder
@@ -185,7 +192,7 @@ function WorkspaceItem({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="flex h-7 w-7 items-center justify-center rounded-md opacity-0 transition-opacity group-hover:opacity-100"
+                      className="flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-surface-3"
                     >
                       <MoreHorizontal size={11} style={{ color: "var(--color-text-tertiary)" }} />
                     </button>
@@ -199,6 +206,11 @@ function WorkspaceItem({
                       color: "var(--color-text-secondary)",
                     }}
                   >
+                    <DropdownMenuItem onClick={() => setStatusesProject(project)} className="gap-2 text-xs">
+                      <SlidersHorizontal size={13} />
+                      Manage statuses
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setEditingProject(project)} className="gap-2 text-xs">
                       <Pencil size={13} />
                       Rename
@@ -263,6 +275,12 @@ function WorkspaceItem({
           project={editingProject}
         />
       )}
+      <ProjectStatusesPanel
+        open={!!statusesProject}
+        onClose={() => setStatusesProject(null)}
+        projectId={statusesProject?.id ?? ""}
+        projectName={statusesProject?.name ?? ""}
+      />
       {deletingProject && (
         <DeleteProjectModal
           open={!!deletingProject}
@@ -271,7 +289,10 @@ function WorkspaceItem({
           }}
           project={deletingProject}
           onDeleted={() => {
-            if (selectedProjectId === deletingProject.id) setSelectedProjectId(null);
+            if (selectedProjectId === deletingProject.id) {
+              setSelectedProjectId(null);
+              setActiveWorkspaceId(deletingProject.workspace_id);
+            }
           }}
         />
       )}
@@ -280,32 +301,23 @@ function WorkspaceItem({
 }
 
 export function TasksSidebar() {
-  const { isSidebarCollapsed, toggleSidebar } = useTasksStore();
+  const { isSidebarCollapsed, toggleSidebar, activeWorkspaceId, setActiveWorkspaceId } = useTasksStore();
   const { data: workspaces } = useWorkspaces();
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(new Set());
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const currentUserId = useCurrentUserId();
 
   useRealtimeWorkspaces(currentUserId);
 
   useEffect(() => {
-    import("@/infrastructure/supabase/client").then(({ createClient }) => {
-      createClient().auth.getUser().then(({ data }: { data: { user: { id: string } | null } }) => {
-        setCurrentUserId(data.user?.id ?? null);
-      });
-    });
-  }, []);
+    if (!workspaces || workspaces.length === 0) return;
+    if (expandedWorkspaces.size > 0) return;
+    const targetId = activeWorkspaceId ?? workspaces[0].id;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setExpandedWorkspaces(new Set([targetId]));
+  }, [workspaces?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const selectedProjectId = useTasksStore((s) => s.selectedProjectId);
-
-  useEffect(() => {
-    if (selectedProjectId) return;
-    const firstId = workspaces?.[0]?.id;
-    if (firstId && !expandedWorkspaces.has(firstId)) {
-      setExpandedWorkspaces(new Set([firstId]));
-    }
-  }, [workspaces?.[0]?.id, selectedProjectId]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  // Pure toggle — no side effects (safe to call from effects)
   const toggleWorkspace = (workspaceId: string) => {
     setExpandedWorkspaces((prev) => {
       const next = new Set(prev);
@@ -313,6 +325,13 @@ export function TasksSidebar() {
       else next.add(workspaceId);
       return next;
     });
+  };
+
+  // Called only from direct user click on workspace header
+  const handleWorkspaceClick = (workspaceId: string) => {
+    const isCurrentlyExpanded = expandedWorkspaces.has(workspaceId);
+    toggleWorkspace(workspaceId);
+    if (!isCurrentlyExpanded) setActiveWorkspaceId(workspaceId);
   };
 
   if (isSidebarCollapsed) return null;
@@ -356,7 +375,7 @@ export function TasksSidebar() {
                 key={workspace.id}
                 workspace={workspace}
                 isExpanded={expandedWorkspaces.has(workspace.id)}
-                onToggle={() => toggleWorkspace(workspace.id)}
+                onToggle={() => handleWorkspaceClick(workspace.id)}
                 currentUserId={currentUserId}
               />
             ))}

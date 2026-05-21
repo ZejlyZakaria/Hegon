@@ -56,6 +56,7 @@ const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(255, "Title too long"),
   description: z.string().optional(),
   priority: z.enum(["critical", "high", "medium", "low"]).optional().default("medium"),
+  start_date: z.date().optional().nullable(),
   due_date: z.date().optional().nullable(),
   goal_id: z.string().optional().nullable(),
   assignee_id: z.string().optional().nullable(),
@@ -65,6 +66,7 @@ type CreateTaskFormData = {
   title: string;
   description?: string;
   priority?: "critical" | "high" | "medium" | "low";
+  start_date?: Date | null;
   due_date?: Date | null;
   goal_id?: string | null;
   assignee_id?: string | null;
@@ -85,7 +87,8 @@ export function CreateTaskModal({
   statusId,
   statusName,
 }: CreateTaskModalProps) {
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isDueDateOpen, setIsDueDateOpen] = useState(false);
+  const [isStartDateOpen, setIsStartDateOpen] = useState(false);
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const createTaskMutation = useCreateTask();
@@ -100,6 +103,7 @@ export function CreateTaskModal({
       title: "",
       description: "",
       priority: "medium",
+      start_date: undefined,
       due_date: undefined,
       goal_id: null,
       assignee_id: currentUserId ?? null,
@@ -113,6 +117,7 @@ export function CreateTaskModal({
       title: data.title,
       description: data.description || null,
       priority: data.priority as Priority,
+      start_date: data.start_date ? data.start_date.toISOString() : null,
       due_date: data.due_date ? data.due_date.toISOString() : null,
       goal_id: data.goal_id || null,
       assignee_id: data.assignee_id || null,
@@ -123,7 +128,7 @@ export function CreateTaskModal({
         selectedTagIds.forEach((tagId) => {
           addTagMutation.mutate({ taskId: createdTask.id, tagId });
         });
-        form.reset({ title: "", description: "", priority: "medium", due_date: undefined, goal_id: null, assignee_id: currentUserId ?? null });
+        form.reset({ title: "", description: "", priority: "medium", start_date: undefined, due_date: undefined, goal_id: null, assignee_id: currentUserId ?? null });
         setSelectedTagIds([]);
         onOpenChange(false);
       },
@@ -194,15 +199,13 @@ export function CreateTaskModal({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <FormField
                 control={form.control}
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-text-secondary">
-                      Priority
-                    </FormLabel>
+                    <FormLabel className="text-xs font-medium text-text-secondary">Priority</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
@@ -227,13 +230,11 @@ export function CreateTaskModal({
 
               <FormField
                 control={form.control}
-                name="due_date"
+                name="start_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-text-secondary">
-                      Due date
-                    </FormLabel>
-                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                    <FormLabel className="text-xs font-medium text-text-secondary">Start date</FormLabel>
+                    <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <button
@@ -245,28 +246,52 @@ export function CreateTaskModal({
                             )}
                           >
                             <CalendarIcon size={14} className="shrink-0" />
-                            {field.value ? (
-                              format(field.value, "MMM d, yyyy")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
+                            {field.value ? format(field.value, "MMM d") : <span>Optional</span>}
                           </button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent
-                        className="w-auto p-0 bg-surface-3 border-border-strong"
-                        align="start"
-                      >
+                      <PopoverContent className="w-auto p-0 bg-surface-3 border-border-strong" align="start">
                         <Calendar
                           mode="single"
                           selected={field.value ?? undefined}
-                          onSelect={(date) => {
-                            field.onChange(date ?? null);
-                            setIsCalendarOpen(false);
-                          }}
-                          disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
+                          onSelect={(date) => { field.onChange(date ?? null); setIsStartDateOpen(false); }}
+                          initialFocus
+                          className="bg-surface-3"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="due_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium text-text-secondary">Due date</FormLabel>
+                    <Popover open={isDueDateOpen} onOpenChange={setIsDueDateOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <button
+                            type="button"
+                            className={cn(
+                              "w-full h-9 px-3 flex items-center gap-2 rounded-lg border border-border-default text-sm transition-colors",
+                              "bg-surface-overlay hover:bg-surface-2",
+                              field.value ? "text-text-primary" : "text-text-tertiary",
+                            )}
+                          >
+                            <CalendarIcon size={14} className="shrink-0" />
+                            {field.value ? format(field.value, "MMM d") : <span>Optional</span>}
+                          </button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-surface-3 border-border-strong" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value ?? undefined}
+                          onSelect={(date) => { field.onChange(date ?? null); setIsDueDateOpen(false); }}
                           initialFocus
                           className="bg-surface-3"
                         />
