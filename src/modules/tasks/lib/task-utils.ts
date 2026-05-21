@@ -1,4 +1,12 @@
+import { format, differenceInCalendarDays } from "date-fns";
 import type { Task, TaskFilters } from "../types";
+
+export function formatDueDate(date: Date): string {
+  const diff = differenceInCalendarDays(date, new Date());
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  return format(date, date.getFullYear() === new Date().getFullYear() ? "MMM d" : "MMM d, yyyy");
+}
 
 // =====================================================
 // FILTER TASKS

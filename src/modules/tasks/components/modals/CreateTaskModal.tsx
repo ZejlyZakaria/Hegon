@@ -60,7 +60,10 @@ const createTaskSchema = z.object({
   due_date: z.date().optional().nullable(),
   goal_id: z.string().optional().nullable(),
   assignee_id: z.string().optional().nullable(),
-});
+}).refine(
+  (data) => !data.start_date || !data.due_date || data.due_date >= data.start_date,
+  { message: "Due date must be after start date", path: ["due_date"] }
+);
 
 type CreateTaskFormData = {
   title: string;
@@ -255,6 +258,7 @@ export function CreateTaskModal({
                           mode="single"
                           selected={field.value ?? undefined}
                           onSelect={(date) => { field.onChange(date ?? null); setIsStartDateOpen(false); }}
+                          disabled={(d) => { const due = form.getValues("due_date"); return !!due && d > due; }}
                           initialFocus
                           className="bg-surface-3"
                         />
@@ -292,6 +296,7 @@ export function CreateTaskModal({
                           mode="single"
                           selected={field.value ?? undefined}
                           onSelect={(date) => { field.onChange(date ?? null); setIsDueDateOpen(false); }}
+                          disabled={(d) => { const start = form.getValues("start_date"); return !!start && d < start; }}
                           initialFocus
                           className="bg-surface-3"
                         />

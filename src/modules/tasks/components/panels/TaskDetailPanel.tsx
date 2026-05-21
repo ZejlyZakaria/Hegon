@@ -156,6 +156,7 @@ export function TaskDetailPanel() {
 function PanelContent({ task, onClose }: { task: Task; onClose: () => void }) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDateOpen, setIsDateOpen] = useState(false);
+  const [isStartDateOpen, setIsStartDateOpen] = useState(false);
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const [isGoalOpen, setIsGoalOpen] = useState(false);
   const [comment, setComment] = useState("");
@@ -424,7 +425,7 @@ function PanelContent({ task, onClose }: { task: Task; onClose: () => void }) {
 
           {/* Start date */}
           <Prop label="Start date">
-            <Popover>
+            <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
               <PopoverTrigger asChild>
                 <button type="button" className={cn("flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-surface-3", task.start_date ? "text-text-secondary" : "text-text-tertiary")}>
                   <CalendarIcon size={13} />
@@ -432,10 +433,21 @@ function PanelContent({ task, onClose }: { task: Task; onClose: () => void }) {
                 </button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-auto p-0 bg-surface-3 border-border-strong">
-                <DatePicker mode="single" selected={task.start_date ? new Date(task.start_date) : undefined} onSelect={(d) => patch({ start_date: d ? d.toISOString() : null })} className="bg-surface-3" />
+                <DatePicker
+                  mode="single"
+                  selected={task.start_date ? new Date(task.start_date) : undefined}
+                  onSelect={(d) => { patch({ start_date: d ? d.toISOString() : null }); setIsStartDateOpen(false); }}
+                  disabled={(d) => {
+                    if (!task.due_date) return false;
+                    const due = new Date(task.due_date);
+                    if (isPast(due)) return false;
+                    return d > due;
+                  }}
+                  className="bg-surface-3"
+                />
                 {task.start_date && (
                   <div className="border-t border-border-subtle p-2">
-                    <button type="button" onClick={() => patch({ start_date: null })} className="w-full rounded px-2 py-1 text-left text-xs text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary">
+                    <button type="button" onClick={() => { patch({ start_date: null }); setIsStartDateOpen(false); }} className="w-full rounded px-2 py-1 text-left text-xs text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary">
                       Clear start date
                     </button>
                   </div>
@@ -448,13 +460,13 @@ function PanelContent({ task, onClose }: { task: Task; onClose: () => void }) {
           <Prop label="Due date">
             <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
               <PopoverTrigger asChild>
-                <button type="button" className={cn("flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-surface-3", overdue ? "text-[#f59e0b]" : dueDate ? "text-text-secondary" : "text-text-tertiary")}>
+                <button type="button" className={cn("flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-surface-3", overdue ? "text-[#ef4444]" : dueDate ? "text-text-secondary" : "text-text-tertiary")}>
                   <CalendarIcon size={13} />
                   {dueDate ? format(dueDate, "MMM d, yyyy") : "No due date"}
                 </button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-auto p-0 bg-surface-3 border-border-strong">
-                <DatePicker mode="single" selected={dueDate ?? undefined} onSelect={(d) => { patch({ due_date: d ? d.toISOString() : null }); setIsDateOpen(false); }} className="bg-surface-3" />
+                <DatePicker mode="single" selected={dueDate ?? undefined} onSelect={(d) => { patch({ due_date: d ? d.toISOString() : null }); setIsDateOpen(false); }} disabled={(d) => !!task.start_date && d < new Date(task.start_date)} className="bg-surface-3" />
                 {dueDate && (
                   <div className="border-t border-border-subtle p-2">
                     <button type="button" onClick={() => { patch({ due_date: null }); setIsDateOpen(false); }} className="w-full rounded px-2 py-1 text-left text-xs text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary">

@@ -3,9 +3,10 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { format, isPast, differenceInDays } from "date-fns";
+import { isPast, differenceInDays } from "date-fns";
+import { formatDueDate } from "@/modules/tasks/lib/task-utils";
 import { useState } from "react";
-import { AlertTriangle, Calendar, GripVertical, MoreHorizontal, Pencil, Tag, Trash2, User } from "lucide-react";
+import { Calendar, GripVertical, MoreHorizontal, Pencil, Tag, Trash2, User } from "lucide-react";
 import { MemberAvatar } from "../shared/MemberAvatar";
 import { cn } from "@/shared/utils/utils";
 import type { Task } from "@/modules/tasks/types";
@@ -55,9 +56,9 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
       };
 
   const dueTone =
-    overdue || (daysUntilDue !== null && daysUntilDue <= 3)
-      ? "#f59e0b"
-      : "var(--color-text-tertiary)";
+    overdue ? "#ef4444"
+    : (!task.status?.is_completed && daysUntilDue !== null && daysUntilDue <= 3) ? "#f59e0b"
+    : "var(--color-text-tertiary)";
 
   const content = (
     <div
@@ -142,7 +143,7 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
         <h3
           className="truncate text-sm font-medium leading-tight"
           style={{
-            color: overdue ? "#f59e0b" : "var(--color-text-primary)",
+            color: "var(--color-text-primary)",
           }}
         >
           {task.title}
@@ -192,8 +193,8 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
             className="inline-flex items-center gap-1 text-[10px] font-medium shrink-0"
             style={{ color: dueTone }}
           >
-            {overdue ? <AlertTriangle size={10} /> : <Calendar size={10} />}
-            {format(dueDate, dueDate.getFullYear() === new Date().getFullYear() ? "MMM d" : "MMM d, yyyy")}
+            <Calendar size={10} />
+            {formatDueDate(dueDate)}
           </div>
         )}
       </div>
