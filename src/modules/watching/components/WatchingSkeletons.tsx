@@ -6,57 +6,6 @@ function Pulse({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-lg bg-surface-2 ${className}`} />;
 }
 
-// ─── Hero skeleton ────────────────────────────────────────────────────────────
-
-export function MoviesHeroSkeleton() {
-  return (
-    <div className="grid grid-cols-3 gap-4 mb-2">
-
-      {/* main hero — 2/3 — matches col-span-2 min-h-[280px] */}
-      <div className="col-span-2 rounded-2xl overflow-hidden relative bg-surface-2 animate-pulse min-h-70">
-        {/* trending badge placeholder */}
-        <div className="absolute top-4 left-4">
-          <Pulse className="h-6 w-36 rounded-full bg-surface-1" />
-        </div>
-        {/* bottom content */}
-        <div className="absolute bottom-0 inset-x-0 p-5 space-y-2">
-          <div className="flex gap-2 mb-1">
-            <Pulse className="h-4 w-14 rounded-full bg-surface-1" />
-            <Pulse className="h-4 w-14 rounded-full bg-surface-1" />
-          </div>
-          <Pulse className="h-7 w-2/3 bg-surface-1" />
-          <div className="flex gap-3">
-            <Pulse className="h-4 w-12 bg-surface-1" />
-            <Pulse className="h-4 w-8 bg-surface-1" />
-          </div>
-          <Pulse className="h-3 w-full bg-surface-1" />
-          <Pulse className="h-3 w-4/5 bg-surface-1" />
-        </div>
-      </div>
-
-      {/* recommendations panel — 1/3 — matches col-span-1 */}
-      <div className="col-span-1 rounded-2xl bg-surface-1 border border-border-subtle p-5 space-y-4">
-        {/* header */}
-        <div className="flex items-center gap-2">
-          <Pulse className="h-3.5 w-3.5 rounded-full bg-surface-1" />
-          <Pulse className="h-4 w-32 bg-surface-1" />
-        </div>
-        {/* 3 recommendation cards */}
-        {[1, 2, 3].map(i => (
-          <div key={i} className="flex gap-3">
-            <Pulse className="w-14 h-20 shrink-0 bg-surface-1" />
-            <div className="flex-1 space-y-2 pt-1">
-              <Pulse className="h-3.5 w-full bg-surface-1" />
-              <Pulse className="h-3 w-1/3 bg-surface-1" />
-              <Pulse className="h-3 w-1/4 bg-surface-1" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── Carousel skeleton ────────────────────────────────────────────────────────
 
 export function CarouselSkeleton({ cards = 4 }: { cards?: number }) {

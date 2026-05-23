@@ -257,6 +257,9 @@ export default function AddMediaModal({
       setSelectedItem({
         ...result,
         ...details,
+        // Preserve original poster/backdrop from the card that was clicked
+        poster_path: result.poster_path ?? details.poster_path,
+        backdrop_path: result.backdrop_path ?? details.backdrop_path,
         runtimeMinutes,
         extractedDirectors,
         extractedStudio,
@@ -593,7 +596,7 @@ export default function AddMediaModal({
         return {
           title: `Add to my Library`,
           desc: "Archive this media in your personal collection.",
-          icon: <Film className="text-violet-400" size={20} />,
+          icon: <Film className="text-accent-watching" size={20} />,
         };
       default:
         return {
@@ -1115,9 +1118,9 @@ export default function AddMediaModal({
                                   )}
                                 </div>
                               </button>
-                              <div className="p-3 bg-violet-500/5 rounded-xl border border-violet-500/10 flex items-center gap-2">
-                                <Film size={14} className="text-violet-400" />
-                                <p className="text-[10px] text-violet-400/70">
+                              <div className="p-3 bg-accent-watching/5 rounded-xl border border-accent-watching/10 flex items-center gap-2">
+                                <Film size={14} className="text-accent-watching" />
+                                <p className="text-[10px] text-accent-watching/70">
                                   Will be archived in your library.
                                 </p>
                               </div>
@@ -1167,7 +1170,7 @@ export default function AddMediaModal({
                     (listContext === "topTen" &&
                       (userRating === 0 || priority === null))
                   }
-                  className="bg-blue-600 hover:bg-blue-500 text-white gap-2"
+                  className="bg-accent-watching hover:opacity-90 text-white gap-2"
                 >
                   {loading ? (
                     <Loader2 className="animate-spin" size={15} />

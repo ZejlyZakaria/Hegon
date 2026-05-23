@@ -14,8 +14,8 @@ export interface SectionStat {
 }
 
 export interface SectionHeaderProps {
-  title: string;
-  subtitle: string;
+  title?: string;
+  subtitle?: string;
   accent: string;
   tabs: SectionTab[];
   stats?: SectionStat[];
@@ -25,12 +25,13 @@ export default function SectionHeader({ title, subtitle, accent, tabs, stats }: 
   const pathname = usePathname();
 
   return (
-    <div className="px-6 pt-5 pb-0 shrink-0">
+    <div className="shrink-0">
       {/* Module header */}
-      <div className="mb-4 flex items-start justify-between">
+      {(title || subtitle || (stats && stats.length > 0)) && (
+      <div className="mb-4 flex items-start justify-between px-6 pt-5">
         <div>
-          <h1 className="text-xl font-bold leading-tight text-text-primary">{title}</h1>
-          <p className="mt-0.5 text-sm text-text-tertiary">{subtitle}</p>
+          {title && <h1 className="text-xl font-bold leading-tight text-text-primary">{title}</h1>}
+          {subtitle && <p className="mt-0.5 text-sm text-text-tertiary">{subtitle}</p>}
         </div>
         {stats && stats.length > 0 && (
           <div className="flex items-center gap-2.5 mt-1">
@@ -46,16 +47,17 @@ export default function SectionHeader({ title, subtitle, accent, tabs, stats }: 
           </div>
         )}
       </div>
+      )}
 
       {/* Tabs */}
-      <div className="flex items-center">
+      <div className="flex items-center border-b border-zinc-800 px-6">
         {tabs.map((tab) => {
           const active = pathname === tab.href || pathname.startsWith(tab.href + "/");
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className="relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors"
+              className="relative px-3 pb-2.5 pt-2 text-xs font-medium transition-colors"
               style={active ? { color: "var(--color-text-primary)" } : undefined}
             >
               <span className={!active ? "text-text-tertiary hover:text-text-secondary" : ""}>

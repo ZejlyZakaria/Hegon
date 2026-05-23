@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery } from "@tanstack/react-query";
+import { TMDB_KEYS } from "./query-keys";
 import type { MediaType } from "../types";
 
 async function fetchSimilarTitles(tmdbId: number, type: MediaType): Promise<any[]> {
@@ -18,7 +19,7 @@ async function fetchSimilarTitles(tmdbId: number, type: MediaType): Promise<any[
 
 export function useSimilarTitles(tmdbId: number, type: MediaType, enabled = true) {
   return useQuery({
-    queryKey: ["watching", "similar", type, tmdbId] as const,
+    queryKey: TMDB_KEYS.similar(type, tmdbId),
     queryFn: () => fetchSimilarTitles(tmdbId, type),
     staleTime: 24 * 60 * 60 * 1000, // 24h — reco ne change pas
     gcTime: 60 * 60 * 1000,

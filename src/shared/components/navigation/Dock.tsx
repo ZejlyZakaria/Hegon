@@ -42,7 +42,7 @@ const NAV_GROUPS: NavItem[][] = [
   ],
   [
     { key: "sport",    label: "Sport",    href: "/perso/sports/football", activePrefix: "/perso/sports",   icon: <Trophy size={18} />,   accent: "#10b981" },
-    { key: "watching", label: "Watching", href: "/perso/watching/movies", activePrefix: "/perso/watching", icon: <Tv size={18} />,       accent: "#8b5cf6" },
+    { key: "watching", label: "Watching", href: "/perso/watching/movies", activePrefix: "/perso/watching", icon: <Tv size={18} />,       accent: "#2dd4bf" },
     { key: "travel",   label: "Travel",   href: "/perso/travel",          icon: <Plane size={18} />,      accent: "#0ea5e9", comingSoon: true },
   ],
   [
@@ -61,7 +61,7 @@ const SECTION_COLORS: Record<string, { from: string; glow: string }> = {
   "/life/journal":   { from: "rgba(249,115,22,0.08)",   glow: "#f97316" },
   "/life/books":     { from: "rgba(14,165,233,0.08)",   glow: "#0ea5e9" },
   "/perso/sports":   { from: "rgba(16,185,129,0.08)",   glow: "#10b981" },
-  "/perso/watching": { from: "rgba(139,92,246,0.08)",   glow: "#8b5cf6" },
+  "/perso/watching": { from: "rgba(45,212,191,0.06)",   glow: "#2dd4bf" },
   "/perso/travel":   { from: "rgba(14,165,233,0.08)",   glow: "#0ea5e9" },
   "/pro/tasks":      { from: "rgba(113,113,122,0.12)",  glow: "#71717a" },
   "/pro/jobhunt":    { from: "rgba(59,130,246,0.08)",   glow: "#3b82f6" },

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { WATCHING_KEYS } from "./query-keys";
+import { WATCHING_KEYS, TMDB_KEYS } from "./query-keys";
 import {
   getCurrentUserId,
   getExistingMediaItem,
@@ -189,14 +189,13 @@ export function useAddMedia() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all });
 
-      const typeMap = {
-        film: WATCHING_KEYS.movies,
-        serie: WATCHING_KEYS.series,
-        anime: WATCHING_KEYS.animes,
-      };
-      const typeKey = typeMap[variables.defaultType];
-      if (typeKey) {
-        queryClient.invalidateQueries({ queryKey: typeKey() });
+      // Remove only the added item from For You cache — refetch only when running low
+      const forYouKey = TMDB_KEYS.forYou(variables.defaultType);
+      const current = queryClient.getQueryData<{ id: number }[]>(forYouKey) ?? [];
+      const updated = current.filter((item) => item.id !== variables.selectedItem.id);
+      queryClient.setQueryData(forYouKey, updated);
+      if (updated.length < 3) {
+        queryClient.invalidateQueries({ queryKey: forYouKey });
       }
     },
     onError: (error) => {

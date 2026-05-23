@@ -9,6 +9,7 @@ import type { WatchingMedia } from "@/modules/watching/types";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Button } from "@/shared/components/ui/button";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
+import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfirmModal";
 import { toast } from "@/shared/utils/toast";
 import { cn } from "@/shared/utils/utils";
 import {
@@ -50,6 +51,7 @@ export default function LibraryClient({ initialItems }: Props) {
   const [search, setSearch]           = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [modalOpen, setModalOpen]     = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const modalMediaType = mediaType === "all" ? "film" : mediaType as "film" | "serie" | "anime";
 
   const debouncedSearch = useDebounce(search, 300);
@@ -91,10 +93,6 @@ export default function LibraryClient({ initialItems }: Props) {
 
     return { paginatedItems: paginated, totalPages, totalCount };
   }, [allItems, mediaType, sortBy, debouncedSearch, currentPage]);
-
-  const handleUpdate = useCallback((updated: WatchingMedia) => {
-    setAllItems(prev => prev.map(i => i.id === updated.id ? updated : i));
-  }, []);
 
   const handleDelete = useCallback(async (itemId: string) => {
     try {
@@ -177,7 +175,7 @@ export default function LibraryClient({ initialItems }: Props) {
             <Button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white h-9 text-xs shrink-0"
+              className="gap-1.5 bg-accent-watching hover:opacity-90 text-white h-9 text-xs shrink-0"
             >
               <Plus size={13} />
               Add
@@ -198,7 +196,7 @@ export default function LibraryClient({ initialItems }: Props) {
       </div>
 
       {/* grid */}
-      <LibraryGrid items={paginatedItems} onUpdate={handleUpdate} onDelete={handleDelete} />
+      <LibraryGrid items={paginatedItems} onDelete={(id) => setConfirmDeleteId(id)} />
 
       {/* pagination */}
       {totalPages > 1 && (
@@ -216,6 +214,19 @@ export default function LibraryClient({ initialItems }: Props) {
         onAdded={handleAdded}
         defaultType={modalMediaType}
         listContext="library"
+      />
+
+      {/* delete confirmation */}
+      <DeleteConfirmModal
+        isOpen={confirmDeleteId !== null}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={async () => {
+          if (confirmDeleteId) await handleDelete(confirmDeleteId);
+          setConfirmDeleteId(null);
+        }}
+        title="Remove from library?"
+        description="This will permanently delete this title from your library."
+        isDeleting={deleteMediaMutation.isPending}
       />
     </div>
   );

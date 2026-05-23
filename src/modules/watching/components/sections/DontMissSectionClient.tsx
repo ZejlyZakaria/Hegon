@@ -4,7 +4,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Plus, TrendingUp, Sparkles } from "lucide-react";
+import { Plus, Star, TrendingUp } from "lucide-react";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
 import { useWatchingHero } from "@/modules/watching/hooks/useWatchingHero";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
@@ -50,7 +50,7 @@ function DontMissCard({
   isTrending: boolean;
   isFirst: boolean;
   onHover: () => void;
-  onAdd: (e: React.MouseEvent) => void;
+  onAdd: () => void;
 }) {
   const posterUrl = item.poster_path ? `${TMDB_W500}${item.poster_path}` : null;
   const title  = item.title || item.name;
@@ -112,7 +112,7 @@ function DontMissCard({
               style={{ left: `${POSTER_W}px` }}
             >
               {isTrending && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white bg-violet-600/80 backdrop-blur-sm self-start mb-3">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white bg-accent-watching backdrop-blur-sm self-start mb-3">
                   <TrendingUp size={10} />
                   Trending
                 </div>
@@ -150,12 +150,13 @@ function DontMissCard({
 
               <button
                 type="button"
-                onClick={onAdd}
-                className="self-start flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600/80 hover:bg-violet-600 text-white text-[11px] font-medium transition-colors active:scale-[0.97]"
+                onClick={(e) => { e.stopPropagation(); onAdd(); }}
+                className="self-start flex items-center gap-1.5 rounded-lg bg-accent-watching px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
               >
-                <Plus size={11} />
+                <Plus size={12} />
                 Add to collection
               </button>
+
             </div>
           </motion.div>
         )}
@@ -187,7 +188,7 @@ function DontMissCard({
 
       {/* ── trending badge — collapsed poster only ── */}
       {isTrending && !isActive && (
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white bg-violet-600/80 backdrop-blur-sm">
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white bg-accent-watching backdrop-blur-sm">
           <TrendingUp size={10} />
           Trending
         </div>
@@ -213,11 +214,8 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
 
   return (
     <section className="mb-8">
-      <div className="flex items-center gap-2 mb-4">
-        <Sparkles size={12} className="text-violet-400 shrink-0" />
-        <span className="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary">
-          Don&apos;t Miss
-        </span>
+      <div className="mb-3">
+        <h3 className="text-base font-semibold tracking-tight text-text-primary">Trending</h3>
       </div>
 
       <div
@@ -232,10 +230,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
             isTrending={i === 0}
             isFirst={i === 0}
             onHover={() => setActiveIndex(i)}
-            onAdd={(e) => {
-              e.stopPropagation();
-              openModalWithItem("wantToWatch", item);
-            }}
+            onAdd={() => openModalWithItem("wantToWatch", item)}
           />
         ))}
       </div>

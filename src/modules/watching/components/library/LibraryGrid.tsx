@@ -1,20 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import LibraryCard from "./LibraryCard";
-import MediaDetailModal from "@/modules/watching/components/modals/MediaDetailModal";
 import type { WatchingMedia } from "@/modules/watching/types";
 
 export default function LibraryGrid({
   items,
-  onUpdate,
   onDelete,
 }: {
   items: WatchingMedia[];
-  onUpdate?: (item: WatchingMedia) => void;
   onDelete?: (itemId: string) => void;
 }) {
-  const [selectedItem, setSelectedItem] = useState<WatchingMedia | null>(null);
+  const router = useRouter();
 
   return (
     <div>
@@ -23,31 +20,12 @@ export default function LibraryGrid({
           <LibraryCard
             key={item.id}
             item={item}
-            onClick={() => setSelectedItem(item)}
+            onClick={() => router.push(`/perso/watching/${item.id}`)}
+            onDelete={onDelete ? () => onDelete(item.id) : undefined}
             eagerLoad={i < 10}
           />
         ))}
       </div>
-
-      {selectedItem && (
-        <MediaDetailModal
-          isOpen={!!selectedItem}
-          onClose={() => setSelectedItem(null)}
-          item={selectedItem}
-          onUpdate={(item) => {
-            onUpdate?.(item);
-            setSelectedItem(null);
-          }}
-          onDelete={
-            onDelete
-              ? (id) => {
-                  onDelete(id);
-                  setSelectedItem(null);
-                }
-              : undefined
-          }
-        />
-      )}
 
       {items.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">

@@ -1,16 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { Star, Heart } from "lucide-react";
+import { Star, Heart, Trash2 } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
 
 interface Props {
   item: WatchingMedia;
   onClick: () => void;
+  onDelete?: () => void;
   eagerLoad?: boolean;
 }
 
-export default function LibraryCard({ item, onClick, eagerLoad }: Props) {
+export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Props) {
   return (
     <div
       className="group relative cursor-pointer overflow-hidden rounded-lg"
@@ -27,6 +28,17 @@ export default function LibraryCard({ item, onClick, eagerLoad }: Props) {
           loading={eagerLoad ? "eager" : "lazy"}
           priority={eagerLoad}
         />
+
+        {/* Delete button */}
+        {onDelete && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white/60 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-500/80 hover:text-white"
+          >
+            <Trash2 size={11} />
+          </button>
+        )}
 
         {/* Favorite heart */}
         {item.favorite && (

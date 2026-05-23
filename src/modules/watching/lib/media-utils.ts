@@ -25,7 +25,7 @@ export const WATCHING_CONFIGS: Record<MediaType, WatchingConfig> = {
     tmdbNowEndpoint: "tv/on_the_air",
     tmdbAnimeFilter: false,
     hasInProgress: true,
-    accentColor: "#0ea5e9",
+    accentColor: "#8b5cf6",
   },
   anime: {
     type: "anime",
@@ -36,7 +36,7 @@ export const WATCHING_CONFIGS: Record<MediaType, WatchingConfig> = {
     tmdbNowEndpoint: "discover/tv",
     tmdbAnimeFilter: true,
     hasInProgress: true,
-    accentColor: "#f43f5e",
+    accentColor: "#8b5cf6",
   },
 };
 

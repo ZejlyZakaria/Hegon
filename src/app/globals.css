@@ -146,7 +146,8 @@
   --color-accent-habits: #f43f5e;
   --color-accent-journal: #f97316;
   --color-accent-tasks: #71717a;
-  --color-accent-watching: #8b5cf6;
+  --color-accent-watching: #0C3D4A;        /* fond solide — My Record, boutons | bordeaux cinéma : #6D0F1E */
+  --color-accent-watching-vivid: #2dd4bf; /* dock icône, tab underline, indicators */
   --color-accent-sports: #10b981;
   --color-accent-books: #0ea5e9;
 
@@ -208,7 +209,7 @@
   --section-football: #10b981;
   --section-tennis: #f59e0b;
   --section-f1: #ef4444;
-  --section-watching: #8b5cf6;
+  --section-watching: #0C3D4A;
   --section-books: #f97316;
   --section-travel: #0ea5e9;
   --section-fitness: #f43f5e;
@@ -352,4 +353,12 @@
   background-repeat: repeat;
   background-size: 128px 128px;
   pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

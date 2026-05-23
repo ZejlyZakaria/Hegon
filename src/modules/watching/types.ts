@@ -7,6 +7,7 @@ export type MediaType = "film" | "serie" | "anime";
 export type WatchStatus = "watching" | "completed" | "plan_to_watch" | "dropped";
 
 export interface WatchingMedia {
+  org_id: string;
   id: string;
   type: MediaType;
   title: string;
@@ -24,7 +25,7 @@ export interface WatchingMedia {
   current_season?: number;
   rating: number;
   user_rating: number | null;
-  watch_status: WatchStatus;
+  watch_status?: WatchStatus;
   favorite: boolean;
   watched_at: string | null;
   priority: number | null;  
@@ -45,6 +46,50 @@ export interface WatchingMedia {
   created_at: string;
   updated_at: string;
   user_id: string;
+}
+
+export interface EpisodeHighlight {
+  id: string;
+  media_item_id: string;
+  user_id: string;
+  season: number;
+  episode: number;
+  title: string | null;
+  still_path: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export interface MediaList {
+  id: string;
+  user_id: string;
+  org_id: string;
+  name: string;
+  description: string | null;
+  emoji: string | null;
+  color: string | null;
+  is_ranked: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MediaListItemWithMedia {
+  list_item_id: string;
+  position: number;
+  note: string | null;
+  added_at: string;
+  media: WatchingMedia;
+}
+
+export interface MediaListItem {
+  id: string;
+  list_id: string;
+  media_item_id: string;
+  user_id: string;
+  org_id: string;
+  position: number;
+  note: string | null;
+  added_at: string;
 }
 
 export interface WatchingConfig {

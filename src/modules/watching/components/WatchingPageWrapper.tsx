@@ -2,10 +2,11 @@
 
 import WatchingClient from "@/modules/watching/components/WatchingClient";
 import DontMissSectionClient from "./sections/DontMissSectionClient";
-import TopTenSectionClient from "./sections/TopTenSectionClient";
+import ForYouSectionClient from "./sections/ForYouSectionClient";
 import InProgressSectionClient from "./sections/InProgressSectionClient";
 import RecentlyWatchedSectionClient from "./sections/RecentlyWatchedSectionClient";
 import WantToWatchSectionClient from "./sections/WantToWatchSectionClient";
+import TopTenSectionClient from "./sections/TopTenSectionClient";
 import { WATCHING_CONFIGS } from "@/modules/watching/lib/media-utils";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import type { MediaType } from "@/modules/watching/types";
@@ -19,10 +20,11 @@ export default function WatchingPageWrapper({ type }: { type: MediaType }) {
   return (
     <WatchingClient userId={userId} config={config}>
       <DontMissSectionClient config={config} />
-      <TopTenSectionClient userId={userId} config={config} />
+      <ForYouSectionClient userId={userId} config={config} />
       {config.hasInProgress && <InProgressSectionClient userId={userId} config={config} />}
       <RecentlyWatchedSectionClient userId={userId} config={config} />
       <WantToWatchSectionClient userId={userId} config={config} />
+      <TopTenSectionClient userId={userId} config={config} />
     </WatchingClient>
   );
 }

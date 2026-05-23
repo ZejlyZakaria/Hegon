@@ -2,7 +2,7 @@
 
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
-import type { WatchingMedia, MediaType } from "./types";
+import type { WatchingMedia, MediaType, WatchStatus, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia } from "./types";
 import type { UpdateMediaInput } from "./schemas/media.schema";
 
 // =====================================================
@@ -189,6 +189,18 @@ export async function updateMediaItemById(
   return result as WatchingMedia;
 }
 
+export async function getMediaItemById(id: string): Promise<WatchingMedia | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_items")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data as WatchingMedia | null;
+}
+
 export async function getCurrentUserId(): Promise<string> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -197,14 +209,306 @@ export async function getCurrentUserId(): Promise<string> {
 }
 
 // =====================================================
+// MEDIA LISTS (Supabase)
+// =====================================================
+
+export async function getMediaLists(userId: string): Promise<MediaList[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_lists")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as MediaList[];
+}
+
+export async function getListsForMedia(mediaItemId: string): Promise<MediaList[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_list_items")
+    .select("list_id, media_lists(*)")
+    .eq("media_item_id", mediaItemId);
+  if (error) throw error;
+  return (data ?? []).map((d: any) => d.media_lists).filter(Boolean) as MediaList[];
+}
+
+export async function createMediaList(name: string, userId: string): Promise<MediaList> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_lists")
+    .insert({ name, user_id: userId, org_id: orgId })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as MediaList;
+}
+
+export async function addMediaToList(listId: string, mediaItemId: string, userId: string): Promise<MediaListItem> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { data: maxData } = await supabase
+    .schema("watching")
+    .from("media_list_items")
+    .select("position")
+    .eq("list_id", listId)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const position = ((maxData as any)?.position ?? 0) + 1;
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_list_items")
+    .insert({ list_id: listId, media_item_id: mediaItemId, user_id: userId, org_id: orgId, position })
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase
+    .schema("watching")
+    .from("media_lists")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", listId);
+  return data as MediaListItem;
+}
+
+export async function removeMediaFromList(listId: string, mediaItemId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("watching")
+    .from("media_list_items")
+    .delete()
+    .eq("list_id", listId)
+    .eq("media_item_id", mediaItemId);
+  if (error) throw error;
+  await supabase
+    .schema("watching")
+    .from("media_lists")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", listId);
+}
+
+export async function deleteMediaList(listId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("watching")
+    .from("media_lists")
+    .delete()
+    .eq("id", listId);
+  if (error) throw error;
+}
+
+// =====================================================
+// FOR YOU — TMDB RECOMMENDATIONS BASED ON FAVORITES
+// =====================================================
+
+const WATCHED_THRESHOLD: Record<MediaType, number> = { film: 50, serie: 10, anime: 10 };
+
+export interface ForYouItem {
+  id: number;
+  title: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  vote_average: number;
+  year: string;
+  overview: string;
+  genre_ids: number[];
+}
+
+export async function getForYouRecommendations(
+  userId: string,
+  type: MediaType
+): Promise<ForYouItem[]> {
+  const supabase = createClient();
+  const tmdbType = type === "film" ? "movie" : "tv";
+
+  const [favoritesRes, existingRes, watchedRes] = await Promise.all([
+    supabase.schema("watching").from("media_items")
+      .select("tmdb_id, user_rating")
+      .eq("user_id", userId).eq("type", type).eq("favorite", true)
+      .not("user_rating", "is", null)
+      .order("user_rating", { ascending: false })
+      .limit(5),
+    supabase.schema("watching").from("media_items")
+      .select("tmdb_id")
+      .eq("user_id", userId).eq("type", type),
+    supabase.schema("watching").from("media_items")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId).eq("type", type).eq("watched", true),
+  ]);
+
+  if (favoritesRes.error) throw favoritesRes.error;
+  if (existingRes.error) throw existingRes.error;
+
+  const favorites = (favoritesRes.data ?? []) as { tmdb_id: number; user_rating: number }[];
+  const watchedCount = watchedRes.count ?? 0;
+
+  if (favorites.length === 0 || watchedCount < WATCHED_THRESHOLD[type]) return [];
+
+  const existingIds = new Set((existingRes.data ?? []).map((i: any) => i.tmdb_id));
+
+  // 1 fixed (#1 rated) + up to 2 deterministic from the rest — rotates daily, stable across reloads
+  const seeds: number[] = [favorites[0].tmdb_id];
+  const pool = favorites.slice(1);
+  if (pool.length > 0) {
+    const dayIndex = Math.floor(Date.now() / 86_400_000);
+    const idx1 = dayIndex % pool.length;
+    const idx2 = (dayIndex + 1) % pool.length;
+    seeds.push(pool[idx1].tmdb_id);
+    if (idx2 !== idx1) seeds.push(pool[idx2].tmdb_id);
+  }
+
+  const recoResults = await Promise.all(
+    seeds.map((tmdbId) =>
+      tmdbFetch<{ results: any[] }>(`${tmdbType}/${tmdbId}/recommendations`, { page: "1" })
+        .then((d) => d.results ?? [])
+        .catch(() => [])
+    )
+  );
+
+  const MIN_VOTE_AVERAGE = 7.0;
+  const MIN_VOTE_COUNT = type === "film" ? 200 : 50;
+
+  const seen = new Set<number>();
+  const candidates: ForYouItem[] = [];
+
+  for (const batch of recoResults) {
+    for (const item of batch) {
+      if (seen.has(item.id) || existingIds.has(item.id)) continue;
+      if ((item.vote_average ?? 0) < MIN_VOTE_AVERAGE) continue;
+      if ((item.vote_count ?? 0) < MIN_VOTE_COUNT) continue;
+      seen.add(item.id);
+      candidates.push({
+        id: item.id,
+        title: item.title ?? item.name ?? "",
+        poster_path: item.poster_path ?? null,
+        backdrop_path: item.backdrop_path ?? null,
+        vote_average: item.vote_average ?? 0,
+        year: (item.release_date ?? item.first_air_date ?? "").slice(0, 4),
+        overview: item.overview ?? "",
+        genre_ids: item.genre_ids ?? [],
+      });
+    }
+  }
+
+  candidates.sort((a, b) => b.vote_average - a.vote_average);
+  return candidates.slice(0, 10);
+}
+
+function deriveWatchStatus(item: any): WatchStatus {
+  if (item.watched) return "completed";
+  if (item.in_progress) return "watching";
+  if (item.want_to_watch) return "plan_to_watch";
+  return "plan_to_watch";
+}
+
+export async function getListItems(listId: string): Promise<MediaListItemWithMedia[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_list_items")
+    .select("id, position, note, added_at, media_items(*)")
+    .eq("list_id", listId)
+    .order("position", { ascending: true });
+  if (error) throw error;
+  return (data ?? [])
+    .filter((d: any) => d.media_items)
+    .map((d: any) => ({
+      list_item_id: d.id,
+      position: d.position,
+      note: d.note,
+      added_at: d.added_at,
+      media: { ...d.media_items, watch_status: deriveWatchStatus(d.media_items) } as WatchingMedia,
+    }));
+}
+
+export async function searchMediaForList(userId: string, query: string): Promise<WatchingMedia[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_items")
+    .select("*")
+    .eq("user_id", userId)
+    .ilike("title", `%${query}%`)
+    .order("updated_at", { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return (data as WatchingMedia[]) ?? [];
+}
+
+export async function updateMediaList(
+  id: string,
+  data: { name?: string; emoji?: string | null; description?: string | null; is_ranked?: boolean }
+): Promise<MediaList> {
+  const supabase = createClient();
+  const { data: result, error } = await supabase
+    .schema("watching")
+    .from("media_lists")
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return result as MediaList;
+}
+
+export async function updateListItemNote(listItemId: string, note: string | null): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("watching")
+    .from("media_list_items")
+    .update({ note })
+    .eq("id", listItemId);
+  if (error) throw error;
+}
+
+export interface MediaListWithThumbnails extends MediaList {
+  count: number;
+  thumbnails: { poster_url: string | null; title: string }[];
+}
+
+export async function getListsWithThumbnails(userId: string): Promise<MediaListWithThumbnails[]> {
+  const supabase = createClient();
+  const { data: lists, error } = await supabase
+    .schema("watching")
+    .from("media_lists")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  if (!lists?.length) return [];
+
+  const listIds = lists.map((l: any) => l.id);
+  const { data: items } = await supabase
+    .schema("watching")
+    .from("media_list_items")
+    .select("list_id, media_items(id, poster_url, title)")
+    .in("list_id", listIds)
+    .order("position", { ascending: true });
+
+  const byList = new Map<string, { poster_url: string | null; title: string }[]>();
+  for (const item of items ?? []) {
+    const mi = (item as any).media_items;
+    if (!mi) continue;
+    if (!byList.has((item as any).list_id)) byList.set((item as any).list_id, []);
+    byList.get((item as any).list_id)!.push({ poster_url: mi.poster_url, title: mi.title });
+  }
+
+  return (lists as MediaList[]).map((list) => ({
+    ...list,
+    count: byList.get(list.id)?.length ?? 0,
+    thumbnails: (byList.get(list.id) ?? []).slice(0, 4),
+  }));
+}
+
+// =====================================================
 // WATCHING SERVICE (TMDB API)
 // =====================================================
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
-
-// =====================================================
-// WATCHING SERVICE (TMDB API)
-// =====================================================
 
 async function tmdbFetch<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
   const isServer = typeof window === "undefined";
@@ -227,45 +531,64 @@ async function tmdbFetch<T>(endpoint: string, params: Record<string, string> = {
   return res.json();
 }
 
-// Trending movie of the week (rating > 7, used for hero)
-export async function getTrendingMovie() {
-  const data = await tmdbFetch<{ results: any[] }>("trending/movie/week");
-  return data.results.find((m) => m.vote_average >= 7 && m.vote_count >= 100) ?? data.results[0] ?? null;
+// =====================================================
+// EPISODE HIGHLIGHTS (Supabase)
+// =====================================================
+
+export async function getEpisodeHighlights(mediaItemId: string): Promise<EpisodeHighlight[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("episode_highlights")
+    .select("*")
+    .eq("media_item_id", mediaItemId)
+    .order("season", { ascending: true })
+    .order("episode", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as EpisodeHighlight[];
 }
 
-// Trending tv show of the week
-export async function getTrendingTV(extraParams: Record<string, string> = {}) {
-  const today = new Date().toISOString().split("T")[0];
-  const data = await tmdbFetch<{ results: any[] }>("discover/tv", {
-    sort_by: "first_air_date.desc",
-    "vote_average.gte": "7",
-    "vote_count.gte": "50",
-    "first_air_date.lte": today,
-    include_adult: "false",
-    page: "1",
-    ...extraParams,
-  });
-  return data.results.slice(0, 3);
+export async function addEpisodeHighlight(payload: {
+  media_item_id: string;
+  user_id: string;
+  org_id: string;
+  season: number;
+  episode: number;
+  title: string | null;
+  still_path: string | null;
+  note?: string | null;
+}): Promise<EpisodeHighlight> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("episode_highlights")
+    .insert(payload)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as EpisodeHighlight;
 }
 
-// Search movies or tv
-export async function searchTMDB(query: string, type: "movie" | "tv") {
-  const data = await tmdbFetch<{ results: any[] }>(`search/${type}`, {
-    query: encodeURIComponent(query),
-    page: "1",
-  });
-  return data.results.slice(0, 6);
+export async function removeEpisodeHighlight(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("watching")
+    .from("episode_highlights")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
+
+// TMDB — single episode details (title + still)
+export async function getTmdbEpisode(tmdbId: number, season: number, episode: number) {
+  return tmdbFetch<{ name: string; still_path: string | null; episode_number: number; season_number: number }>(
+    `tv/${tmdbId}/season/${season}/episode/${episode}`
+  );
 }
 
 // Movie or tv details with credits
 export async function getMediaDetails(id: number, type: "movie" | "tv") {
   return tmdbFetch<any>(`${type}/${id}`, { append_to_response: "credits" });
-}
-
-// Genre list
-export async function getGenres(type: "movie" | "tv") {
-  const data = await tmdbFetch<{ genres: { id: number; name: string }[] }>(`genre/${type}/list`);
-  return data.genres;
 }
 
 // Hero data (trending + recommendations) — client-side via proxy

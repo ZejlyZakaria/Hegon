@@ -10,6 +10,7 @@ import { signOut } from "@/infrastructure/auth/actions";
 import { useCommandCenter } from "@/modules/command-center/store";
 import { cn } from "@/shared/utils/utils";
 import { useOrgStore } from "@/shared/stores/useOrgStore";
+import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 
 // ─── breadcrumb ───────────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ const SECTION_BREADCRUMBS: Array<[string, string[]]> = [
   ["/perso/watching/tv-shows", ["Watching", "TV Shows"]],
   ["/perso/watching/animes",   ["Watching", "Animes"]],
   ["/perso/watching/library",  ["Watching", "Library"]],
+  ["/perso/watching/lists",    ["Watching", "Lists"]],
   ["/pro/tasks",              ["Pro", "Tasks"]],
   ["/pro/jobhunt",            ["Pro", "Job Hunt"]],
   ["/pro/tech",               ["Pro", "Tech"]],
@@ -43,7 +45,7 @@ function Breadcrumb({ crumbs }: { crumbs: string[] | null }) {
   if (!crumbs || crumbs.length === 0) return <div />;
 
   return (
-    <div className="flex items-center gap-1.5 text-sm">
+    <div className="flex items-center gap-1.5 text-xs">
       {crumbs.map((crumb, i) => (
         <span key={i} className="flex items-center gap-1.5">
           {i > 0 && <span className="text-text-tertiary text-xs">/</span>}
@@ -247,7 +249,10 @@ export default function TopBar() {
   }, []);
 
   const initial = userName?.[0]?.toUpperCase() ?? "Z";
-  const crumbs = getBreadcrumb(pathname);
+  const watchingPageLabel = useWatchingUIStore((s) => s.pageLabel);
+  const crumbs = watchingPageLabel
+    ? ["Watching", watchingPageLabel.section, watchingPageLabel.title]
+    : getBreadcrumb(pathname);
 
   return (
     <>

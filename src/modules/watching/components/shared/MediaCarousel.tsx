@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   Star,
@@ -15,7 +16,6 @@ import {
 } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { cn } from "@/shared/utils/utils";
-import MediaDetailModal from "../modals/MediaDetailModal";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -39,12 +39,8 @@ type MediaCarouselProps = {
   subtitle?: string;
   items: WatchingMedia[];
   onAddClick?: () => void;
-  addCardPosition?: "start" | "end";
-  draggable?: boolean;
-  onReorder?: (reordered: WatchingMedia[]) => void;
   onMarkWatched?: (itemId: string) => Promise<void>;
   onDelete?: (itemId: string) => Promise<void>;
-  onUpdate?: (item: WatchingMedia) => void;
   showEpisodeBadge?: boolean;
   showRankBadge?: boolean;
 };
@@ -231,7 +227,7 @@ function MovieCard({
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 768px) 100vw, 50vw"
           quality={75}
-          loading={eagerLoad ? "eager" : "lazy"}
+          loading="eager"
           priority={eagerLoad}
         />
         <div className="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent" />
@@ -322,23 +318,6 @@ function MovieCard({
   );
 }
 
-// ─── add card ─────────────────────────────────────────────────────────────────
-
-function AddCard({ onClick }: { onClick: () => void }) {
-  return (
-    <div onClick={onClick} className="shrink-0 w-full cursor-pointer">
-      <div className="group relative w-full overflow-hidden rounded-xl border border-white/20 bg-linear-to-br from-zinc-900 to-black hover:border-white/40 transition-all duration-300 flex items-center justify-center aspect-video">
-        <div className="flex flex-col items-center justify-center gap-3 text-white/70 group-hover:text-white transition-colors">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 backdrop-blur-md group-hover:bg-white/20 transition-all duration-300 shadow-lg">
-            <Plus size={28} className="text-white/90 group-hover:text-white" />
-          </div>
-          <span className="text-sm font-medium">Add</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── main ─────────────────────────────────────────────────────────────────────
 
 export function MediaCarousel({
@@ -346,23 +325,32 @@ export function MediaCarousel({
   subtitle,
   items,
   onAddClick,
-  addCardPosition = "start",
   onMarkWatched,
   onDelete,
-  onUpdate,
   showEpisodeBadge = false,
   showRankBadge = false,
 }: MediaCarouselProps) {
+  const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(5);
-  const [selectedItem, setSelectedItem] = useState<WatchingMedia | null>(null);
   const [localItems, setLocalItems] = useState(items);
+  const prevLengthRef = useRef(items.length);
   const gap = 16;
 
   useEffect(() => {
     setLocalItems(items);
   }, [items]);
+
+  useEffect(() => {
+    if (localItems.length > prevLengthRef.current) {
+      setCurrentIndex(0);
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ left: 0, behavior: "smooth" });
+      });
+    }
+    prevLengthRef.current = localItems.length;
+  }, [localItems.length]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -383,9 +371,7 @@ export function MediaCarousel({
     [localItems],
   );
 
-  const totalElements = onAddClick
-    ? sortedItems.length + 1
-    : sortedItems.length;
+  const totalElements = sortedItems.length;
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < totalElements - cardsPerView;
 
@@ -409,12 +395,6 @@ export function MediaCarousel({
   const itemWidthStyle = {
     width: `calc((100% - ${(cardsPerView - 1) * gap}px) / ${cardsPerView})`,
   };
-
-  const AddCardWrapper = onAddClick ? (
-    <div className="shrink-0 snap-start" style={itemWidthStyle}>
-      <AddCard onClick={onAddClick} />
-    </div>
-  ) : null;
 
   if (localItems.length === 0) {
     return (
@@ -464,8 +444,9 @@ export function MediaCarousel({
             <p className="mt-1 text-sm text-text-tertiary">{subtitle}</p>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => canGoPrev && scroll("prev")}
             className={cn(
               "rounded-full border border-white/10 p-2 transition-all duration-300",
@@ -478,6 +459,7 @@ export function MediaCarousel({
             <ChevronLeft size={16} />
           </button>
           <button
+            type="button"
             onClick={() => canGoNext && scroll("next")}
             className={cn(
               "rounded-full border border-white/10 p-2 transition-all duration-300",
@@ -489,6 +471,16 @@ export function MediaCarousel({
           >
             <ChevronRight size={16} />
           </button>
+          {onAddClick && (
+            <button
+              type="button"
+              onClick={onAddClick}
+              className="flex items-center gap-1.5 rounded-lg bg-accent-watching px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+            >
+              <Plus size={12} />
+              Add
+            </button>
+          )}
         </div>
       </div>
 
@@ -497,8 +489,6 @@ export function MediaCarousel({
         className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
-        {onAddClick && addCardPosition === "start" && AddCardWrapper}
-
         {sortedItems.map((item, i) => (
           <div
             key={item.id}
@@ -507,7 +497,7 @@ export function MediaCarousel({
           >
             <MovieCard
               item={item}
-              onView={() => setSelectedItem(item)}
+              onView={() => router.push(`/perso/watching/${item.id}`)}
               onDelete={onDelete}
               onMarkWatched={onMarkWatched}
               showEpisodeBadge={showEpisodeBadge}
@@ -517,28 +507,8 @@ export function MediaCarousel({
           </div>
         ))}
 
-        {onAddClick && addCardPosition === "end" && AddCardWrapper}
       </div>
 
-      {selectedItem && (
-        <MediaDetailModal
-          isOpen={!!selectedItem}
-          onClose={() => setSelectedItem(null)}
-          item={selectedItem}
-          onUpdate={(item) => {
-            onUpdate?.(item);
-            setSelectedItem(null);
-          }}
-          onDelete={
-            onDelete
-              ? (id) => {
-                  onDelete(id);
-                  setSelectedItem(null);
-                }
-              : undefined
-          }
-        />
-      )}
     </section>
   );
 }

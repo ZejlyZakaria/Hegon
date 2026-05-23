@@ -40,7 +40,31 @@ export const WATCHING_KEYS = {
   detail: (id: string) =>
     [...WATCHING_KEYS.all, 'detail', id] as const,
 
-  // Hero (TMDB trending + recommendations)
+
+  // Lists
+  lists: (userId: string) =>
+    [...WATCHING_KEYS.all, 'lists', userId] as const,
+  listsForMedia: (mediaItemId: string) =>
+    [...WATCHING_KEYS.all, 'lists-for-media', mediaItemId] as const,
+  listItems: (listId: string) =>
+    [...WATCHING_KEYS.all, 'list-items', listId] as const,
+} as const;
+
+// =====================================================
+// TMDB QUERY KEYS — separate namespace from WATCHING_KEYS.
+// DB mutations invalidate WATCHING_KEYS.all (['watching']); keeping
+// these expensive external TMDB calls under ['tmdb'] means a favorite
+// toggle / rating save / add no longer refetches hero, similar, credits.
+// =====================================================
+
+export const TMDB_KEYS = {
+  all: ['tmdb'] as const,
   hero: (type: MediaType) =>
-    [...WATCHING_KEYS.all, 'hero', type] as const,
+    ['tmdb', 'hero', type] as const,
+  similar: (type: MediaType, tmdbId: number) =>
+    ['tmdb', 'similar', type, tmdbId] as const,
+  credits: (type: MediaType, tmdbId: number) =>
+    ['tmdb', 'credits', type, tmdbId] as const,
+  forYou: (type: MediaType) =>
+    ['tmdb', 'for-you', type] as const,
 } as const;

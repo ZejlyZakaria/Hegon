@@ -34,7 +34,7 @@ export const TASKS_SIDEBAR_GLASS = {
 
 export const SECTION_ACCENTS = {
   "/perso/sports": "#10b981",
-  "/perso/watching": "#8b5cf6",
+  "/perso/watching": "var(--color-accent-watching)",
   "/perso/books": "#f97316",
   "/perso/travel": "#0ea5e9",
   "/perso/fitness": "#f43f5e",
