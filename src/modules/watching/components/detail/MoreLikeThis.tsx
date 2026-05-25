@@ -29,6 +29,7 @@ export function MoreLikeThis({ items }: Props) {
                 fill
                 sizes="15vw"
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
+                unoptimized
               />
               <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
             </div>

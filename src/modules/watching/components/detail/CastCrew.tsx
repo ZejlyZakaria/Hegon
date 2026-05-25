@@ -24,7 +24,7 @@ function PersonCard({ name, src, subtitle, size = 60 }: {
         style={{ width: size, height: size }}
       >
         {src ? (
-          <Image src={src} alt={name} fill sizes={`${size}px`} className="object-cover" />
+          <Image src={src} alt={name} fill sizes={`${size}px`} unoptimized className="object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-text-tertiary">
             {initials || <User size={14} />}

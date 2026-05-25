@@ -57,6 +57,7 @@ function ForYouCard({
             src={imgSrc}
             alt={item.title}
             fill
+            unoptimized
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"
             loading={eagerLoad ? "eager" : "lazy"}

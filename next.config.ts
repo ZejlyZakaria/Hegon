@@ -40,6 +40,7 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    minimumCacheTTL: 2592000, // 30 days — posters/backdrops never change
     remotePatterns: [
       {
         protocol: "https",

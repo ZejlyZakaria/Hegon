@@ -78,6 +78,7 @@ function DontMissCard({
             src={posterUrl}
             alt={title}
             fill
+            unoptimized
             className="object-cover"
             sizes="25vw"
             loading="eager"

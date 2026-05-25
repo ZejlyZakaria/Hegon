@@ -21,6 +21,7 @@ export function MediaHero({ media, typeLabel, isSeries, onBack }: Props) {
         alt=""
         fill
         priority
+        unoptimized
         className="object-cover"
         style={{ objectPosition: "center 27%" }}
         sizes="100vw"
@@ -58,6 +59,7 @@ export function MediaHero({ media, typeLabel, isSeries, onBack }: Props) {
                   src={media.poster_url || "/placeholder.svg"}
                   alt={media.title}
                   fill
+                  unoptimized
                   priority
                   sizes="160px"
                   className="object-cover"

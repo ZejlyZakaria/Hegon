@@ -220,6 +220,7 @@ function EpisodeCard({
                 alt={highlight.title ?? `S${highlight.season} E${highlight.episode}`}
                 fill
                 sizes="30vw"
+                unoptimized
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
             ) : (

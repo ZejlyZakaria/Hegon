@@ -22,9 +22,9 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
           src={item.poster_url || "/placeholder.svg"}
           alt={item.title}
           fill
+          unoptimized
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 50vw"
-          quality={75}
           loading={eagerLoad ? "eager" : "lazy"}
           priority={eagerLoad}
         />

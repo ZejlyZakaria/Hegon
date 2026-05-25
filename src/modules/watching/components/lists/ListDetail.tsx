@@ -88,7 +88,7 @@ function Poster({ src, title }: { src: string | null; title?: string }) {
   return (
     <>
       <div className="absolute inset-0 bg-zinc-800" />
-      {src && <Image src={src} alt="" fill className="object-cover transition-opacity duration-500" sizes="320px" loading="eager" />}
+      {src && <Image src={src} alt="" fill unoptimized className="object-cover transition-opacity duration-500" sizes="320px" loading="eager" />}
       <div className="absolute inset-x-0 bottom-0 h-14 bg-linear-to-t from-black/80 to-transparent" />
       {title && (
         <p className="absolute bottom-2 left-2 right-2 truncate text-[10px] font-semibold leading-tight text-white">
@@ -219,7 +219,7 @@ function AddTitlePopover({ listId, userId, existingIds }: { listId: string; user
                 >
                   <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md">
                     {media.poster_url
-                      ? <Image src={media.poster_url} alt="" fill className="object-cover" sizes="40px" />
+                      ? <Image src={media.poster_url} alt="" fill unoptimized className="object-cover" sizes="40px" />
                       : <div className="h-full w-full bg-zinc-800" />
                     }
                   </div>
@@ -320,7 +320,7 @@ function TableRow({
         {/* Poster */}
         <div className="relative h-14 w-9 shrink-0 cursor-pointer overflow-hidden rounded-sm" onClick={onOpen}>
           {item.media.poster_url
-            ? <Image src={item.media.poster_url} alt="" fill className="object-cover" sizes="28px" />
+            ? <Image src={item.media.poster_url} alt="" fill unoptimized className="object-cover" sizes="28px" />
             : <div className="h-full w-full bg-zinc-800" />
           }
         </div>
@@ -463,7 +463,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
       <div className="relative cursor-pointer" onClick={onOpen}>
         <div className="relative aspect-2/3 overflow-hidden rounded-lg">
           {item.media.poster_url ? (
-            <Image src={item.media.poster_url} alt={item.media.title} fill className="object-cover transition-transform duration-300 group-hover:scale-105" sizes="15vw" />
+            <Image src={item.media.poster_url} alt={item.media.title} fill unoptimized className="object-cover transition-transform duration-300 group-hover:scale-105" sizes="15vw" />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-zinc-800">
               <span className="text-2xl opacity-20">🎬</span>
@@ -651,7 +651,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
 
       {/* ── Hero ── */}
       <div className="mx-6 my-4 overflow-hidden rounded-2xl bg-surface-1 p-4">
-        <div className="flex items-stretch gap-5 min-h-[190px]">
+        <div className="flex items-stretch gap-5 min-h-47.5">
 
           {/* Backdrop collage — fills full card height */}
           <div className="relative w-80 shrink-0 self-stretch overflow-hidden rounded-xl ring-1 ring-white/20">

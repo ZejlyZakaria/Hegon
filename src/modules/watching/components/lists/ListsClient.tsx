@@ -120,7 +120,7 @@ function ListCard({ list, onClick, onDelete }: {
           posters.map((t, i) => (
             <div key={i} className="relative flex-1 overflow-hidden">
               {t?.poster_url ? (
-                <Image src={t.poster_url} alt="" fill className="object-cover" sizes="8vw" />
+                <Image src={t.poster_url} alt="" fill unoptimized className="object-cover" sizes="8vw" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-zinc-900">
                   <div className="opacity-20">
