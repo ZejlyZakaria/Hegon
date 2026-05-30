@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
 import Image from "next/image";
-import { Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useForYouRecommendations } from "@/modules/watching/hooks/useForYouRecommendations";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { cn } from "@/shared/utils/utils";
@@ -10,6 +10,27 @@ import type { WatchingConfig } from "@/modules/watching/types";
 import type { ForYouItem } from "@/modules/watching/service";
 
 const TMDB_W500 = "https://image.tmdb.org/t/p/w500";
+
+function getDismissedKey(type: string) {
+  return `hegon_dismissed_foryou_${type}`;
+}
+
+function getDismissed(type: string): Set<number> {
+  try {
+    const raw = localStorage.getItem(getDismissedKey(type));
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function addDismissed(type: string, id: number) {
+  try {
+    const set = getDismissed(type);
+    set.add(id);
+    localStorage.setItem(getDismissedKey(type), JSON.stringify([...set]));
+  } catch { /* ignore */ }
+}
 
 // ─── skeleton ─────────────────────────────────────────────────────────────────
 
@@ -33,12 +54,15 @@ function ForYouSkeleton() {
 function ForYouCard({
   item,
   onClick,
-  eagerLoad,
+  onDismiss,
+  priority,
 }: {
   item: ForYouItem;
   onClick: () => void;
-  eagerLoad?: boolean;
+  onDismiss: () => void;
+  priority?: boolean;
 }) {
+  const [imgLoaded, setImgLoaded] = useState(false);
   const imgSrc = item.backdrop_path
     ? `${TMDB_W500}${item.backdrop_path}`
     : item.poster_path
@@ -51,22 +75,32 @@ function ForYouCard({
       className="group relative w-full overflow-hidden rounded-xl border border-white/10 cursor-pointer"
       onClick={onClick}
     >
-      <div className="relative aspect-video">
-        {imgSrc ? (
+      <div className="relative aspect-video bg-zinc-800">
+        {imgSrc && (
           <Image
             src={imgSrc}
             alt={item.title}
             fill
             unoptimized
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className="object-cover transition-all duration-500 group-hover:scale-105"
+            style={{ opacity: imgLoaded ? 1 : 0 }}
             sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"
-            loading={eagerLoad ? "eager" : "lazy"}
-            priority={eagerLoad}
+            loading="eager"
+            priority={priority}
+            onLoad={() => setImgLoaded(true)}
           />
-        ) : (
-          <div className="absolute inset-0 bg-zinc-800" />
         )}
         <div className="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent" />
+
+        {/* Dismiss button */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 border border-white/10 text-white/60 hover:text-white hover:bg-black/80"
+          title="Pas intéressé"
+        >
+          <X size={12} />
+        </button>
 
         <div className="absolute bottom-0 inset-x-0 p-4">
           <h4 className="text-sm font-semibold text-white line-clamp-1">{item.title}</h4>
@@ -94,12 +128,22 @@ export default function ForYouSectionClient({
   userId: string;
   config: WatchingConfig;
 }) {
-  const { data: items = [], isLoading } = useForYouRecommendations(userId, config.type);
+  const { data: rawItems = [], isLoading } = useForYouRecommendations(userId, config.type);
+  const [dismissed, setDismissed] = useState<Set<number>>(() => getDismissed(config.type));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(5);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { openModalWithItem } = useWatching();
   const gap = 16;
+
+  const items = rawItems.filter((i) => !dismissed.has(i.id));
+
+  // Reset scroll when items change (data reload or dismissal)
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCurrentIndex(0);
+    if (scrollRef.current) scrollRef.current.scrollTo({ left: 0 });
+  }, [items.length]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -113,6 +157,11 @@ export default function ForYouSectionClient({
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  const handleDismiss = useCallback((id: number) => {
+    addDismissed(config.type, id);
+    setDismissed((prev) => new Set([...prev, id]));
+  }, [config.type]);
 
   if (isLoading) return <ForYouSkeleton />;
   if (items.length === 0) return null;
@@ -205,7 +254,8 @@ export default function ForYouSectionClient({
             <ForYouCard
               item={item}
               onClick={() => handleAdd(item)}
-              eagerLoad={i < cardsPerView}
+              onDismiss={() => handleDismiss(item.id)}
+              priority={i < 3}
             />
           </div>
         ))}

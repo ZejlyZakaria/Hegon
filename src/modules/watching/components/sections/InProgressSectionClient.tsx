@@ -5,7 +5,6 @@ import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarouse
 import { CarouselSkeleton } from "@/modules/watching/components/WatchingSkeletons";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
-import { useMarkAsWatched } from "@/modules/watching/hooks/useMarkAsWatched";
 import { useMovies } from "@/modules/watching/hooks/useMovies";
 import { useSeries } from "@/modules/watching/hooks/useSeries";
 import { useAnimes } from "@/modules/watching/hooks/useAnimes";
@@ -25,21 +24,11 @@ export default function InProgressSectionClient({ userId, config }: Props) {
   });
 
   const deleteMediaMutation = useDeleteMedia();
-  const markAsWatchedMutation = useMarkAsWatched();
   const { openModal } = useWatching();
 
   if (isLoading) return <CarouselSkeleton />;
 
-  const handleMarkWatched = async (itemId: string) => {
-    try {
-      await markAsWatchedMutation.mutateAsync(itemId);
-      toast.success("Marked as finished!");
-    } catch {
-      toast.error("Error occurred while updating the item.");
-    }
-  };
-
-  const handleRemoveFromProgress = async (itemId: string) => {
+  const handleDelete = async (itemId: string) => {
     try {
       await deleteMediaMutation.mutateAsync(itemId);
       toast.success("Deleted.");
@@ -56,8 +45,7 @@ export default function InProgressSectionClient({ userId, config }: Props) {
       subtitle={`${label} that you are currently watching`}
       items={items}
       onAddClick={() => openModal("inProgress")}
-      onMarkWatched={handleMarkWatched}
-      onDelete={handleRemoveFromProgress}
+      onDelete={handleDelete}
       showEpisodeBadge={true}
     />
   );

@@ -6,7 +6,6 @@ import { z } from "zod";
 
 export const updateMediaSchema = z.object({
   id: z.string(),
-  watch_status: z.enum(["watching", "completed", "plan_to_watch", "dropped"]).optional(),
   user_rating: z.number().min(0).max(10).nullable().optional(),
   current_episode: z.number().optional(),
   current_season: z.number().optional(),
@@ -15,6 +14,11 @@ export const updateMediaSchema = z.object({
   tags: z.array(z.string()).optional(),
   watched_at: z.string().nullable().optional(),
   priority_level: z.enum(["high", "medium", "low"]).optional(),
+  watched: z.boolean().optional(),
+  in_progress: z.boolean().optional(),
+  want_to_watch: z.boolean().optional(),
+  is_reference: z.boolean().optional(),
+  recently_watched: z.boolean().optional(),
 });
 
 export type UpdateMediaInput = z.infer<typeof updateMediaSchema>;

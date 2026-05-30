@@ -75,12 +75,14 @@ export default function MediaDetailPage() {
   const [isDirty, setIsDirty] = useState(false);
   const savedRef = useRef({ notes: "", starRating: 0 });
   const progressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mediaIdRef = useRef<string | null>(null);
   useEffect(() => () => { if (progressTimerRef.current) clearTimeout(progressTimerRef.current); }, []);
   const [currentSeason, setCurrentSeason] = useState(1);
   const [currentEpisode, setCurrentEpisode] = useState(0);
 
   useEffect(() => {
-    if (media) {
+    if (media && media.id !== mediaIdRef.current) {
+      mediaIdRef.current = media.id;
       const stars = media.user_rating ?? 0;
       setNotes(media.notes ?? "");
       setStarRating(stars);
@@ -112,6 +114,40 @@ export default function MediaDetailPage() {
     setNotes(savedRef.current.notes);
     setStarRating(savedRef.current.starRating);
     setIsDirty(false);
+  };
+
+  const handleMarkWatched = async () => {
+    if (!media) return;
+    try {
+      await updateMedia.mutateAsync({
+        id: media.id,
+        watched: true,
+        recently_watched: true,
+        in_progress: false,
+        want_to_watch: false,
+        is_reference: false,
+        watched_at: new Date().toISOString(),
+      });
+      toast("Marked as watched.");
+    } catch {
+      toast.error("Failed to update.");
+    }
+  };
+
+  const handleStartWatching = async () => {
+    if (!media) return;
+    try {
+      await updateMedia.mutateAsync({
+        id: media.id,
+        in_progress: true,
+        watched: false,
+        want_to_watch: false,
+        is_reference: false,
+      });
+      toast("Started watching.");
+    } catch {
+      toast.error("Failed to update.");
+    }
   };
 
   const toggleFavorite = async () => {
@@ -189,6 +225,10 @@ export default function MediaDetailPage() {
               media={media}
               favorite={favorite}
               onFavoriteToggle={toggleFavorite}
+              isSeries={isSeries}
+              onMarkWatched={handleMarkWatched}
+              onStartWatching={handleStartWatching}
+              isUpdating={updateMedia.isPending}
             />
           </div>
 
@@ -218,7 +258,7 @@ export default function MediaDetailPage() {
         </div>
 
         {/* ── RIGHT ─────────────────────────────────────────────────── */}
-        <div className="lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto">
+        <div className="lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="space-y-4 p-3">
 
             {isSeries && media.in_progress && (
@@ -227,6 +267,8 @@ export default function MediaDetailPage() {
                   currentSeason={currentSeason}
                   currentEpisode={currentEpisode}
                   onUpdate={updateProgress}
+                  media={media}
+                  onMarkCompleted={handleMarkWatched}
                 />
               </div>
             )}

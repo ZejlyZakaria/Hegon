@@ -52,6 +52,7 @@ function DontMissCard({
   onHover: () => void;
   onAdd: () => void;
 }) {
+  const [posterLoaded, setPosterLoaded] = useState(false);
   const posterUrl = item.poster_path ? `${TMDB_W500}${item.poster_path}` : null;
   const title  = item.title || item.name;
   const year   = (item.release_date || item.first_air_date)?.slice(0, 4);
@@ -70,22 +71,22 @@ function DontMissCard({
     >
       {/* ── portrait poster — left-anchored, natural 2:3 dimensions ── */}
       <div
-        className="absolute left-0 top-0 bottom-0"
+        className="absolute left-0 top-0 bottom-0 bg-zinc-800"
         style={{ aspectRatio: "2/3" }}
       >
-        {posterUrl ? (
+        {posterUrl && (
           <Image
             src={posterUrl}
             alt={title}
             fill
             unoptimized
-            className="object-cover"
+            className="object-cover transition-opacity duration-500"
+            style={{ opacity: posterLoaded ? 1 : 0 }}
             sizes="25vw"
             loading="eager"
             priority={isFirst}
+            onLoad={() => setPosterLoaded(true)}
           />
-        ) : (
-          <div className="w-full h-full bg-surface-2" />
         )}
       </div>
 
@@ -229,7 +230,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
             item={item}
             isActive={activeIndex === i}
             isTrending={i === 0}
-            isFirst={i === 0}
+            isFirst={i < 3}
             onHover={() => setActiveIndex(i)}
             onAdd={() => openModalWithItem("wantToWatch", item)}
           />

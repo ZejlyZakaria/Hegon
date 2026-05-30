@@ -42,7 +42,7 @@ const NAV_GROUPS: NavItem[][] = [
   ],
   [
     { key: "sport",    label: "Sport",    href: "/perso/sports/football", activePrefix: "/perso/sports",   icon: <Trophy size={18} />,   accent: "#10b981" },
-    { key: "watching", label: "Watching", href: "/perso/watching/movies", activePrefix: "/perso/watching", icon: <Tv size={18} />,       accent: "#2dd4bf" },
+    { key: "watching", label: "Watching", href: "/perso/watching/movies", activePrefix: "/perso/watching", icon: <Tv size={18} />,       accent: "var(--color-accent-watching-vivid)" },
     { key: "travel",   label: "Travel",   href: "/perso/travel",          icon: <Plane size={18} />,      accent: "#0ea5e9", comingSoon: true },
   ],
   [

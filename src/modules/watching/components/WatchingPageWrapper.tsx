@@ -18,7 +18,7 @@ export default function WatchingPageWrapper({ type }: { type: MediaType }) {
   if (!userId) return null;
 
   return (
-    <WatchingClient userId={userId} config={config}>
+    <WatchingClient config={config}>
       <DontMissSectionClient config={config} />
       <ForYouSectionClient userId={userId} config={config} />
       {config.hasInProgress && <InProgressSectionClient userId={userId} config={config} />}

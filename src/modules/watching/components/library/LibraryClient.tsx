@@ -7,11 +7,11 @@ import LibraryGrid from "@/modules/watching/components/library/LibraryGrid";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { Button } from "@/shared/components/ui/button";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfirmModal";
 import { toast } from "@/shared/utils/toast";
 import { cn } from "@/shared/utils/utils";
+import { Button } from "@/shared/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -122,6 +122,7 @@ export default function LibraryClient({ initialItems }: Props) {
             {MEDIA_TYPES.map(({ value, label }) => (
               <button
                 key={value}
+                type="button"
                 onClick={() => { setMediaType(value); setCurrentPage(1); }}
                 className={cn(
                   "rounded-md px-4 py-1.5 text-sm font-medium transition-all duration-150",
@@ -149,6 +150,7 @@ export default function LibraryClient({ initialItems }: Props) {
               />
               {search && (
                 <button
+                  type="button"
                   onClick={() => setSearch("")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
                 >
@@ -175,7 +177,8 @@ export default function LibraryClient({ initialItems }: Props) {
             <Button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="gap-1.5 bg-accent-watching hover:opacity-90 text-white h-9 text-xs shrink-0"
+              className="flex items-center gap-1.5 rounded-lg px-3 h-9 text-xs font-semibold text-white shrink-0"
+              style={{ backgroundColor: "var(--color-accent-watching)" }}
             >
               <Plus size={13} />
               Add
@@ -257,6 +260,7 @@ function Pagination({ currentPage, totalPages, onChange }: {
   return (
     <div className="flex items-center justify-center gap-1.5 pt-4">
       <button
+        type="button"
         onClick={() => onChange(currentPage - 1)}
         disabled={currentPage === 1}
         className="px-3 py-1.5 text-sm rounded-lg bg-surface-1 border border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -270,6 +274,7 @@ function Pagination({ currentPage, totalPages, onChange }: {
         ) : (
           <button
             key={page}
+            type="button"
             onClick={() => onChange(page as number)}
             className={`w-8 h-8 text-sm rounded-lg border transition-colors ${
               currentPage === page
@@ -283,6 +288,7 @@ function Pagination({ currentPage, totalPages, onChange }: {
       )}
 
       <button
+        type="button"
         onClick={() => onChange(currentPage + 1)}
         disabled={currentPage === totalPages}
         className="px-3 py-1.5 text-sm rounded-lg bg-surface-1 border border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default disabled:opacity-30 disabled:cursor-not-allowed transition-colors"

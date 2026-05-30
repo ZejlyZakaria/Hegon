@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, Check, Eye, EyeOff, FileText, Film, LayoutGrid, List,
-  Loader2, MoreHorizontal, Pencil, Plus,
+  ArrowLeft, Bookmark, Check, Eye, EyeOff, FileText, Film, LayoutGrid, List,
+  Loader2, MoreHorizontal, Play, Plus,
   Search, SlidersHorizontal, Star, Trash2, Trophy, X,
 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
@@ -27,23 +27,28 @@ import {
   useRemoveItemFromList,
   useSearchMediaForList,
   useAddItemToList,
+  useSearchTmdbForList,
+  useAddTmdbItemToList,
 } from "../../hooks/useMediaLists";
+import { useUpdateMedia } from "../../hooks/useUpdateMedia";
 import type { MediaListWithThumbnails } from "../../service";
-import type { MediaListItemWithMedia } from "../../types";
+import type { MediaListItemWithMedia, TmdbListResult } from "../../types";
+import { displayTitle } from "../../utils";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const EMOJIS = ["🎬", "📺", "🎭", "🏆", "❤️", "⭐", "🌟", "🎯", "🔥", "💎", "🌙", "🎵", "👑", "🎪", "📽️", "🧠"];
+const EMOJIS = ["🏆", "👑", "🧠", "🔥", "⚔️", "🚀", "🎭", "🕵️", "🏅", "💀", "❤️", "⭐", "💎", "🎬", "🌙", "🃏"];
 
 type SortKey = "position" | "title" | "year" | "rating";
 type ViewMode = "table" | "grid";
 type FilterKey = "all" | "watched" | "unwatched";
 
 const STATUS_CONFIG: Record<string, { label: string; dotClass: string; textClass: string }> = {
-  completed:     { label: "Watched",        dotClass: "bg-emerald-400", textClass: "text-emerald-400"   },
-  watching:      { label: "Watching",       dotClass: "bg-blue-400",    textClass: "text-blue-400"      },
-  plan_to_watch: { label: "Plan to Watch",  dotClass: "bg-zinc-500",    textClass: "text-text-tertiary" },
-  dropped:       { label: "Dropped",        dotClass: "bg-red-500",     textClass: "text-red-400"       },
+  completed:     { label: "Watched",       dotClass: "bg-emerald-400", textClass: "text-emerald-400"   },
+  watching:      { label: "In Progress",   dotClass: "bg-accent-watching-vivid", textClass: "text-accent-watching-vivid" },
+  plan_to_watch: { label: "Want to Watch", dotClass: "bg-zinc-500",    textClass: "text-zinc-400"      },
+  dropped:       { label: "Dropped",       dotClass: "bg-red-500",     textClass: "text-red-400"       },
+  reference:     { label: "Unwatched",     dotClass: "bg-zinc-600",    textClass: "text-zinc-500"      },
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -152,11 +157,28 @@ function PosterHero({ thumbnails, emoji }: { thumbnails: { backdrop_url: string 
 
 // ── Add Title Popover ─────────────────────────────────────────────────────────
 
-function AddTitlePopover({ listId, userId, existingIds }: { listId: string; userId: string; existingIds: string[] }) {
+function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
+  listId: string;
+  userId: string;
+  existingIds: string[];
+  existingTmdbIds: Set<number>;
+}) {
   const [query, setQuery] = useState("");
+  const [addingTmdbId, setAddingTmdbId] = useState<number | null>(null);
   const debouncedQuery = useDebounce(query, 350);
-  const { data: results = [], isFetching } = useSearchMediaForList(userId, debouncedQuery);
-  const addItem = useAddItemToList(listId, userId);
+
+  const { data: libraryResults = [], isFetching: libFetching } = useSearchMediaForList(userId, debouncedQuery);
+  const { data: tmdbResults = [],   isFetching: tmdbFetching } = useSearchTmdbForList(debouncedQuery);
+  const addItem     = useAddItemToList(listId, userId);
+  const addTmdbItem = useAddTmdbItemToList(listId, userId);
+
+  // Exclude TMDB items already in the library results OR already in this list
+  const libraryTmdbIds  = new Set(libraryResults.map((m) => m.tmdb_id).filter((id) => id > 0));
+  const tmdbOnlyResults = tmdbResults.filter((r) => !libraryTmdbIds.has(r.id) && !existingTmdbIds.has(r.id));
+
+  const hasLibrary = libraryResults.length > 0;
+  const hasTmdb    = tmdbOnlyResults.length > 0;
+  const isFetching = libFetching || tmdbFetching;
 
   const handleAdd = async (mediaItemId: string) => {
     try {
@@ -167,8 +189,20 @@ function AddTitlePopover({ listId, userId, existingIds }: { listId: string; user
     }
   };
 
+  const handleAddFromTmdb = async (item: TmdbListResult) => {
+    setAddingTmdbId(item.id);
+    try {
+      await addTmdbItem.mutateAsync(item);
+      toast("Added to list.");
+    } catch {
+      toast.error("Failed to add.");
+    } finally {
+      setAddingTmdbId(null);
+    }
+  };
+
   return (
-    <Popover.Root onOpenChange={(open) => { if (!open) setQuery(""); }}>
+    <Popover.Root onOpenChange={(open) => { if (!open) { setQuery(""); setAddingTmdbId(null); } }}>
       <Popover.Trigger asChild>
         <button
           type="button"
@@ -180,6 +214,7 @@ function AddTitlePopover({ listId, userId, existingIds }: { listId: string; user
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content align="end" sideOffset={8} className="z-50 w-80 overflow-hidden rounded-xl border border-border-strong bg-surface-3 shadow-2xl">
+          {/* Search input */}
           <div className="border-b border-border-subtle p-2">
             <div className="relative">
               <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
@@ -187,50 +222,105 @@ function AddTitlePopover({ listId, userId, existingIds }: { listId: string; user
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search your library…"
-                className="w-full rounded-lg bg-surface-2 py-2 pl-8 pr-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none"
+                placeholder="Search library or TMDB…"
+                className="w-full rounded-lg bg-surface-2 py-2 pl-8 pr-8 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none"
               />
+              {isFetching && debouncedQuery.length >= 2 && (
+                <Loader2 size={11} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-text-tertiary" />
+              )}
             </div>
           </div>
-          <div className="max-h-72 overflow-y-auto p-1">
+
+          {/* Results */}
+          <div className="max-h-80 overflow-y-auto p-1">
             {debouncedQuery.length < 2 && (
-              <p className="py-8 text-center text-xs text-text-tertiary">Type to search your library</p>
+              <p className="py-8 text-center text-xs text-text-tertiary">Type to search your library or TMDB</p>
             )}
-            {debouncedQuery.length >= 2 && isFetching && (
-              <div className="flex justify-center py-8">
-                <Loader2 size={16} className="animate-spin text-text-tertiary" />
-              </div>
-            )}
-            {debouncedQuery.length >= 2 && !isFetching && results.length === 0 && (
+            {debouncedQuery.length >= 2 && !isFetching && !hasLibrary && !hasTmdb && (
               <p className="py-8 text-center text-xs text-text-tertiary">No results found</p>
             )}
-            {results.map((media) => {
-              const inList = existingIds.includes(media.id);
-              return (
-                <button
-                  key={media.id}
-                  type="button"
-                  onClick={() => !inList && handleAdd(media.id)}
-                  disabled={inList || addItem.isPending}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors",
-                    inList ? "cursor-default opacity-50" : "hover:bg-surface-2",
-                  )}
-                >
-                  <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md">
-                    {media.poster_url
-                      ? <Image src={media.poster_url} alt="" fill unoptimized className="object-cover" sizes="40px" />
-                      : <div className="h-full w-full bg-zinc-800" />
-                    }
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm text-text-primary">{media.title}</p>
-                    <p className="text-xs text-text-tertiary">{media.year} · {mediaTypeLabel(media.type)}</p>
-                  </div>
-                  {inList && <Check size={13} className="shrink-0 text-accent-watching" />}
-                </button>
-              );
-            })}
+
+            {/* ── Library section ── */}
+            {hasLibrary && (
+              <>
+                <p className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary/50">
+                  Your Library
+                </p>
+                {libraryResults.map((media) => {
+                  const inList = existingIds.includes(media.id);
+                  return (
+                    <button
+                      key={media.id}
+                      type="button"
+                      onClick={() => !inList && handleAdd(media.id)}
+                      disabled={inList || addItem.isPending}
+                      className={cn(
+                        "flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors",
+                        inList ? "cursor-default opacity-40" : "hover:bg-surface-2",
+                      )}
+                    >
+                      <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md">
+                        {media.poster_url
+                          ? <Image src={media.poster_url} alt="" fill unoptimized className="object-cover" sizes="40px" />
+                          : <div className="h-full w-full bg-zinc-800" />
+                        }
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-text-primary">{displayTitle(media)}</p>
+                        <p className="text-xs text-text-tertiary">{media.year} · {mediaTypeLabel(media.type)}</p>
+                      </div>
+                      {inList && <Check size={13} className="shrink-0 text-accent-watching" />}
+                    </button>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Separator */}
+            {hasLibrary && hasTmdb && (
+              <div className="mx-2 my-1.5 h-px bg-border-subtle" />
+            )}
+
+            {/* ── TMDB section ── */}
+            {hasTmdb && (
+              <>
+                <p className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary/50">
+                  From TMDB
+                </p>
+                {tmdbOnlyResults.map((item) => {
+                  const year = (item.release_date ?? item.first_air_date ?? "").slice(0, 4);
+                  const typeLabel =
+                    item.media_type === "movie" ? "Movie"
+                    : item.genre_ids.includes(16) && item.origin_country.includes("JP") ? "Anime"
+                    : "TV Show";
+                  const isThisAdding = addingTmdbId === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => addingTmdbId === null && handleAddFromTmdb(item)}
+                      disabled={addingTmdbId !== null}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-surface-2 disabled:opacity-50"
+                    >
+                      <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md">
+                        {item.poster_path
+                          ? <Image src={`https://image.tmdb.org/t/p/w92${item.poster_path}`} alt="" fill unoptimized className="object-cover" sizes="40px" />
+                          : <div className="h-full w-full bg-zinc-800" />
+                        }
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-text-primary">{displayTitle(item)}</p>
+                        <p className="text-xs text-text-tertiary">{year} · {typeLabel}</p>
+                      </div>
+                      {isThisAdding
+                        ? <Loader2 size={11} className="shrink-0 animate-spin text-text-tertiary" />
+                        : <span className="shrink-0 rounded-full bg-zinc-800 px-1.5 py-0.5 text-[9px] font-medium text-zinc-400">TMDB</span>
+                      }
+                    </button>
+                  );
+                })}
+              </>
+            )}
           </div>
         </Popover.Content>
       </Popover.Portal>
@@ -240,7 +330,7 @@ function AddTitlePopover({ listId, userId, existingIds }: { listId: string; user
 
 // ── More Menu ─────────────────────────────────────────────────────────────────
 
-function MoreMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+function MoreMenu({ onDelete }: { onDelete: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -269,21 +359,133 @@ function MoreMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => vo
         <div className="absolute right-0 top-full z-20 mt-1.5 w-44 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-2xl">
           <button
             type="button"
-            onClick={() => { onEdit(); setOpen(false); }}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
-          >
-            <Pencil size={13} className="text-text-tertiary" />
-            Edit list
-          </button>
-          <div className="my-1 h-px bg-border-subtle" />
-          <button
-            type="button"
             onClick={() => { onDelete(); setOpen(false); }}
             className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10"
           >
             <Trash2 size={13} />
             Delete list
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Status Dropdown ───────────────────────────────────────────────────────────
+
+function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const updateMedia = useUpdateMedia();
+
+  const status = STATUS_CONFIG[item.media.watch_status ?? "plan_to_watch"] ?? STATUS_CONFIG.plan_to_watch;
+  const isSeries = item.media.type === "serie" || item.media.type === "anime";
+  const currentStatus = item.media.watch_status;
+  const isCompleted = currentStatus === "completed";
+
+  useEffect(() => {
+    if (!open) return;
+    const fn = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, [open]);
+
+  const handleAction = async (action: "watched" | "in_progress" | "want_to_watch") => {
+    setOpen(false);
+    try {
+      if (action === "watched") {
+        await updateMedia.mutateAsync({
+          id: item.media.id,
+          watched: true,
+          recently_watched: true,
+          in_progress: false,
+          want_to_watch: false,
+          is_reference: false,
+          watched_at: new Date().toISOString(),
+        });
+      } else if (action === "in_progress") {
+        await updateMedia.mutateAsync({
+          id: item.media.id,
+          in_progress: true,
+          watched: false,
+          want_to_watch: false,
+          is_reference: false,
+        });
+      } else {
+        await updateMedia.mutateAsync({
+          id: item.media.id,
+          want_to_watch: true,
+          watched: false,
+          in_progress: false,
+          is_reference: false,
+        });
+      }
+      toast("Updated.");
+    } catch {
+      toast.error("Failed to update.");
+    }
+  };
+
+  const pill = (
+    <div className="flex items-center gap-1.5">
+      {updateMedia.isPending
+        ? <Loader2 size={9} className="animate-spin text-text-tertiary" />
+        : <div className={cn("h-1.5 w-1.5 shrink-0 rounded-full", status.dotClass)} />
+      }
+      <span className={cn("text-[11px] leading-none", status.textClass)}>{status.label}</span>
+    </div>
+  );
+
+  if (isCompleted) {
+    return <div className="px-1.5 py-1">{pill}</div>;
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((p) => !p); }}
+        disabled={updateMedia.isPending}
+        className={cn(
+          "rounded px-1.5 py-1 transition-colors hover:bg-surface-2",
+          open && "bg-surface-2",
+        )}
+      >
+        {pill}
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 min-w-40 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-2xl">
+          <button
+            type="button"
+            onClick={() => handleAction("watched")}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+          >
+            <Check size={11} className="shrink-0 text-emerald-400" />
+            Mark as watched
+          </button>
+          {isSeries && currentStatus !== "watching" && (
+            <button
+              type="button"
+              onClick={() => handleAction("in_progress")}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            >
+              <Play size={11} className="shrink-0 fill-current" style={{ color: "var(--color-accent-watching-vivid)" }} />
+              Start watching
+            </button>
+          )}
+          {currentStatus !== "plan_to_watch" && (
+            <button
+              type="button"
+              onClick={() => handleAction("want_to_watch")}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            >
+              <Bookmark size={11} className="shrink-0 text-zinc-400" />
+              Want to Watch
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -305,7 +507,6 @@ function TableRow({
   const [noteOpen, setNoteOpen] = useState(false);
   const updateNote = useUpdateListItemNote(listId);
   const [noteVal, setNoteVal] = useState(item.note ?? "");
-  const status = STATUS_CONFIG[item.media.watch_status ?? "plan_to_watch"] ?? STATUS_CONFIG.plan_to_watch;
 
   return (
     <div className="flex flex-col">
@@ -327,7 +528,7 @@ function TableRow({
 
         {/* Title */}
         <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpen}>
-          <p className="truncate text-sm font-medium leading-tight text-text-primary">{item.media.title}</p>
+          <p className="truncate text-sm font-medium leading-tight text-text-primary">{displayTitle(item.media)}</p>
           {item.note && !noteOpen && (
             <p className="mt-0.5 truncate text-[11px] italic text-text-tertiary">&quot;{item.note}&quot;</p>
           )}
@@ -370,9 +571,8 @@ function TableRow({
         </div>
 
         {/* Status */}
-        <div className="hidden w-28 shrink-0 items-center gap-1.5 sm:flex">
-          <div className={cn("h-1.5 w-1.5 shrink-0 rounded-full", status.dotClass)} />
-          <span className={cn("truncate text-xs", status.textClass)}>{status.label}</span>
+        <div className="hidden w-28 shrink-0 sm:block">
+          <StatusDropdown item={item} />
         </div>
 
         {/* Date added */}
@@ -476,7 +676,10 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
             </div>
           )}
         </div>
-        <p className="mt-1.5 line-clamp-1 text-xs font-medium text-text-secondary">{item.media.title}</p>
+        <p className="mt-1.5 line-clamp-1 text-xs font-medium text-text-secondary">{displayTitle(item.media)}</p>
+        <div className="mt-0.5" onClick={(e) => e.stopPropagation()}>
+          <StatusDropdown item={item} />
+        </div>
       </div>
 
       <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -546,7 +749,6 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
   const [sort, setSort]               = useState<SortKey>("position");
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [search, setSearch]           = useState("");
-  const [isEditing, setIsEditing]     = useState(false);
 
   const [editName, setEditName]     = useState(list.name);
   const [editEmoji, setEditEmoji]   = useState(list.emoji ?? "");
@@ -581,22 +783,37 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
     : filteredByTab;
 
   const items       = sortItems(filteredItems, sort);
-  const existingIds = rawItems.map((i) => i.media.id);
+  const existingIds     = rawItems.map((i) => i.media.id);
+  const existingTmdbIds = new Set(rawItems.filter((i) => (i.media.tmdb_id ?? 0) > 0).map((i) => i.media.tmdb_id));
 
-  const handleSaveEdit = async () => {
+  const handleAutoSave = async (overrides?: { name?: string; emoji?: string; desc?: string; ranked?: boolean }) => {
+    const name    = (overrides?.name    ?? editName).trim()  || list.name;
+    const emoji   = (overrides?.emoji   ?? editEmoji)        || null;
+    const desc    = (overrides?.desc    ?? editDesc).trim()  || null;
+    const ranked  =  overrides?.ranked  ?? editRanked;
+    if (
+      name   === list.name &&
+      emoji  === (list.emoji        ?? null) &&
+      desc   === (list.description  ?? null) &&
+      ranked === list.is_ranked
+    ) return;
+    try {
+      await updateList.mutateAsync({ id: list.id, data: { name, emoji, description: desc, is_ranked: ranked } });
+    } catch {
+      toast.error("Failed to update list.");
+    }
+  };
+
+  const handleToggleRanked = async () => {
+    const next = !editRanked;
+    setEditRanked(next);
     try {
       await updateList.mutateAsync({
         id: list.id,
-        data: {
-          name:        editName.trim() || list.name,
-          emoji:       editEmoji || null,
-          description: editDesc.trim() || null,
-          is_ranked:   editRanked,
-        },
+        data: { name: editName.trim() || list.name, emoji: editEmoji || null, description: editDesc.trim() || null, is_ranked: next },
       });
-      setIsEditing(false);
-      toast("List updated.");
     } catch {
+      setEditRanked(!next);
       toast.error("Failed to update list.");
     }
   };
@@ -645,8 +862,8 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
           />
         </div>
 
-        <AddTitlePopover listId={list.id} userId={userId} existingIds={existingIds} />
-        <MoreMenu onEdit={() => setIsEditing((p) => !p)} onDelete={handleDelete} />
+        <AddTitlePopover listId={list.id} userId={userId} existingIds={existingIds} existingTmdbIds={existingTmdbIds} />
+        <MoreMenu onDelete={handleDelete} />
       </div>
 
       {/* ── Hero ── */}
@@ -658,22 +875,80 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
             <PosterHero thumbnails={heroThumbnails} emoji={list.emoji} />
           </div>
 
-          {/* Info */}
-          <div className="min-w-0 flex-1 py-1">
-            <h1 className="text-xl font-bold leading-tight text-text-primary">
-              {list.emoji && <span className="mr-2">{list.emoji}</span>}
-              {list.name}
-            </h1>
-            {list.description && (
-              <p className="mt-2 text-sm leading-relaxed text-text-tertiary">{list.description}</p>
-            )}
-            <p className="mt-3 text-xs text-text-tertiary/50">{formatUpdated(list.updated_at)}</p>
-            {list.is_ranked && (
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-400">
-                <Trophy size={10} />
-                Ranked list
-              </div>
-            )}
+          {/* Info — inline editable */}
+          <div className="min-w-0 flex-1 py-1 flex flex-col gap-1">
+
+            {/* Emoji + Title + Ranked */}
+            <div className="flex items-center gap-2">
+              <Popover.Root>
+                <Popover.Trigger asChild>
+                  <button type="button" className="shrink-0 text-xl leading-none transition-opacity hover:opacity-70">
+                    {editEmoji || <span className="text-text-tertiary/30 text-base">＋</span>}
+                  </button>
+                </Popover.Trigger>
+                <Popover.Portal>
+                  <Popover.Content
+                    align="start"
+                    sideOffset={8}
+                    className="z-50 flex flex-wrap gap-1 p-2 w-56 rounded-xl border border-border-strong bg-surface-3 shadow-2xl"
+                  >
+                    {EMOJIS.map((e) => (
+                      <button
+                        key={e}
+                        type="button"
+                        onClick={() => {
+                          setEditEmoji(e);
+                          handleAutoSave({ emoji: e });
+                        }}
+                        className={cn(
+                          "rounded-md px-1.5 py-1 text-lg transition-colors hover:bg-surface-2",
+                          editEmoji === e && "bg-accent-watching/20",
+                        )}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
+
+              <input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={() => handleAutoSave()}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                className="flex-1 min-w-0 text-xl font-bold leading-tight text-text-primary bg-transparent focus:outline-none rounded px-1.5 -mx-1.5 hover:bg-white/5 focus:bg-white/5 transition-colors"
+              />
+
+              <button
+                type="button"
+                onClick={handleToggleRanked}
+                className={cn(
+                  "shrink-0 flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-medium transition-colors",
+                  editRanked
+                    ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                    : "text-text-tertiary/30 hover:text-text-tertiary hover:bg-surface-2",
+                )}
+              >
+                <Trophy size={11} />
+                {editRanked && <span>Ranked</span>}
+              </button>
+            </div>
+
+            {/* Description */}
+            <textarea
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              onBlur={() => handleAutoSave()}
+              placeholder="Add description…"
+              rows={2}
+              className="resize-none bg-transparent text-sm leading-relaxed text-text-tertiary placeholder:text-text-tertiary/30 focus:outline-none rounded px-1.5 -mx-1.5 hover:bg-white/5 focus:bg-white/5 transition-colors"
+            />
+
+            <div className="flex-1" />
+
+            {/* Updated date — bottom */}
+            <p className="text-xs text-text-tertiary/50">{formatUpdated(list.updated_at)}</p>
           </div>
 
           {/* Stats panel — 4 rows */}
@@ -694,84 +969,6 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
 
         </div>
       </div>
-
-      {/* ── Edit panel ── */}
-      {isEditing && (
-        <div className="mx-6 mb-4 space-y-3 rounded-xl border border-border-subtle bg-surface-1 p-4">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              placeholder="List name"
-              className="flex-1 rounded-lg border border-border-subtle bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
-            />
-            <input
-              type="text"
-              value={editEmoji}
-              onChange={(e) => setEditEmoji(e.target.value)}
-              placeholder="🎬"
-              className="w-14 rounded-lg border border-border-subtle bg-surface-2 px-2 py-2 text-center text-sm focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
-              maxLength={2}
-            />
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {EMOJIS.map((e) => (
-              <button
-                key={e}
-                type="button"
-                onClick={() => setEditEmoji(e)}
-                className={cn(
-                  "rounded-md px-2 py-1 text-base transition-colors",
-                  editEmoji === e ? "bg-accent-watching/20 ring-1 ring-accent-watching/40" : "hover:bg-surface-2",
-                )}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-          <textarea
-            value={editDesc}
-            onChange={(e) => setEditDesc(e.target.value)}
-            placeholder="Description (optional)"
-            rows={2}
-            className="w-full resize-none rounded-lg border border-border-subtle bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
-          />
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setEditRanked(!editRanked)}
-              className={cn(
-                "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-                editRanked
-                  ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-                  : "border-border-subtle bg-surface-2 text-text-tertiary hover:text-text-primary",
-              )}
-            >
-              <Trophy size={12} />
-              Ranked list
-            </button>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="rounded-lg px-3 py-1.5 text-xs text-text-tertiary hover:text-text-primary"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEdit}
-                disabled={updateList.isPending}
-                className="flex items-center gap-1.5 rounded-lg bg-accent-watching px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-              >
-                {updateList.isPending && <Loader2 size={11} className="animate-spin" />}
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Filter tabs + toolbar ── */}
       <div className="flex items-center justify-between border-b border-border-subtle px-6">
@@ -838,7 +1035,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
       </div>
 
       {/* ── Content ── */}
-      <div className="flex flex-col">
+      <div className="flex flex-col pb-8">
         {isLoading && (
           <div className="space-y-px px-4 pt-1">
             {[1, 2, 3, 4, 5].map((i) => (

@@ -5,7 +5,6 @@ import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarouse
 import { CarouselSkeleton } from "@/modules/watching/components/WatchingSkeletons";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
-import { useMarkAsWatched } from "@/modules/watching/hooks/useMarkAsWatched";
 import { useMovies } from "@/modules/watching/hooks/useMovies";
 import { useSeries } from "@/modules/watching/hooks/useSeries";
 import { useAnimes } from "@/modules/watching/hooks/useAnimes";
@@ -25,19 +24,9 @@ export default function WantToWatchSectionClient({ userId, config }: Props) {
   });
 
   const deleteMediaMutation = useDeleteMedia();
-  const markAsWatchedMutation = useMarkAsWatched();
   const { openModal } = useWatching();
 
   if (isLoading) return <CarouselSkeleton />;
-
-  const handleMarkWatched = async (itemId: string) => {
-    try {
-      await markAsWatchedMutation.mutateAsync(itemId);
-      toast.success("Marked as watched!");
-    } catch {
-      toast.error("Error occurred while updating.");
-    }
-  };
 
   const handleDelete = async (itemId: string) => {
     try {
@@ -54,7 +43,6 @@ export default function WantToWatchSectionClient({ userId, config }: Props) {
       subtitle={`Your watchlist — up to 20 ${config.labelPlural}`}
       items={items}
       onAddClick={items.length < 20 ? () => openModal("wantToWatch") : undefined}
-      onMarkWatched={handleMarkWatched}
       onDelete={handleDelete}
     />
   );

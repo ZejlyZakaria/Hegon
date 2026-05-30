@@ -12,6 +12,7 @@ const TABS = [
   { label: "Animes",   href: "/perso/watching/animes" },
   { label: "Library",  href: "/perso/watching/library" },
   { label: "Lists",    href: "/perso/watching/lists" },
+  { label: "Stats",    href: "/perso/watching/stats" },
 ];
 
 const TAB_HREFS = new Set(TABS.map((t) => t.href));
@@ -30,7 +31,7 @@ export default function WatchingLayout({ children }: { children: React.ReactNode
     <div className="min-h-screen bg-zinc-950">
       {!isDetail && (
         <SectionHeader
-          accent="#2dd4bf"
+          accent="var(--color-accent-watching-vivid)"
           tabs={TABS}
         />
       )}

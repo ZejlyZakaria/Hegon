@@ -1,6 +1,5 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,31 +33,30 @@ export default function DeleteConfirmModal({
   return (
     <Dialog open={isOpen} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-md bg-surface-3 border-border-strong rounded-xl">
-        <DialogHeader className="items-center text-center">
-          <div className="mx-auto w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center mb-3">
-            <AlertTriangle size={20} className="text-red-500" />
-          </div>
+        <DialogHeader>
           <DialogTitle className="text-sm font-semibold text-text-primary">
             {title}
           </DialogTitle>
-          <DialogDescription className="text-sm text-text-secondary pt-1">
+          <DialogDescription className="text-sm text-text-secondary pt-2">
             {description}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-3 pt-2">
+        <div className="flex justify-end gap-2 pt-2">
           <Button
+            type="button"
             variant="outline"
             onClick={onClose}
             disabled={isDeleting}
-            className="flex-1 h-8 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
+            className="h-8 px-3 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
           >
             {cancelText}
           </Button>
           <Button
+            type="button"
             onClick={onConfirm}
             disabled={isDeleting}
-            className="flex-1 h-8 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+            className="h-8 px-3 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
           >
             {isDeleting ? "Deleting..." : confirmText}
           </Button>

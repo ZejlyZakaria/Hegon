@@ -4,14 +4,14 @@
 
 export type MediaType = "film" | "serie" | "anime";
 
-export type WatchStatus = "watching" | "completed" | "plan_to_watch" | "dropped";
+export type WatchStatus = "watching" | "completed" | "plan_to_watch" | "dropped" | "reference";
 
 export interface WatchingMedia {
   org_id: string;
   id: string;
   type: MediaType;
   title: string;
-  original_title: string;
+  original_title: string | null;
   description: string | null;
   poster_url: string | null;
   backdrop_url: string | null;
@@ -42,6 +42,7 @@ export interface WatchingMedia {
   in_progress: boolean;
   want_to_watch: boolean;
   recently_watched: boolean;
+  is_reference?: boolean;
   
   created_at: string;
   updated_at: string;
@@ -132,6 +133,52 @@ export interface TMDBTVShow {
   number_of_seasons?: number;
   number_of_episodes?: number;
   episode_run_time?: number[];
+}
+
+// TMDB search result (search/movie or search/tv endpoint) + merged detail fields
+export interface TmdbModalResult {
+  id: number;
+  media_type?: "movie" | "tv";
+  // search fields
+  title?: string;
+  name?: string;
+  original_title?: string;
+  original_name?: string;
+  overview: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  release_date?: string;
+  first_air_date?: string;
+  vote_average: number;
+  genre_ids: number[];
+  origin_country?: string[];
+  // detail fields (populated after selectResult fetch)
+  runtime?: number;
+  episode_run_time?: number[];
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  seasons?: { season_number: number; episode_count: number }[];
+  credits?: { crew: { job: string; name: string; profile_path?: string }[] };
+  created_by?: { name: string; profile_path?: string | null }[];
+  production_companies?: { name: string }[];
+  networks?: { name: string }[];
+  status?: string;
+  last_episode_to_air?: { runtime?: number };
+}
+
+export interface TmdbListResult {
+  id: number;
+  media_type: "movie" | "tv";
+  title: string;
+  original_title: string | null;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  release_date: string | null;
+  first_air_date: string | null;
+  vote_average: number;
+  overview: string;
+  genre_ids: number[];
+  origin_country: string[];
 }
 
 export interface TMDBMediaDetails {

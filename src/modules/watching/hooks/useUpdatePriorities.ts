@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
 import { bulkUpdatePriorities } from "../service";
+import { toast } from "@/shared/utils/toast";
 
 export function useUpdatePriorities() {
   const queryClient = useQueryClient();
@@ -11,8 +12,8 @@ export function useUpdatePriorities() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all });
     },
-    onError: (error) => {
-      console.error("Error updating priorities:", error);
+    onError: () => {
+      toast.error("Impossible de mettre à jour l'ordre. Réessaie.");
     },
   });
 }

@@ -7,7 +7,7 @@ import type { WatchingMedia } from "../../types";
 
 // ── Rating Slider ──────────────────────────────────────────────────────────────
 
-function RatingSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+export function RatingSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const onChangeRef = useRef<(v: number) => void>(onChange);
@@ -18,7 +18,7 @@ function RatingSlider({ value, onChange }: { value: number; onChange: (v: number
       if (!isDragging.current || !trackRef.current) return;
       const { left, width } = trackRef.current.getBoundingClientRect();
       const ratio = Math.max(0, Math.min(1, (e.clientX - left) / width));
-      const v = Math.round(Math.max(0, Math.min(10, ratio * 10)) * 2) / 2;
+      const v = Math.round(Math.max(1, Math.min(10, ratio * 9 + 1)) * 2) / 2;
       onChangeRef.current(v);
     };
     const onUp = () => { isDragging.current = false; };
@@ -30,13 +30,14 @@ function RatingSlider({ value, onChange }: { value: number; onChange: (v: number
     };
   }, []);
 
-  const fillPercent = value > 0 ? (value / 10) * 100 : 0;
+  const fillPercent = value > 0 ? ((value - 1) / 9) * 100 : 0;
   const label =
-    value >= 9 ? "Masterpiece"
-    : value >= 7 ? "Great"
-    : value >= 5 ? "Good"
-    : value >= 3 ? "Mixed"
-    : value > 0 ? "Poor"
+    value >= 9.5 ? "Masterpiece"
+    : value >= 8   ? "Great"
+    : value >= 7   ? "Good"
+    : value >= 5   ? "Decent"
+    : value >= 3   ? "Not for me"
+    : value > 0    ? "Skip it"
     : null;
 
   return (
@@ -50,7 +51,7 @@ function RatingSlider({ value, onChange }: { value: number; onChange: (v: number
           if (!trackRef.current) return;
           const { left, width } = trackRef.current.getBoundingClientRect();
           const ratio = Math.max(0, Math.min(1, (e.clientX - left) / width));
-          const v = Math.round(Math.max(0, Math.min(10, ratio * 10)) * 2) / 2;
+          const v = Math.round(Math.max(1, Math.min(10, ratio * 9 + 1)) * 2) / 2;
           onChange(v);
         }}
       >
@@ -97,6 +98,10 @@ interface Props {
   media: WatchingMedia;
   favorite: boolean;
   onFavoriteToggle: () => void;
+  isSeries?: boolean;
+  onMarkWatched?: () => void;
+  onStartWatching?: () => void;
+  isUpdating?: boolean;
 }
 
 export function MyTakeRecord({
@@ -107,23 +112,26 @@ export function MyTakeRecord({
   media,
   favorite,
   onFavoriteToggle,
+  isSeries,
+  onMarkWatched,
+  onStartWatching,
+  isUpdating,
 }: Props) {
-  const isWantToWatch = media.want_to_watch && !media.watched && !media.in_progress;
+  const isUnwatched = !!(media.is_reference || (media.want_to_watch && !media.watched && !media.in_progress));
 
   return (
     <section className="flex flex-col gap-5 sm:flex-row sm:items-stretch">
 
-      {/* My Take (~60%, full width if no My Record) */}
-      <div className={cn("flex flex-col", isWantToWatch ? "flex-1" : "flex-3")}>
+      {/* My Take */}
+      <div className="flex flex-3 flex-col">
         <h2 className="mb-3 text-sm font-semibold text-text-primary">My Take</h2>
         <div className="relative flex flex-1 flex-col overflow-hidden rounded-xl border border-border-subtle bg-surface-2">
           <textarea
             value={notes}
             onChange={(e) => onNotesChange(e.target.value)}
-            placeholder={isWantToWatch ? "Why do you want to watch this? Any notes…" : "What did you think? Was it worth your time?"}
+            placeholder={isUnwatched ? "Why do you want to watch this? Any notes…" : "What did you think? Was it worth your time?"}
             className="flex-1 resize-none bg-transparent p-4 text-sm leading-relaxed text-text-primary placeholder:text-text-tertiary/60 focus:outline-none"
           />
-          {/* Word count */}
           <div className="px-4 py-1.5 text-right">
             <span className="text-[10px] tabular-nums text-text-tertiary">
               {notes.trim() ? notes.trim().split(/\s+/).length : 0} words
@@ -132,61 +140,92 @@ export function MyTakeRecord({
         </div>
       </div>
 
-      {/* My Record (~40%) — hidden for Want to Watch */}
-      {!isWantToWatch && <div className="flex flex-2 min-w-0 flex-col">
+      {/* My Record */}
+      <div className="flex flex-2 min-w-0 flex-col">
         <h2 className="mb-3 text-sm font-semibold text-text-primary">My Record</h2>
         <div className="flex flex-1 flex-col overflow-hidden rounded-xl bg-accent-watching">
-          <div className="flex flex-1 flex-col justify-between gap-4 p-4">
 
-            {/* Status */}
-            <div>
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/60">Status</p>
-              <div className="flex flex-wrap gap-1.5">
-                {media.watched && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/90">
-                    <Check size={10} /> Watched
-                  </span>
-                )}
-                {media.in_progress && !media.watched && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/90">
-                    <Play size={10} className="fill-current" /> In Progress
-                  </span>
-                )}
-                {media.want_to_watch && !media.watched && !media.in_progress && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/90">
-                    <Bookmark size={10} className="fill-current" /> Want to Watch
-                  </span>
-                )}
+          {isUnwatched ? (
+            /* ── Unwatched state ── */
+            <div className="flex flex-1 flex-col justify-between gap-4 p-4">
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/60">Status</p>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/60">
+                  <Bookmark size={10} />
+                  {media.is_reference ? "Unwatched" : "Want to Watch"}
+                </span>
+              </div>
+
+              <div className="h-px bg-white/20" />
+
+              <div className="flex flex-col gap-2">
                 <button
                   type="button"
-                  onClick={onFavoriteToggle}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border bg-transparent px-2.5 py-1 text-[11px] font-medium transition-colors",
-                    favorite
-                      ? "border-white/30 bg-white/10 text-white/90"
-                      : "border-white/20 text-white/60 hover:text-white/80",
-                  )}
+                  onClick={onMarkWatched}
+                  disabled={isUpdating}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-white/10 px-3 py-2.5 text-sm font-medium text-white/90 transition-colors hover:bg-white/15 disabled:opacity-50"
                 >
-                  <Heart size={10} className={cn(favorite && "fill-current")} />
-                  {favorite ? "Favorited" : "Favorite"}
+                  <Check size={14} />
+                  Mark as watched
                 </button>
+                {isSeries && (
+                  <button
+                    type="button"
+                    onClick={onStartWatching}
+                    disabled={isUpdating}
+                    className="flex items-center justify-center gap-2 rounded-lg border border-white/15 px-3 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/5 disabled:opacity-50"
+                  >
+                    <Play size={14} className="fill-current" />
+                    Start watching
+                  </button>
+                )}
               </div>
             </div>
+          ) : (
+            /* ── Watched / In Progress / Dropped state ── */
+            <div className="flex flex-1 flex-col justify-between gap-4 p-4">
 
-            <div className="h-px bg-white/20" />
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/60">Status</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {media.watched && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/90">
+                      <Check size={10} /> Watched
+                    </span>
+                  )}
+                  {media.in_progress && !media.watched && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/90">
+                      <Play size={10} className="fill-current" /> In Progress
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onFavoriteToggle}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border bg-transparent px-2.5 py-1 text-[11px] font-medium transition-colors",
+                      favorite
+                        ? "border-white/30 bg-white/10 text-white/90"
+                        : "border-white/20 text-white/60 hover:text-white/80",
+                    )}
+                  >
+                    <Heart size={10} className={cn(favorite && "fill-current")} />
+                    {favorite ? "Favorited" : "Favorite"}
+                  </button>
+                </div>
+              </div>
 
-            {/* My Rating */}
-            <div>
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-white/60">My Rating</p>
-              <RatingSlider
-                value={starRating}
-                onChange={onStarRatingChange}
-              />
+              <div className="h-px bg-white/20" />
+
+              <div>
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-white/60">My Rating</p>
+                <RatingSlider value={starRating} onChange={onStarRatingChange} />
+              </div>
+
             </div>
+          )}
 
-          </div>
         </div>
-      </div>}
+      </div>
 
     </section>
   );

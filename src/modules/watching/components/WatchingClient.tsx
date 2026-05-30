@@ -26,7 +26,6 @@ export const useWatching = () => useContext(WatchingContext);
 // ─── main ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  userId: string;
   config: WatchingConfig;
   children: React.ReactNode;
 }

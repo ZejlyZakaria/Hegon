@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
 import { deleteMediaItem } from "../service";
+import { toast } from "@/shared/utils/toast";
 
 export function useDeleteMedia() {
   const queryClient = useQueryClient();
@@ -10,8 +11,8 @@ export function useDeleteMedia() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all });
     },
-    onError: (error) => {
-      console.error("Error deleting media:", error);
+    onError: () => {
+      toast.error("Impossible de supprimer ce média. Réessaie.");
     },
   });
 }

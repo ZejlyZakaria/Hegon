@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { ArrowLeft, Star } from "lucide-react";
 import type { WatchingMedia } from "../../types";
+import { displayTitle } from "../../utils";
 
 interface Props {
   media: WatchingMedia;
@@ -13,6 +14,8 @@ interface Props {
 
 export function MediaHero({ media, typeLabel, isSeries, onBack }: Props) {
   const tmdbRating = media.rating ?? 0;
+  const mainTitle = displayTitle(media);
+  const altTitle = mainTitle === media.title ? media.original_title : media.title;
 
   return (
     <div className="relative w-full overflow-hidden" style={{ aspectRatio: "21/9", maxHeight: "55vh", minHeight: 280 }}>
@@ -82,10 +85,10 @@ export function MediaHero({ media, typeLabel, isSeries, onBack }: Props) {
             </div>
 
             <h1 className="text-balance text-3xl font-bold leading-tight tracking-tight text-white md:text-4xl">
-              {media.title}
+              {mainTitle}
             </h1>
-            {media.original_title && media.original_title !== media.title && (
-              <p className="mt-0.5 truncate text-sm text-white/35">{media.original_title}</p>
+            {altTitle && altTitle !== mainTitle && (
+              <p className="mt-0.5 truncate text-sm text-white/35">{altTitle}</p>
             )}
 
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/45">

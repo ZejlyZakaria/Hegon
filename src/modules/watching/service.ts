@@ -2,8 +2,7 @@
 
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
-import type { WatchingMedia, MediaType, WatchStatus, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia } from "./types";
-import type { UpdateMediaInput } from "./schemas/media.schema";
+import type { WatchingMedia, MediaType, WatchStatus, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult } from "./types";
 
 // =====================================================
 // WATCHING SERVICE (SUPABASE)
@@ -54,6 +53,36 @@ export async function getMediaItems(
   return (data as WatchingMedia[]) ?? [];
 }
 
+export interface StatsRawItem {
+  id: string;
+  type: string;
+  title: string;
+  original_title: string | null;
+  poster_url: string | null;
+  backdrop_url: string | null;
+  year: number;
+  runtime: number | null;        // films = total mins ; series/anime = per-episode mins
+  season_episodes: number[] | null;
+  episodes: number | null;
+  user_rating: number | null;
+  favorite: boolean;
+  watched_at: string | null;
+  tags: string[] | null;  // genre names (stored from TMDB at add time)
+}
+
+export async function getWatchingStatsData(userId: string): Promise<StatsRawItem[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_items")
+    .select("id, type, title, original_title, poster_url, backdrop_url, year, runtime, season_episodes, episodes, user_rating, favorite, watched_at, tags")
+    .eq("user_id", userId)
+    .eq("watched", true)
+    .neq("is_reference", true);
+  if (error) throw error;
+  return (data ?? []) as StatsRawItem[];
+}
+
 export async function getAllWatchedMedia(
   userId: string,
   options: { type?: MediaType; limit?: number } = {}
@@ -77,18 +106,18 @@ export async function getAllWatchedMedia(
 
 export async function updateMediaItem(
   id: string,
-  updates: Omit<UpdateMediaInput, "id">
+  data: Record<string, any>
 ): Promise<WatchingMedia> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  const { data: result, error } = await supabase
     .schema("watching")
     .from("media_items")
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...data, updated_at: new Date().toISOString() })
     .eq("id", id)
     .select()
     .single();
   if (error) throw error;
-  return data as WatchingMedia;
+  return result as WatchingMedia;
 }
 
 export async function deleteMediaItem(id: string): Promise<void> {
@@ -173,21 +202,6 @@ export async function insertMediaItem(data: Record<string, any>): Promise<Watchi
   return result as WatchingMedia;
 }
 
-export async function updateMediaItemById(
-  id: string,
-  data: Record<string, any>
-): Promise<WatchingMedia> {
-  const supabase = createClient();
-  const { data: result, error } = await supabase
-    .schema("watching")
-    .from("media_items")
-    .update({ ...data, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw error;
-  return result as WatchingMedia;
-}
 
 export async function getMediaItemById(id: string): Promise<WatchingMedia | null> {
   const supabase = createClient();
@@ -399,6 +413,7 @@ export async function getForYouRecommendations(
 }
 
 function deriveWatchStatus(item: any): WatchStatus {
+  if (item.is_reference) return "reference";
   if (item.watched) return "completed";
   if (item.in_progress) return "watching";
   if (item.want_to_watch) return "plan_to_watch";
@@ -432,11 +447,88 @@ export async function searchMediaForList(userId: string, query: string): Promise
     .from("media_items")
     .select("*")
     .eq("user_id", userId)
-    .ilike("title", `%${query}%`)
+    .or(`title.ilike.%${query}%,original_title.ilike.%${query}%`)
     .order("updated_at", { ascending: false })
     .limit(20);
   if (error) throw error;
   return (data as WatchingMedia[]) ?? [];
+}
+
+export async function searchTmdbForList(query: string): Promise<TmdbListResult[]> {
+  const res = await fetch(
+    `/api/tmdb?endpoint=search/multi&query=${encodeURIComponent(query)}&language=fr-FR&page=1`
+  );
+  if (!res.ok) return [];
+  const data: { results?: any[] } = await res.json();
+  return (data.results ?? [])
+    .filter((r: any) => r.media_type === "movie" || r.media_type === "tv")
+    .map((r: any): TmdbListResult => ({
+      id: r.id,
+      media_type: r.media_type,
+      title: r.title ?? r.name ?? "",
+      original_title: r.original_title ?? r.original_name ?? null,
+      poster_path: r.poster_path ?? null,
+      backdrop_path: r.backdrop_path ?? null,
+      release_date: r.release_date ?? null,
+      first_air_date: r.first_air_date ?? null,
+      vote_average: r.vote_average ?? 0,
+      overview: r.overview ?? "",
+      genre_ids: r.genre_ids ?? [],
+      origin_country: r.origin_country ?? [],
+    }))
+    .slice(0, 8);
+}
+
+export async function addTmdbItemToList(
+  listId: string,
+  userId: string,
+  tmdbItem: TmdbListResult
+): Promise<MediaListItem> {
+  const supabase = createClient();
+
+  const type: MediaType =
+    tmdbItem.media_type === "movie" ? "film"
+    : tmdbItem.genre_ids.includes(16) && tmdbItem.origin_country.includes("JP") ? "anime"
+    : "serie";
+
+  // Check if already in DB (any type, match by tmdb_id)
+  const { data: existing } = await supabase
+    .schema("watching")
+    .from("media_items")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("tmdb_id", tmdbItem.id)
+    .maybeSingle();
+
+  let mediaItemId: string;
+  if (existing && (existing as any).id) {
+    mediaItemId = (existing as any).id;
+  } else {
+    const year = parseInt((tmdbItem.release_date ?? tmdbItem.first_air_date ?? "").slice(0, 4)) || null;
+    const newItem = await insertMediaItem({
+      user_id: userId,
+      type,
+      title: tmdbItem.title,
+      original_title: tmdbItem.original_title ?? tmdbItem.title,
+      description: tmdbItem.overview,
+      poster_url: tmdbItem.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbItem.poster_path}` : null,
+      backdrop_url: tmdbItem.backdrop_path ? `https://image.tmdb.org/t/p/original${tmdbItem.backdrop_path}` : null,
+      year,
+      rating: tmdbItem.vote_average,
+      tmdb_id: tmdbItem.id,
+      is_reference: true,
+      watched: false,
+      in_progress: false,
+      want_to_watch: false,
+      recently_watched: false,
+      favorite: false,
+      tags: [],
+      notes: null,
+    });
+    mediaItemId = newItem.id;
+  }
+
+  return addMediaToList(listId, mediaItemId, userId);
 }
 
 export async function updateMediaList(

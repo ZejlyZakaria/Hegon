@@ -9,14 +9,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  MoreVertical,
-  Trash2,
-  Eye,
-  Pencil,
+  Bookmark,
 } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { cn } from "@/shared/utils/utils";
-import DeleteConfirmModal from "../modals/DeleteConfirmModal";
+import { displayTitle } from "@/modules/watching/utils";
+import { MediaActionMenu } from "./MediaActionMenu";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -39,169 +37,18 @@ type MediaCarouselProps = {
   subtitle?: string;
   items: WatchingMedia[];
   onAddClick?: () => void;
-  onMarkWatched?: (itemId: string) => Promise<void>;
   onDelete?: (itemId: string) => Promise<void>;
   showEpisodeBadge?: boolean;
   showRankBadge?: boolean;
 };
 
-// ─── priority badge ───────────────────────────────────────────────────────────
 
-function PriorityBadge({ level }: { level: string | null | undefined }) {
-  if (!level) return null;
-  const config =
-    {
-      high: {
-        label: "High",
-        className: "bg-red-500/20 text-red-400 border-red-500/30",
-      },
-      medium: {
-        label: "Medium",
-        className: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-      },
-      low: {
-        label: "Low",
-        className: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
-      },
-    }[level] ?? null;
-  if (!config) return null;
-  return (
-    <span
-      className={cn(
-        "text-[9px] font-bold px-1.5 py-0.5 rounded-full border",
-        config.className,
-      )}
-    >
-      {config.label}
-    </span>
-  );
-}
-
-// ─── context menu ─────────────────────────────────────────────────────────────
-
-function CardMenu({
-  item,
-  onView,
-  onDelete,
-  onMarkWatched,
-}: {
-  item: WatchingMedia;
-  onView: () => void;
-  onDelete?: (id: string) => Promise<void>;
-  onMarkWatched?: (id: string) => Promise<void>;
-}) {
-  const [open, setOpen] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // Handler de confirmation de suppression
-  const handleConfirmDelete = async () => {
-    if (!onDelete) return;
-
-    setIsDeleting(true);
-    try {
-      await onDelete(item.id);
-      setShowDeleteConfirm(false);
-      setOpen(false);
-    } catch (err) {
-      console.error("Erreur suppression:", err);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  return (
-    <>
-      <div className="relative">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((p) => !p);
-          }}
-          className="p-1.5 rounded-lg bg-black/60 text-white/70 hover:text-white hover:bg-black/80 transition-colors"
-        >
-          <MoreVertical size={14} />
-        </button>
-
-        {open && (
-          <>
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setOpen(false)}
-            />
-            <div className="absolute right-0 top-8 z-50 w-52 bg-surface-3 border border-border-default rounded-xl shadow-2xl overflow-hidden">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onView();
-                  setOpen(false);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-surface-2 transition-colors text-sm text-text-secondary group"
-              >
-                <Pencil
-                  size={13}
-                  className="text-text-tertiary group-hover:text-text-secondary"
-                />
-                View / Edit
-              </button>
-
-              {onMarkWatched && !item.watched && (
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await onMarkWatched(item.id);
-                    setOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-surface-2 transition-colors text-sm text-text-secondary group"
-                >
-                  <Eye
-                    size={13}
-                    className="text-text-tertiary group-hover:text-emerald-400"
-                  />
-                  {item.in_progress ? "Mark as finished" : "Mark as watched"}
-                </button>
-              )}
-
-              {onDelete && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDeleteConfirm(true); // ✅ MODIFIÉ : Ouvre le modal au lieu de supprimer directement
-                    setOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-red-500/10 transition-colors text-sm text-red-400 group border-t border-border-default"
-                >
-                  <Trash2
-                    size={13}
-                    className="text-red-400/70 group-hover:text-red-400"
-                  />
-                  Delete
-                </button>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* ✅ AJOUTÉ : Modal de confirmation de suppression */}
-      <DeleteConfirmModal
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleConfirmDelete}
-        title={`Delete "${item.title}"?`}
-        description="This media will be permanently deleted from your collection."
-        isDeleting={isDeleting}
-      />
-    </>
-  );
-}
 // ─── movie card ───────────────────────────────────────────────────────────────
 
 function MovieCard({
   item,
   onView,
   onDelete,
-  onMarkWatched,
   showEpisodeBadge,
   showRankBadge,
   eagerLoad,
@@ -209,40 +56,53 @@ function MovieCard({
   item: WatchingMedia;
   onView: () => void;
   onDelete?: (id: string) => Promise<void>;
-  onMarkWatched?: (id: string) => Promise<void>;
   showEpisodeBadge?: boolean;
   showRankBadge?: boolean;
   eagerLoad?: boolean;
 }) {
+  const [imgLoaded, setImgLoaded] = useState(false);
+
   return (
     <div
-      className="group relative w-full overflow-hidden rounded-xl border border-white/10 cursor-pointer"
+      className="group relative w-full rounded-xl border border-white/10 cursor-pointer"
       onClick={onView}
     >
-      <div className="relative aspect-video">
+      {/* overflow-hidden only on the image container so the dropdown can escape */}
+      <div className="relative aspect-video overflow-hidden rounded-xl bg-zinc-800">
         <Image
           src={item.backdrop_url || item.poster_url || "/placeholder.svg"}
           alt={item.title}
           fill
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-cover transition-all duration-500 group-hover:scale-105"
+          style={{ opacity: imgLoaded ? 1 : 0 }}
           sizes="(max-width: 768px) 100vw, 50vw"
           unoptimized
           loading="eager"
           priority={eagerLoad}
+          onLoad={() => setImgLoaded(true)}
         />
         <div className="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent" />
 
-        {/* rank badge — top10 only */}
+        {/* rank badge */}
         {showRankBadge && item.priority && (
           <div className="absolute top-3 left-3 flex h-8 w-8 items-center justify-center rounded-full bg-black border-2 border-white text-xs font-bold text-white shadow-lg z-10">
             {item.priority}
           </div>
         )}
 
-        {/* priority badge — À voir only */}
+        {/* priority icon */}
         {item.want_to_watch && item.priority_level && (
-          <div className="absolute top-3 left-3 z-10">
-            <PriorityBadge level={item.priority_level} />
+          <div className="absolute top-0 left-0 z-10">
+            <Bookmark
+              size={24}
+              className={cn(
+                "fill-current",
+                item.priority_level === "high"   ? "text-red-500"    :
+                item.priority_level === "medium" ? "text-amber-400"  :
+                                                   "text-zinc-300",
+              )}
+              style={{ filter: "drop-shadow(0 1px 4px rgba(0,0,0,0.9))" }}
+            />
           </div>
         )}
 
@@ -252,22 +112,9 @@ function MovieCard({
           </div>
         )}
 
-        {/* context menu — toujours visible mobile, hover seulement desktop */}
-        <div
-          className="absolute top-2 right-2 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <CardMenu
-            item={item}
-            onView={onView}
-            onDelete={onDelete}
-            onMarkWatched={onMarkWatched}
-          />
-        </div>
-
         <div className="absolute bottom-0 inset-x-0 p-4">
           <h4 className="text-sm font-semibold text-white line-clamp-1">
-            {item.title}
+            {displayTitle(item)}
           </h4>
 
           {/* episode progress */}
@@ -275,7 +122,13 @@ function MovieCard({
             item.current_episode != null &&
             item.current_episode > 0 && (
               <div className="space-y-1.5">
-                <span className="text-[10px] font-semibold bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
+                <span
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: "color-mix(in srgb, var(--color-accent-watching) 40%, transparent)",
+                    color: "var(--color-accent-watching-vivid)",
+                  }}
+                >
                   {"S" +
                     String(item.current_season ?? 1).padStart(2, "0") +
                     " E" +
@@ -284,8 +137,11 @@ function MovieCard({
                 {computeProgress(item) > 0 && (
                   <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-blue-400 rounded-full"
-                      style={{ width: `${computeProgress(item)}%` }}
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${computeProgress(item)}%`,
+                        backgroundColor: "var(--color-accent-watching-vivid)",
+                      }}
                     />
                   </div>
                 )}
@@ -314,6 +170,18 @@ function MovieCard({
           </div>
         </div>
       </div>
+
+      {/* MediaActionMenu renders its dropdown via Portal — no overflow clip */}
+      <div
+        className="absolute top-2 right-2 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <MediaActionMenu
+          item={item}
+          onView={onView}
+          onDelete={onDelete}
+        />
+      </div>
     </div>
   );
 }
@@ -325,7 +193,6 @@ export function MediaCarousel({
   subtitle,
   items,
   onAddClick,
-  onMarkWatched,
   onDelete,
   showEpisodeBadge = false,
   showRankBadge = false,
@@ -475,7 +342,8 @@ export function MediaCarousel({
             <button
               type="button"
               onClick={onAddClick}
-              className="flex items-center gap-1.5 rounded-lg bg-accent-watching px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: "var(--color-accent-watching)" }}
             >
               <Plus size={12} />
               Add
@@ -499,16 +367,13 @@ export function MediaCarousel({
               item={item}
               onView={() => router.push(`/perso/watching/${item.id}`)}
               onDelete={onDelete}
-              onMarkWatched={onMarkWatched}
               showEpisodeBadge={showEpisodeBadge}
               showRankBadge={showRankBadge}
               eagerLoad={i < cardsPerView}
             />
           </div>
         ))}
-
       </div>
-
     </section>
   );
 }

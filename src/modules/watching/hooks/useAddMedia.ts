@@ -2,11 +2,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { WATCHING_KEYS, TMDB_KEYS } from "./query-keys";
 import {
-  getCurrentUserId,
   getExistingMediaItem,
   insertMediaItem,
-  updateMediaItemById,
+  updateMediaItem,
 } from "../service";
+import { createClient } from "@/infrastructure/supabase/client";
+import { toast } from "@/shared/utils/toast";
 import type { MediaType } from "../types";
 
 type ListType =
@@ -35,6 +36,7 @@ interface AddMediaInput {
   status: string | null;
   customPosterUrl?: string | null;
   genres: string[];
+  watchedAt?: string | null;
 }
 
 export function useAddMedia() {
@@ -42,7 +44,10 @@ export function useAddMedia() {
 
   return useMutation({
     mutationFn: async (input: AddMediaInput) => {
-      const userId = await getCurrentUserId();
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) throw new Error("Not authenticated");
 
       const {
         selectedItem,
@@ -63,7 +68,13 @@ export function useAddMedia() {
         status,
         customPosterUrl,
         genres,
+        watchedAt,
       } = input;
+
+      const effectiveWatchedAt = watchedAt ?? new Date().toISOString();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const isRecentLibraryAdd = listContext === "library" && new Date(effectiveWatchedAt) >= thirtyDaysAgo;
 
       const posterUrl =
         customPosterUrl ||
@@ -97,10 +108,10 @@ export function useAddMedia() {
           listContext === "recentlyWatched" ||
           listContext === "topTen" ||
           listContext === "library",
-        recently_watched: listContext === "recentlyWatched",
+        recently_watched: listContext === "recentlyWatched" || isRecentLibraryAdd,
         watched_at:
-          listContext === "recentlyWatched" || listContext === "topTen"
-            ? new Date().toISOString()
+          listContext === "recentlyWatched" || listContext === "topTen" || listContext === "library"
+            ? effectiveWatchedAt
             : null,
         want_to_watch: listContext === "wantToWatch",
         favorite: listContext === "topTen" ? true : favorite,
@@ -137,7 +148,7 @@ export function useAddMedia() {
 
         // in_progress: clear want_to_watch, preserve top10 fields
         if (listContext === "inProgress") {
-          return updateMediaItemById(existing.id, {
+          return updateMediaItem(existing.id, {
             current_episode: currentEpisode,
             current_season: currentSeason,
             season_episodes:
@@ -156,7 +167,7 @@ export function useAddMedia() {
 
         // topTen: update top10 fields only, preserve in_progress state entirely
         if (listContext === "topTen") {
-          return updateMediaItemById(existing.id, {
+          return updateMediaItem(existing.id, {
             watched: true,
             recently_watched: existing.recently_watched,
             watched_at: existing.watched_at ?? new Date().toISOString(),
@@ -172,7 +183,7 @@ export function useAddMedia() {
         }
 
         // Other contexts (recentlyWatched, library, wantToWatch)
-        const updateData: any = { ...insertData };
+        const updateData: Record<string, unknown> = { ...insertData };
         if (existing.priority != null) {
           updateData.priority = existing.priority;
           updateData.favorite = true;
@@ -181,7 +192,7 @@ export function useAddMedia() {
           updateData.recently_watched = true;
           updateData.watched_at = existing.watched_at;
         }
-        return updateMediaItemById(existing.id, updateData);
+        return updateMediaItem(existing.id, updateData);
       }
 
       return insertMediaItem(insertData);
@@ -198,8 +209,11 @@ export function useAddMedia() {
         queryClient.invalidateQueries({ queryKey: forYouKey });
       }
     },
-    onError: (error) => {
-      console.error("Error adding media:", error);
+    onError: (error: Error) => {
+      const msg = error.message.includes("transition")
+        ? error.message
+        : "Impossible d'ajouter ce média. Réessaie.";
+      toast.error(msg);
     },
   });
 }

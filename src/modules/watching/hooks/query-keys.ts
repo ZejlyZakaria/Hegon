@@ -41,6 +41,10 @@ export const WATCHING_KEYS = {
     [...WATCHING_KEYS.all, 'detail', id] as const,
 
 
+  // Stats
+  stats: (userId: string) =>
+    [...WATCHING_KEYS.all, 'stats', userId] as const,
+
   // Lists
   lists: (userId: string) =>
     [...WATCHING_KEYS.all, 'lists', userId] as const,

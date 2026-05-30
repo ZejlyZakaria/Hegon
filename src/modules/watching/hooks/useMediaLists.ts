@@ -13,7 +13,10 @@ import {
   updateMediaList,
   updateListItemNote,
   searchMediaForList,
+  searchTmdbForList,
+  addTmdbItemToList,
 } from "../service";
+import type { TmdbListResult } from "../types";
 import { WATCHING_KEYS } from "./query-keys";
 
 export function useMediaLists(userId: string) {
@@ -126,7 +129,7 @@ export function useAddItemToList(listId: string, userId: string) {
     onSuccess: (_, mediaItemId) => {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.listItems(listId) });
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.listsForMedia(mediaItemId) });
-      queryClient.invalidateQueries({ queryKey: ["watching", "lists"] });
+      queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "lists"] });
     },
   });
 }
@@ -139,7 +142,28 @@ export function useRemoveItemFromList(listId: string) {
     onSuccess: (_, { mediaItemId }) => {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.listItems(listId) });
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.listsForMedia(mediaItemId) });
-      queryClient.invalidateQueries({ queryKey: ["watching", "lists"] });
+      queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "lists"] });
+    },
+  });
+}
+
+export function useSearchTmdbForList(query: string) {
+  return useQuery({
+    queryKey: [...WATCHING_KEYS.all, "tmdb-list-search", query],
+    queryFn: () => searchTmdbForList(query),
+    enabled: query.trim().length >= 2,
+    staleTime: 60_000,
+  });
+}
+
+export function useAddTmdbItemToList(listId: string, userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (tmdbItem: TmdbListResult) => addTmdbItemToList(listId, userId, tmdbItem),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.listItems(listId) });
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.listsForMedia(data.media_item_id) });
+      queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "lists"] });
     },
   });
 }
