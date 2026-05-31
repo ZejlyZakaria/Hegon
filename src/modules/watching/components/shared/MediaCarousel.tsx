@@ -3,6 +3,7 @@
 import { useRef, useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { motion } from "framer-motion";
 import {
   Star,
   Heart,
@@ -173,7 +174,7 @@ function MovieCard({
 
       {/* MediaActionMenu renders its dropdown via Portal — no overflow clip */}
       <div
-        className="absolute top-2 right-2 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+        className="absolute top-2 right-2 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-150 ease-out"
         onClick={(e) => e.stopPropagation()}
       >
         <MediaActionMenu
@@ -316,7 +317,7 @@ export function MediaCarousel({
             type="button"
             onClick={() => canGoPrev && scroll("prev")}
             className={cn(
-              "rounded-full border border-white/10 p-2 transition-all duration-300",
+              "rounded-full border border-white/10 p-2 transition-[background-color,opacity,transform] duration-150 ease-out active:scale-[0.97]",
               canGoPrev
                 ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
                 : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
@@ -342,7 +343,7 @@ export function MediaCarousel({
             <button
               type="button"
               onClick={onAddClick}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 active:scale-[0.97]"
               style={{ backgroundColor: "var(--color-accent-watching)" }}
             >
               <Plus size={12} />
@@ -358,9 +359,16 @@ export function MediaCarousel({
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {sortedItems.map((item, i) => (
-          <div
+          <motion.div
             key={item.id}
-            className="shrink-0 snap-start transition-all duration-500 ease-in-out"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 0.25,
+              delay: i * 0.04,
+              ease: [0.23, 1, 0.32, 1],
+            }}
+            className="shrink-0 snap-start"
             style={itemWidthStyle}
           >
             <MovieCard
@@ -371,7 +379,7 @@ export function MediaCarousel({
               showRankBadge={showRankBadge}
               eagerLoad={i < cardsPerView}
             />
-          </div>
+          </motion.div>
         ))}
       </div>
     </section>
