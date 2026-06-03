@@ -269,7 +269,11 @@ function AuthPageInner() {
   const searchParams = useSearchParams();
   const supabase = createClient();
 
-  const [mode, setMode] = useState<Mode>("login");
+  // TRACEABILITY — login-only by request: the sign-up toggle is removed (bottom
+  // of the form), so `mode` stays "login" and the sign-up UI/branch is
+  // unreachable. The real lock is Supabase "Allow new users to sign up" → OFF;
+  // this is the matching UI so a visitor can't create an account from /auth.
+  const [mode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -278,13 +282,17 @@ function AuthPageInner() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // const rawNext  = searchParams.get("next") ?? "/dashboard";
-  // const next     = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
-  const rawNext = searchParams.get("next") ?? "/dashboard";
+  // TRACEABILITY — /auth is normally "never touch"; changed on explicit request.
+  // Default landing moved from "/dashboard" to "/" so a fresh email login routes
+  // through the home resolver (app/page.tsx), which sends each user to their
+  // preferred module (the demo account → Watching) instead of a hardcoded
+  // dashboard. "/" is same-origin, so the open-redirect guard (must start with a
+  // single "/") still holds. A real ?next deep-link is still honoured.
+  // Note: Google login goes through /auth/finalize, which keeps its own default —
+  // so the OAuth flow is unaffected by this change.
+  const rawNext = searchParams.get("next") ?? "/";
   const next =
-    rawNext.startsWith("/") && !rawNext.startsWith("//") && rawNext !== "/"
-      ? rawNext
-      : "/dashboard";
+    rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
   const urlError = searchParams.get("error");
   const hasRedirected = useRef(false);
 
@@ -589,21 +597,9 @@ function AuthPageInner() {
             Google
           </Button>
 
-          {/* Toggle mode */}
+          {/* Invite-only — sign-up entry removed (see `mode` above). */}
           <p className="text-center text-xs mt-8" style={{ color: S.tertiary }}>
-            {mode === "login" ? "New here?" : "Already have an account?"}{" "}
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === "login" ? "signup" : "login");
-                clear();
-              }}
-              className="font-medium inline-flex items-center gap-1 transition-colors duration-100 hover:text-[#e2e2e6]"
-              style={{ color: S.secondary }}
-            >
-              {mode === "login" ? "Create your account" : "Sign in"}
-              <ArrowRight size={11} />
-            </button>
+            Access is invite-only.
           </p>
         </motion.div>
       </div>

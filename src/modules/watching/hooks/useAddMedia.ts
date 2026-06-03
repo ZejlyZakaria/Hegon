@@ -9,6 +9,8 @@ import {
 import { createClient } from "@/infrastructure/supabase/client";
 import { toast } from "@/shared/utils/toast";
 import { resolveTransition } from "../lib/resolve-transition";
+import { DemoReadOnlyError, handledDemoError } from "../lib/demo-guard";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import type { ListType, MediaType } from "../types";
 
 interface AddMediaInput {
@@ -35,9 +37,11 @@ interface AddMediaInput {
 
 export function useAddMedia() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
 
   return useMutation({
     mutationFn: async (input: AddMediaInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
@@ -210,6 +214,7 @@ export function useAddMedia() {
       }
     },
     onError: (error: Error) => {
+      if (handledDemoError(error)) return;
       const msg = error.name === "TransitionError"
         ? error.message
         : "Couldn't add this media. Please try again.";

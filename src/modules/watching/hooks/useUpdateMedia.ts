@@ -2,20 +2,25 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
 import { updateMediaItem } from "../service";
 import { toast } from "@/shared/utils/toast";
+import { DemoReadOnlyError, handledDemoError } from "../lib/demo-guard";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import type { UpdateMediaInput } from "../schemas/media.schema";
 
 const STATUS_FIELDS = ["watched", "in_progress", "want_to_watch", "is_reference", "recently_watched"] as const;
 
 export function useUpdateMedia() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
 
   return useMutation({
     mutationFn: (input: UpdateMediaInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
       const { id, ...updates } = input;
       return updateMediaItem(id, updates);
     },
 
     onMutate: async (input) => {
+      if (isDemo) return; // read-only demo: skip the optimistic update
       const { id, ...updates } = input;
 
       // Cancel only the detail query + list-items — avoid disrupting sections/ForYou
@@ -39,7 +44,8 @@ export function useUpdateMedia() {
       return { snapshot };
     },
 
-    onError: (_err, _input, context) => {
+    onError: (err, _input, context) => {
+      if (handledDemoError(err)) return;
       if (context?.snapshot) {
         for (const [key, data] of context.snapshot) {
           queryClient.setQueryData(key, data);

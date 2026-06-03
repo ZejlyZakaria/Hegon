@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { useUpdateMedia } from "../../hooks/useUpdateMedia";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 import type { WatchingMedia } from "../../types";
 import { toast } from "@/shared/utils/toast";
@@ -66,6 +67,7 @@ export function MediaActionMenu({
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const updateMedia = useUpdateMedia();
+  const isDemo = useIsDemo();
 
   // Close on outside click
   useEffect(() => {
@@ -86,6 +88,9 @@ export function MediaActionMenu({
     window.addEventListener("scroll", close, { capture: true, passive: true });
     return () => window.removeEventListener("scroll", close, { capture: true });
   }, [open]);
+
+  // Read-only demo: no write affordances (card click still opens the detail).
+  if (isDemo) return null;
 
   const handleOpen = (e: React.MouseEvent) => {
     e.stopPropagation();

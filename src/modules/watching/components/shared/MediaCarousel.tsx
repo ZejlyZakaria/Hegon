@@ -15,6 +15,7 @@ import {
 import type { WatchingMedia } from "@/modules/watching/types";
 import { cn } from "@/shared/utils/utils";
 import { displayTitle } from "@/modules/watching/utils";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { MediaActionMenu } from "./MediaActionMenu";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -199,6 +200,8 @@ export function MediaCarousel({
   showRankBadge = false,
 }: MediaCarouselProps) {
   const router = useRouter();
+  const isDemo = useIsDemo();
+  const canAdd = !!onAddClick && !isDemo; // read-only demo never shows Add
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(5);
@@ -278,10 +281,13 @@ export function MediaCarousel({
           </div>
         </div>
         <div
-          className="rounded-xl border border-border-subtle bg-surface-1 flex flex-col items-center justify-center gap-3 py-12 cursor-pointer group hover:border-border-default transition-colors"
-          onClick={onAddClick}
+          className={cn(
+            "rounded-xl border border-border-subtle bg-surface-1 flex flex-col items-center justify-center gap-3 py-12 transition-colors",
+            canAdd && "cursor-pointer group hover:border-border-default",
+          )}
+          onClick={canAdd ? onAddClick : undefined}
         >
-          {onAddClick ? (
+          {canAdd ? (
             <>
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/5 group-hover:bg-white/10 transition-colors">
                 <Plus
@@ -339,7 +345,7 @@ export function MediaCarousel({
           >
             <ChevronRight size={16} />
           </button>
-          {onAddClick && (
+          {canAdd && (
             <button
               type="button"
               onClick={onAddClick}

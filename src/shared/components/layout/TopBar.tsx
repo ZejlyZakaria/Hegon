@@ -11,6 +11,7 @@ import { useCommandCenter } from "@/modules/command-center/store";
 import { cn } from "@/shared/utils/utils";
 import { useOrgStore } from "@/shared/stores/useOrgStore";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 
 // ─── breadcrumb ───────────────────────────────────────────────────────────────
 
@@ -85,6 +86,7 @@ function ProfileMenu({
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const { orgId, orgs, setOrg } = useOrgStore();
+  const isDemo = useIsDemo();
 
   const handleSwitchOrg = (id: string, name: string) => {
     setOrg(id, name);
@@ -163,13 +165,15 @@ function ProfileMenu({
           )}
 
           <div className="p-1.5">
-            <div
-              className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer group"
-              onClick={() => { router.push("/settings"); onClose(); }}
-            >
-              <Settings size={14} className="text-text-tertiary group-hover:text-text-secondary" />
-              <span className="text-[13px] text-text-secondary group-hover:text-text-primary">Settings</span>
-            </div>
+            {!isDemo && (
+              <div
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer group"
+                onClick={() => { router.push("/settings"); onClose(); }}
+              >
+                <Settings size={14} className="text-text-tertiary group-hover:text-text-secondary" />
+                <span className="text-[13px] text-text-secondary group-hover:text-text-primary">Settings</span>
+              </div>
+            )}
 
             <div
               className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer group"
@@ -229,6 +233,7 @@ export default function TopBar() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
   const openCmdK = useCommandCenter((s) => s.open);
+  const isDemo = useIsDemo();
 
   useEffect(() => {
     // getSession() reads from localStorage (0ms), getUser() makes a network round
@@ -271,17 +276,20 @@ export default function TopBar() {
 
           {/* Right: ⌘K + notifications + avatar */}
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={openCmdK}
-              className="flex items-center gap-2 px-3 h-8 rounded-lg bg-surface-1 border border-border-subtle text-text-tertiary text-xs hover:bg-surface-2 hover:text-text-secondary transition-colors"
-            >
-              <Search size={13} />
-              <span>Search...</span>
-              <kbd className="ml-1 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded border border-border-subtle font-sans leading-none">
-                ⌘K
-              </kbd>
-            </button>
+            {/* No command palette for the read-only demo (would bypass route gating). */}
+            {!isDemo && (
+              <button
+                type="button"
+                onClick={openCmdK}
+                className="flex items-center gap-2 px-3 h-8 rounded-lg bg-surface-1 border border-border-subtle text-text-tertiary text-xs hover:bg-surface-2 hover:text-text-secondary transition-colors"
+              >
+                <Search size={13} />
+                <span>Search...</span>
+                <kbd className="ml-1 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded border border-border-subtle font-sans leading-none">
+                  ⌘K
+                </kbd>
+              </button>
+            )}
 
             <button
               type="button"

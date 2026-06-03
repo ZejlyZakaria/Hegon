@@ -45,9 +45,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // TRACEABILITY — /middleware is normally "never touch"; this single addition
+  // (made on explicit request) exposes the current path to Server Components via
+  // an `x-pathname` header so the (main) layout can do server-side demo route
+  // gating (render the 404 with no client flash). No auth logic is changed.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+
   const response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   });
 

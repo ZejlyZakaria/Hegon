@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { useInitOrg } from "@/shared/hooks/useInitOrg";
+import { useUserSettings, useDemoStatus } from "@/modules/settings/hooks/useSettings";
 
 // ─── nav config ───────────────────────────────────────────────────────────────
 
@@ -183,6 +184,11 @@ function DockItem({
 export default function Dock() {
   const pathname = usePathname();
   const { from } = getSectionColor(pathname);
+  const { data: userSettings } = useUserSettings();
+  const { isDemo, isReady: demoReady } = useDemoStatus();
+  const hiddenModules = new Set(userSettings?.hidden_modules ?? []);
+  // Wait for both prefs + demo status before rendering nav → no icon flash.
+  const navReady = userSettings !== undefined && demoReady;
 
   useInitOrg();
 
@@ -223,30 +229,44 @@ export default function Dock() {
       {/* ── nav ── */}
       <div className="relative flex-1 overflow-y-auto overflow-x-hidden flex flex-col justify-center py-3 custom-scrollbar-hide">
         <div>
-          <DockItem
-            href="/dashboard"
-            icon={<LayoutDashboard size={18} />}
-            label="Dashboard"
-            active={pathname === "/dashboard"}
-            accent="#60a5fa"
-          />
-
-          {NAV_GROUPS.map((group, gi) => (
-            <div key={gi}>
-              <div className="h-px bg-white/6 mx-3 my-2" />
-              {group.map((item) => (
+          {navReady && (
+            <>
+              {/* Dashboard is hidden for the read-only demo (curated to exposed modules only). */}
+              {!isDemo && (
                 <DockItem
-                  key={item.key}
-                  href={item.href}
-                  icon={item.icon}
-                  label={item.label}
-                  active={pathname.startsWith(item.activePrefix ?? item.href)}
-                  accent={item.accent}
-                  comingSoon={item.comingSoon}
+                  href="/dashboard"
+                  icon={<LayoutDashboard size={18} />}
+                  label="Dashboard"
+                  active={pathname === "/dashboard"}
+                  accent="#60a5fa"
                 />
-              ))}
-            </div>
-          ))}
+              )}
+
+              {NAV_GROUPS.map((group, gi) => {
+                // Hidden modules off for everyone; the demo also drops coming-soon items.
+                const items = group.filter(
+                  (item) => !hiddenModules.has(item.key) && !(isDemo && item.comingSoon),
+                );
+                if (items.length === 0) return null;
+                return (
+                  <div key={gi}>
+                    <div className="h-px bg-white/6 mx-3 my-2" />
+                    {items.map((item) => (
+                      <DockItem
+                        key={item.key}
+                        href={item.href}
+                        icon={item.icon}
+                        label={item.label}
+                        active={pathname.startsWith(item.activePrefix ?? item.href)}
+                        accent={item.accent}
+                        comingSoon={item.comingSoon}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
       </div>
     </aside>
