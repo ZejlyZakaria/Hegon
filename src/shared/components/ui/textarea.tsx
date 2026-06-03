@@ -4,7 +4,7 @@ import { cn } from "@/shared/utils/utils"
 
 const textareaVariants = cva(
   // Base styles (communs à tous les variants)
-  "flex w-full px-3 py-2 text-sm transition-all outline-none disabled:cursor-not-allowed disabled:opacity-50",
+  "flex w-full px-3 py-2 text-sm transition-[background-color,border-color] duration-150 ease-out outline-none disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       variant: {
@@ -18,15 +18,14 @@ const textareaVariants = cva(
           "dark:bg-input/30"
         ),
         
-        // Tasks style (zinc minimal, cohérent avec input)
+        // HEGON field — matches the Input "tasks" variant exactly
         tasks: cn(
-          "min-h-20 rounded-lg border border-zinc-700/50",
-          "bg-zinc-800/50",
-          "text-zinc-100 placeholder:text-zinc-600",
-          "resize-none",
-          "hover:bg-zinc-800/80",
-          "focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700",
-          "aria-invalid:border-red-500/50 aria-invalid:ring-1 aria-invalid:ring-red-500/20"
+          "min-h-20 resize-none rounded-lg border border-border-default",
+          "bg-surface-overlay",
+          "text-text-primary placeholder:text-text-tertiary",
+          "hover:bg-surface-2",
+          "focus:border-border-focus",
+          "aria-invalid:border-destructive"
         ),
       },
     },

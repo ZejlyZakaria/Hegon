@@ -35,7 +35,7 @@ export default function DashboardContent() {
   }, []);
 
   return (
-    <div className="px-6 py-5 flex flex-col gap-6">
+    <div className="px-6 py-6 flex flex-col gap-6">
       <DashboardHeader userName={userName} />
 
       <div className="flex gap-6 items-start">

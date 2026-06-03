@@ -161,7 +161,7 @@ function AddForm({ nextPosition, onCreate, isPending, onCancel }: AddFormProps) 
       className="rounded-xl border p-4 space-y-3"
       style={{ backgroundColor: "var(--color-surface-1)", borderColor: "var(--color-border-subtle)" }}
     >
-      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-tertiary)" }}>
+      <p className="text-caption uppercase text-text-tertiary">
         New status
       </p>
       <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Status name..." variant="tasks" autoFocus className="h-8 text-xs" />
@@ -214,7 +214,7 @@ function EditForm({ status, onSave, isPending, onCancel }: EditFormProps) {
       className="rounded-xl border p-4 space-y-3"
       style={{ backgroundColor: "var(--color-surface-1)", borderColor: "var(--color-border-default)" }}
     >
-      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-tertiary)" }}>
+      <p className="text-caption uppercase text-text-tertiary">
         Edit status
       </p>
       <Input value={name} onChange={(e) => setName(e.target.value)} variant="tasks" autoFocus className="h-8 text-xs" />
@@ -414,7 +414,7 @@ export function ProjectStatusesPanel({ open, onClose, projectId, projectName }: 
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 280 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-130 flex-col border-l shadow-2xl"
+            className="fixed right-0 top-0 z-50 flex h-full w-130 flex-col border-l shadow-lg"
             style={{
               backgroundColor: "var(--color-surface-0)",
               borderColor: "var(--color-border-subtle)",
@@ -445,7 +445,7 @@ export function ProjectStatusesPanel({ open, onClose, projectId, projectName }: 
             {/* Content */}
             <div className="flex-1 overflow-y-auto">
               <div className="p-5 space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-tertiary)" }}>
+                <p className="text-caption uppercase text-text-tertiary">
                   Statuses ({ordered.length})
                 </p>
 

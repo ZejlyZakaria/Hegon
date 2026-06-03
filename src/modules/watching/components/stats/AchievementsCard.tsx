@@ -11,7 +11,7 @@ function AchievementBadge({ a }: { a: Achievement }) {
   return (
     <div
       className={cn(
-        "relative flex flex-col gap-2 rounded-xl border p-3 transition-all duration-300",
+        "relative flex flex-col gap-2 rounded-xl border p-3 transition-[background-color,border-color] duration-300",
         a.unlocked
           ? "border-white/10 bg-surface-1"
           : "border-border-subtle bg-surface-1/40 opacity-60",
@@ -42,7 +42,7 @@ function AchievementBadge({ a }: { a: Achievement }) {
       <div className="space-y-1">
         <div className="h-1 w-full overflow-hidden rounded-full bg-black/25">
           <div
-            className="h-full rounded-full transition-all duration-700"
+            className="h-full rounded-full transition-[width] duration-700"
             style={{
               width: `${a.progress}%`,
               background: a.unlocked ? a.color : "rgba(255,255,255,0.15)",

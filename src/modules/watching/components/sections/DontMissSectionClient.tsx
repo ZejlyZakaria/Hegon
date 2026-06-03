@@ -21,7 +21,7 @@ const POSTER_W  = 160;
 
 export function DontMissSkeleton() {
   return (
-    <section className="mb-8">
+    <section>
       <div className="flex items-center gap-2 mb-4">
         <div className="w-3.5 h-3.5 rounded-full bg-surface-2 animate-pulse" />
         <div className="w-20 h-3 rounded bg-surface-2 animate-pulse" />
@@ -215,9 +215,9 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
   if (items.length === 0) return null;
 
   return (
-    <section className="mb-8">
+    <section>
       <div className="mb-3">
-        <h3 className="text-base font-semibold tracking-tight text-text-primary">Trending</h3>
+        <h3 className="text-title text-text-primary">Trending</h3>
       </div>
 
       <div

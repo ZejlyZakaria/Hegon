@@ -213,7 +213,7 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content align="end" sideOffset={8} className="z-50 w-80 overflow-hidden rounded-xl border border-border-strong bg-surface-3 shadow-2xl">
+        <Popover.Content align="end" sideOffset={8} className="z-50 w-80 overflow-hidden rounded-xl border border-border-strong bg-surface-3 shadow-md">
           {/* Search input */}
           <div className="border-b border-border-subtle p-2">
             <div className="relative">
@@ -243,7 +243,7 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
             {/* ── Library section ── */}
             {hasLibrary && (
               <>
-                <p className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary/50">
+                <p className="px-2 pb-1 pt-2 text-caption uppercase text-text-tertiary/50">
                   Your Library
                 </p>
                 {libraryResults.map((media) => {
@@ -284,7 +284,7 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
             {/* ── TMDB section ── */}
             {hasTmdb && (
               <>
-                <p className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary/50">
+                <p className="px-2 pb-1 pt-2 text-caption uppercase text-text-tertiary/50">
                   From TMDB
                 </p>
                 {tmdbOnlyResults.map((item) => {
@@ -356,7 +356,7 @@ function MoreMenu({ onDelete }: { onDelete: () => void }) {
         <MoreHorizontal size={14} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-1.5 w-44 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-2xl">
+        <div className="absolute right-0 top-full z-20 mt-1.5 w-44 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-md">
           <button
             type="button"
             onClick={() => { onDelete(); setOpen(false); }}
@@ -457,7 +457,7 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 min-w-40 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-2xl">
+        <div className="absolute left-0 top-full z-30 mt-1 min-w-40 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-md">
           <button
             type="button"
             onClick={() => handleAction("watched")}
@@ -890,7 +890,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
                   <Popover.Content
                     align="start"
                     sideOffset={8}
-                    className="z-50 flex flex-wrap gap-1 p-2 w-56 rounded-xl border border-border-strong bg-surface-3 shadow-2xl"
+                    className="z-50 flex flex-wrap gap-1 p-2 w-56 rounded-xl border border-border-strong bg-surface-3 shadow-md"
                   >
                     {EMOJIS.map((e) => (
                       <button
@@ -1062,7 +1062,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
 
         {!isLoading && items.length > 0 && view === "table" && (
           <div className="flex flex-col">
-            <div className="flex items-center gap-3 border-b border-border-subtle/50 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary/50">
+            <div className="flex items-center gap-3 border-b border-border-subtle/50 px-4 py-2 text-caption uppercase text-text-tertiary/50">
               <div className="w-8 shrink-0 text-right">#</div>
               <div className="w-7 shrink-0" />
               <div className="min-w-0 flex-1">Title</div>

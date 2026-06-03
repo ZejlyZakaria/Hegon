@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Search, X, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import LibraryGrid from "@/modules/watching/components/library/LibraryGrid";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import type { WatchingMedia } from "@/modules/watching/types";
@@ -12,6 +12,7 @@ import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfi
 import { toast } from "@/shared/utils/toast";
 import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
+import { SearchInput } from "@/shared/components/ui/search-input";
 import {
   Select,
   SelectContent,
@@ -125,7 +126,7 @@ export default function LibraryClient({ initialItems }: Props) {
                 type="button"
                 onClick={() => { setMediaType(value); setCurrentPage(1); }}
                 className={cn(
-                  "rounded-md px-4 py-1.5 text-sm font-medium transition-all duration-150",
+                  "rounded-md px-4 py-1.5 text-sm font-medium transition-[background-color,color] duration-150",
                   mediaType === value
                     ? "bg-white text-black"
                     : "bg-surface-1 border border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default"
@@ -139,25 +140,13 @@ export default function LibraryClient({ initialItems }: Props) {
           {/* right controls */}
           <div className="flex items-center gap-2 ml-auto">
             {/* search */}
-            <div className="relative">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={search}
-                onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-                className="w-56 bg-surface-1 border border-border-subtle rounded-lg pl-8 pr-8 h-9 text-xs text-text-primary placeholder:text-text-tertiary outline-none focus:border-border-focus transition-all"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
+            <SearchInput
+              containerClassName="w-56"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+              onClear={() => { setSearch(""); setCurrentPage(1); }}
+            />
 
             {/* sort select */}
             <Select value={sortBy} onValueChange={v => { setSortBy(v as SortKey); setCurrentPage(1); }}>

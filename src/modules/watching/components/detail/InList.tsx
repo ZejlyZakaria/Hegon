@@ -80,7 +80,7 @@ export function InList({ mediaItemId, userId }: Props) {
           <PopoverContent
             align="end"
             sideOffset={6}
-            className="w-56 border-border-subtle bg-surface-2 p-0 shadow-xl"
+            className="w-56 border-border-subtle bg-surface-2 p-0 shadow-md"
           >
             <div className="p-1.5">
               {isLoading && (

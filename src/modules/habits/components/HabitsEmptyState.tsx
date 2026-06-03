@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/shared/components/ui/button";
 
-const ACCENT_HEX = "#f43f5e";
+const ACCENT_HEX = "var(--color-accent-habits-vivid)";
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 const FILLS = [0.25, 0.55, 1, 0.8, 0.45, 0.1, 0];
 

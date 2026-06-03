@@ -32,6 +32,29 @@ export interface HabitCompletion {
   created_at:     string;
 }
 
+export interface HabitSkip {
+  id:         string;
+  habit_id:   string;
+  skip_date:  string;  // 'YYYY-MM-DD'
+  reason:     string | null;
+  created_at: string;
+}
+
+export interface HabitPause {
+  id:          string;
+  habit_id:    string;
+  pause_start: string;        // 'YYYY-MM-DD'
+  pause_end:   string | null; // null = open-ended (still paused)
+  created_at:  string;
+}
+
+export interface HabitFreeze {
+  id:          string;
+  habit_id:    string;
+  freeze_date: string;  // 'YYYY-MM-DD'
+  created_at:  string;
+}
+
 // =====================================================
 // API INPUT TYPES
 // =====================================================
@@ -75,6 +98,8 @@ export interface HabitWithStatus extends Habit {
   completion_id:    string | null;
   completion_time:  string | null;  // created_at of the completion → "Done at HH:MM"
   at_risk:          boolean;
+  skipped_today:    boolean;
+  is_paused:        boolean;         // a pause period covers today
   current_streak:   number;
   best_streak:      number;
 }

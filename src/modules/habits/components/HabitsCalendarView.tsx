@@ -1,266 +1,298 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui/select";
+import { Fragment, useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { useHabits } from "../hooks/useHabits";
 import { HABIT_KEYS } from "../hooks/query-keys";
 import * as HabitService from "../service";
 import { resolveIcon } from "@/shared/constants/icons";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/shared/components/ui/tooltip";
 import { cn } from "@/shared/utils/utils";
-import { toDateStr, isExpectedOnDate } from "../utils";
+import { toast } from "@/shared/utils/toast";
+import { toDateStr, isExpectedOnDate, getTodayStr } from "../utils";
 
-const DAYS_HEADER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const ACCENT = "var(--color-accent-habits-vivid)";
+const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-function capitalizeFirst(s: string): string {
-  return s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
-
-interface CalendarCell {
-  day: number | null;
-  date: string | null;
-  completed: boolean;
-  future: boolean;
-  today: boolean;
+function weekStartMonday(d: Date): Date {
+  const x = new Date(d);
+  const dow = x.getDay();
+  x.setDate(x.getDate() - (dow === 0 ? 6 : dow - 1));
+  x.setHours(0, 0, 0, 0);
+  return x;
 }
 
 export function HabitsCalendarView() {
   const { data: habits = [] } = useHabits();
-  const [selectedId, setSelectedId] = useState("");
-  const [monthDate, setMonthDate] = useState(
-    () => new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+  const qc = useQueryClient();
+  const [anchor, setAnchor] = useState(() => weekStartMonday(new Date()));
+
+  const weekDates = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(anchor);
+        d.setDate(anchor.getDate() + i);
+        return toDateStr(d);
+      }),
+    [anchor],
   );
+  const weekStart = weekDates[0];
+  const weekEnd = weekDates[6];
+  const todayStr = getTodayStr();
 
-  const effectiveId = selectedId || habits[0]?.id || "";
-  const selectedHabit = habits.find((h) => h.id === effectiveId);
-  const habitColor = selectedHabit ? resolveIcon(selectedHabit.icon).color : "#f43f5e";
+  const habitIds = habits.map((h) => h.id);
 
-  const monthStart = toDateStr(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
-  const monthEnd   = toDateStr(new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0));
-
-  const { data: completions = [] } = useQuery({
-    queryKey: HABIT_KEYS.completionsRange(effectiveId, monthStart, monthEnd),
-    queryFn: () => HabitService.getHabitCompletionsRange(effectiveId, monthStart, monthEnd),
-    enabled: !!effectiveId,
+  const { data: comps = [] } = useQuery({
+    queryKey: HABIT_KEYS.completionsRange("week", weekStart, weekEnd),
+    queryFn: () => HabitService.getCompletionsForHabits(habitIds, weekStart, weekEnd),
+    enabled: habitIds.length > 0,
     staleTime: 1000 * 60 * 5,
   });
 
-  const completedSet = useMemo(
-    () => new Set(completions.map((c) => c.completed_date)),
-    [completions]
+  const doneSet = useMemo(
+    () => new Set(comps.map((c) => `${c.habit_id}|${c.completed_date}`)),
+    [comps],
   );
 
-  const cells = useMemo<CalendarCell[]>(() => {
-    const y = monthDate.getFullYear();
-    const m = monthDate.getMonth();
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-    const firstDow = new Date(y, m, 1).getDay();
-    const startOffset = firstDow === 0 ? 6 : firstDow - 1;
-    const todayStr = toDateStr(new Date());
+  const toggle = useMutation({
+    mutationFn: async ({ habitId, date, done }: { habitId: string; date: string; done: boolean }) => {
+      if (done) await HabitService.uncompleteHabit(habitId, date);
+      else await HabitService.completeHabit({ habit_id: habitId, completed_date: date });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: HABIT_KEYS.all }),
+    onError: () => toast.error("Failed to update completion."),
+  });
 
-    const result: CalendarCell[] = [];
+  // Per-day completion rate (over habits expected that day, past + today only).
+  const dayPct = (ds: string): number | null => {
+    if (ds > todayStr) return null;
+    const expected = habits.filter((h) => isExpectedOnDate(h, ds));
+    if (expected.length === 0) return null;
+    const done = expected.filter((h) => doneSet.has(`${h.id}|${ds}`)).length;
+    return Math.round((done / expected.length) * 100);
+  };
 
-    for (let i = 0; i < startOffset; i++) {
-      result.push({ day: null, date: null, completed: false, future: false, today: false });
-    }
+  // Per-habit weekly rate (footer average).
+  const habitPct = (habitId: string): number | null => {
+    const h = habits.find((x) => x.id === habitId);
+    if (!h) return null;
+    const days = weekDates.filter((ds) => ds <= todayStr && isExpectedOnDate(h, ds));
+    if (days.length === 0) return null;
+    const done = days.filter((ds) => doneSet.has(`${habitId}|${ds}`)).length;
+    return Math.round((done / days.length) * 100);
+  };
 
-    for (let d = 1; d <= daysInMonth; d++) {
-      const ds = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      result.push({
-        day: d,
-        date: ds,
-        completed: completedSet.has(ds),
-        future: ds > todayStr,
-        today: ds === todayStr,
-      });
-    }
+  const weekLabel = `${new Date(weekStart + "T12:00:00").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  })} – ${new Date(weekEnd + "T12:00:00").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  })}`;
 
-    while (result.length % 7 !== 0) {
-      result.push({ day: null, date: null, completed: false, future: false, today: false });
-    }
-
-    return result;
-  }, [monthDate, completedSet]);
-
-  const todayStr = toDateStr(new Date());
-  const pastCells = cells.filter((c) => c.date && c.date <= todayStr);
-  const completionsMonth = completions.filter(
-    (c) => c.completed_date >= monthStart && c.completed_date <= monthEnd
-  ).length;
-  const expectedCount = selectedHabit
-    ? pastCells.filter((c) => c.date && isExpectedOnDate(selectedHabit, c.date)).length
-    : pastCells.length;
-  const rate = expectedCount > 0 ? Math.round((completionsMonth / expectedCount) * 100) : 0;
-
-  const monthLabel = capitalizeFirst(
-    monthDate.toLocaleString("default", { month: "long", year: "numeric" })
-  );
-
-  const prevMonth = () => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
-  const nextMonth = () => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+  const isThisWeek = weekStart === toDateStr(weekStartMonday(new Date()));
 
   if (habits.length === 0) {
     return (
-      <div
-        className="rounded-lg border p-6 text-center"
-        style={{
-          backgroundColor: "var(--color-surface-1)",
-          borderColor: "var(--color-border-subtle)",
-        }}
-      >
-        <p className="text-sm" style={{ color: "var(--color-text-tertiary)" }}>
-          No habits yet.
-        </p>
+      <div className="rounded-lg border border-border-subtle bg-surface-1 p-6 text-center">
+        <p className="text-sm text-text-tertiary">No habits yet.</p>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div>
-          <Select value={effectiveId} onValueChange={setSelectedId}>
-            <SelectTrigger
-              variant="tasks"
-              className="h-8 w-48 bg-surface-1 border-border-subtle focus:border-border-focus"
-            >
-              <SelectValue placeholder="Select a habit" />
-            </SelectTrigger>
-            <SelectContent variant="tasks">
-              {habits.map((habit) => (
-                <SelectItem key={habit.id} value={habit.id}>
-                  {habit.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+  const gridCols = `132px repeat(${habits.length}, minmax(44px, 1fr)) 52px`;
 
-        <div className="flex shrink-0 items-center gap-1">
+  return (
+    <div className="space-y-3">
+      {/* Week nav */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={prevMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors duration-100 hover:bg-surface-2 hover:text-text-primary"
+            onClick={() => setAnchor((d) => { const n = new Date(d); n.setDate(d.getDate() - 7); return n; })}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary active:scale-95"
+            aria-label="Previous week"
           >
             <ChevronLeft size={14} />
           </button>
-
-          <span className="w-40 select-none text-center text-sm font-medium text-text-primary">
-            {monthLabel}
+          <span className="w-36 select-none text-center text-sm font-medium text-text-primary">
+            {weekLabel}
           </span>
-
           <button
             type="button"
-            onClick={nextMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors duration-100 hover:bg-surface-2 hover:text-text-primary"
+            onClick={() => setAnchor((d) => { const n = new Date(d); n.setDate(d.getDate() + 7); return n; })}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary active:scale-95"
+            aria-label="Next week"
           >
             <ChevronRight size={14} />
           </button>
         </div>
-      </div>
-
-      <div
-        className="overflow-hidden rounded-lg border"
-        style={{
-          backgroundColor: "var(--color-surface-1)",
-          borderColor: "var(--color-border-subtle)",
-        }}
-      >
-        <div
-          className="grid grid-cols-7 border-b"
-          style={{ borderColor: "var(--color-border-default)" }}
-        >
-          {DAYS_HEADER.map((d) => (
-            <div
-              key={d}
-              className="py-2 text-center text-xs font-medium"
-              style={{ color: "var(--color-text-tertiary)" }}
-            >
-              {d}
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-7">
-          {cells.map((cell, i) => (
-            <div
-              key={i}
-              className="relative flex h-12 items-center justify-center"
-              style={{
-                borderRight: "1px solid rgba(255,255,255,0.04)",
-                borderBottom: "1px solid rgba(255,255,255,0.04)",
-              }}
-            >
-              {cell.day && (
-                <>
-                  {cell.completed && (
-                    <div
-                      className="absolute inset-1 rounded-md"
-                      style={{ backgroundColor: `${habitColor}20` }}
-                    />
-                  )}
-
-                  {cell.today && (
-                    <div
-                      className="absolute inset-1 rounded-md"
-                      style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.20)" }}
-                    />
-                  )}
-
-                  <span
-                    className={cn(
-                      "relative z-10 text-sm font-medium",
-                      cell.future && "opacity-50"
-                    )}
-                    style={{
-                      color: cell.completed
-                        ? habitColor
-                        : cell.future
-                          ? "var(--color-text-tertiary)"
-                          : "var(--color-text-secondary)",
-                      fontWeight: cell.completed ? 700 : 500,
-                    }}
-                  >
-                    {cell.day}
-                  </span>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 px-1 text-xs text-text-tertiary">
-        <span>
-          <span className="font-semibold text-text-secondary">{completionsMonth}</span>{" "}
-          completions this month
-        </span>
-
-        <span className="text-zinc-700">•</span>
-
-        <span>
-          <span className="font-semibold text-text-secondary">{rate}%</span> of past days
-        </span>
-
-        {selectedHabit && (
-          <>
-            <span className="text-zinc-700">•</span>
-            <span>
-              Frequency{" "}
-              <span className="capitalize font-semibold text-text-secondary">
-                {selectedHabit.frequency}
-              </span>
-            </span>
-          </>
+        {!isThisWeek && (
+          <button
+            type="button"
+            onClick={() => setAnchor(weekStartMonday(new Date()))}
+            className="text-xs font-medium text-text-tertiary transition-colors hover:text-text-primary"
+          >
+            This week
+          </button>
         )}
       </div>
+
+      {/* Grid */}
+      <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface-1 custom-scrollbar">
+        <div className="grid" style={{ gridTemplateColumns: gridCols, minWidth: 132 + habits.length * 44 + 52 }}>
+          {/* Header */}
+          <div className="border-b border-border-default px-3 py-2.5" />
+          {habits.map((h) => {
+            const { icon: Icon, color } = resolveIcon(h.icon);
+            return (
+              <div
+                key={`head-${h.id}`}
+                className="flex items-center justify-center border-b border-l border-border-subtle py-2.5"
+                title={h.title}
+              >
+                <div
+                  className="flex h-7 w-7 items-center justify-center rounded-md border border-border-subtle bg-surface-2"
+                  style={{ color }}
+                >
+                  <Icon size={14} />
+                </div>
+              </div>
+            );
+          })}
+          <div className="flex items-center justify-center border-b border-l border-border-subtle py-2.5 text-caption uppercase text-text-tertiary">
+            %
+          </div>
+
+          {/* Day rows */}
+          {weekDates.map((ds, ri) => {
+            const dayNum = new Date(ds + "T12:00:00").getDate();
+            const isToday = ds === todayStr;
+            const pct = dayPct(ds);
+            return (
+              <Fragment key={`row-${ds}`}>
+                <div
+                  className={cn(
+                    "flex items-center gap-2 border-b border-border-subtle px-3 py-2",
+                    isToday && "bg-surface-2/40",
+                  )}
+                >
+                  <span className="text-xs font-medium text-text-tertiary">{DOW[ri]}</span>
+                  <span
+                    className={cn(
+                      "text-sm font-semibold",
+                      isToday ? "text-text-primary" : "text-text-secondary",
+                    )}
+                  >
+                    {dayNum}
+                  </span>
+                  {isToday && (
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: ACCENT }}
+                    />
+                  )}
+                </div>
+
+                {habits.map((h) => {
+                  const expected = isExpectedOnDate(h, ds);
+                  const done = doneSet.has(`${h.id}|${ds}`);
+                  const future = ds > todayStr;
+                  const dateLabel = new Date(ds + "T12:00:00").toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  });
+                  const statusLabel = !expected
+                    ? "Not scheduled"
+                    : done
+                      ? "Done"
+                      : future
+                        ? "Upcoming"
+                        : "Not done";
+                  return (
+                    <div
+                      key={`cell-${h.id}-${ds}`}
+                      className={cn(
+                        "flex items-center justify-center border-b border-l border-border-subtle py-2",
+                        isToday && "bg-surface-2/40",
+                      )}
+                    >
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          {!expected ? (
+                            <span className="cursor-default text-text-disabled">·</span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={future || toggle.isPending}
+                              onClick={() => toggle.mutate({ habitId: h.id, date: ds, done })}
+                              aria-label={`${h.title} — ${dateLabel} — ${statusLabel}`}
+                              className={cn(
+                                "flex h-6 w-6 items-center justify-center rounded-md border transition-[background-color,border-color,transform] duration-150 ease-out",
+                                done
+                                  ? "border-transparent text-white active:scale-90"
+                                  : future
+                                    ? "cursor-default border-border-subtle"
+                                    : "border-border-strong hover:border-text-tertiary active:scale-90",
+                              )}
+                              style={done ? { backgroundColor: ACCENT } : undefined}
+                            >
+                              {done && <Check size={13} strokeWidth={3} />}
+                            </button>
+                          )}
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <span className="font-semibold text-text-primary">{h.title}</span>
+                          <br />
+                          {dateLabel} · {statusLabel}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  );
+                })}
+
+                <div
+                  className={cn(
+                    "flex items-center justify-center border-b border-l border-border-subtle text-xs font-medium",
+                    isToday && "bg-surface-2/40",
+                  )}
+                  style={{ color: pct === null ? "var(--color-text-disabled)" : pct === 100 ? ACCENT : "var(--color-text-tertiary)" }}
+                >
+                  {pct === null ? "—" : `${pct}%`}
+                </div>
+              </Fragment>
+            );
+          })}
+
+          {/* Average row */}
+          <div className="flex items-center px-3 py-2.5 text-caption uppercase text-text-tertiary">
+            Average
+          </div>
+          {habits.map((h) => {
+            const pct = habitPct(h.id);
+            return (
+              <div
+                key={`avg-${h.id}`}
+                className="flex items-center justify-center border-l border-border-subtle py-2.5 text-xs font-semibold"
+                style={{ color: pct === null ? "var(--color-text-disabled)" : pct >= 80 ? ACCENT : "var(--color-text-secondary)" }}
+              >
+                {pct === null ? "—" : `${pct}%`}
+              </div>
+            );
+          })}
+          <div className="border-l border-border-subtle" />
+        </div>
+      </div>
+
+      <p className="px-1 text-[11px] text-text-tertiary">
+        Tap any cell to mark a day done. Past days can be edited; future days are locked.
+      </p>
     </div>
   );
 }

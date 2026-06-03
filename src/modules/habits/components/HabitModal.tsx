@@ -38,7 +38,8 @@ import { useCreateHabit, useUpdateHabit } from "../hooks/useHabits";
 import { useGoals } from "@/modules/goals/hooks/useGoals";
 import type { Habit } from "../types";
 
-const ACCENT = "var(--color-accent-habits)";
+const ACCENT = "var(--color-accent-habits-vivid)";
+const ACCENT_DEEP = "var(--color-accent-habits)";
 
 const DAYS = [
   { label: "Su", value: 0 },
@@ -323,7 +324,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                               type="button"
                               onClick={() => toggle(d.value)}
                               className={cn(
-                                "flex-1 h-8 rounded-lg text-xs font-semibold transition-all",
+                                "flex-1 h-8 rounded-lg text-xs font-semibold transition-[background-color,color]",
                                 isSelected
                                   ? "text-white"
                                   : "bg-surface-2 text-text-tertiary hover:text-text-primary hover:bg-surface-overlay",
@@ -355,7 +356,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
               control={form.control}
               name="icon"
               render={({ field }) => (
-                <FormItem className="space-y-2">
+                <FormItem>
                   <FormLabel className="text-xs font-medium text-text-secondary">
                     Icon
                   </FormLabel>
@@ -384,7 +385,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                 type="submit"
                 disabled={isPending}
                 className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"
-                style={{ backgroundColor: ACCENT }}
+                style={{ backgroundColor: ACCENT_DEEP }}
               >
                 {isPending ? "Saving…" : isEdit ? "Save" : "Create"}
               </Button>

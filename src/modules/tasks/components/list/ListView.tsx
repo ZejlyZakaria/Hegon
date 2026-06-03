@@ -57,7 +57,7 @@ export function ListView() {
   }
 
   return (
-    <div className="flex-1 px-4 space-y-2">
+    <div className="flex-1 px-4 py-6 space-y-2">
       {statuses.map((status) => (
         <ListGroup
           key={status.id}

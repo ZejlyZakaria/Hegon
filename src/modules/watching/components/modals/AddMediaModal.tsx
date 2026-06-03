@@ -49,7 +49,7 @@ const PRIORITY_CONFIG = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-semibold uppercase tracking-widest text-text-tertiary mb-2">
+    <p className="text-caption uppercase text-text-tertiary mb-2">
       {children}
     </p>
   );
@@ -445,9 +445,9 @@ export default function AddMediaModal({
   return (
     <Dialog.Root open={isOpen} onOpenChange={(v) => { if (!v) onClose(); }}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-50 w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 flex flex-col overflow-hidden rounded-xl border border-border-strong bg-surface-3 shadow-2xl focus:outline-none"
+          className="fixed left-1/2 top-1/2 z-50 w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 flex flex-col overflow-hidden rounded-lg border border-border-strong bg-surface-3 focus:outline-none"
           style={{ height: "85vh", maxHeight: "85vh" }}
         >
 
@@ -496,7 +496,7 @@ export default function AddMediaModal({
               </div>
 
               {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1.5 z-20 overflow-hidden rounded-xl border border-border-strong bg-surface-3 shadow-2xl max-h-64 overflow-y-auto custom-scrollbar">
+                <div className="absolute top-full left-0 right-0 mt-1.5 z-20 overflow-hidden rounded-lg border border-border-strong bg-surface-3 shadow-md max-h-64 overflow-y-auto custom-scrollbar">
                   {searchResults.map((res) => (
                     <button
                       key={res.id}
@@ -551,7 +551,7 @@ export default function AddMediaModal({
 
                   {/* Poster */}
                   <div className="relative group shrink-0 mx-auto sm:mx-0">
-                    <div className="w-28 aspect-2/3 rounded-lg overflow-hidden border border-border-subtle shadow-lg">
+                    <div className="w-28 aspect-2/3 rounded-lg overflow-hidden border border-border-subtle">
                       <img
                         src={previewUrl || (selectedItem.poster_path ? `https://image.tmdb.org/t/p/w500${selectedItem.poster_path}` : "/placeholder.png")}
                         alt="" className="w-full h-full object-cover"
@@ -636,9 +636,9 @@ export default function AddMediaModal({
                                 disabled={isTaken}
                                 onClick={() => setPriority(num)}
                                 className={cn(
-                                  "flex-1 h-8 rounded-lg text-[10px] font-bold transition-all border",
+                                  "flex-1 h-8 rounded-lg text-[10px] font-bold transition-[background-color,border-color,color] border",
                                   priority === num
-                                    ? "bg-amber-500 border-amber-400 text-black shadow-lg shadow-amber-500/20"
+                                    ? "bg-amber-500 border-amber-400 text-black"
                                     : isTaken
                                       ? "bg-surface-overlay border-border-subtle text-text-disabled cursor-not-allowed opacity-50"
                                       : "bg-surface-overlay border-border-subtle text-text-tertiary hover:border-border-default hover:text-text-secondary",
@@ -684,7 +684,7 @@ export default function AddMediaModal({
                         type="button"
                         onClick={() => setFavorite(!favorite)}
                         className={cn(
-                          "w-full flex items-center justify-between p-3.5 rounded-xl border transition-all",
+                          "w-full flex items-center justify-between p-3.5 rounded-xl border transition-[background-color,border-color,color]",
                           favorite
                             ? "bg-red-500/8 border-red-500/25 text-red-400"
                             : "bg-surface-overlay border-border-subtle text-text-secondary hover:border-border-default",
@@ -715,7 +715,7 @@ export default function AddMediaModal({
                     {listContext === "library" && (
                       <div className="space-y-3">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary block">
+                          <label className="text-caption uppercase text-text-tertiary block">
                             When did you watch it?
                           </label>
                           <div className="flex gap-2">
@@ -771,7 +771,7 @@ export default function AddMediaModal({
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
-                            <label className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+                            <label className="text-caption uppercase text-text-tertiary">
                               Season{maxSeason ? ` (max ${maxSeason})` : ""}
                             </label>
                             <input
@@ -786,7 +786,7 @@ export default function AddMediaModal({
                             {seasonError && <p className="text-[10px] text-red-400">{seasonError}</p>}
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+                            <label className="text-caption uppercase text-text-tertiary">
                               Episode{getMaxEpisode(parseInt(seasonInput) || 1) ? ` (max ${getMaxEpisode(parseInt(seasonInput) || 1)})` : ""}
                             </label>
                             <input
@@ -814,7 +814,7 @@ export default function AddMediaModal({
                           </p>
                         </div>
                         <div>
-                          <label className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary block mb-2">
+                          <label className="text-caption uppercase text-text-tertiary block mb-2">
                             Priority
                           </label>
                           <div className="flex gap-2">
@@ -827,7 +827,7 @@ export default function AddMediaModal({
                                   type="button"
                                   onClick={() => setPriorityLevel(level)}
                                   className={cn(
-                                    "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold border transition-all",
+                                    "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold border transition-[background-color,border-color,color]",
                                     isActive
                                       ? `${cfg.activeBg} ${cfg.text}`
                                       : "bg-surface-overlay border-border-subtle text-text-tertiary hover:border-border-default hover:text-text-secondary",

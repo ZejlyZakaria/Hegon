@@ -67,7 +67,7 @@ const NAV: NavGroup[] = [
         label: "Habits",
         href: "/life/habits",
         icon: <Repeat2 size={15} />,
-        accent: "#f43f5e",
+        accent: "#8b5cf6",
       },
       {
         key: "journal",
@@ -204,8 +204,8 @@ const SECTION_COLORS: Record<
     isGlass: false,
   },
   "/life/habits": {
-    from: "rgba(244,63,94,0.08)",
-    glow: "#f43f5e",
+    from: "rgba(139,92,246,0.08)",
+    glow: "#8b5cf6",
     isGlass: false,
   },
   "/life/journal": {

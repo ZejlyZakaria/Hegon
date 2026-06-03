@@ -57,7 +57,7 @@ export default function SectionHeader({ title, subtitle, accent, tabs, stats }: 
             <Link
               key={tab.href}
               href={tab.href}
-              className="relative px-3 pb-2.5 pt-2 text-xs font-medium transition-colors"
+              className="relative px-4 pb-2.5 pt-2 text-sm font-medium transition-colors"
               style={active ? { color: "var(--color-text-primary)" } : undefined}
             >
               <span className={!active ? "text-text-tertiary hover:text-text-secondary" : ""}>

@@ -133,7 +133,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 280 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-120 flex-col border-l shadow-2xl"
+            className="fixed right-0 top-0 z-50 flex h-full w-120 flex-col border-l shadow-lg"
             style={{
               backgroundColor: "var(--color-surface-0)",
               borderColor: "var(--color-border-subtle)",
@@ -206,7 +206,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
               <>
               {/* Members */}
               <div className="p-5 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-tertiary)" }}>
+                <p className="text-caption uppercase text-text-tertiary">
                   Members ({members.length + 1})
                 </p>
 
@@ -284,7 +284,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                   className="mx-5 mb-5 rounded-xl border p-4 space-y-3"
                   style={{ backgroundColor: "var(--color-surface-1)", borderColor: "var(--color-border-subtle)" }}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-tertiary)" }}>
+                  <p className="text-caption uppercase text-text-tertiary">
                     Invite someone
                   </p>
 
@@ -392,7 +392,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                   className="rounded-xl border p-4 space-y-2"
                   style={{ backgroundColor: "var(--color-surface-1)", borderColor: "var(--color-border-subtle)" }}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-tertiary)" }}>
+                  <p className="text-caption uppercase text-text-tertiary">
                     New tag
                   </p>
 
@@ -428,7 +428,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                 {/* Tags list below */}
                 {tags.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-tertiary)" }}>
+                    <p className="text-caption uppercase text-text-tertiary">
                       Existing tags ({tags.length})
                     </p>
                     <div className="space-y-1.5">
@@ -442,7 +442,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                             <PopoverTrigger asChild>
                               <button
                                 type="button"
-                                className="w-3 h-3 rounded-full shrink-0 hover:ring-2 hover:ring-white/30 transition-all"
+                                className="w-3 h-3 rounded-full shrink-0 hover:ring-2 hover:ring-white/30 transition-shadow"
                                 style={{ backgroundColor: tag.color ?? "#71717a" }}
                                 title="Change color"
                               />

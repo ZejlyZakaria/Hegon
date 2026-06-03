@@ -97,7 +97,7 @@ export function TaskCard({ task, isOverlay = false }: TaskCardProps) {
               <button
                 type="button"
                 onClick={(e) => e.stopPropagation()}
-                className="flex h-6 w-6 items-center justify-center rounded-md opacity-0 transition-all duration-100 group-hover:opacity-100 text-text-tertiary hover:bg-surface-2 hover:text-text-primary"
+                className="flex h-6 w-6 items-center justify-center rounded-md opacity-0 transition-[opacity,background-color,color] duration-100 group-hover:opacity-100 text-text-tertiary hover:bg-surface-2 hover:text-text-primary"
               >
                 <MoreHorizontal size={13} />
               </button>

@@ -4,7 +4,7 @@ import { cn } from "@/shared/utils/utils"
 
 const inputVariants = cva(
   // Base styles (communs à tous les variants)
-  "h-9 w-full min-w-0 px-3 py-1 text-sm transition-all outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+  "h-9 w-full min-w-0 px-3 py-1 text-sm transition-[background-color,border-color] duration-150 ease-out outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       variant: {
@@ -20,15 +20,15 @@ const inputVariants = cva(
           "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground"
         ),
         
-        // Tasks style (zinc minimal)
+        // HEGON field — tokens, uniform hover (surface-2), focus = border shift
         tasks: cn(
-          "rounded-lg border border-zinc-700/50",
-          "bg-zinc-800/50",
-          "text-zinc-100 placeholder:text-zinc-600",
-          "hover:bg-zinc-800/80",
-          "focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700",
-          "aria-invalid:border-red-500/50 aria-invalid:ring-1 aria-invalid:ring-red-500/20",
-          "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-zinc-400"
+          "rounded-lg border border-border-default",
+          "bg-surface-overlay",
+          "text-text-primary placeholder:text-text-tertiary",
+          "hover:bg-surface-2",
+          "focus:border-border-focus",
+          "aria-invalid:border-destructive",
+          "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-text-secondary"
         ),
       },
     },

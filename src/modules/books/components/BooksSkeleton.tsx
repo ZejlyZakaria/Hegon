@@ -112,7 +112,7 @@ export function BooksRightPanelLoadingSkeleton() {
 
 export function BooksLoadingSkeleton() {
   return (
-    <div className="px-6 py-5 space-y-4">
+    <div className="px-6 py-6 space-y-4">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1.5">

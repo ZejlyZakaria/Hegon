@@ -12,48 +12,6 @@ interface TasksLayoutProps {
   children: React.ReactNode;
 }
 
-function TasksHeader() {
-  const { viewMode } = useTasksStore();
-
-  const viewLabel =
-    viewMode === "kanban" ? "Kanban"
-    : viewMode === "list" ? "List"
-    : viewMode === "calendar" ? "Calendar"
-    : "";
-
-  return (
-    <div className="px-4 pb-4 pt-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1
-            className="text-xl font-bold leading-tight"
-            style={{ color: "var(--color-text-primary)" }}
-          >
-            Tasks
-          </h1>
-          <p
-            className="mt-0.5 text-xs"
-            style={{ color: "var(--color-text-tertiary)" }}
-          >
-            Plan clearly. Execute deliberately.
-          </p>
-        </div>
-
-        <span
-          className="rounded px-2 py-0.5 text-xs font-medium"
-          style={{
-            backgroundColor: "var(--color-surface-2)",
-            border: "1px solid var(--color-border-subtle)",
-            color: "var(--color-text-secondary)",
-          }}
-        >
-          {viewLabel} view
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export function TasksLayout({ children }: TasksLayoutProps) {
   const userId = useCurrentUserId();
   const { selectedProjectId, viewMode } = useTasksStore();
@@ -69,7 +27,6 @@ export function TasksLayout({ children }: TasksLayoutProps) {
 
       <div className="flex h-full flex-1 flex-col overflow-hidden">
         {(selectedProjectId || viewMode === "now") && <TasksTopbar />}
-        {selectedProjectId && viewMode !== "now" && <TasksHeader />}
 
         <div className="relative flex-1 overflow-auto">
           {showNoProjectSelected ? <NoProjectSelected /> : children}

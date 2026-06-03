@@ -17,7 +17,7 @@ export function CalendarHeader({
 }: CalendarHeaderProps) {
   return (
     <div
-      className="flex items-center justify-between px-4 pb-4 pt-1"
+      className="flex items-center justify-between px-4 pb-4 pt-6"
       style={{ borderColor: "var(--color-border-subtle)" }}
     >
       <div className="flex items-center gap-3">

@@ -38,11 +38,17 @@
   --color-accent-dashboard: var(--color-accent-dashboard);
   --color-accent-goals: var(--color-accent-goals);
   --color-accent-habits: var(--color-accent-habits);
+  --color-accent-habits-vivid: var(--color-accent-habits-vivid);
   --color-accent-journal: var(--color-accent-journal);
   --color-accent-tasks: var(--color-accent-tasks);
   --color-accent-watching: var(--color-accent-watching);
   --color-accent-watching-vivid: var(--color-accent-watching-vivid);
   --color-accent-sports: var(--color-accent-sports);
+
+  /* ── Elemental icon colors (shared, reusable across modules) ────────────── */
+  --color-fire: var(--color-fire);
+  --color-ice: var(--color-ice);
+  --color-gold: var(--color-gold);
 
   /* ── Sidebar ────────────────────────────────────────────────────────── */
   --color-sidebar-bg: var(--color-sidebar-bg);
@@ -115,6 +121,33 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   TYPOGRAPHY SCALE — single source of truth (DESIGN.md §3)
+   Fixed px (No-Fluid Rule). Each token bundles size + line-height + weight
+   (+ tracking) so one class enforces the whole role. Usage: `text-body`,
+   `text-label`, `text-caption`, `text-title`. Hierarchy via weight, not size.
+   ════════════════════════════════════════════════════════════════════════ */
+
+@theme {
+  --text-caption: 0.625rem;            /* 10px — nav/section eyebrows, micro-labels */
+  --text-caption--line-height: 1.2;
+  --text-caption--letter-spacing: 0.08em;
+  --text-caption--font-weight: 600;
+
+  --text-label: 0.75rem;               /* 12px — metadata, chips, dates */
+  --text-label--line-height: 1.3;
+  --text-label--font-weight: 500;
+
+  --text-body: 0.875rem;               /* 14px — everyday reading size */
+  --text-body--line-height: 1.5;
+  --text-body--font-weight: 500;
+
+  --text-title: 1rem;                  /* 16px — page-section headings (the dominant title tier) */
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.01em;
+  --text-title--font-weight: 600;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    ROOT TOKENS — HEGON DARK-FIRST
    These are the real values used by the app.
    ════════════════════════════════════════════════════════════════════════ */
@@ -144,13 +177,19 @@
 
   --color-accent-dashboard: #60a5fa;
   --color-accent-goals: #22c55e;
-  --color-accent-habits: #f43f5e;
+  --color-accent-habits: #6d28d9;        /* deep violet — solid surfaces, buttons */
+  --color-accent-habits-vivid: #8b5cf6;  /* vivid violet — rings, checkbox, indicators */
   --color-accent-journal: #f97316;
   --color-accent-tasks: #71717a;
   --color-accent-watching: #0C3D4A;        /* fond solide — My Record, boutons | bordeaux cinéma : #6D0F1E */
   --color-accent-watching-vivid: #2dd4bf; /* dock icône, tab underline, indicators */
   --color-accent-sports: #10b981;
   --color-accent-books: #0ea5e9;
+
+  /* ── Elemental icon colors — shared, reusable across modules ────────────── */
+  --color-fire: #fb923c;  /* flame / streak */
+  --color-ice:  #38bdf8;  /* freeze / cold */
+  --color-gold: #fbbf24;  /* trophy / achievement */
 
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -354,6 +393,18 @@
   background-repeat: repeat;
   background-size: 128px 128px;
   pointer-events: none;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   HABITS — analog watch hands
+   CSS-driven rotation (off main thread, zero JS re-render). Each hand sets
+   a negative animation-delay to start at the correct time; the inline
+   transform is the static fallback when motion is reduced.
+   ════════════════════════════════════════════════════════════════════════ */
+
+@keyframes hb-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -30,7 +30,7 @@ export function WatchingError({ error, resetErrorBoundary }: FallbackProps) {
           className={cn(
             "flex items-center gap-2 px-4 h-9 rounded-lg",
             "bg-surface-2 border border-border-subtle text-text-primary text-sm font-medium",
-            "hover:bg-surface-3 hover:border-border-default transition-all"
+            "hover:bg-surface-3 hover:border-border-default transition-colors"
           )}
         >
           <RefreshCw size={15} />

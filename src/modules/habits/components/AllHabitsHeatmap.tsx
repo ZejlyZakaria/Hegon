@@ -4,25 +4,21 @@ import { useMemo, useState } from "react";
 import { cn } from "@/shared/utils/utils";
 import { useHeatmapData } from "../hooks/useHabitStats";
 import { AllHabitsHeatmapSkeleton } from "./HabitsSkeleton";
-import { toDateStr } from "../utils";
+import { toDateStr, heatmapColor } from "../utils";
 import type { HeatmapDay } from "../types";
 
 type RangeMode = "6M" | "12M";
 type GridCell = { date: string; count: number } | null;
 type MonthLabel = { col: number; label: string };
 
-const ACCENT = "var(--color-accent-habits)";
+const ACCENT = "var(--color-accent-habits-vivid)";
 const CELL = 16;
 const GAP = 3;
 const ROWS = 7;
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function getCellColor(count: number): string {
-  if (count === 0) return "var(--color-surface-2)";
-  if (count === 1) return "#4c0d1f";
-  if (count === 2) return "#881337";
-  if (count <= 4) return "#be123c";
-  return ACCENT;
+  return heatmapColor(count);
 }
 
 function buildGrid(data: HeatmapDay[], monthsBack: number) {

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Search,
   SlidersHorizontal,
   LayoutGrid,
   List,
@@ -25,7 +24,7 @@ import {
   DropdownMenuSubContent,
 } from "@/shared/components/ui/dropdown-menu";
 import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
+import { SearchInput } from "@/shared/components/ui/search-input";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useTagsForProject } from "@/modules/tasks/hooks/useTags";
 import { useProjectAssignees } from "@/modules/tasks/hooks/useOrgMembers";
@@ -117,20 +116,13 @@ export function TasksTopbar() {
               <PanelLeftOpen size={16} />
             </button>
           )}
-          <div className="relative flex-1">
-            <Search
-              size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-zinc-500"
-            />
-            <Input
-              variant="tasks"
-              type="text"
-              placeholder="Search tasks..."
-              value={filters.search}
-              onChange={(e) => setFilters({ search: e.target.value })}
-              className="h-8 pl-8"
-            />
-          </div>
+          <SearchInput
+            containerClassName="flex-1"
+            placeholder="Search tasks..."
+            value={filters.search}
+            onChange={(e) => setFilters({ search: e.target.value })}
+            onClear={() => setFilters({ search: "" })}
+          />
         </div>
       ) : (
         <div className="flex flex-1 items-center gap-2">

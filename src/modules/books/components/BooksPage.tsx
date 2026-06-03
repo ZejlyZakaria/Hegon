@@ -65,7 +65,7 @@ export function BooksPage() {
   const isEmpty = stats?.total === 0;
 
   return (
-    <div className="flex min-h-full flex-col px-6 py-5 space-y-4">
+    <div className="flex min-h-full flex-col px-6 py-6 space-y-4">
       {/* Header — always visible */}
       <motion.div
         className="flex items-start justify-between gap-4"

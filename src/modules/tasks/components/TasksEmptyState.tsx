@@ -117,7 +117,7 @@ export function TasksEmptyState() {
           className={cn(
             "flex items-center gap-2 px-4 h-9 rounded-lg",
             "bg-zinc-800 border border-white/8 text-zinc-100 text-sm font-medium",
-            "hover:bg-zinc-700 hover:border-white/12 transition-all",
+            "hover:bg-zinc-700 hover:border-white/12 transition-colors",
             "disabled:opacity-50 disabled:cursor-not-allowed",
           )}
         >

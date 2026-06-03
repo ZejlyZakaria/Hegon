@@ -99,7 +99,7 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
       {menuOpen && typeof document !== "undefined" && createPortal(
         <div
           ref={menuRef}
-          className="fixed z-200 w-44 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-2xl"
+          className="fixed z-200 w-44 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-md"
           style={{ top: menuPos.top, right: menuPos.right }}
           onClick={(e) => e.stopPropagation()}
         >

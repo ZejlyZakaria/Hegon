@@ -11,7 +11,7 @@ export function NoProjectSelected() {
           <div className="absolute inset-0 scale-150 rounded-full blur-2xl"
             style={{ backgroundColor: "var(--color-surface-3)" }} />
           <div
-            className="relative flex h-14 w-14 items-center justify-center rounded-2xl shadow-xl"
+            className="relative flex h-14 w-14 items-center justify-center rounded-2xl"
             style={{
               backgroundColor: "var(--color-surface-2)",
               border: "1px solid var(--color-border-subtle)",

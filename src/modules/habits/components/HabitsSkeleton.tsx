@@ -2,43 +2,42 @@ function SkeletonBlock({ className }: { className?: string }) {
   return <div className={`rounded bg-surface-2 animate-pulse ${className ?? ""}`} />;
 }
 
-function TodayProgressSkeleton() {
+function RailSkeleton() {
   return (
-    <div className="overflow-hidden rounded-lg border border-border-subtle bg-surface-1">
-      <div className="flex items-stretch">
-        <div className="flex-1 px-4 py-3 space-y-2">
-          <SkeletonBlock className="h-3.5 w-28" />
-          <div className="flex items-center gap-3">
-            <SkeletonBlock className="h-2 w-1/2 rounded-full" />
-            <SkeletonBlock className="h-7 w-12" />
-            <SkeletonBlock className="h-3 w-32" />
-          </div>
-        </div>
-        <div className="my-3 w-px bg-surface-2" />
-        <div className="flex w-44 items-center gap-2.5 px-4">
-          <SkeletonBlock className="h-4 w-4 shrink-0 rounded" />
-          <SkeletonBlock className="h-3 w-24" />
+    <div className="flex flex-col items-center gap-4 rounded-lg border border-border-subtle bg-surface-1 p-4">
+      <SkeletonBlock className="h-40 w-40 rounded-full" />
+      <div className="flex gap-2.5">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <SkeletonBlock key={i} className="h-6 w-6 rounded-full" />
+        ))}
+      </div>
+      <SkeletonBlock className="h-2 w-full rounded-full" />
+      <div className="flex w-full items-center gap-4 pt-2">
+        <SkeletonBlock className="h-16 w-16 shrink-0 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <SkeletonBlock className="h-6 w-20" />
+          <SkeletonBlock className="h-3 w-16" />
         </div>
       </div>
     </div>
   );
 }
 
-function HabitCardSkeleton() {
+function HabitRowSkeleton() {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-1 p-3">
-      <SkeletonBlock className="h-9 w-9 rounded-lg shrink-0" />
-      <div className="flex-1 min-w-0 space-y-1.5">
-        <SkeletonBlock className="h-3.5 w-40" />
-        <SkeletonBlock className="h-3 w-24" />
-        <SkeletonBlock className="h-2.5 w-16" />
+    <div className="flex h-14 items-center gap-3 rounded-lg border border-border-subtle bg-surface-1 px-3">
+      <SkeletonBlock className="h-5 w-5 rounded-full shrink-0" />
+      <SkeletonBlock className="h-8 w-8 rounded-lg shrink-0" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div className="flex items-center gap-2">
+          <SkeletonBlock className="h-3.5 w-40" />
+          <SkeletonBlock className="hidden h-3 w-10 shrink-0 sm:block" />
+        </div>
+        <SkeletonBlock className="h-2.5 w-24" />
       </div>
-      <div className="flex flex-col items-center gap-1 w-20 border-l border-border-default pl-3">
-        <SkeletonBlock className="h-3 w-12" />
-        <SkeletonBlock className="h-5 w-6" />
-        <SkeletonBlock className="h-2.5 w-10" />
-      </div>
-      <SkeletonBlock className="h-8 w-20 rounded-md shrink-0" />
+      <SkeletonBlock className="hidden h-3 w-32 shrink-0 md:block" />
+      <SkeletonBlock className="h-3.5 w-12 shrink-0" />
+      <span className="w-7 shrink-0" />
     </div>
   );
 }
@@ -56,19 +55,15 @@ function TabsRowSkeleton() {
   );
 }
 
-function HabitStreakSkeleton() {
+function ThisWeekSkeleton() {
   return (
-    <div className="bg-surface-1 rounded-lg p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <SkeletonBlock className="h-3 w-20" />
-        <SkeletonBlock className="h-3 w-12" />
-      </div>
-      <SkeletonBlock className="h-8 w-16" />
+    <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
+      <SkeletonBlock className="h-3 w-20" />
       <div className="flex items-center justify-between">
         {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="flex flex-col items-center gap-1">
-            <SkeletonBlock className="h-2.5 w-4" />
-            <SkeletonBlock className="h-2 w-2 rounded-full" />
+          <div key={i} className="flex flex-col items-center gap-1.5">
+            <SkeletonBlock className="h-2 w-4" />
+            <SkeletonBlock className="h-2.5 w-2.5 rounded-full" />
           </div>
         ))}
       </div>
@@ -110,34 +105,47 @@ export function AllHabitsHeatmapSkeleton() {
   );
 }
 
+export function StatsSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.35fr_1fr]">
+        <SkeletonBlock className="h-44 w-full rounded-2xl" />
+        <SkeletonBlock className="h-44 w-full rounded-2xl" />
+      </div>
+      <SkeletonBlock className="h-56 w-full rounded-2xl" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <SkeletonBlock key={i} className="h-28 w-full rounded-2xl" />
+        ))}
+      </div>
+      <SkeletonBlock className="h-56 w-full rounded-2xl" />
+    </div>
+  );
+}
+
 export function HabitsLoadingSkeleton() {
   return (
-    <div className="px-6 py-5 space-y-4">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1.5">
-          <SkeletonBlock className="h-5 w-20" />
-          <SkeletonBlock className="h-3.5 w-52" />
-        </div>
-        <SkeletonBlock className="h-8 w-24 rounded-md shrink-0" />
-      </div>
-
-      {/* TodayProgress */}
-      <TodayProgressSkeleton />
-
-      {/* Main layout */}
+    <div className="px-6 py-6">
+      {/* Main layout: rail + center + right */}
       <div className="flex gap-6 items-start">
-        {/* Left column */}
+        {/* Rail */}
+        <div className="hidden lg:block w-56 shrink-0">
+          <RailSkeleton />
+        </div>
+
+        {/* Center column */}
         <div className="flex-1 min-w-0 space-y-3">
           <TabsRowSkeleton />
-          {[1, 2, 3, 4].map((i) => (
-            <HabitCardSkeleton key={i} />
-          ))}
+          <div className="space-y-2">
+            {[1, 2, 3, 4].map((i) => (
+              <HabitRowSkeleton key={i} />
+            ))}
+          </div>
         </div>
 
         {/* Right column */}
         <div className="w-72 shrink-0 space-y-3">
-          <HabitStreakSkeleton />
+          <ThisWeekSkeleton />
           <ThisMonthSkeleton />
           <CompactHeatmapSkeleton />
         </div>

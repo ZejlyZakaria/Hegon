@@ -36,7 +36,7 @@ interface NavItem {
 const NAV_GROUPS: NavItem[][] = [
   [
     { key: "goals",   label: "Goals",   href: "/life/goals",   icon: <Target size={18} />,    accent: "#22c55e" },
-    { key: "habits",  label: "Habits",  href: "/life/habits",  icon: <Repeat2 size={18} />,   accent: "#f43f5e" },
+    { key: "habits",  label: "Habits",  href: "/life/habits",  icon: <Repeat2 size={18} />,   accent: "#8b5cf6" },
     { key: "journal", label: "Journal", href: "/life/journal", icon: <BookOpen size={18} />,  accent: "#f97316" },
     { key: "books",   label: "Books",   href: "/life/books",   icon: <Library size={18} />,   accent: "#0ea5e9" },
   ],
@@ -57,7 +57,7 @@ const NAV_GROUPS: NavItem[][] = [
 const SECTION_COLORS: Record<string, { from: string; glow: string }> = {
   "/dashboard":      { from: "rgba(96,165,250,0.08)",   glow: "#60a5fa" },
   "/life/goals":     { from: "rgba(34,197,94,0.08)",    glow: "#22c55e" },
-  "/life/habits":    { from: "rgba(244,63,94,0.08)",    glow: "#f43f5e" },
+  "/life/habits":    { from: "rgba(139,92,246,0.08)",   glow: "#8b5cf6" },
   "/life/journal":   { from: "rgba(249,115,22,0.08)",   glow: "#f97316" },
   "/life/books":     { from: "rgba(14,165,233,0.08)",   glow: "#0ea5e9" },
   "/perso/sports":   { from: "rgba(16,185,129,0.08)",   glow: "#10b981" },

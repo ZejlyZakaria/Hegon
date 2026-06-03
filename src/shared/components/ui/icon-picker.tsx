@@ -11,7 +11,7 @@ interface IconPickerProps {
   accentColor?: string
 }
 
-export function IconPicker({ value, onChange, accentColor = "#f43f5e" }: IconPickerProps) {
+export function IconPicker({ value, onChange, accentColor = "var(--color-text-primary)" }: IconPickerProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
   const containerRef = useRef<HTMLDivElement>(null)
@@ -55,10 +55,11 @@ export function IconPicker({ value, onChange, accentColor = "#f43f5e" }: IconPic
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex w-full items-center gap-2 h-8 rounded-md border px-3 text-sm",
-          "bg-[#1f1f22] border-white/[0.07] text-[#e2e2e6]",
-          "focus:outline-none focus:border-white/20",
-          open && "border-white/20"
+          "flex h-9 w-full items-center gap-2 rounded-lg border px-3 text-sm",
+          "border-border-default bg-surface-overlay text-text-primary",
+          "transition-[background-color,border-color] duration-150 ease-out",
+          "hover:bg-surface-2 focus:border-border-focus focus:outline-none",
+          open && "border-border-focus",
         )}
       >
         <span
@@ -73,33 +74,33 @@ export function IconPicker({ value, onChange, accentColor = "#f43f5e" }: IconPic
         <ChevronDown
           size={13}
           className={cn(
-            "shrink-0 text-[#71717a] transition-transform duration-100",
-            open && "rotate-180"
+            "shrink-0 text-text-tertiary transition-transform duration-100",
+            open && "rotate-180",
           )}
         />
       </button>
 
       {open && (
-        <div className="absolute bottom-[calc(100%+4px)] left-0 right-0 z-50 rounded-lg border border-white/11 bg-[#1a1a1d] shadow-xl">
-          <div className="flex items-center border-b border-white/[0.07] px-3">
-            <Search size={13} className="mr-2 shrink-0 text-[#71717a]" />
+        <div className="absolute bottom-[calc(100%+4px)] left-0 right-0 z-50 rounded-lg border border-border-strong bg-surface-3 shadow-md">
+          <div className="flex items-center border-b border-border-default px-3">
+            <Search size={13} className="mr-2 shrink-0 text-text-tertiary" />
             <input
               ref={searchRef}
               type="text"
               placeholder="Search icons…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-full bg-transparent text-sm text-[#e2e2e6] outline-none placeholder:text-[#71717a]"
+              className="h-9 w-full bg-transparent text-sm text-text-primary outline-none placeholder:text-text-tertiary"
               autoComplete="off"
             />
           </div>
 
           <div className="max-h-52 overflow-y-auto overscroll-contain py-1 custom-scrollbar">
             {filtered.length === 0 ? (
-              <p className="py-5 text-center text-xs text-[#71717a]">No icons found.</p>
+              <p className="py-5 text-center text-xs text-text-tertiary">No icons found.</p>
             ) : (
               <div className="px-1">
-                <p className="px-2 py-1 text-[10px] font-medium text-[#71717a]">
+                <p className="px-2 py-1 text-[10px] font-medium text-text-tertiary">
                   {search.trim() ? "Results" : "Popular"}
                 </p>
 
@@ -120,8 +121,8 @@ export function IconPicker({ value, onChange, accentColor = "#f43f5e" }: IconPic
                       className={cn(
                         "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-100",
                         isSelected
-                          ? "bg-[#141416] text-[#e2e2e6]"
-                          : "text-[#a0a0a8] hover:bg-[#141416] hover:text-[#e2e2e6]"
+                          ? "bg-surface-2 text-text-primary"
+                          : "text-text-secondary hover:bg-surface-2 hover:text-text-primary",
                       )}
                     >
                       <span

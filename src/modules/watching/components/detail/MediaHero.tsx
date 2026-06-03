@@ -35,7 +35,7 @@ export function MediaHero({ media, typeLabel, isSeries, onBack }: Props) {
       <button
         type="button"
         onClick={onBack}
-        className="group absolute left-6 top-5 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3.5 py-2 text-[13px] font-medium text-white/70 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-black/50 hover:text-white md:left-10"
+        className="group absolute left-6 top-5 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3.5 py-2 text-[13px] font-medium text-white/70 backdrop-blur-sm transition-colors hover:border-white/20 hover:bg-black/50 hover:text-white md:left-10"
       >
         <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
         Back

@@ -74,7 +74,7 @@ function MovieCard({
           src={item.backdrop_url || item.poster_url || "/placeholder.svg"}
           alt={item.title}
           fill
-          className="object-cover transition-all duration-500 group-hover:scale-105"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
           style={{ opacity: imgLoaded ? 1 : 0 }}
           sizes="(max-width: 768px) 100vw, 50vw"
           unoptimized
@@ -86,7 +86,7 @@ function MovieCard({
 
         {/* rank badge */}
         {showRankBadge && item.priority && (
-          <div className="absolute top-3 left-3 flex h-8 w-8 items-center justify-center rounded-full bg-black border-2 border-white text-xs font-bold text-white shadow-lg z-10">
+          <div className="absolute top-3 left-3 flex h-8 w-8 items-center justify-center rounded-full bg-black border-2 border-white text-xs font-bold text-white z-10">
             {item.priority}
           </div>
         )}
@@ -266,14 +266,14 @@ export function MediaCarousel({
 
   if (localItems.length === 0) {
     return (
-      <section className="mb-3">
+      <section>
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h3 className="text-base font-semibold text-text-primary tracking-tight">
+            <h3 className="text-title text-text-primary">
               {title}
             </h3>
             {subtitle && (
-              <p className="mt-1 text-sm text-text-tertiary">{subtitle}</p>
+              <p className="mt-1 text-xs text-text-tertiary">{subtitle}</p>
             )}
           </div>
         </div>
@@ -302,7 +302,7 @@ export function MediaCarousel({
   }
 
   return (
-    <section className="mb-3">
+    <section>
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-text-primary tracking-tight">
@@ -330,7 +330,7 @@ export function MediaCarousel({
             type="button"
             onClick={() => canGoNext && scroll("next")}
             className={cn(
-              "rounded-full border border-white/10 p-2 transition-all duration-300",
+              "rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
               canGoNext
                 ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
                 : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",

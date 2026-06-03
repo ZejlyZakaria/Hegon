@@ -3,6 +3,9 @@ import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type {
   Habit,
   HabitCompletion,
+  HabitSkip,
+  HabitPause,
+  HabitFreeze,
   HeatmapDay,
   CreateHabitInput,
   UpdateHabitInput,
@@ -216,6 +219,202 @@ export async function getCompletionsForHabits(
 
   if (error) throw error;
   return data ?? [];
+}
+
+// =====================================================
+// SKIPS & PAUSES
+// =====================================================
+
+// Skip dates for many habits over a range (Today + streak computation)
+export async function getSkipsForHabits(
+  habitIds: string[],
+  from: string,
+  to: string,
+): Promise<{ habit_id: string; skip_date: string }[]> {
+  if (habitIds.length === 0) return [];
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("habit_skips")
+    .select("habit_id, skip_date")
+    .in("habit_id", habitIds)
+    .gte("skip_date", from)
+    .lte("skip_date", to);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+// All pauses for many habits (pauses are few; no range filter needed)
+export async function getPausesForHabits(
+  habitIds: string[],
+): Promise<{ habit_id: string; pause_start: string; pause_end: string | null }[]> {
+  if (habitIds.length === 0) return [];
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("habit_pauses")
+    .select("habit_id, pause_start, pause_end")
+    .in("habit_id", habitIds);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getHabitSkips(habitId: string): Promise<HabitSkip[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("habit_skips")
+    .select("*")
+    .eq("habit_id", habitId)
+    .order("skip_date", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getHabitPauses(habitId: string): Promise<HabitPause[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("habit_pauses")
+    .select("*")
+    .eq("habit_id", habitId)
+    .order("pause_start", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function addSkip(
+  habitId: string,
+  date: string,
+  reason?: string | null,
+): Promise<HabitSkip> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("habit_skips")
+    .upsert(
+      { habit_id: habitId, skip_date: date, reason: reason ?? null },
+      { onConflict: "habit_id,skip_date" },
+    )
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function removeSkip(habitId: string, date: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("habit_skips")
+    .delete()
+    .eq("habit_id", habitId)
+    .eq("skip_date", date);
+
+  if (error) throw error;
+}
+
+export async function addPause(
+  habitId: string,
+  pauseStart: string,
+  pauseEnd: string | null,
+): Promise<HabitPause> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("habit_pauses")
+    .insert({ habit_id: habitId, pause_start: pauseStart, pause_end: pauseEnd })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function removePause(pauseId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("habit_pauses")
+    .delete()
+    .eq("id", pauseId);
+
+  if (error) throw error;
+}
+
+// ─── FREEZES (streak protection) ─────────────────────────────────────────────
+
+export async function getFreezesForHabits(
+  habitIds: string[],
+  from: string,
+  to: string,
+): Promise<{ habit_id: string; freeze_date: string }[]> {
+  if (habitIds.length === 0) return [];
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("habit_freezes")
+    .select("habit_id, freeze_date")
+    .in("habit_id", habitIds)
+    .gte("freeze_date", from)
+    .lte("freeze_date", to);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getHabitFreezes(habitId: string): Promise<HabitFreeze[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("habit_freezes")
+    .select("*")
+    .eq("habit_id", habitId)
+    .order("freeze_date", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+// Count freezes used in the current calendar month (budget enforcement).
+// Counts by when the freeze was applied (created_at), not the protected day —
+// a freeze usually protects a day in the previous days/month.
+export async function getMonthlyFreezeCount(): Promise<number> {
+  const supabase = createClient();
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  const { count, error } = await supabase
+    .from("habit_freezes")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", monthStart);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function addFreeze(habitId: string, date: string): Promise<HabitFreeze> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("habit_freezes")
+    .upsert(
+      { habit_id: habitId, freeze_date: date },
+      { onConflict: "habit_id,freeze_date" },
+    )
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function removeFreeze(habitId: string, date: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("habit_freezes")
+    .delete()
+    .eq("habit_id", habitId)
+    .eq("freeze_date", date);
+
+  if (error) throw error;
 }
 
 // All habits heatmap — completions grouped by date over a range

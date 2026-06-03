@@ -30,11 +30,11 @@ function NewListCard({ onClick }: { onClick: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer overflow-hidden rounded-xl border border-white/20 bg-linear-to-br from-zinc-900 to-black transition-all hover:border-white/40"
+      className="group cursor-pointer overflow-hidden rounded-xl border border-white/20 bg-linear-to-br from-zinc-900 to-black transition-colors hover:border-white/40"
     >
       <div className="relative flex h-42 items-center justify-center">
         <div className="flex flex-col items-center gap-2 text-white/60 transition-colors group-hover:text-white">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition-all group-hover:bg-white/20">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition-colors group-hover:bg-white/20">
             <Plus size={20} />
           </div>
           <span className="text-xs font-medium">New list</span>

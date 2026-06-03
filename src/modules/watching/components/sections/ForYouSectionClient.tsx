@@ -36,7 +36,7 @@ function addDismissed(type: string, id: number) {
 
 function ForYouSkeleton() {
   return (
-    <section className="mb-3">
+    <section>
       <div className="mb-3 flex items-center justify-between">
         <div className="h-5 w-24 rounded bg-surface-2 animate-pulse" />
       </div>
@@ -82,7 +82,7 @@ function ForYouCard({
             alt={item.title}
             fill
             unoptimized
-            className="object-cover transition-all duration-500 group-hover:scale-105"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
             style={{ opacity: imgLoaded ? 1 : 0 }}
             sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"
             loading="eager"
@@ -204,20 +204,20 @@ export default function ForYouSectionClient({
   };
 
   return (
-    <section className="mb-3">
+    <section>
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-text-primary tracking-tight">
+          <h3 className="text-title text-text-primary">
             For You
           </h3>
-          <p className="mt-1 text-sm text-text-tertiary">Based on what you love</p>
+          <p className="mt-1 text-xs text-text-tertiary">Based on what you love</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => canGoPrev && scroll("prev")}
             className={cn(
-              "rounded-full border border-white/10 p-2 transition-all duration-300",
+              "rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
               canGoPrev
                 ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
                 : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
@@ -229,7 +229,7 @@ export default function ForYouSectionClient({
             type="button"
             onClick={() => canGoNext && scroll("next")}
             className={cn(
-              "rounded-full border border-white/10 p-2 transition-all duration-300",
+              "rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
               canGoNext
                 ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
                 : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
@@ -248,7 +248,7 @@ export default function ForYouSectionClient({
         {items.map((item, i) => (
           <div
             key={item.id}
-            className="shrink-0 snap-start transition-all duration-500 ease-in-out"
+            className="shrink-0 snap-start transition-transform duration-500 ease-in-out"
             style={itemWidthStyle}
           >
             <ForYouCard

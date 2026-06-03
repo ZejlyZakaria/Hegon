@@ -606,7 +606,7 @@ function PanelContent({ task, onClose }: { task: Task; onClose: () => void }) {
               </div>
               <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-3">
                 <div
-                  className="h-1 rounded-full bg-[#22c55e] transition-all duration-500"
+                  className="h-1 rounded-full bg-[#22c55e] transition-[width] duration-500"
                   style={{ width: `${currentGoal.progress}%` }}
                 />
               </div>
@@ -671,7 +671,7 @@ function PanelContent({ task, onClose }: { task: Task; onClose: () => void }) {
           {/* Comment input with @mention picker */}
           <div className="relative mb-4">
             {mentionQuery !== null && mentionMembers.length > 0 && (
-              <div className="absolute bottom-full mb-1 left-0 z-10 w-52 overflow-hidden rounded-lg border border-border-strong bg-surface-3 shadow-lg">
+              <div className="absolute bottom-full mb-1 left-0 z-10 w-52 overflow-hidden rounded-lg border border-border-strong bg-surface-3 shadow-md">
                 {mentionMembers.map((m) => (
                   <button
                     key={m.id}

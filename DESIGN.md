@@ -21,7 +21,8 @@ colors:
   # ── Module accents (one per module — Identity per module) ────────────────────
   accent-dashboard:      "#60a5fa"
   accent-goals:          "#22c55e"
-  accent-habits:         "#f43f5e"
+  accent-habits:         "#6d28d9"
+  accent-habits-vivid:   "#8b5cf6"
   accent-journal:        "#f97316"
   accent-tasks:          "#71717a"
   accent-watching:       "#0c3d4a"
@@ -35,8 +36,8 @@ colors:
 typography:
   title:
     fontFamily: "Inter, system-ui, sans-serif"
-    fontSize: "15px"
-    fontWeight: 700
+    fontSize: "16px"
+    fontWeight: 600
     lineHeight: 1.2
     letterSpacing: "-0.01em"
   body:
@@ -172,7 +173,7 @@ Each accent is used exclusively within its module scope. Using Goals' Emerald Dr
 
 - **Control Blue** (#60a5fa) — Dashboard: overview indicators, active metric highlights.
 - **Emerald Drive** (#22c55e) — Goals: progress bars, active goal indicators, milestones.
-- **Vital Rose** (#f43f5e) — Habits: completion rings, streak indicators.
+- **Habit Violet** (#8b5cf6 vivid / #6d28d9 deep) — Habits: completion rings, streak/score indicators, watch accents (vivid); solid surfaces and buttons (deep).
 - **Amber Chronicle** (#f97316) — Journal: entry markers, date highlights.
 - **Zinc Focus** (#71717a) — Tasks: a deliberate non-color. Task work is neutral; color belongs to priority and status, not the module itself.
 - **Cinema Depth** (#0c3d4a) — Watching, solid surfaces: buttons, My Record background, episode badge fill.
@@ -203,7 +204,7 @@ Inter was chosen for its neutrality at small sizes, generous x-height at 12–14
 
 ### Hierarchy
 
-- **Title** (700, 15px, -0.01em letter-spacing, 1.2 line-height): Section headings within a module ("In Progress", "Your Tasks"), page-level labels. Used sparingly.
+- **Title** (600, 16px, -0.01em letter-spacing, 1.2 line-height): Page-section headings ("In Progress", "For You") — the dominant heading tier. Card, modal and sub-section headings use one tier down (14px semibold).
 - **Body** (500, 14px, normal, 1.5): Card content, descriptions, modal form labels. The everyday reading size.
 - **Label** (500, 12px, normal, 1.3): Metadata inside cards — tags, due dates, episode badges, chip text.
 - **Caption** (600, 10px, 0.08em letter-spacing, 1.2): Nav group labels ("LIFE", "PERSO", "PRO"), section eyebrows when used as a system element. Uppercase only at this size and only for structural nav labels — never for body copy.

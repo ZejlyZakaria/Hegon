@@ -149,7 +149,7 @@ export function MyTakeRecord({
             /* ── Unwatched state ── */
             <div className="flex flex-1 flex-col justify-between gap-4 p-4">
               <div>
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/60">Status</p>
+                <p className="mb-2 text-caption uppercase text-white/60">Status</p>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/60">
                   <Bookmark size={10} />
                   {media.is_reference ? "Unwatched" : "Want to Watch"}
@@ -186,7 +186,7 @@ export function MyTakeRecord({
             <div className="flex flex-1 flex-col justify-between gap-4 p-4">
 
               <div>
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/60">Status</p>
+                <p className="mb-2 text-caption uppercase text-white/60">Status</p>
                 <div className="flex flex-wrap gap-1.5">
                   {media.watched && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/90">
@@ -217,7 +217,7 @@ export function MyTakeRecord({
               <div className="h-px bg-white/20" />
 
               <div>
-                <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-white/60">My Rating</p>
+                <p className="mb-3 text-caption uppercase text-white/60">My Rating</p>
                 <RatingSlider value={starRating} onChange={onStarRatingChange} />
               </div>
 

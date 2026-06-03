@@ -273,7 +273,7 @@ function TopGenresCard({ genres }: { genres: ReturnType<typeof computeStats>["to
                 style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
               >
                 <div
-                  className="h-full rounded-full transition-all duration-700"
+                  className="h-full rounded-full transition-[width] duration-700"
                   style={{
                     width: `${(g.count / max) * 100}%`,
                     backgroundColor: TEAL,
@@ -400,7 +400,7 @@ function ActivityCard({ activity, year, streaks }: {
           {activity.map((a) => (
             <div key={a.label} className="flex flex-1 flex-col items-center gap-1">
               <div
-                className="w-full rounded-t-sm transition-all duration-500"
+                className="w-full rounded-t-sm transition-[height] duration-500"
                 style={{
                   height: a.count > 0 ? `${Math.max(4, (a.count / max) * 60)}px` : 0,
                   backgroundColor: TEAL,

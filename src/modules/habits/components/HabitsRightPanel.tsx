@@ -2,10 +2,10 @@
 
 import { useMemo } from "react";
 import { useHeatmapData } from "../hooks/useHabitStats";
-import { toDateStr, isExpectedOnDate } from "../utils";
+import { toDateStr, isExpectedOnDate, heatmapColor } from "../utils";
 import type { HabitWithStatus, HeatmapDay } from "../types";
 
-const ACCENT = "var(--color-accent-habits)";
+const ACCENT = "var(--color-accent-habits-vivid)";
 const DAYS_SHORT = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 const RING_R = 38;
 const RING_C = 2 * Math.PI * RING_R;
@@ -24,49 +24,32 @@ function getWeekDates(): string[] {
 
 // ─── Habit Streak ─────────────────────────────────────────────────────────────
 
-function HabitStreakCard({
-  habits,
+function ThisWeekCard({
   recentCompletions,
 }: {
-  habits: HabitWithStatus[];
   recentCompletions: { habit_id: string; completed_date: string }[];
 }) {
   const weekDates = useMemo(() => getWeekDates(), []);
   const todayStr = toDateStr(new Date());
-
-  const { maxCurrent, maxBest } = useMemo(() => {
-    if (habits.length === 0) return { maxCurrent: 0, maxBest: 0 };
-    return {
-      maxCurrent: Math.max(...habits.map((h) => h.current_streak)),
-      maxBest: Math.max(...habits.map((h) => h.best_streak)),
-    };
-  }, [habits]);
 
   const weekDots = useMemo(() => {
     const completionDates = new Set(recentCompletions.map((c) => c.completed_date));
     return weekDates.map((date, i) => ({
       label: DAYS_SHORT[i],
       active: date <= todayStr && completionDates.has(date),
-      future: date > todayStr,
+      today: date === todayStr,
     }));
   }, [weekDates, recentCompletions, todayStr]);
 
   return (
     <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-text-secondary">Habit Streak</h3>
-        <span className="text-xs text-text-tertiary">Best {maxBest}d</span>
-      </div>
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-3xl font-bold text-text-primary">{maxCurrent}</span>
-        <span className="text-sm" style={{ color: ACCENT }}>days</span>
-      </div>
+      <h3 className="text-xs font-semibold text-text-secondary">This Week</h3>
       <div className="flex items-center justify-between">
         {weekDots.map((dot, i) => (
-          <div key={i} className="flex flex-col items-center gap-1">
+          <div key={i} className="flex flex-col items-center gap-1.5">
             <span className="text-[10px] text-text-tertiary">{dot.label}</span>
             <div
-              className="w-2 h-2 rounded-full"
+              className={`h-2.5 w-2.5 rounded-full ${dot.today && !dot.active ? "ring-1 ring-border-strong" : ""}`}
               style={{ backgroundColor: dot.active ? ACCENT : "#27272a" }}
             />
           </div>
@@ -140,11 +123,7 @@ function ThisMonthCard({
 // ─── Compact Heatmap ─────────────────────────────────────────────────────────
 
 function getHeatmapCellColor(count: number): string {
-  if (count === 0) return "var(--color-surface-2)";
-  if (count === 1) return "#4c0d1f";
-  if (count === 2) return "#881337";
-  if (count <= 4) return "#be123c";
-  return ACCENT;
+  return heatmapColor(count);
 }
 
 type GridCell = { date: string; count: number } | null;
@@ -314,7 +293,7 @@ export function HabitsRightPanel({
 
   return (
     <div className="space-y-3">
-      <HabitStreakCard habits={habits} recentCompletions={recentCompletions} />
+      <ThisWeekCard recentCompletions={recentCompletions} />
       <ThisMonthCard habits={habits} recentCompletions={recentCompletions} />
       <CompactHeatmap />
     </div>
