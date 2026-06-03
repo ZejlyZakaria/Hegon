@@ -42,6 +42,9 @@ export async function GET(request: NextRequest) {
   searchParams.forEach((value, key) => {
     if (key !== "endpoint") params.set(key, value);
   });
+  // App is English-only — force EN on every TMDB call (kills the FR→EN flash
+  // and stops FR titles/overviews being stored or shown).
+  params.set("language", "en-US");
 
   const url = `${TMDB_BASE}/${endpoint}?${params.toString()}`;
 

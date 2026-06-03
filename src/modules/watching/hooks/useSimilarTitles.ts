@@ -6,7 +6,7 @@ import type { MediaType } from "../types";
 async function fetchSimilarTitles(tmdbId: number, type: MediaType): Promise<any[]> {
   const tmdbType = type === "film" ? "movie" : "tv";
   const res = await fetch(
-    `/api/tmdb?endpoint=${encodeURIComponent(`${tmdbType}/${tmdbId}/recommendations`)}&language=fr-FR`,
+    `/api/tmdb?endpoint=${encodeURIComponent(`${tmdbType}/${tmdbId}/recommendations`)}&language=en-US`,
   );
   if (!res.ok) throw new Error("Failed to fetch recommendations");
   const data = await res.json();

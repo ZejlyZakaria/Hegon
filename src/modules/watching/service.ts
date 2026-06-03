@@ -17,6 +17,65 @@ export interface GetMediaOptions {
   limit?: number;
 }
 
+// ── AddMediaModal helpers (extracted from the component — service-layer rule) ──
+
+export interface ExistingMediaEntry {
+  id: string;
+  favorite: boolean;
+  priority: number | null;
+  in_progress: boolean;
+  want_to_watch: boolean;
+  watched: boolean;
+  recently_watched: boolean;
+  user_rating: number | null;
+  notes: string | null;
+  current_season: number | null;
+  current_episode: number | null;
+}
+
+export async function getTakenPriorities(type: MediaType): Promise<number[]> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .schema("watching").from("media_items")
+    .select("priority")
+    .eq("user_id", user.id)
+    .eq("type", type)
+    .eq("favorite", true)
+    .not("priority", "is", null);
+  return (data ?? []).map((i: { priority: number }) => i.priority);
+}
+
+export async function getExistingMediaEntry(
+  type: MediaType,
+  tmdbId: number,
+): Promise<ExistingMediaEntry | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .schema("watching").from("media_items")
+    .select("id,favorite,priority,in_progress,want_to_watch,watched,recently_watched,user_rating,notes,current_season,current_episode")
+    .eq("user_id", user.id)
+    .eq("type", type)
+    .eq("tmdb_id", tmdbId)
+    .maybeSingle();
+  return (data as ExistingMediaEntry | null) ?? null;
+}
+
+export async function uploadCustomPoster(file: File): Promise<string | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const ext = file.name.split(".").pop();
+  const filePath = `${user.id}/posters/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("posters").upload(filePath, file);
+  if (error) return null;
+  const { data: urlData } = supabase.storage.from("posters").getPublicUrl(filePath);
+  return urlData.publicUrl;
+}
+
 export async function getMediaItems(
   userId: string,
   type: MediaType,
@@ -456,7 +515,7 @@ export async function searchMediaForList(userId: string, query: string): Promise
 
 export async function searchTmdbForList(query: string): Promise<TmdbListResult[]> {
   const res = await fetch(
-    `/api/tmdb?endpoint=search/multi&query=${encodeURIComponent(query)}&language=fr-FR&page=1`
+    `/api/tmdb?endpoint=search/multi&query=${encodeURIComponent(query)}&language=en-US&page=1`
   );
   if (!res.ok) return [];
   const data: { results?: any[] } = await res.json();

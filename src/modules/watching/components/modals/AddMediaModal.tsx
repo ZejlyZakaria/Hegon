@@ -18,7 +18,7 @@ import { useAddMedia } from "@/modules/watching/hooks/useAddMedia";
 import { RatingSlider } from "@/modules/watching/components/detail/MyTakeRecord";
 import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
-import { createClient } from "@/infrastructure/supabase/client";
+import { getTakenPriorities, getExistingMediaEntry, uploadCustomPoster } from "@/modules/watching/service";
 import type { TmdbModalResult } from "@/modules/watching/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -65,8 +65,6 @@ export default function AddMediaModal({
   listContext = "recentlyWatched",
   initialItem,
 }: AddMediaModalProps) {
-  const supabase = useMemo(() => createClient(), []);
-
   const [searchQuery, setSearchQuery]     = useState("");
   const [searchResults, setSearchResults] = useState<TmdbModalResult[]>([]);
   const [selectedItem, setSelectedItem]   = useState<TmdbModalResult | null>(null);
@@ -107,17 +105,8 @@ export default function AddMediaModal({
 
   const fetchTakenPriorities = useCallback(async () => {
     if (listContext !== "topTen") return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .schema("watching").from("media_items")
-      .select("priority")
-      .eq("user_id", user.id)
-      .eq("type", defaultType)
-      .eq("favorite", true)
-      .not("priority", "is", null);
-    if (data) setTakenPriorities(data.map((i: { priority: number }) => i.priority));
-  }, [listContext, defaultType, supabase]);
+    setTakenPriorities(await getTakenPriorities(defaultType));
+  }, [listContext, defaultType]);
 
   // ── Reset on close ─────────────────────────────────────────────────────────
 
@@ -213,13 +202,7 @@ export default function AddMediaModal({
       setSelectedItem(merged);
 
       // Check for existing entry
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: existing } = await supabase
-        .schema("watching").from("media_items")
-        .select("id,favorite,priority,in_progress,want_to_watch,watched,recently_watched,user_rating,notes,current_season,current_episode")
-        .eq("user_id", user.id).eq("type", defaultType).eq("tmdb_id", result.id)
-        .maybeSingle();
+      const existing = await getExistingMediaEntry(defaultType, result.id);
 
       if (!existing) { setConflict(null); return; }
 
@@ -357,15 +340,8 @@ export default function AddMediaModal({
     try {
       let finalPosterUrl = previewUrl;
       if (customPoster) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const filePath = `${user.id}/posters/${crypto.randomUUID()}.${customPoster.name.split(".").pop()}`;
-          const { error: uploadError } = await supabase.storage.from("posters").upload(filePath, customPoster);
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage.from("posters").getPublicUrl(filePath);
-            finalPosterUrl = urlData.publicUrl;
-          }
-        }
+        const url = await uploadCustomPoster(customPoster);
+        if (url) finalPosterUrl = url;
       }
 
       const watchedAt = listContext === "library"

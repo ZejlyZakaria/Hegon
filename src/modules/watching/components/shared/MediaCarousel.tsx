@@ -309,7 +309,7 @@ export function MediaCarousel({
             {title}
           </h3>
           {subtitle && (
-            <p className="mt-1 text-sm text-text-tertiary">{subtitle}</p>
+            <p className="mt-1 text-xs text-text-tertiary">{subtitle}</p>
           )}
         </div>
         <div className="flex items-center gap-2">
