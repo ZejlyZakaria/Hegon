@@ -19,12 +19,8 @@ import { RatingSlider } from "@/modules/watching/components/detail/MyTakeRecord"
 import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
 import { getTakenPriorities, getExistingMediaEntry, uploadCustomPoster } from "@/modules/watching/service";
-import type { TmdbModalResult } from "@/modules/watching/types";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type ListType = "topTen" | "inProgress" | "recentlyWatched" | "wantToWatch" | "library";
-type MediaType = "film" | "serie" | "anime";
+import { resolveTransition } from "@/modules/watching/lib/resolve-transition";
+import type { ListType, MediaType, TmdbModalResult } from "@/modules/watching/types";
 
 type AddMediaModalProps = {
   isOpen: boolean;
@@ -214,78 +210,12 @@ export default function AddMediaModal({
         setEpisodeInput(String(existing.current_episode ?? 1));
       }
 
-      const isInLibrary        = existing.watched && !existing.recently_watched && existing.priority == null;
-      const isInRecentlyWatched = existing.recently_watched;
-      const isInTopTen         = existing.priority != null;
-      const isInProgress       = existing.in_progress;
-      const isInWantToWatch    = existing.want_to_watch;
-
-      const existingLists: string[] = [];
-      if (isInTopTen)          existingLists.push("Top 10");
-      if (isInProgress)        existingLists.push("In Progress");
-      if (isInWantToWatch)     existingLists.push("Want to Watch");
-      if (isInRecentlyWatched) existingLists.push("Recently Watched");
-      if (isInLibrary)         existingLists.push("Library");
-
-      const isAlreadyInTarget =
-        (listContext === "library"         && isInLibrary)         ||
-        (listContext === "recentlyWatched" && isInRecentlyWatched) ||
-        (listContext === "topTen"          && isInTopTen)          ||
-        (listContext === "inProgress"      && isInProgress)        ||
-        (listContext === "wantToWatch"     && isInWantToWatch);
-
-      if (isAlreadyInTarget) {
-        const names: Record<ListType, string> = {
-          library: "Library", recentlyWatched: "Recently Watched",
-          topTen: "Top 10", inProgress: "In Progress", wantToWatch: "Want to Watch",
-        };
-        setConflict({ existingLists, canAdd: false, message: `This media is already in "${names[listContext]}".` });
-        return;
-      }
-
-      const ratingText = existing.user_rating ? ` (rated ${existing.user_rating}/10)` : "";
-      let contextualMessage = "";
-
-      if (listContext === "topTen") {
-        if (isInLibrary)         contextualMessage = `This media is in your Library${ratingText}. It will be added to your Top 10.`;
-        else if (isInWantToWatch) contextualMessage = `You're marking this as watched AND ranking it in your Top 10.`;
-        else if (isInProgress)   contextualMessage = `You finished this one! It will be ranked in your Top 10.`;
-        else if (isInRecentlyWatched) contextualMessage = `This recently watched media will be ranked in your Top 10.`;
-      } else if (listContext === "recentlyWatched") {
-        if (isInLibrary)         contextualMessage = `This media is in your Library${ratingText}. It will appear in Recently Watched.`;
-        else if (isInTopTen)     contextualMessage = `This Top 10 media will also appear in Recently Watched.`;
-        else if (isInProgress)   contextualMessage = `You finished this one! It will be added to Recently Watched.`;
-      } else if (listContext === "inProgress") {
-        if (isInLibrary)         contextualMessage = `This media is in your Library. It will be moved to In Progress.`;
-        else if (isInRecentlyWatched) contextualMessage = `This recently watched media will be marked In Progress — set where you are.`;
-        else if (isInTopTen)     contextualMessage = `This Top 10 media will be marked In Progress — set where you are.`;
-        else if (isInWantToWatch) contextualMessage = `You're starting this one — set which episode you're on.`;
-      }
-
-      if (contextualMessage) {
-        setConflict({ existingLists, canAdd: true, message: contextualMessage });
-        return;
-      }
-
-      if (listContext === "wantToWatch" && isInProgress) {
-        setConflict({ existingLists, canAdd: false, message: `This media is "In Progress". You can't move it to Want to Watch.` });
-        return;
-      }
-      if (listContext === "recentlyWatched" && isInWantToWatch) {
-        setConflict({ existingLists, canAdd: false, message: `Use the "Mark as watched" button from your Want to Watch list.` });
-        return;
-      }
-
-      const forbidden = [
-        listContext === "library" && (isInRecentlyWatched || isInTopTen || isInProgress),
-        listContext === "wantToWatch" && (isInLibrary || isInRecentlyWatched || isInTopTen),
-      ];
-      if (forbidden.some(Boolean)) {
-        setConflict({ existingLists, canAdd: false, message: `This transition is not allowed (currently in: ${existingLists.join(", ")}).` });
-        return;
-      }
-
-      setConflict(null);
+      const transition = resolveTransition(existing, listContext);
+      setConflict(
+        transition.message
+          ? { existingLists: transition.existingLists, canAdd: transition.allowed, message: transition.message }
+          : null,
+      );
     } catch {
       toast.error("Failed to fetch media details.");
     }

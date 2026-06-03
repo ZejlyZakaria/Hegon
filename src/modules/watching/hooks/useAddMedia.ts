@@ -8,14 +8,8 @@ import {
 } from "../service";
 import { createClient } from "@/infrastructure/supabase/client";
 import { toast } from "@/shared/utils/toast";
-import type { MediaType } from "../types";
-
-type ListType =
-  | "topTen"
-  | "inProgress"
-  | "recentlyWatched"
-  | "wantToWatch"
-  | "library";
+import { resolveTransition } from "../lib/resolve-transition";
+import type { ListType, MediaType } from "../types";
 
 interface AddMediaInput {
   selectedItem: any; // TMDB result
@@ -140,15 +134,19 @@ export function useAddMedia() {
 
       const existing = await getExistingMediaItem(userId, defaultType, selectedItem.id);
 
-      if (existing?.id) {
-        // BLOCK: in_progress → want_to_watch (can't go backwards)
-        if (listContext === "wantToWatch" && existing.in_progress) {
-          throw new Error('Ce média est "En cours". Cette transition n\'est pas autorisée.');
-        }
+      // Single source of truth for what's allowed and which write branch to run
+      // (shared with AddMediaModal's conflict banner via resolveTransition).
+      const transition = resolveTransition(existing, listContext);
+      if (!transition.allowed) {
+        const err = new Error(transition.message ?? "Transition not allowed.");
+        err.name = "TransitionError";
+        throw err;
+      }
 
+      switch (transition.action) {
         // in_progress: clear want_to_watch, preserve top10 fields
-        if (listContext === "inProgress") {
-          return updateMediaItem(existing.id, {
+        case "update:inProgress":
+          return updateMediaItem(existing!.id, {
             current_episode: currentEpisode,
             current_season: currentSeason,
             season_episodes:
@@ -161,41 +159,43 @@ export function useAddMedia() {
             watched: false,
             recently_watched: false,
             want_to_watch: false,
-            priority: existing.priority,
+            priority: existing!.priority,
           });
-        }
 
         // topTen: update top10 fields only, preserve in_progress state entirely
-        if (listContext === "topTen") {
-          return updateMediaItem(existing.id, {
+        case "update:topTen":
+          return updateMediaItem(existing!.id, {
             watched: true,
-            recently_watched: existing.recently_watched,
-            watched_at: existing.watched_at ?? new Date().toISOString(),
+            recently_watched: existing!.recently_watched,
+            watched_at: existing!.watched_at ?? new Date().toISOString(),
             favorite: true,
             priority,
             user_rating: userRating > 0 ? userRating : null,
             rating: selectedItem.vote_average,
             want_to_watch: false,
-            in_progress: existing.in_progress ?? false,
-            current_episode: existing.current_episode ?? null,
-            current_season: existing.current_season ?? null,
+            in_progress: existing!.in_progress ?? false,
+            current_episode: existing!.current_episode ?? null,
+            current_season: existing!.current_season ?? null,
           });
+
+        // recentlyWatched, library, wantToWatch onto an existing entry
+        case "update:merge": {
+          const updateData: Record<string, unknown> = { ...insertData };
+          if (existing!.priority != null) {
+            updateData.priority = existing!.priority;
+            updateData.favorite = true;
+          }
+          if (existing!.recently_watched) {
+            updateData.recently_watched = true;
+            updateData.watched_at = existing!.watched_at;
+          }
+          return updateMediaItem(existing!.id, updateData);
         }
 
-        // Other contexts (recentlyWatched, library, wantToWatch)
-        const updateData: Record<string, unknown> = { ...insertData };
-        if (existing.priority != null) {
-          updateData.priority = existing.priority;
-          updateData.favorite = true;
-        }
-        if (existing.recently_watched) {
-          updateData.recently_watched = true;
-          updateData.watched_at = existing.watched_at;
-        }
-        return updateMediaItem(existing.id, updateData);
+        // no existing entry → fresh insert
+        default:
+          return insertMediaItem(insertData);
       }
-
-      return insertMediaItem(insertData);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all });
@@ -210,9 +210,9 @@ export function useAddMedia() {
       }
     },
     onError: (error: Error) => {
-      const msg = error.message.includes("transition")
+      const msg = error.name === "TransitionError"
         ? error.message
-        : "Impossible d'ajouter ce média. Réessaie.";
+        : "Couldn't add this media. Please try again.";
       toast.error(msg);
     },
   });

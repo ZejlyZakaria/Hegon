@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import * as HabitService from "../service";
 import { HABIT_KEYS } from "./query-keys";
 import { GOAL_KEYS, LINKED_HABIT_KEYS } from "@/modules/goals/hooks/query-keys";
@@ -6,13 +6,17 @@ import { toast } from "@/shared/utils/toast";
 import {
   getTodayStr,
   getYesterdayStr,
-  getDaysAgoStr,
   isExpectedOnDate,
   isWithinAnyPause,
   calcStreaks,
+  streakWindowDays,
   type PausePeriod,
 } from "../utils";
-import type { Habit, HabitWithStatus, CompleteHabitInput } from "../types";
+import type { Habit, HabitWithStatus, HabitCompletion, CompleteHabitInput } from "../types";
+
+// Streaks scan the full completion history (sized by streakWindowDays), not a
+// rolling window — otherwise any run longer than the window is silently capped.
+const STREAK_FROM = "2000-01-01";
 
 function isExpectedToday(habit: Habit): boolean {
   return isExpectedOnDate(habit, getTodayStr());
@@ -23,7 +27,6 @@ function isExpectedToday(habit: Habit): boolean {
 export function useHabitsToday() {
   const today     = getTodayStr();
   const yesterday = getYesterdayStr();
-  const from90    = getDaysAgoStr(89);
 
   const habitsQuery = useQuery({
     queryKey: HABIT_KEYS.lists(),
@@ -49,16 +52,16 @@ export function useHabitsToday() {
   });
 
   const recentQuery = useQuery({
-    queryKey: HABIT_KEYS.completionsRange('all', from90, today),
-    queryFn:  () => HabitService.getCompletionsForHabits(habitIds, from90, today),
+    queryKey: HABIT_KEYS.completionsRange('all', STREAK_FROM, today),
+    queryFn:  () => HabitService.getCompletionsForHabits(habitIds, STREAK_FROM, today),
     enabled:  habitIds.length > 0,
     staleTime: 1000 * 60 * 5,
   });
 
   // skips/pauses degrade gracefully before the migration is applied (retry: false)
   const skipsQuery = useQuery({
-    queryKey: HABIT_KEYS.skips(`all:${from90}:${today}`),
-    queryFn:  () => HabitService.getSkipsForHabits(habitIds, from90, today),
+    queryKey: HABIT_KEYS.skips(`all:${today}`),
+    queryFn:  () => HabitService.getSkipsForHabits(habitIds, STREAK_FROM, today),
     enabled:  habitIds.length > 0,
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -73,8 +76,8 @@ export function useHabitsToday() {
   });
 
   const freezesQuery = useQuery({
-    queryKey: HABIT_KEYS.freezes(`all:${from90}:${today}`),
-    queryFn:  () => HabitService.getFreezesForHabits(habitIds, from90, today),
+    queryKey: HABIT_KEYS.freezes(`all:${today}`),
+    queryFn:  () => HabitService.getFreezesForHabits(habitIds, STREAK_FROM, today),
     enabled:  habitIds.length > 0,
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -111,6 +114,13 @@ export function useHabitsToday() {
   );
   const recentCompletions = recentQuery.data ?? [];
 
+  // Scan back only as far as completions actually exist (honest, bounded).
+  const earliestCompletion = recentCompletions.reduce(
+    (min, c) => (c.completed_date < min ? c.completed_date : min),
+    today,
+  );
+  const windowDays = streakWindowDays(earliestCompletion, today);
+
   const buildStatus = (h: Habit): HabitWithStatus => {
     const skipSet = skipsByHabit.get(h.id) ?? new Set<string>();
     const freezeSet = freezesByHabit.get(h.id) ?? new Set<string>();
@@ -122,6 +132,7 @@ export function useHabitsToday() {
     const { current, best } = calcStreaks(h.id, recentCompletions, h, {
       skipped: neutral,
       pauses: pausePeriods,
+      windowDays,
     });
     return {
       ...h,
@@ -172,28 +183,66 @@ export function useHabitsToday() {
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
+type RangeRow = { habit_id: string; completed_date: string };
+
+// Cross-module: if a habit is linked to a goal, refresh goal detail + linked habits.
+function refreshLinkedGoal(queryClient: QueryClient, habitId: string) {
+  const habits = queryClient.getQueryData<Habit[]>(HABIT_KEYS.lists());
+  const habit  = habits?.find((h) => h.id === habitId);
+  if (habit?.goal_id) {
+    queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(habit.goal_id) });
+    queryClient.invalidateQueries({ queryKey: LINKED_HABIT_KEYS.byGoal(habit.goal_id) });
+  }
+}
+
 export function useCompleteHabit() {
   const queryClient = useQueryClient();
   const today  = getTodayStr();
-  const from90 = getDaysAgoStr(89);
 
   return useMutation({
     mutationFn: (input: CompleteHabitInput) => HabitService.completeHabit(input),
-    onSuccess: (_, input) => {
-      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.today(today) });
-      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.completionsRange('all', from90, today) });
-      queryClient.invalidateQueries({ queryKey: [...HABIT_KEYS.all, 'heatmap'] });
+    // Optimistic: tick the checkbox and bump the streak instantly; roll back on error.
+    onMutate: async (input) => {
+      const dayKey   = HABIT_KEYS.today(input.completed_date);
+      const rangeKey = HABIT_KEYS.completionsRange('all', STREAK_FROM, today);
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: dayKey }),
+        queryClient.cancelQueries({ queryKey: rangeKey }),
+      ]);
+      const prevDay   = queryClient.getQueryData<HabitCompletion[]>(dayKey);
+      const prevRange = queryClient.getQueryData<RangeRow[]>(rangeKey);
 
-      // Cross-module: if this habit is linked to a goal, refresh goal detail + linked habits
-      const habits = queryClient.getQueryData<Habit[]>(HABIT_KEYS.lists());
-      const habit  = habits?.find((h) => h.id === input.habit_id);
-      if (habit?.goal_id) {
-        queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(habit.goal_id) });
-        queryClient.invalidateQueries({ queryKey: LINKED_HABIT_KEYS.byGoal(habit.goal_id) });
-      }
+      queryClient.setQueryData<HabitCompletion[]>(dayKey, (old) =>
+        old && !old.some((c) => c.habit_id === input.habit_id)
+          ? [...old, {
+              id:             `optimistic-${input.habit_id}-${input.completed_date}`,
+              habit_id:       input.habit_id,
+              completed_date: input.completed_date,
+              note:           input.note ?? null,
+              created_at:     new Date().toISOString(),
+            }]
+          : old,
+      );
+      queryClient.setQueryData<RangeRow[]>(rangeKey, (old) =>
+        old && !old.some((c) => c.habit_id === input.habit_id && c.completed_date === input.completed_date)
+          ? [...old, { habit_id: input.habit_id, completed_date: input.completed_date }]
+          : old,
+      );
+
+      return { prevDay, prevRange, dayKey, rangeKey };
     },
-    onError: () => {
+    onError: (_err, _input, ctx) => {
+      if (ctx) {
+        queryClient.setQueryData(ctx.dayKey, ctx.prevDay);
+        queryClient.setQueryData(ctx.rangeKey, ctx.prevRange);
+      }
       toast.error("Failed to complete habit.");
+    },
+    onSuccess: (_, input) => refreshLinkedGoal(queryClient, input.habit_id),
+    onSettled: (_d, _e, input) => {
+      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.today(input.completed_date) });
+      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.completionsRange('all', STREAK_FROM, today) });
+      queryClient.invalidateQueries({ queryKey: [...HABIT_KEYS.all, 'heatmap'] });
     },
   });
 }
@@ -201,26 +250,42 @@ export function useCompleteHabit() {
 export function useUncompleteHabit() {
   const queryClient = useQueryClient();
   const today  = getTodayStr();
-  const from90 = getDaysAgoStr(89);
 
   return useMutation({
     mutationFn: ({ habitId, date }: { habitId: string; date: string }) =>
       HabitService.uncompleteHabit(habitId, date),
-    onSuccess: (_, { habitId }) => {
-      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.today(today) });
-      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.completionsRange('all', from90, today) });
-      queryClient.invalidateQueries({ queryKey: [...HABIT_KEYS.all, 'heatmap'] });
+    // Optimistic: untick + drop the streak day instantly; roll back on error.
+    onMutate: async ({ habitId, date }) => {
+      const dayKey   = HABIT_KEYS.today(date);
+      const rangeKey = HABIT_KEYS.completionsRange('all', STREAK_FROM, today);
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: dayKey }),
+        queryClient.cancelQueries({ queryKey: rangeKey }),
+      ]);
+      const prevDay   = queryClient.getQueryData<HabitCompletion[]>(dayKey);
+      const prevRange = queryClient.getQueryData<RangeRow[]>(rangeKey);
 
-      // Cross-module: if this habit is linked to a goal, refresh goal detail + linked habits
-      const habits = queryClient.getQueryData<Habit[]>(HABIT_KEYS.lists());
-      const habit  = habits?.find((h) => h.id === habitId);
-      if (habit?.goal_id) {
-        queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(habit.goal_id) });
-        queryClient.invalidateQueries({ queryKey: LINKED_HABIT_KEYS.byGoal(habit.goal_id) });
-      }
+      queryClient.setQueryData<HabitCompletion[]>(dayKey, (old) =>
+        old ? old.filter((c) => c.habit_id !== habitId) : old,
+      );
+      queryClient.setQueryData<RangeRow[]>(rangeKey, (old) =>
+        old ? old.filter((c) => !(c.habit_id === habitId && c.completed_date === date)) : old,
+      );
+
+      return { prevDay, prevRange, dayKey, rangeKey };
     },
-    onError: () => {
+    onError: (_err, _vars, ctx) => {
+      if (ctx) {
+        queryClient.setQueryData(ctx.dayKey, ctx.prevDay);
+        queryClient.setQueryData(ctx.rangeKey, ctx.prevRange);
+      }
       toast.error("Failed to undo completion.");
+    },
+    onSuccess: (_, { habitId }) => refreshLinkedGoal(queryClient, habitId),
+    onSettled: (_d, _e, { date }) => {
+      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.today(date) });
+      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.completionsRange('all', STREAK_FROM, today) });
+      queryClient.invalidateQueries({ queryKey: [...HABIT_KEYS.all, 'heatmap'] });
     },
   });
 }

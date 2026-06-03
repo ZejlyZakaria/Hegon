@@ -84,6 +84,20 @@ export function isWithinAnyPause(date: string, pauses: PausePeriod[]): boolean {
   );
 }
 
+/** Hard cap on the streak scan so an ancient `created_at` can't blow up the loop. */
+export const MAX_STREAK_WINDOW = 366 * 6; // ~6 years
+
+/**
+ * Size the streak scan window to the actual data extent: number of whole days
+ * from `earliest` (YYYY-MM-DD) up to today, plus a small buffer, capped. Sizing
+ * to the data — not a fixed 90/365 — is what makes streaks honest: the scan must
+ * reach as far back as completions exist, no further.
+ */
+export function streakWindowDays(earliest: string, today: string = getTodayStr()): number {
+  const days = Math.floor((Date.parse(today) - Date.parse(earliest)) / 86_400_000);
+  return Math.min(Math.max(days, 0) + 2, MAX_STREAK_WINDOW);
+}
+
 /**
  * Streak engine for every frequency. A streak counts consecutive *scheduled*
  * days that were completed. Days that are not scheduled, are skipped, or fall

@@ -6,6 +6,14 @@ export type MediaType = "film" | "serie" | "anime";
 
 export type WatchStatus = "watching" | "completed" | "plan_to_watch" | "dropped" | "reference";
 
+/** The five "lists" a media item can be added to from AddMediaModal. */
+export type ListType =
+  | "topTen"
+  | "inProgress"
+  | "recentlyWatched"
+  | "wantToWatch"
+  | "library";
+
 export interface WatchingMedia {
   org_id: string;
   id: string;

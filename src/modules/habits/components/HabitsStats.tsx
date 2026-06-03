@@ -96,12 +96,12 @@ function ScoreHero({
   const trendColor = trend === null || trend === 0 ? "var(--color-text-tertiary)" : trend > 0 ? UP : "#f87171";
 
   return (
-    <div className="rounded-2xl bg-surface-3 p-5">
+    <div className="rounded-2xl bg-surface-1 p-5">
       <div className="flex items-center gap-6">
         {/* Ring */}
         <div className="relative h-32 w-32 shrink-0">
           <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r={R} fill="none" stroke="var(--color-surface-1)" strokeWidth="9" />
+            <circle cx="60" cy="60" r={R} fill="none" stroke="var(--color-surface-3)" strokeWidth="9" />
             <circle
               cx="60"
               cy="60"

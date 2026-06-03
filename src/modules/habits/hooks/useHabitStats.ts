@@ -6,12 +6,13 @@ import {
   getDaysAgoStr,
   isExpectedOnDate,
   calcStreak,
+  streakWindowDays,
 } from "../utils";
 import type { Habit, HabitStats, HeatmapDay } from "../types";
 
-function getLast90Days(): { from: string; to: string } {
-  return { from: getDaysAgoStr(89), to: toDateStr(new Date()) };
-}
+// All-time floor: streaks must scan the full history and "Total" must be a true
+// total, not a rolling 90-day count. See streakWindowDays().
+const STATS_FROM = "2000-01-01";
 
 function getLast6Months(): { from: string; to: string } {
   const to   = new Date();
@@ -28,11 +29,11 @@ export function useHabitStats(habit: Habit): {
   stats: HabitStats | null;
   isLoading: boolean;
 } {
-  const { from, to } = getLast90Days();
+  const today = toDateStr(new Date());
 
   const { data: completions, isLoading } = useQuery({
-    queryKey: HABIT_KEYS.completionsRange(habit.id, from, to),
-    queryFn:  () => HabitService.getHabitCompletionsRange(habit.id, from, to),
+    queryKey: HABIT_KEYS.completionsRange(habit.id, STATS_FROM, today),
+    queryFn:  () => HabitService.getHabitCompletionsRange(habit.id, STATS_FROM, today),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -60,7 +61,8 @@ export function useHabitStats(habit: Habit): {
     ? Math.min(Math.round((last30.length / expectedDays) * 100), 100)
     : 0;
 
-  const { current, best } = calcStreak(dates, habit);
+  const earliest = dates.reduce((min, d) => (d < min ? d : min), today);
+  const { current, best } = calcStreak(dates, habit, { windowDays: streakWindowDays(earliest, today) });
 
   return {
     stats: {

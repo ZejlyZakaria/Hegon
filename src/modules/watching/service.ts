@@ -240,7 +240,7 @@ export async function getExistingMediaItem(
   const { data } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("id, favorite, priority, recently_watched, watched_at, in_progress, want_to_watch, current_episode, current_season")
+    .select("id, favorite, priority, watched, recently_watched, watched_at, in_progress, want_to_watch, current_episode, current_season")
     .eq("user_id", userId)
     .eq("type", type)
     .eq("tmdb_id", tmdbId)
@@ -667,7 +667,7 @@ async function tmdbFetch<T>(endpoint: string, params: Record<string, string> = {
   if (isServer) {
     const key = process.env.TMDB_API_KEY;
     if (!key) throw new Error("TMDB_API_KEY not set");
-    const search = new URLSearchParams({ api_key: key, language: "fr-FR", ...params });
+    const search = new URLSearchParams({ api_key: key, language: "en-US", ...params });
     const res = await fetch(`${TMDB_BASE}/${endpoint}?${search.toString()}`, {
       next: { revalidate: 3600 },
     });
@@ -676,7 +676,7 @@ async function tmdbFetch<T>(endpoint: string, params: Record<string, string> = {
   }
 
   // client-side → proxy route
-  const search = new URLSearchParams({ endpoint, language: "fr-FR", ...params });
+  const search = new URLSearchParams({ endpoint, language: "en-US", ...params });
   const res = await fetch(`/api/tmdb?${search.toString()}`);
   if (!res.ok) throw new Error(`TMDB fetch failed: ${res.status}`);
   return res.json();
