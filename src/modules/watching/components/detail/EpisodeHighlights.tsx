@@ -66,8 +66,9 @@ export function EpisodeHighlights({ mediaItemId, tmdbId, userId, orgId, seasons,
             )}
           </p>
         </div>
+        {/* Pager — desktop only; mobile uses a horizontal scroll rail instead */}
         {totalPages > 1 && (
-          <div className="flex items-center gap-1.5">
+          <div className="hidden items-center gap-1.5 lg:flex">
             <span className="text-[10px] tabular-nums text-text-tertiary">{safePage + 1}/{totalPages}</span>
             <button
               type="button"
@@ -91,27 +92,48 @@ export function EpisodeHighlights({ mediaItemId, tmdbId, userId, orgId, seasons,
 
       {/* Skeleton */}
       {isLoading && (
-        <div className="grid grid-cols-4 gap-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="aspect-video animate-pulse rounded-xl bg-surface-1" />
-          ))}
-        </div>
+        <>
+          <div className="hidden grid-cols-4 gap-3 lg:grid">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="aspect-video animate-pulse rounded-xl bg-surface-1" />
+            ))}
+          </div>
+          <div className="flex gap-3 overflow-x-auto custom-scrollbar-hide lg:hidden">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="aspect-video w-[44%] shrink-0 animate-pulse rounded-xl bg-surface-1" />
+            ))}
+          </div>
+        </>
       )}
 
       {/* Cards */}
-      {!isLoading && visible.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
-          {visible.map((h) => (
-            <EpisodeCard
-              key={h.id}
-              highlight={h}
-              onRemove={() => {
-                removeHighlight.mutate(h.id);
-                if (safePage > 0 && visible.length === 1) setPage(safePage - 1);
-              }}
-            />
-          ))}
-        </div>
+      {!isLoading && highlights.length > 0 && (
+        <>
+          {/* Desktop: paginated grid */}
+          <div className="hidden grid-cols-4 gap-3 lg:grid">
+            {visible.map((h) => (
+              <EpisodeCard
+                key={h.id}
+                highlight={h}
+                onRemove={() => {
+                  removeHighlight.mutate(h.id);
+                  if (safePage > 0 && visible.length === 1) setPage(safePage - 1);
+                }}
+              />
+            ))}
+          </div>
+          {/* Mobile: horizontal scroll rail — all highlights, no pager */}
+          <div className="flex gap-3 overflow-x-auto custom-scrollbar-hide snap-x lg:hidden">
+            {highlights.map((h) => (
+              <div key={h.id} className="w-[44%] shrink-0 snap-start">
+                <EpisodeCard
+                  highlight={h}
+                  onRemove={() => removeHighlight.mutate(h.id)}
+                />
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Add form */}

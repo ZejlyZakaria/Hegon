@@ -117,8 +117,8 @@ export default function LibraryClient({ initialItems }: Props) {
     <div className="space-y-6">
       {/* header */}
       <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          {/* type chips */}
+        {/* ── Desktop: chips + search + sort + Add ── */}
+        <div className="hidden items-center gap-3 sm:flex">
           <div className="flex gap-2">
             {MEDIA_TYPES.map(({ value, label }) => (
               <button
@@ -137,9 +137,7 @@ export default function LibraryClient({ initialItems }: Props) {
             ))}
           </div>
 
-          {/* right controls */}
           <div className="flex items-center gap-2 ml-auto">
-            {/* search */}
             <SearchInput
               containerClassName="w-56"
               placeholder="Search..."
@@ -147,8 +145,6 @@ export default function LibraryClient({ initialItems }: Props) {
               onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
               onClear={() => { setSearch(""); setCurrentPage(1); }}
             />
-
-            {/* sort select */}
             <Select value={sortBy} onValueChange={v => { setSortBy(v as SortKey); setCurrentPage(1); }}>
               <SelectTrigger className="w-36 h-9 bg-surface-1 border-border-subtle text-text-secondary text-xs hover:border-border-default focus:ring-0 focus:ring-offset-0 transition-colors">
                 <SelectValue placeholder="Sort by..." />
@@ -161,8 +157,6 @@ export default function LibraryClient({ initialItems }: Props) {
                 ))}
               </SelectContent>
             </Select>
-
-            {/* add button */}
             <Button
               type="button"
               onClick={() => setModalOpen(true)}
@@ -172,6 +166,55 @@ export default function LibraryClient({ initialItems }: Props) {
               <Plus size={13} />
               Add
             </Button>
+          </div>
+        </div>
+
+        {/* ── Mobile: filter select + Add  /  search + sort ── */}
+        <div className="space-y-2 sm:hidden">
+          <div className="flex items-center gap-2">
+            {/* Width fixed to the widest option ("Animes") — avoids jitter on selection */}
+            <Select value={mediaType} onValueChange={(v) => { setMediaType(v as typeof mediaType); setCurrentPage(1); }}>
+              <SelectTrigger className="h-9 w-28 bg-surface-1 border-border-subtle text-text-secondary text-sm focus:ring-0 focus:ring-offset-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
+                {MEDIA_TYPES.map(({ value, label }) => (
+                  <SelectItem key={value} value={value} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              aria-label="Add to library"
+              className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg p-0 text-white"
+              style={{ backgroundColor: "var(--color-accent-watching)" }}
+            >
+              <Plus size={16} />
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <SearchInput
+              containerClassName="flex-1"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+              onClear={() => { setSearch(""); setCurrentPage(1); }}
+            />
+            <Select value={sortBy} onValueChange={v => { setSortBy(v as SortKey); setCurrentPage(1); }}>
+              <SelectTrigger className="h-9 w-32 shrink-0 bg-surface-1 border-border-subtle text-text-secondary text-xs focus:ring-0 focus:ring-offset-0">
+                <SelectValue placeholder="Sort by..." />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
+                {SORT_OPTIONS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

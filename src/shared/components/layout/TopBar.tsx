@@ -44,20 +44,28 @@ function getBreadcrumb(pathname: string): string[] | null {
   return null;
 }
 
-function Breadcrumb({ crumbs }: { crumbs: string[] | null }) {
+function Breadcrumb({ crumbs, hideLastOnMobile }: { crumbs: string[] | null; hideLastOnMobile?: boolean }) {
   if (!crumbs || crumbs.length === 0) return <div />;
+  const last = crumbs.length - 1;
 
   return (
-    <div className="flex items-center gap-1.5 text-xs">
+    <div className="flex min-w-0 items-center gap-1.5 text-xs">
       {crumbs.map((crumb, i) => (
-        <span key={i} className="flex items-center gap-1.5">
+        <span
+          key={i}
+          className={cn(
+            "flex min-w-0 items-center gap-1.5",
+            // On a detail page the (often long) media name is hidden on mobile to
+            // avoid pushing the topbar layout; kept on desktop.
+            hideLastOnMobile && i === last && "hidden sm:flex",
+          )}
+        >
           {i > 0 && <span className="text-text-tertiary text-xs">/</span>}
           <span
-            className={
-              i === crumbs.length - 1
-                ? "text-text-primary font-medium"
-                : "text-text-tertiary"
-            }
+            className={cn(
+              "truncate",
+              i === last ? "text-text-primary font-medium" : "text-text-tertiary",
+            )}
           >
             {crumb}
           </span>
@@ -275,7 +283,7 @@ export default function TopBar() {
         <div className="max-w-400 mx-auto px-4 sm:px-6 h-14 flex items-center justify-between w-full">
           <div className="flex min-w-0 items-center gap-1.5">
             <MobileNav />
-            <Breadcrumb crumbs={crumbs} />
+            <Breadcrumb crumbs={crumbs} hideLastOnMobile={!!watchingPageLabel} />
           </div>
 
           {/* Right: ⌘K + notifications + avatar */}

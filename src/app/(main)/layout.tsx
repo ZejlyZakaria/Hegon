@@ -39,7 +39,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   const { isDemo } = await resolveDemoContext(pathname);
 
   return (
-    <div className="flex h-screen bg-[#09090b] overflow-hidden custom-scrollbar">
+    <div className="flex h-dvh bg-[#09090b] overflow-hidden custom-scrollbar">
       <Dock />
       <div className="flex-1 flex flex-col overflow-hidden">
         <DemoBanner />
