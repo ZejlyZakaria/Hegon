@@ -6,16 +6,20 @@ import { motion } from "framer-motion";
 import SectionHeader from "@/shared/components/layout/SectionHeader";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 
+// Primary = content types (always inline); More = views (dropdown on mobile).
 const TABS = [
   { label: "Movies",   href: "/perso/watching/movies" },
   { label: "TV Shows", href: "/perso/watching/tv-shows" },
   { label: "Animes",   href: "/perso/watching/animes" },
+];
+
+const MORE_TABS = [
   { label: "Library",  href: "/perso/watching/library" },
   { label: "Lists",    href: "/perso/watching/lists" },
   { label: "Stats",    href: "/perso/watching/stats" },
 ];
 
-const TAB_HREFS = new Set(TABS.map((t) => t.href));
+const TAB_HREFS = new Set([...TABS, ...MORE_TABS].map((t) => t.href));
 
 export default function WatchingLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -33,6 +37,7 @@ export default function WatchingLayout({ children }: { children: React.ReactNode
         <SectionHeader
           accent="var(--color-accent-watching-vivid)"
           tabs={TABS}
+          moreTabs={MORE_TABS}
         />
       )}
       <motion.div

@@ -178,11 +178,11 @@ export default function LibraryClient({ initialItems }: Props) {
         {/* count — adapts to active filter */}
         <p className="text-xs text-text-tertiary">
           {mediaType === "all"
-            ? `${allItems.length} médias`
+            ? `${allItems.length} titles`
             : mediaType === "film"
             ? `${allItems.filter(i => i.type === "film").length} films`
             : mediaType === "serie"
-            ? `${allItems.filter(i => i.type === "serie").length} séries`
+            ? `${allItems.filter(i => i.type === "serie").length} series`
             : `${allItems.filter(i => i.type === "anime").length} animes`}
         </p>
       </div>

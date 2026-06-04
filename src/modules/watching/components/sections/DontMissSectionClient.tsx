@@ -26,9 +26,16 @@ export function DontMissSkeleton() {
         <div className="w-3.5 h-3.5 rounded-full bg-surface-2 animate-pulse" />
         <div className="w-20 h-3 rounded bg-surface-2 animate-pulse" />
       </div>
-      <div className="flex gap-3 h-60">
+      {/* Desktop: accordion shape */}
+      <div className="hidden h-60 gap-3 lg:flex">
         {[EXP, COL, COL, COL, COL, COL].map((f, i) => (
           <div key={i} className="rounded-2xl bg-surface-1 animate-pulse" style={{ flex: f }} />
+        ))}
+      </div>
+      {/* Mobile: poster rail */}
+      <div className="flex gap-3 lg:hidden">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="aspect-2/3 w-[42%] shrink-0 animate-pulse rounded-xl bg-surface-1" />
         ))}
       </div>
     </section>
@@ -199,6 +206,50 @@ function DontMissCard({
   );
 }
 
+// ─── mobile card (swipeable rail; the hover-accordion is desktop-only) ─────────
+
+function TrendingMobileCard({
+  item,
+  isTrending,
+  onAdd,
+}: {
+  item: any;
+  isTrending: boolean;
+  onAdd: () => void;
+}) {
+  const posterUrl = item.poster_path ? `${TMDB_W500}${item.poster_path}` : null;
+  const title  = item.title || item.name;
+  const rating = item.vote_average?.toFixed(1);
+
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      className="relative shrink-0 w-[42%] aspect-2/3 snap-start overflow-hidden rounded-xl bg-zinc-800 text-left"
+    >
+      {posterUrl && (
+        <Image src={posterUrl} alt={title} fill unoptimized sizes="128px" className="object-cover" />
+      )}
+      <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/10 to-transparent" />
+      {isTrending && (
+        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-accent-watching px-2 py-0.5 text-[9px] font-semibold text-white">
+          <TrendingUp size={9} />
+          Trending
+        </div>
+      )}
+      <div className="absolute inset-x-0 bottom-0 p-2">
+        <p className="truncate text-[11px] font-semibold text-white">{title}</p>
+        {rating && (
+          <div className="mt-0.5 flex items-center gap-1">
+            <Star size={9} className="fill-amber-400 text-amber-400" />
+            <span className="text-[10px] font-medium text-amber-400">{rating}</span>
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
 // ─── section ──────────────────────────────────────────────────────────────────
 
 export default function DontMissSectionClient({ config }: { config: WatchingConfig }) {
@@ -220,8 +271,21 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
         <h3 className="text-title text-text-primary">Trending</h3>
       </div>
 
+      {/* Mobile: swipeable poster rail (hover-accordion can't work on touch) */}
+      <div className="flex gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory lg:hidden">
+        {items.map((item, i) => (
+          <TrendingMobileCard
+            key={`m-${item.id}-${i}`}
+            item={item}
+            isTrending={i === 0}
+            onAdd={() => openModalWithItem("wantToWatch", item)}
+          />
+        ))}
+      </div>
+
+      {/* Desktop: hover-expand accordion */}
       <div
-        className="flex gap-3 h-60"
+        className="hidden lg:flex gap-3 h-60"
         onMouseLeave={() => setActiveIndex(0)}
       >
         {items.map((item, i) => (

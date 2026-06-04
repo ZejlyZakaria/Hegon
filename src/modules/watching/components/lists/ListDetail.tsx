@@ -209,7 +209,7 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
           className="flex shrink-0 items-center gap-1.5 rounded-lg bg-accent-watching px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
         >
           <Plus size={14} />
-          Add title
+          <span className="hidden sm:inline">Add title</span>
         </button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -580,8 +580,8 @@ function TableRow({
           {formatDate(item.added_at)}
         </div>
 
-        {/* Actions */}
-        <div className="flex w-14 shrink-0 items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        {/* Actions — always visible on touch, hover-reveal on desktop */}
+        <div className="flex w-14 shrink-0 items-center justify-end gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setNoteOpen((p) => !p); }}
@@ -682,7 +682,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
         </div>
       </div>
 
-      <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="absolute right-1 top-1 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setNoteOpen(!noteOpen); }}
@@ -840,25 +840,26 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
     <div className="flex flex-col">
 
       {/* ── Contextual topbar ── */}
-      <div className="flex items-center gap-3 border-b border-border-subtle bg-zinc-950 px-6 py-3">
+      <div className="flex items-center gap-2 border-b border-border-subtle bg-zinc-950 px-4 sm:px-6 py-3">
         <button
           type="button"
           onClick={onBack}
           className="flex shrink-0 items-center gap-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary"
         >
           <ArrowLeft size={14} />
-          Back to Lists
+          <span className="hidden sm:inline">Back to Lists</span>
+          <span className="sm:hidden">Back</span>
         </button>
 
-        <div className="flex-1" />
+        <div className="hidden flex-1 sm:block" />
 
-        <div className="relative">
+        <div className="relative min-w-0 flex-1 sm:flex-none sm:w-52">
           <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search in this list…"
-            className="w-52 rounded-lg border border-border-subtle bg-surface-1 py-1.5 pl-8 pr-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
+            className="w-full rounded-lg border border-border-subtle bg-surface-1 py-1.5 pl-8 pr-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
           />
         </div>
 
@@ -867,11 +868,11 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
       </div>
 
       {/* ── Hero ── */}
-      <div className="mx-6 my-4 overflow-hidden rounded-2xl bg-surface-1 p-4">
-        <div className="flex items-stretch gap-5 min-h-47.5">
+      <div className="mx-4 sm:mx-6 my-4 overflow-hidden rounded-2xl bg-surface-1 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-5 lg:min-h-47.5">
 
-          {/* Backdrop collage — fills full card height */}
-          <div className="relative w-80 shrink-0 self-stretch overflow-hidden rounded-xl ring-1 ring-white/20">
+          {/* Backdrop collage — full width on mobile, fills card height on desktop */}
+          <div className="relative w-full shrink-0 aspect-video overflow-hidden rounded-xl ring-1 ring-white/20 lg:aspect-auto lg:w-80 lg:self-stretch">
             <PosterHero thumbnails={heroThumbnails} emoji={list.emoji} />
           </div>
 
@@ -951,8 +952,8 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
             <p className="text-xs text-text-tertiary/50">{formatUpdated(list.updated_at)}</p>
           </div>
 
-          {/* Stats panel — 4 rows */}
-          <div className="shrink-0 w-64 overflow-hidden rounded-xl bg-surface-2 flex flex-col justify-around py-2">
+          {/* Stats panel — 2×2 on mobile, 4 rows on desktop */}
+          <div className="shrink-0 w-full overflow-hidden rounded-xl bg-surface-2 grid grid-cols-2 lg:flex lg:w-64 lg:flex-col lg:justify-around py-2">
             {[
               { value: rawItems.length,                                                        label: "Titles",      icon: <Film   size={14} className="text-white" /> },
               { value: watchedCount,                                                           label: "Watched",     icon: <Eye    size={14} className="text-white" /> },
@@ -971,8 +972,8 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
       </div>
 
       {/* ── Filter tabs + toolbar ── */}
-      <div className="flex items-center justify-between border-b border-border-subtle px-6">
-        <div className="flex">
+      <div className="flex flex-col gap-1 border-b border-border-subtle px-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0 sm:px-6">
+        <div className="flex overflow-x-auto custom-scrollbar-hide">
           {FILTER_TABS.filter((t) => t.key === "all" || t.count > 0).map((tab) => (
             <button
               key={tab.key}
@@ -1089,7 +1090,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
         )}
 
         {!isLoading && items.length > 0 && view === "grid" && (
-          <div className="grid grid-cols-5 gap-4 p-6 sm:grid-cols-8 lg:grid-cols-10">
+          <div className="grid grid-cols-3 gap-3 p-4 sm:grid-cols-5 sm:gap-4 sm:p-6 md:grid-cols-8 lg:grid-cols-10">
             {items.map((item, idx) => (
               <GridItem
                 key={item.list_item_id}

@@ -40,9 +40,16 @@ function ForYouSkeleton() {
       <div className="mb-3 flex items-center justify-between">
         <div className="h-5 w-24 rounded bg-surface-2 animate-pulse" />
       </div>
-      <div className="flex gap-4">
+      {/* Desktop: backdrop row */}
+      <div className="hidden gap-4 lg:flex">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex-1 aspect-video rounded-xl bg-surface-1 animate-pulse" />
+        ))}
+      </div>
+      {/* Mobile: poster rail */}
+      <div className="flex gap-3 lg:hidden">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="aspect-2/3 w-[42%] shrink-0 rounded-xl bg-surface-1 animate-pulse" />
         ))}
       </div>
     </section>
@@ -56,18 +63,19 @@ function ForYouCard({
   onClick,
   onDismiss,
   priority,
+  orientation = "backdrop",
 }: {
   item: ForYouItem;
   onClick: () => void;
   onDismiss: () => void;
   priority?: boolean;
+  orientation?: "poster" | "backdrop";
 }) {
   const [imgLoaded, setImgLoaded] = useState(false);
-  const imgSrc = item.backdrop_path
-    ? `${TMDB_W500}${item.backdrop_path}`
-    : item.poster_path
-      ? `${TMDB_W500}${item.poster_path}`
-      : null;
+  const isPoster = orientation === "poster";
+  const imgSrc = isPoster
+    ? (item.poster_path ? `${TMDB_W500}${item.poster_path}` : item.backdrop_path ? `${TMDB_W500}${item.backdrop_path}` : null)
+    : (item.backdrop_path ? `${TMDB_W500}${item.backdrop_path}` : item.poster_path ? `${TMDB_W500}${item.poster_path}` : null);
   const rating = item.vote_average > 0 ? item.vote_average.toFixed(1) : null;
 
   return (
@@ -75,7 +83,7 @@ function ForYouCard({
       className="group relative w-full overflow-hidden rounded-xl border border-white/10 cursor-pointer"
       onClick={onClick}
     >
-      <div className="relative aspect-video bg-zinc-800">
+      <div className={cn("relative bg-zinc-800", isPoster ? "aspect-2/3" : "aspect-video")}>
         {imgSrc && (
           <Image
             src={imgSrc}
@@ -84,7 +92,7 @@ function ForYouCard({
             unoptimized
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             style={{ opacity: imgLoaded ? 1 : 0 }}
-            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"
+            sizes={isPoster ? "45vw" : "(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"}
             loading="eager"
             priority={priority}
             onLoad={() => setImgLoaded(true)}
@@ -217,7 +225,7 @@ export default function ForYouSectionClient({
             type="button"
             onClick={() => canGoPrev && scroll("prev")}
             className={cn(
-              "rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
+              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
               canGoPrev
                 ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
                 : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
@@ -229,7 +237,7 @@ export default function ForYouSectionClient({
             type="button"
             onClick={() => canGoNext && scroll("next")}
             className={cn(
-              "rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
+              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
               canGoNext
                 ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
                 : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
@@ -242,7 +250,7 @@ export default function ForYouSectionClient({
 
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory"
+        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {items.map((item, i) => (
@@ -252,6 +260,21 @@ export default function ForYouSectionClient({
             style={itemWidthStyle}
           >
             <ForYouCard
+              item={item}
+              onClick={() => handleAdd(item)}
+              onDismiss={() => handleDismiss(item.id)}
+              priority={i < 3}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Mobile: swipeable poster rail (~2.4 visible) */}
+      <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory">
+        {items.map((item, i) => (
+          <div key={item.id} className="w-[42%] shrink-0 snap-start">
+            <ForYouCard
+              orientation="poster"
               item={item}
               onClick={() => handleAdd(item)}
               onDismiss={() => handleDismiss(item.id)}

@@ -16,14 +16,21 @@ export function CarouselSkeleton({ cards = 4 }: { cards?: number }) {
           <Pulse className="h-5 w-40 bg-surface-2" />
           <Pulse className="h-3 w-24 bg-surface-2" />
         </div>
-        <div className="flex gap-2">
+        <div className="hidden lg:flex gap-2">
           <Pulse className="h-8 w-8 rounded-full bg-surface-2" />
           <Pulse className="h-8 w-8 rounded-full bg-surface-2" />
         </div>
       </div>
-      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${cards}, 1fr)` }}>
+      {/* Desktop: backdrop grid */}
+      <div className="hidden lg:grid gap-4" style={{ gridTemplateColumns: `repeat(${cards}, 1fr)` }}>
         {Array.from({ length: cards }).map((_, i) => (
           <div key={i} className="animate-pulse rounded-xl overflow-hidden bg-surface-2 aspect-video" />
+        ))}
+      </div>
+      {/* Mobile: poster rail (~2.4 visible) */}
+      <div className="flex gap-3 lg:hidden">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="w-[42%] shrink-0 animate-pulse rounded-xl overflow-hidden bg-surface-2 aspect-2/3" />
         ))}
       </div>
     </div>
@@ -45,8 +52,8 @@ export function LibrarySkeleton() {
             <Pulse className="h-9 w-16 rounded-md bg-surface-2" />
             <Pulse className="h-9 w-16 rounded-md bg-surface-2" />
           </div>
-          {/* right controls */}
-          <div className="flex items-center gap-2 ml-auto">
+          {/* right controls — hidden on mobile (would overflow) */}
+          <div className="ml-auto hidden items-center gap-2 sm:flex">
             <Pulse className="h-9 w-56 rounded-lg bg-surface-2" />
             <Pulse className="h-9 w-36 rounded-lg bg-surface-2" />
             <Pulse className="h-9 w-16 rounded-lg bg-surface-2" />

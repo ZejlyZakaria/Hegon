@@ -54,6 +54,7 @@ function MovieCard({
   showEpisodeBadge,
   showRankBadge,
   eagerLoad,
+  orientation = "backdrop",
 }: {
   item: WatchingMedia;
   onView: () => void;
@@ -61,8 +62,10 @@ function MovieCard({
   showEpisodeBadge?: boolean;
   showRankBadge?: boolean;
   eagerLoad?: boolean;
+  orientation?: "poster" | "backdrop";
 }) {
   const [imgLoaded, setImgLoaded] = useState(false);
+  const isPoster = orientation === "poster";
 
   return (
     <div
@@ -70,14 +73,16 @@ function MovieCard({
       onClick={onView}
     >
       {/* overflow-hidden only on the image container so the dropdown can escape */}
-      <div className="relative aspect-video overflow-hidden rounded-xl bg-zinc-800">
+      <div className={cn("relative overflow-hidden rounded-xl bg-zinc-800", isPoster ? "aspect-2/3" : "aspect-video")}>
         <Image
-          src={item.backdrop_url || item.poster_url || "/placeholder.svg"}
+          src={isPoster
+            ? (item.poster_url || item.backdrop_url || "/placeholder.svg")
+            : (item.backdrop_url || item.poster_url || "/placeholder.svg")}
           alt={item.title}
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           style={{ opacity: imgLoaded ? 1 : 0 }}
-          sizes="(max-width: 768px) 100vw, 50vw"
+          sizes={isPoster ? "45vw" : "(max-width: 768px) 100vw, 50vw"}
           unoptimized
           loading="eager"
           priority={eagerLoad}
@@ -151,7 +156,7 @@ function MovieCard({
             )}
 
           <div className="mt-1.5 flex items-center gap-2 min-w-0">
-            {item.tags?.slice(0, 2).map((tag) => (
+            {!isPoster && item.tags?.slice(0, 2).map((tag) => (
               <span
                 key={tag}
                 className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white max-w-20 truncate"
@@ -323,7 +328,7 @@ export function MediaCarousel({
             type="button"
             onClick={() => canGoPrev && scroll("prev")}
             className={cn(
-              "rounded-full border border-white/10 p-2 transition-[background-color,opacity,transform] duration-150 ease-out active:scale-[0.97]",
+              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,opacity,transform] duration-150 ease-out active:scale-[0.97]",
               canGoPrev
                 ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
                 : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
@@ -336,7 +341,7 @@ export function MediaCarousel({
             type="button"
             onClick={() => canGoNext && scroll("next")}
             className={cn(
-              "rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
+              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
               canGoNext
                 ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
                 : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
@@ -361,7 +366,7 @@ export function MediaCarousel({
 
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory"
+        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {sortedItems.map((item, i) => (
@@ -384,6 +389,30 @@ export function MediaCarousel({
               showEpisodeBadge={showEpisodeBadge}
               showRankBadge={showRankBadge}
               eagerLoad={i < cardsPerView}
+            />
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Mobile: swipeable poster rail (~2.4 visible) — posters read better than
+          wide backdrops on a phone. Native swipe; no arrows. */}
+      <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory">
+        {sortedItems.map((item, i) => (
+          <motion.div
+            key={item.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: i * 0.04, ease: [0.23, 1, 0.32, 1] }}
+            className="w-[42%] shrink-0 snap-start"
+          >
+            <MovieCard
+              orientation="poster"
+              item={item}
+              onView={() => router.push(`/perso/watching/${item.id}`)}
+              onDelete={onDelete}
+              showEpisodeBadge={showEpisodeBadge}
+              showRankBadge={showRankBadge}
+              eagerLoad={i < 3}
             />
           </motion.div>
         ))}

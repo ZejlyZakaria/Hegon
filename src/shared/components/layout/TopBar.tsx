@@ -12,6 +12,7 @@ import { cn } from "@/shared/utils/utils";
 import { useOrgStore } from "@/shared/stores/useOrgStore";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { MobileNav } from "@/shared/components/navigation/MobileNav";
 
 // ─── breadcrumb ───────────────────────────────────────────────────────────────
 
@@ -271,8 +272,11 @@ export default function TopBar() {
       />
 
       <header className="shrink-0 bg-[#09090b]">
-        <div className="max-w-400 mx-auto px-6 h-14 flex items-center justify-between w-full">
-          <Breadcrumb crumbs={crumbs} />
+        <div className="max-w-400 mx-auto px-4 sm:px-6 h-14 flex items-center justify-between w-full">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <MobileNav />
+            <Breadcrumb crumbs={crumbs} />
+          </div>
 
           {/* Right: ⌘K + notifications + avatar */}
           <div className="flex items-center gap-2">

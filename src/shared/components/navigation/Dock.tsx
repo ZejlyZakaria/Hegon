@@ -34,7 +34,7 @@ interface NavItem {
   comingSoon?: boolean;
 }
 
-const NAV_GROUPS: NavItem[][] = [
+export const NAV_GROUPS: NavItem[][] = [
   [
     { key: "goals",   label: "Goals",   href: "/life/goals",   icon: <Target size={18} />,    accent: "#22c55e" },
     { key: "habits",  label: "Habits",  href: "/life/habits",  icon: <Repeat2 size={18} />,   accent: "#8b5cf6" },
@@ -194,7 +194,7 @@ export default function Dock() {
 
   return (
     <aside
-      className="relative flex flex-col h-screen shrink-0 overflow-hidden border-r border-white/5"
+      className="relative hidden lg:flex flex-col h-screen shrink-0 overflow-hidden border-r border-white/5"
       style={{ width: DOCK_W, background: "#0e0e10" }}
     >
       {/* ambient glow — top radial */}
