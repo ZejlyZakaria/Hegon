@@ -314,12 +314,33 @@ function AuthPageInner() {
   // Fallback: if Supabase redirected to the site URL instead of /auth/finalize
   // (allowlist miss), the browser client auto-detects the session from URL params.
   // We listen and forward to finalize so the middleware timing issue is avoided.
+  //
+  // TRACEABILITY — /auth is normally "never touch"; this guard was hardened on
+  // explicit request to kill an infinite redirect loop. The CLIENT session
+  // (cookie) can be STALE while the SERVER rejects it — e.g. a global sign-out
+  // from another device/account revokes the refresh token server-side, but the
+  // cookie still decodes locally. Blindly trusting it caused:
+  //   /auth → finalize → /dashboard → (middleware getUser() == null) → /auth → …∞
+  // with no escape on mobile (can't clear cookies). Fix: before redirecting,
+  // VALIDATE against the server with getUser(); if the session is dead, purge it
+  // locally (scope: "local") and stay on the login form. Deferred via
+  // setTimeout(0) to avoid the documented onAuthStateChange deadlock when calling
+  // other auth methods inside the callback.
   useEffect(() => {
     if (urlError) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session && !hasRedirected.current) {
-        hasRedirected.current = true;
-        router.replace(`/auth/finalize?target=${encodeURIComponent(next)}`);
+        setTimeout(async () => {
+          if (hasRedirected.current) return;
+          const { data, error } = await supabase.auth.getUser();
+          if (error || !data.user) {
+            // Stale/revoked session — clear the dead cookies and stay on /auth.
+            await supabase.auth.signOut({ scope: "local" });
+            return;
+          }
+          hasRedirected.current = true;
+          router.replace(`/auth/finalize?target=${encodeURIComponent(next)}`);
+        }, 0);
       }
     });
     return () => subscription.unsubscribe();

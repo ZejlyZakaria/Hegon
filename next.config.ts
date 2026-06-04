@@ -24,6 +24,17 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   transpilePackages: ["swiper"],
 
+  experimental: {
+    // Re-enable the client Router Cache for visited segments. Next's default is
+    // `dynamic: 0`, which re-fetches the RSC payload on every navigation — so the
+    // route-level loading.tsx flashes even when switching back to an already-loaded
+    // tab (Movies/TV/Animes). Caching visited segments for a few minutes makes
+    // those switches instant; the first visit per route still shows the skeleton.
+    // Trade-off: server-rendered content (e.g. sports pages) can be up to `dynamic`
+    // seconds stale on back-navigation, which is fine for this app.
+    staleTimes: { dynamic: 180, static: 300 },
+  },
+
   async headers() {
     return [
       {
