@@ -294,7 +294,7 @@ function MonthlyBarChart({
         <span className="text-[11px] text-text-tertiary">{year}</span>
       </div>
 
-      <div className="flex flex-1 items-stretch gap-1.5">
+      <div className="flex min-h-44 flex-1 items-stretch gap-1.5">
         {monthTotals.map((total, m) => {
           const isFuture = m > currentMonth;
           const isBest = m === bestMonth && total > 0;
