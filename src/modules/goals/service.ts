@@ -61,11 +61,22 @@ export async function createGoal(input: CreateGoalInput): Promise<Goal> {
       priority:      input.priority ?? "medium",
       progress_mode: input.progress_mode ?? "manual",
       target_date:   input.target_date ?? null,
+      metric_module: input.metric_module ?? null,
+      metric_key:    input.metric_key ?? null,
+      metric_period: input.metric_period ?? null,
+      metric_year:   input.metric_year ?? null,
+      metric_target: input.metric_target ?? null,
     })
     .select()
     .single();
 
   if (error) throw error;
+
+  // Metric goals: compute initial progress now so the goal isn't shown at 0%.
+  if (data.progress_mode === "auto" && data.metric_module) {
+    const p = await recalculateProgress(data.id);
+    if (p >= 0) data.progress = p;
+  }
   return data;
 }
 
@@ -83,6 +94,12 @@ export async function updateGoal(input: UpdateGoalInput): Promise<Goal> {
     .single();
 
   if (error) throw error;
+
+  // Keep metric-goal progress in sync after an edit (e.g. target changed).
+  if (data.progress_mode === "auto" && data.metric_module) {
+    const p = await recalculateProgress(data.id);
+    if (p >= 0) data.progress = p;
+  }
   return data;
 }
 
@@ -104,6 +121,144 @@ export async function recalculateProgress(goalId: string): Promise<number> {
   const { data, error } = await supabase.rpc("recalc_goal_progress", { p_goal_id: goalId });
   if (error) throw error;
   return (data as number) ?? -1;
+}
+
+export interface WatchingGoalDelta {
+  id:            string;
+  title:         string;
+  metric_key:    string | null;
+  metric_target: number | null;
+  oldProgress:   number;
+  newProgress:   number;
+}
+
+// Recompute every active watching-metric goal for the current org (called after a
+// watch change in the Watching module). Returns per-goal deltas so the caller can
+// surface a "+1" ripple.
+export async function recalcWatchingGoals(): Promise<WatchingGoalDelta[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data: goals, error } = await supabase
+    .from("goals")
+    .select("id, title, progress, metric_key, metric_target")
+    .eq("org_id", orgId)
+    .eq("status", "active")
+    .eq("progress_mode", "auto")
+    .eq("metric_module", "watching");
+  if (error) throw error;
+  if (!goals || goals.length === 0) return [];
+
+  type GoalRow = { id: string; title: string; progress: number; metric_key: string | null; metric_target: number | null };
+  return Promise.all(
+    (goals as GoalRow[]).map(async (g) => {
+      const next = await recalculateProgress(g.id);
+      // Auto-complete the moment the target is reached (manual control still available).
+      if (g.progress < 100 && next >= 100) {
+        await supabase
+          .from("goals")
+          .update({ status: "completed", completed_at: new Date().toISOString() })
+          .eq("id", g.id);
+      }
+      return {
+        id:            g.id,
+        title:         g.title,
+        metric_key:    g.metric_key,
+        metric_target: g.metric_target,
+        oldProgress:   g.progress,
+        newProgress:   next >= 0 ? next : g.progress,
+      };
+    }),
+  );
+}
+
+// Active watching-metric goals for the current org — used by the Watching module
+// to show "Contributing to" on a film + a goals strip in Stats.
+export interface WatchingGoalSummary {
+  id:            string;
+  title:         string;
+  progress:      number;
+  metric_key:    string | null;
+  metric_period: string | null;
+  metric_year:   number | null;
+  metric_target: number | null;
+}
+
+export async function getActiveWatchingGoals(): Promise<WatchingGoalSummary[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { data, error } = await supabase
+    .from("goals")
+    .select("id, title, progress, metric_key, metric_period, metric_year, metric_target")
+    .eq("org_id", orgId)
+    .eq("status", "active")
+    .eq("progress_mode", "auto")
+    .eq("metric_module", "watching")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as WatchingGoalSummary[];
+}
+
+// =====================================================
+// CONTRIBUTING MEDIA (watching-metric goals)
+// =====================================================
+
+export interface ContributingMedia {
+  id:         string;
+  title:      string;
+  poster_url: string | null;
+  watched_at: string | null;
+}
+
+const METRIC_KEY_TO_TYPE: Record<string, string> = {
+  films:  "film",
+  series: "serie",
+  anime:  "anime",
+};
+
+// Collapse a binged saga ("Harry Potter and the…", "LOTR: …") to one entry so the
+// poster wall shows DIFFERENT films, not 7 of the same. Heuristic on the title.
+function franchiseKey(title: string): string {
+  return title.toLowerCase().split(/:| and the | part | chapter | vol\.? | volume /i)[0].trim();
+}
+
+// The watched media that fill a watching-metric goal — exact count + the most
+// recent ones for display. One query (PostgREST `count` ignores the limit).
+export async function getGoalContributingMedia(
+  goal: Goal,
+): Promise<{ count: number; items: ContributingMedia[] }> {
+  if (goal.metric_module !== "watching") return { count: 0, items: [] };
+  const supabase = createClient();
+
+  const type = goal.metric_key ? METRIC_KEY_TO_TYPE[goal.metric_key] : undefined;
+  const yearStart = goal.metric_period === "year" && goal.metric_year ? `${goal.metric_year}-01-01` : null;
+  const yearEnd   = goal.metric_period === "year" && goal.metric_year ? `${goal.metric_year + 1}-01-01` : null;
+
+  let q = supabase
+    .schema("watching")
+    .from("media_items")
+    .select("id, title, poster_url, watched_at", { count: "exact" })
+    .eq("user_id", goal.user_id)
+    .eq("watched", true)
+    .neq("is_reference", true);
+
+  if (type) q = q.eq("type", type);
+  if (yearStart && yearEnd) q = q.gte("watched_at", yearStart).lt("watched_at", yearEnd);
+
+  // Over-fetch, then keep one per franchise (most recent) up to 18 distinct.
+  const { data, count, error } = await q.order("watched_at", { ascending: false }).limit(60);
+  if (error) throw error;
+
+  const seen = new Set<string>();
+  const items: ContributingMedia[] = [];
+  for (const m of (data ?? []) as ContributingMedia[]) {
+    const key = franchiseKey(m.title);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(m);
+    if (items.length >= 18) break;
+  }
+  return { count: count ?? 0, items };
 }
 
 // =====================================================

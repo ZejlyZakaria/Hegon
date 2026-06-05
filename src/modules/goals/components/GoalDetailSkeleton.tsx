@@ -108,14 +108,14 @@ export function MilestoneListSkeleton() {
 
 export function GoalDetailSkeleton() {
   return (
-    <div className="w-full px-6 py-4">
+    <div className="w-full px-4 py-4 sm:px-6">
       {/* Back button */}
       <div className="mb-4 flex items-center gap-2">
         <SkeletonBlock className="h-3.5 w-3.5" />
         <SkeletonBlock className="h-3.5 w-10" />
       </div>
 
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col gap-4 lg:flex-row lg:gap-6 lg:items-start">
         {/* Left column */}
         <div className="flex-1 min-w-0 space-y-4">
           <HeroCardSkeleton />
@@ -124,7 +124,7 @@ export function GoalDetailSkeleton() {
         </div>
 
         {/* Right column */}
-        <div className="w-72 shrink-0 space-y-3">
+        <div className="w-full space-y-3 lg:w-72 lg:shrink-0">
           <ProgressControlSkeleton />
           <GoalInfoSkeleton />
           <StatsSkeleton />

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
 import { updateMediaItem } from "../service";
+import { syncWatchingGoals } from "../lib/sync-goals";
 import { toast } from "@/shared/utils/toast";
 import { DemoReadOnlyError, handledDemoError } from "../lib/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
@@ -71,6 +72,8 @@ export function useUpdateMedia() {
           queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.wantToWatch(type) });
           queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.topRated(type) });
         }
+        // Cross-module: a watched-status change can move a Goal's progress.
+        void syncWatchingGoals(queryClient);
       }
     },
   });

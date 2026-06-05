@@ -126,7 +126,7 @@ export function GoalsPage() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <div className="space-y-4 px-6 py-6">
+      <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-6">
         {isLoading ? (
           <GoalsLoadingSkeleton />
         ) : (
@@ -155,19 +155,19 @@ export function GoalsPage() {
             {goals.length === 0 ? (
               <GoalsEmptyState onCreateClick={() => setIsModalOpen(true)} />
             ) : (
-              <div className="flex gap-6 items-start">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
                 {/* Left — tabs + list */}
                 <div className="flex-1 min-w-0">
                   {/* Tabs row */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center overflow-x-auto custom-scrollbar-hide">
                       {STATUS_TABS.map(({ value, label }) => (
                         <button
                           key={value}
                           type="button"
                           onClick={() => setStatus(value)}
                           className={cn(
-                            "relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
+                            "relative shrink-0 whitespace-nowrap px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
                             status === value ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary"
                           )}
                         >
@@ -182,39 +182,41 @@ export function GoalsPage() {
                       ))}
                     </div>
 
-                    <div className="flex items-center gap-2 pb-1">
-                      <div className="relative flex items-center">
+                    <div className="flex flex-col gap-2 pb-1 sm:flex-row sm:items-center">
+                      <div className="relative flex w-full items-center sm:w-48">
                         <Search size={14} className="absolute left-2.5 text-text-tertiary pointer-events-none" />
                         <Input
                           variant="tasks"
                           placeholder="Search goals…"
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
-                          className="h-9 py-0 pl-8 w-48 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
+                          className="h-9 w-full py-0 pl-8 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
                         />
                       </div>
 
-                      <Select value={category} onValueChange={(v) => setCategory(v as GoalCategory | "all")}>
-                        <SelectTrigger variant="tasks" className="h-7 w-36 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent variant="tasks">
-                          {CATEGORIES.map((c) => (
-                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-2">
+                        <Select value={category} onValueChange={(v) => setCategory(v as GoalCategory | "all")}>
+                          <SelectTrigger variant="tasks" className="h-9 flex-1 text-xs sm:h-7 sm:w-36 sm:flex-none">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent variant="tasks">
+                            {CATEGORIES.map((c) => (
+                              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
 
-                      <Select value={sort} onValueChange={(v) => setSort(v as GoalSort)}>
-                        <SelectTrigger variant="tasks" className="h-7 w-28 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent variant="tasks">
-                          {SORTS.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <Select value={sort} onValueChange={(v) => setSort(v as GoalSort)}>
+                          <SelectTrigger variant="tasks" className="h-9 flex-1 text-xs sm:h-7 sm:w-28 sm:flex-none">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent variant="tasks">
+                            {SORTS.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
 
@@ -243,7 +245,7 @@ export function GoalsPage() {
                 </div>
 
                 {/* Right panel */}
-                <div className="w-72 shrink-0">
+                <div className="w-full lg:w-72 lg:shrink-0">
                   <GoalRightPanel
                     goals={goals}
                     activeCategory={activeCategory}

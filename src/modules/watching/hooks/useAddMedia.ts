@@ -7,6 +7,7 @@ import {
   updateMediaItem,
 } from "../service";
 import { createClient } from "@/infrastructure/supabase/client";
+import { syncWatchingGoals } from "../lib/sync-goals";
 import { toast } from "@/shared/utils/toast";
 import { resolveTransition } from "../lib/resolve-transition";
 import { DemoReadOnlyError, handledDemoError } from "../lib/demo-guard";
@@ -212,6 +213,9 @@ export function useAddMedia() {
       if (updated.length < 3) {
         queryClient.invalidateQueries({ queryKey: forYouKey });
       }
+
+      // Cross-module: adding a watched title can move a Goal's progress.
+      void syncWatchingGoals(queryClient);
     },
     onError: (error: Error) => {
       if (handledDemoError(error)) return;

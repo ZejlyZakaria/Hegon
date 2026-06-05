@@ -4,15 +4,19 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Clapperboard, Network } from "lucide-react";
+import { Clapperboard } from "lucide-react";
 import { useMediaItem } from "@/modules/watching/hooks/useMediaItem";
 import { useUpdateMedia } from "@/modules/watching/hooks/useUpdateMedia";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import { useSimilarTitles } from "@/modules/watching/hooks/useSimilarTitles";
 import { useMediaCredits } from "@/modules/watching/hooks/useMediaCredits";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
+import { useWatchingGoals } from "@/modules/watching/hooks/useWatchingGoals";
+import { goalWouldCount, goalCount } from "@/modules/watching/lib/goal-contribution";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
+import { ContributingToGoals } from "@/modules/watching/components/detail/ContributingToGoals";
+import { GoalRippleToast } from "@/modules/watching/components/detail/GoalRippleToast";
 import { MediaHero } from "@/modules/watching/components/detail/MediaHero";
 import { MyTakeRecord } from "@/modules/watching/components/detail/MyTakeRecord";
 import { EpisodeHighlights } from "@/modules/watching/components/detail/EpisodeHighlights";
@@ -72,6 +76,7 @@ export default function MediaDetailPage() {
   const { data: similar = [] } = useSimilarTitles(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
   const { data: credits } = useMediaCredits(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
   const { data: ownedIds = [] } = useOwnedTmdbIds(media?.user_id ?? "", media?.type ?? "film", !!media);
+  const { data: watchingGoals = [] } = useWatchingGoals();
   const isDemo = useIsDemo();
   const [addItem, setAddItem] = useState<any | null>(null);
 
@@ -141,7 +146,18 @@ export default function MediaDetailPage() {
         is_reference: false,
         watched_at: new Date().toISOString(),
       });
-      toast("Marked as watched.");
+      // Ripple: the felt moment — animate the count + bar for each goal it moves.
+      const matched = watchingGoals.filter((g) => goalWouldCount(g, media.type));
+      if (matched.length > 0) {
+        matched.forEach((g) => {
+          const old = goalCount(g);
+          toast.custom(() => (
+            <GoalRippleToast title={g.title} oldCount={old} newCount={old + 1} target={g.metric_target ?? 0} />
+          ));
+        });
+      } else {
+        toast("Marked as watched.");
+      }
     } catch {
       toast.error("Failed to update.");
     }
@@ -282,14 +298,8 @@ export default function MediaDetailPage() {
             </div>
           )}
 
-          {/* Connections — placeholder */}
-          <div className="rounded-2xl bg-surface-1 p-4">
-            <h2 className="mb-3 text-sm font-semibold text-text-primary">Connections</h2>
-            <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-default px-4 py-3.5">
-              <Network size={14} className="shrink-0 text-text-tertiary/50" />
-              <p className="text-xs text-text-tertiary">Goals & Books — coming soon</p>
-            </div>
-          </div>
+          {/* Connections — goals this title contributes to */}
+          <ContributingToGoals media={media} />
 
         </div>
 

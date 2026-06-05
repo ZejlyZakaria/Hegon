@@ -211,22 +211,12 @@ export function MediaCarousel({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(5);
   const [localItems, setLocalItems] = useState(items);
-  const prevLengthRef = useRef(items.length);
+  const prevFirstIdRef = useRef<string | null>(null);
   const gap = 16;
 
   useEffect(() => {
     setLocalItems(items);
   }, [items]);
-
-  useEffect(() => {
-    if (localItems.length > prevLengthRef.current) {
-      setCurrentIndex(0);
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollTo({ left: 0, behavior: "smooth" });
-      });
-    }
-    prevLengthRef.current = localItems.length;
-  }, [localItems.length]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -246,6 +236,20 @@ export function MediaCarousel({
       [...localItems].sort((a, b) => (a.priority || 999) - (b.priority || 999)),
     [localItems],
   );
+
+  // Auto-scroll back to the start when a NEW item takes position 1 — covers both
+  // adding (Want to Watch) AND a freshly-watched title entering Recently Watched
+  // (which is length-capped, so a length check wouldn't fire).
+  useEffect(() => {
+    const firstId = sortedItems[0]?.id ?? null;
+    if (prevFirstIdRef.current !== null && firstId && firstId !== prevFirstIdRef.current) {
+      setCurrentIndex(0);
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ left: 0, behavior: "smooth" });
+      });
+    }
+    prevFirstIdRef.current = firstId;
+  }, [sortedItems]);
 
   const totalElements = sortedItems.length;
   const canGoPrev = currentIndex > 0;

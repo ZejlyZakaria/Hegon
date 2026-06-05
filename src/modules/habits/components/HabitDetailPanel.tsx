@@ -146,7 +146,7 @@ export function HabitDetailPanel({ onDelete }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+            className="fixed inset-0 z-40 bg-black/50"
             onClick={closePanel}
           />
           <motion.div
@@ -154,7 +154,7 @@ export function HabitDetailPanel({ onDelete }: Props) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={SPRING}
-            className="fixed right-0 top-0 z-50 flex h-full w-108 flex-col border-l border-border-strong bg-surface-2"
+            className="fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-border-strong bg-surface-2 sm:w-108"
           >
             <PanelBody
               key={habit.id}

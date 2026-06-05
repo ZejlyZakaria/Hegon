@@ -8,6 +8,12 @@ export type GoalCategory = 'personal' | 'work' | 'health' | 'learning' | 'financ
 export type ProgressMode = 'manual' | 'auto';
 export type MilestoneStatus = 'pending' | 'completed';
 
+// Cross-module metric — when set, an `auto` goal derives its progress from an
+// activity count (e.g. films watched) instead of linked tasks. Module-agnostic
+// so Books/Sport plug in later.
+export type MetricModule = 'watching';
+export type MetricPeriod = 'year' | 'all_time';
+
 export interface Goal {
   id:            string;
   org_id:        string;
@@ -19,6 +25,11 @@ export interface Goal {
   priority:      GoalPriority;
   progress:      number;
   progress_mode: ProgressMode;
+  metric_module: MetricModule | null;
+  metric_key:    string | null;   // WatchingMetricKey for the watching module
+  metric_period: MetricPeriod | null;
+  metric_year:   number | null;
+  metric_target: number | null;
   target_date:   string | null;
   started_at:    string;
   completed_at:  string | null;
@@ -83,7 +94,15 @@ export interface AvailableHabit {
 // API INPUT TYPES
 // =====================================================
 
-export interface CreateGoalInput {
+export interface GoalMetricInput {
+  metric_module?: MetricModule | null;
+  metric_key?:    string | null;
+  metric_period?: MetricPeriod | null;
+  metric_year?:   number | null;
+  metric_target?: number | null;
+}
+
+export interface CreateGoalInput extends GoalMetricInput {
   title:         string;
   description?:  string | null;
   category?:     GoalCategory | null;
@@ -92,7 +111,7 @@ export interface CreateGoalInput {
   target_date?:  string | null;
 }
 
-export interface UpdateGoalInput {
+export interface UpdateGoalInput extends GoalMetricInput {
   id: string;
   title?:         string;
   description?:   string | null;

@@ -116,6 +116,22 @@ export async function getMediaItems(
   return (data as WatchingMedia[]) ?? [];
 }
 
+// All watched media (any type) for the Library, newest first. Backs a live client
+// query so the Library reflects cross-surface adds/deletes (independent of the
+// Next.js RSC router cache).
+export async function getAllWatchedMedia(userId: string): Promise<WatchingMedia[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_items")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("watched", true)
+    .order("watched_at", { ascending: false });
+  if (error) throw error;
+  return (data as WatchingMedia[]) ?? [];
+}
+
 // tmdb_ids the user already owns for a given type — used to hide already-owned
 // recommendations from "More Like This" (mirrors the For You exclusion).
 export async function getOwnedTmdbIds(userId: string, type: MediaType): Promise<number[]> {

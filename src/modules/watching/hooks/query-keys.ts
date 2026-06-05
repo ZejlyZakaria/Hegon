@@ -35,6 +35,10 @@ export const WATCHING_KEYS = {
   // tmdb_ids the user owns (per type) — for hiding owned recommendations
   ownedIds: (type: MediaType) =>
     [...WATCHING_KEYS.all, type, 'owned-ids'] as const,
+
+  // Library — all watched media (live client query)
+  library: (userId: string) =>
+    [...WATCHING_KEYS.all, 'library', userId] as const,
     
   // Detail
   detail: (id: string) =>

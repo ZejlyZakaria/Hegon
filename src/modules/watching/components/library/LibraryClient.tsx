@@ -7,6 +7,7 @@ import LibraryGrid from "@/modules/watching/components/library/LibraryGrid";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { useDebounce } from "@/shared/hooks/useDebounce";
+import { useLibrary } from "@/modules/watching/hooks/useLibrary";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfirmModal";
 import { toast } from "@/shared/utils/toast";
@@ -42,11 +43,14 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 interface Props {
   initialItems: WatchingMedia[];
+  userId: string;
 }
 
-export default function LibraryClient({ initialItems }: Props) {
+export default function LibraryClient({ initialItems, userId }: Props) {
   const deleteMediaMutation = useDeleteMedia();
-  const [allItems, setAllItems]       = useState(initialItems);
+  // Live query (seeded by the server list) → cross-surface adds/deletes reflect
+  // immediately, no stale RSC cache.
+  const { data: allItems = [] } = useLibrary(userId, initialItems);
   const [mediaType, setMediaType]     = useState<MediaType>("all");
   const [sortBy, setSortBy]           = useState<SortKey>("added");
   const [search, setSearch]           = useState("");
@@ -98,20 +102,15 @@ export default function LibraryClient({ initialItems }: Props) {
   const handleDelete = useCallback(async (itemId: string) => {
     try {
       await deleteMediaMutation.mutateAsync(itemId);
-      setAllItems(prev => prev.filter(i => i.id !== itemId));
+      // The mutation invalidates WATCHING_KEYS.all → the library query refetches.
       toast.success("Removed from library.");
     } catch {
       toast.error("Failed to delete item.");
     }
   }, [deleteMediaMutation]);
 
-  const handleAdded = useCallback((item?: WatchingMedia) => {
-    if (!item) return;
-    setAllItems(prev => {
-      if (prev.find(i => i.id === item.id)) return prev;
-      return [item, ...prev];
-    });
-  }, []);
+  // Add mutation invalidates the watching cache → the library query refetches.
+  const handleAdded = useCallback(() => {}, []);
 
   return (
     <div className="space-y-6">

@@ -80,7 +80,7 @@ export function GoalCard({ goal }: Props) {
         isCompleted && "opacity-50"
       )}
     >
-      <div className="grid grid-cols-[minmax(0,1fr)_240px_120px_44px] items-center gap-4">
+      <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_240px_120px_44px] lg:items-center lg:gap-4">
         <div className="min-w-0">
           {goal.category && categoryStyle && (
             <div className="mb-2 flex items-center gap-1.5">
@@ -121,7 +121,7 @@ export function GoalCard({ goal }: Props) {
           )}
         </div>
 
-        <div className="w-60">
+        <div className="w-full lg:w-60">
           <div className="mb-1 flex items-center justify-between">
             <span
               className="text-sm font-bold leading-none"
@@ -154,9 +154,9 @@ export function GoalCard({ goal }: Props) {
           )}
         </div>
 
-        <div className="w-30">
+        <div className="flex items-center justify-between gap-3 lg:block lg:w-30">
           {goal.target_date && (
-            <div className="mb-1 flex flex-col gap-1">
+            <div className="flex flex-col gap-1 lg:mb-1">
               <span
                 className="text-xs"
                 style={{ color: overdue ? "#f87171" : "var(--color-text-tertiary)" }}
@@ -182,7 +182,7 @@ export function GoalCard({ goal }: Props) {
           </div>
         </div>
 
-        <div className="flex w-11 justify-end">
+        <div className="hidden w-11 justify-end lg:flex">
           <ArrowRight
             size={16}
             style={{ color: "var(--color-text-tertiary)" }}

@@ -100,9 +100,8 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
 
         <div className="flex items-center justify-center">
           <svg
-            width={240}
-            height={240}
             viewBox="0 0 240 240"
+            className="h-auto w-full max-w-60"
             onMouseLeave={() => setTooltip(null)}
           >
             {/* Grid rings */}

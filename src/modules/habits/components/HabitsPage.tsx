@@ -99,7 +99,7 @@ export function HabitsPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="flex min-h-full flex-col px-6 py-6 space-y-4"
+      className="flex min-h-full flex-col px-4 py-4 sm:px-6 sm:py-6 space-y-4"
     >
       {allHabits.length === 0 && (
         <>
@@ -111,7 +111,7 @@ export function HabitsPage() {
       {allHabits.length > 0 && (
         <>
           {/* Main layout: persistent rail + center + right panel */}
-          <div className="flex gap-6 items-start">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
             {/* Persistent showcase rail — watch + today ring + streak + unlock */}
             <div className="hidden lg:block w-56 shrink-0 sticky top-0 self-start">
               <HabitsShowcase
@@ -124,8 +124,8 @@ export function HabitsPage() {
             {/* Center column */}
             <div className="flex-1 min-w-0">
               {/* Tabs + search + new habit */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <div className="flex items-center overflow-x-auto custom-scrollbar-hide">
                   {([
                     { value: "today",    label: "Today" },
                     { value: "calendar", label: "Calendar" },
@@ -136,7 +136,7 @@ export function HabitsPage() {
                       type="button"
                       onClick={() => setTab(value)}
                       className={cn(
-                        "relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
+                        "relative shrink-0 whitespace-nowrap px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
                         tab === value
                           ? "text-text-primary"
                           : "text-text-tertiary hover:text-text-secondary",
@@ -162,7 +162,7 @@ export function HabitsPage() {
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       onClear={() => setSearch("")}
-                      containerClassName="w-48"
+                      containerClassName="flex-1 sm:w-48"
                     />
                     <Button
                       onClick={() => setModalOpen(true)}
@@ -253,7 +253,7 @@ export function HabitsPage() {
 
             {/* Right panel — Today tab only */}
             {tab === "today" && (
-              <div className="w-72 shrink-0">
+              <div className="w-full lg:w-72 lg:shrink-0">
                 <HabitsRightPanel
                   habits={todayHabits}
                   recentCompletions={recentCompletions}

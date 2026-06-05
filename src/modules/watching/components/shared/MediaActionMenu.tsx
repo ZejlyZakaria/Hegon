@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { useUpdateMedia } from "../../hooks/useUpdateMedia";
+import { useWatchingGoals } from "../../hooks/useWatchingGoals";
+import { goalWouldCount, goalCount } from "../../lib/goal-contribution";
+import { GoalRippleToast } from "../detail/GoalRippleToast";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 import type { WatchingMedia } from "../../types";
@@ -67,6 +70,7 @@ export function MediaActionMenu({
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const updateMedia = useUpdateMedia();
+  const { data: watchingGoals = [] } = useWatchingGoals();
   const isDemo = useIsDemo();
 
   // Close on outside click
@@ -124,7 +128,18 @@ export function MediaActionMenu({
         is_reference: false,
         watched_at: new Date().toISOString(),
       });
-      toast("Marked as watched.");
+      // Ripple: the animated cross-module moment, same as the detail page.
+      const matched = watchingGoals.filter((g) => goalWouldCount(g, item.type));
+      if (matched.length > 0) {
+        matched.forEach((g) => {
+          const old = goalCount(g);
+          toast.custom(() => (
+            <GoalRippleToast title={g.title} oldCount={old} newCount={old + 1} target={g.metric_target ?? 0} />
+          ));
+        });
+      } else {
+        toast("Marked as watched.");
+      }
     });
 
   const handleStartWatching = () =>

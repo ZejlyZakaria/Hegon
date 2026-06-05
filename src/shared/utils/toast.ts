@@ -35,5 +35,6 @@ toast.error = (message: string, options?: ExternalToast) =>
 
 toast.promise = sonnerToast.promise;
 toast.dismiss = sonnerToast.dismiss;
+toast.custom = sonnerToast.custom;
 
 export { toast };

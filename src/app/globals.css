@@ -350,6 +350,30 @@
   display: none;
 }
 
+/* ── Thin scrollbar = app default (pages + panels). `scrollbar-width` is NOT
+      inherited, so it goes on * — it only renders where something actually
+      scrolls. Webkit thinness is already handled by ::-webkit-scrollbar above. ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+/* Modals keep a clearly-visible scrollbar (not the ultra-thin app default). */
+[data-slot="dialog-content"],
+[data-slot="dialog-content"] * {
+  scrollbar-width: auto;
+}
+[data-slot="dialog-content"]::-webkit-scrollbar,
+[data-slot="dialog-content"] *::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+[data-slot="dialog-content"]::-webkit-scrollbar-thumb,
+[data-slot="dialog-content"] *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    SWIPER
    Keep minimal and neutral. Avoid breaking HEGON accent rules globally.

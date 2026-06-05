@@ -44,13 +44,13 @@ function HabitRowSkeleton() {
 
 function TabsRowSkeleton() {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-1">
         <SkeletonBlock className="h-3.5 w-12 mx-3" />
         <SkeletonBlock className="h-3.5 w-20 mx-3" />
         <SkeletonBlock className="h-3.5 w-20 mx-3" />
       </div>
-      <SkeletonBlock className="h-9 w-48 rounded-md" />
+      <SkeletonBlock className="h-9 w-full rounded-md sm:w-48" />
     </div>
   );
 }
@@ -125,9 +125,9 @@ export function StatsSkeleton() {
 
 export function HabitsLoadingSkeleton() {
   return (
-    <div className="px-6 py-6">
+    <div className="px-4 py-4 sm:px-6 sm:py-6">
       {/* Main layout: rail + center + right */}
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {/* Rail */}
         <div className="hidden lg:block w-56 shrink-0">
           <RailSkeleton />
@@ -144,7 +144,7 @@ export function HabitsLoadingSkeleton() {
         </div>
 
         {/* Right column */}
-        <div className="w-72 shrink-0 space-y-3">
+        <div className="w-full lg:w-72 lg:shrink-0 space-y-3">
           <ThisWeekSkeleton />
           <ThisMonthSkeleton />
           <CompactHeatmapSkeleton />

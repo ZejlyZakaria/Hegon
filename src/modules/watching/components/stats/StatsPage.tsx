@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Clock, Film, Tv, Star, Sparkles, Heart, BarChart2,
-  Trophy, Play, CalendarDays, Download,
+  Trophy, Play, CalendarDays, Download, Target,
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
@@ -15,6 +15,8 @@ import { displayTitle } from "../../utils";
 import { WrappedModal } from "./WrappedModal";
 import { computeStats, computeAchievements } from "./computeStats";
 import { AchievementGrid } from "@/shared/components/achievements/AchievementGrid";
+import { useWatchingGoals } from "../../hooks/useWatchingGoals";
+import { goalCount, goalMetricLabel } from "../../lib/goal-contribution";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
@@ -22,6 +24,7 @@ import {
 // ── Token helpers ─────────────────────────────────────────────────────────────
 
 const TEAL = "var(--color-accent-watching-vivid)";
+const GOALS_ACCENT = "var(--color-accent-goals)";
 
 const DONUT_COLORS = {
   film:  "var(--color-accent-watching-vivid)",
@@ -445,8 +448,10 @@ function StatsSkeleton() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function StatsPage() {
+  const router = useRouter();
   const userId = useCurrentUserId();
   const { data: rawData = [], isLoading } = useWatchingStatsData(userId ?? "");
+  const { data: watchingGoals = [] } = useWatchingGoals();
   const [selectedYear, setSelectedYear] = useState<number | null>(() => new Date().getFullYear());
   const [wrappedOpen, setWrappedOpen] = useState(false);
 
@@ -589,6 +594,44 @@ export function StatsPage() {
           icon={<Star size={14} className="fill-amber-400 text-amber-400" />}
         />
       </div>
+
+      {/* Your Watching Goals — cross-module connection surfaced in Stats */}
+      {watchingGoals.length > 0 && (
+        <div>
+          <div className="mb-3 flex items-center gap-2">
+            <Target size={14} style={{ color: GOALS_ACCENT }} />
+            <h2 className="text-sm font-semibold text-text-primary">Your Watching Goals</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {watchingGoals.map((g) => {
+              const target = g.metric_target ?? 0;
+              const count  = goalCount(g);
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => router.push(`/life/goals/${g.id}`)}
+                  className="group cursor-pointer rounded-xl border border-border-subtle bg-surface-1 p-4 text-left transition-colors hover:border-border-default"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-medium text-text-primary">{g.title}</p>
+                    <span className="shrink-0 text-xs tabular-nums text-text-tertiary">{count}/{target}</span>
+                  </div>
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-500"
+                      style={{ width: `${g.progress}%`, backgroundColor: GOALS_ACCENT }}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-text-tertiary">
+                    {g.progress}% · {goalMetricLabel(g)} {g.metric_period === "year" ? `in ${g.metric_year}` : "all-time"}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Row 2 — charts */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">

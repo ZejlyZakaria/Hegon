@@ -20,7 +20,7 @@ export default async function LibraryPage() {
 
   return (
     <div className="p-6">
-      <LibraryClient initialItems={data ?? []} />
+      <LibraryClient initialItems={data ?? []} userId={user.id} />
     </div>
   );
 }

@@ -274,8 +274,15 @@ export default function AddMediaModal({
         if (url) finalPosterUrl = url;
       }
 
+      // No month picked → "watched now" for the current year (so it lands first in
+      // Recently Watched), else end-of-year for a back-dated year.
+      const now = new Date();
       const watchedAt = listContext === "library"
-        ? new Date(watchedYear, watchedMonth !== null ? watchedMonth - 1 : 0, 1).toISOString()
+        ? (watchedMonth !== null
+            ? new Date(watchedYear, watchedMonth - 1, 1).toISOString()
+            : watchedYear === now.getFullYear()
+              ? now.toISOString()
+              : new Date(watchedYear, 11, 31).toISOString())
         : null;
 
       const result = await addMediaMutation.mutateAsync({

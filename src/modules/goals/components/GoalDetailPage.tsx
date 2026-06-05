@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { ArrowLeft, MoreHorizontal, Unlink, Pencil, Trash2, Plus, Search, Folder } from "lucide-react";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
 import { StatusIcon } from "@/shared/components/icons/StatusIcon";
@@ -37,6 +38,7 @@ import {
   useAvailableTasksForGoal,
   useAvailableHabitsForGoal,
 } from "../hooks/useLinkedHabits";
+import { useGoalContributingMedia } from "../hooks/useGoalContributingMedia";
 import { MilestoneList } from "./MilestoneList";
 import { GoalModal } from "./GoalModal";
 import { DeleteGoalModal } from "./DeleteGoalModal";
@@ -69,6 +71,7 @@ export function GoalDetailPage({ id }: Props) {
   const { data: linkedHabits  = [] } = useLinkedHabits(id);
   const { data: availableTasks  = [] } = useAvailableTasksForGoal();
   const { data: availableHabits = [] } = useAvailableHabitsForGoal();
+  const { data: contributing } = useGoalContributingMedia(goal);
 
   useRealtimeGoals(id, linkedHabits.map((h) => h.id));
 
@@ -117,13 +120,53 @@ export function GoalDetailPage({ id }: Props) {
   if (isLoading || !goal) return <GoalDetailSkeleton />;
 
   const displayMode     = localMode ?? goal.progress_mode;
+  const isMetric        = !!goal.metric_module;
   const tasksTotal      = linkedTasks.length;
   const tasksCompleted  = linkedTasks.filter((t) => t.completed_at !== null).length;
   const autoProgress    = tasksTotal > 0 ? Math.round((tasksCompleted / tasksTotal) * 100) : 0;
   const displayProgress = displayMode === "auto"
-    ? autoProgress
+    ? (isMetric ? goal.progress : autoProgress)   // metric goals: trust the recalc'd value
     : (localProgress ?? goal.progress);
   const isOverdue       = goal.target_date && goal.status === "active" && new Date(goal.target_date) < new Date();
+
+  // Watching-metric display values
+  const metricTarget = goal.metric_target ?? 0;
+  const metricCount  = contributing?.count ?? 0;
+  const metricToGo   = Math.max(0, metricTarget - metricCount);
+  const metricLabel  =
+    goal.metric_key === "films"  ? "films"
+    : goal.metric_key === "series" ? "TV shows"
+    : goal.metric_key === "anime"  ? "animes"
+    : "titles";
+  const metricPeriodLabel = goal.metric_period === "year" ? `in ${goal.metric_year}` : "all-time";
+
+  // Pace / projection — turns the gallery into a goal dashboard ("am I on track?").
+  type Pace = { tone: "good" | "bad" | "neutral"; status: string | null; text: string };
+  const pace: Pace | null = (() => {
+    if (!isMetric) return null;
+    if (metricToGo === 0) return { tone: "good", status: "Reached 🎉", text: "" };
+
+    if (goal.metric_period === "year" && goal.metric_year) {
+      const now = new Date();
+      if (goal.metric_year !== now.getFullYear()) {
+        return { tone: "neutral", status: null,
+          text: goal.metric_year < now.getFullYear() ? "Year ended" : "Not started yet" };
+      }
+      const start = new Date(goal.metric_year, 0, 1).getTime();
+      const end   = new Date(goal.metric_year + 1, 0, 1).getTime();
+      const frac  = Math.min(1, Math.max(0, (now.getTime() - start) / (end - start)));
+      const projected = frac > 0 ? Math.round(metricCount / frac) : metricCount;
+      const monthsLeft = Math.max(0, (end - now.getTime()) / (30.44 * 86_400_000));
+      const perMonth  = monthsLeft > 0.1 ? Math.ceil(metricToGo / monthsLeft) : metricToGo;
+      const onTrack   = metricCount >= metricTarget * frac;
+      return {
+        tone: onTrack ? "good" : "bad",
+        status: onTrack ? "On track" : "Behind",
+        text: `~${projected} projected · ~${perMonth}/mo`,
+      };
+    }
+    return null; // all-time: no time-based forecast; Stats shows the numbers
+  })();
 
   async function handleProgressSave(value: number) {
     const clamped = Math.min(100, Math.max(0, value));
@@ -154,7 +197,7 @@ export function GoalDetailPage({ id }: Props) {
 
 
   return (
-    <div className="w-full  px-6 py-4">
+    <div className="w-full px-4 py-4 sm:px-6">
       {/* Back */}
       <motion.button
         type="button"
@@ -168,7 +211,7 @@ export function GoalDetailPage({ id }: Props) {
         Goals
       </motion.button>
 
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col gap-4 lg:flex-row lg:gap-6 lg:items-start">
         {/* ── LEFT COLUMN ── */}
         <div className="flex-1 min-w-0 space-y-3">
 
@@ -182,16 +225,14 @@ export function GoalDetailPage({ id }: Props) {
             <div className="relative p-3">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <h1 className="text-xl font-semibold text-text-primary leading-tight">{goal.title}</h1>
-                    {goal.category && (
-                      <span className="inline-flex items-center text-[10px] font-medium uppercase tracking-wider rounded border px-2 py-0.5 shrink-0 bg-green-500/10 text-green-400 border-green-500/20">
-                        {goal.category}
-                      </span>
-                    )}
-                  </div>
+                  {goal.category && (
+                    <span className="mb-1.5 inline-flex w-fit items-center rounded border border-green-500/20 bg-green-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-green-400">
+                      {goal.category}
+                    </span>
+                  )}
+                  <h1 className="text-xl font-semibold text-text-primary leading-tight">{goal.title}</h1>
                   {goal.description && (
-                    <p className="text-sm text-text-secondary">{goal.description}</p>
+                    <p className="mt-1 text-sm text-text-secondary">{goal.description}</p>
                   )}
                 </div>
 
@@ -239,8 +280,9 @@ export function GoalDetailPage({ id }: Props) {
                   />
                 </div>
                 <p className="mt-1.5 text-xs text-text-tertiary">
-                  {tasksCompleted}/{tasksTotal} tasks completed
-                  {displayMode === "auto" && " · auto"}
+                  {isMetric
+                    ? `${metricLabel} watched ${metricPeriodLabel}`
+                    : `${tasksCompleted}/${tasksTotal} tasks completed${displayMode === "auto" ? " · auto" : ""}`}
                 </p>
               </div>
             </div>
@@ -256,7 +298,8 @@ export function GoalDetailPage({ id }: Props) {
             <MilestoneList goalId={id} />
           </motion.div>
 
-          {/* Fueling this Goal */}
+          {/* Fueling this Goal — tasks/habits (non-metric goals only) */}
+          {!isMetric && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -491,11 +534,82 @@ export function GoalDetailPage({ id }: Props) {
               )}
             </div>
           </motion.div>
+          )}
+
+          {/* Counting toward this goal — watching-metric goals */}
+          {isMetric && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: 0.12 }}
+              className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4"
+            >
+              <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-tertiary">
+                Counting toward this goal
+              </h3>
+
+              {pace && (
+                <div className="mb-3 flex items-center gap-2 rounded-md bg-surface-2 px-3 py-2">
+                  {pace.status && (
+                    <span className={cn(
+                      "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                      pace.tone === "good" ? "bg-green-500/10 text-green-400"
+                      : pace.tone === "bad" ? "bg-amber-500/10 text-amber-400"
+                      : "bg-surface-3 text-text-tertiary",
+                    )}>
+                      {pace.status}
+                    </span>
+                  )}
+                  {pace.text && <span className="text-xs text-text-tertiary">{pace.text}</span>}
+                </div>
+              )}
+
+              {contributing && contributing.items.length > 0 ? (
+                <>
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-9">
+                  {contributing.items.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => router.push(`/perso/watching/${m.id}`)}
+                      title={m.title}
+                      className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-md border border-border-subtle"
+                    >
+                      {m.poster_url ? (
+                        <Image
+                          src={m.poster_url}
+                          alt={m.title}
+                          fill
+                          sizes="80px"
+                          unoptimized
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-surface-2 p-1 text-center text-[9px] leading-tight text-text-tertiary">
+                          {m.title}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {metricCount > contributing.items.length && (
+                  <p className="mt-2 text-[11px] text-text-tertiary">
+                    +{metricCount - contributing.items.length} more
+                  </p>
+                )}
+                </>
+              ) : (
+                <p className="text-xs text-text-tertiary">
+                  Mark titles as watched in Watching to fill this goal.
+                </p>
+              )}
+            </motion.div>
+          )}
         </div>
 
         {/* ── RIGHT COLUMN — sticky ── */}
         <motion.div
-          className="w-72 shrink-0 space-y-3 sticky top-6"
+          className="w-full space-y-3 lg:w-72 lg:shrink-0 lg:sticky lg:top-6"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: 0.06 }}
@@ -560,6 +674,10 @@ export function GoalDetailPage({ id }: Props) {
 
                 <p className="text-center text-xs text-text-tertiary">Drag to set progress</p>
               </div>
+            ) : isMetric ? (
+              <p className="text-xs text-text-tertiary text-center">
+                Counted from {metricLabel} watched {metricPeriodLabel}
+              </p>
             ) : (
               <p className="text-xs text-text-tertiary text-center">
                 Calculated from linked tasks
@@ -579,7 +697,10 @@ export function GoalDetailPage({ id }: Props) {
                   </SelectTrigger>
                   <SelectContent variant="tasks">
                     <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
+                    {/* Auto goals complete themselves at the target — no manual "Completed" until then. */}
+                    <SelectItem value="completed" disabled={displayMode === "auto" && goal.status !== "completed"}>
+                      Completed
+                    </SelectItem>
                     <SelectItem value="paused">Paused</SelectItem>
                     <SelectItem value="abandoned">Abandoned</SelectItem>
                   </SelectContent>
@@ -621,29 +742,46 @@ export function GoalDetailPage({ id }: Props) {
             </div>
           </div>
 
-          {/* Stats */}
+          {/* Stats — the single home for the goal's numbers */}
           <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-3">
             <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">Stats</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
-                <div className="text-lg font-bold text-text-primary">{tasksTotal}</div>
-                <div className="text-xs text-text-tertiary">Tasks</div>
-              </div>
-              <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
-                <div className="text-lg font-bold" style={{ color: ACCENT }}>{tasksCompleted}</div>
-                <div className="text-xs text-text-tertiary">Done</div>
-              </div>
-              <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
-                <div className="text-lg font-bold text-text-primary">{linkedHabits.length}</div>
-                <div className="text-xs text-text-tertiary">Habits</div>
-              </div>
-              <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
-                <div className="text-lg font-bold" style={{ color: "#f43f5e" }}>
-                  {linkedHabits.filter((h) => h.completed_today).length}
+            {isMetric ? (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                  <div className="text-lg font-bold text-text-primary">{metricCount}</div>
+                  <div className="text-xs text-text-tertiary">Watched</div>
                 </div>
-                <div className="text-xs text-text-tertiary">Today</div>
+                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                  <div className="text-lg font-bold" style={{ color: ACCENT }}>{metricTarget}</div>
+                  <div className="text-xs text-text-tertiary">Target</div>
+                </div>
+                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                  <div className="text-lg font-bold text-text-primary">{metricToGo}</div>
+                  <div className="text-xs text-text-tertiary">To go</div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                  <div className="text-lg font-bold text-text-primary">{tasksTotal}</div>
+                  <div className="text-xs text-text-tertiary">Tasks</div>
+                </div>
+                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                  <div className="text-lg font-bold" style={{ color: ACCENT }}>{tasksCompleted}</div>
+                  <div className="text-xs text-text-tertiary">Done</div>
+                </div>
+                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                  <div className="text-lg font-bold text-text-primary">{linkedHabits.length}</div>
+                  <div className="text-xs text-text-tertiary">Habits</div>
+                </div>
+                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                  <div className="text-lg font-bold" style={{ color: "#f43f5e" }}>
+                    {linkedHabits.filter((h) => h.completed_today).length}
+                  </div>
+                  <div className="text-xs text-text-tertiary">Today</div>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

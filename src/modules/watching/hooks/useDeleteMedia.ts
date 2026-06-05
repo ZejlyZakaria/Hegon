@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
 import { deleteMediaItem } from "../service";
+import { syncWatchingGoals } from "../lib/sync-goals";
 import { toast } from "@/shared/utils/toast";
 import { DemoReadOnlyError, handledDemoError } from "../lib/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
@@ -16,6 +17,7 @@ export function useDeleteMedia() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all });
+      void syncWatchingGoals(queryClient);
     },
     onError: (error) => {
       if (handledDemoError(error)) return;
