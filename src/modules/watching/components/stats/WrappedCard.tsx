@@ -4,7 +4,7 @@
 import type { StatsRawItem } from "../../service";
 import { displayTitle } from "../../utils";
 
-// Route images through a same-origin proxy → no CORS issues for html2canvas
+// Route images through a same-origin proxy → no CORS issues for html-to-image
 function proxyUrl(url: string | null): string | null {
   if (!url) return null;
   return `/api/proxy-image?url=${encodeURIComponent(url)}`;
@@ -20,9 +20,9 @@ interface WrappedCardProps {
   total: number;
 }
 
-// All inline styles — no Tailwind classes — so html2canvas never hits oklab/oklch
+// All inline styles — no Tailwind classes — so html-to-image never hits oklab/oklch
 
-// Fan layout using left/top/rotate only — html2canvas handles these better than translateX/Y+scale combos
+// Fan layout using left/top/rotate only — html-to-image handles these better than translateX/Y+scale combos
 function PosterFan({ items }: { items: StatsRawItem[] }) {
   const CW = 148; // center width
   const CH = 222; // center height

@@ -10,6 +10,9 @@ import { useUpdateMedia } from "@/modules/watching/hooks/useUpdateMedia";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import { useSimilarTitles } from "@/modules/watching/hooks/useSimilarTitles";
 import { useMediaCredits } from "@/modules/watching/hooks/useMediaCredits";
+import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import { MediaHero } from "@/modules/watching/components/detail/MediaHero";
 import { MyTakeRecord } from "@/modules/watching/components/detail/MyTakeRecord";
 import { EpisodeHighlights } from "@/modules/watching/components/detail/EpisodeHighlights";
@@ -68,6 +71,16 @@ export default function MediaDetailPage() {
 
   const { data: similar = [] } = useSimilarTitles(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
   const { data: credits } = useMediaCredits(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
+  const { data: ownedIds = [] } = useOwnedTmdbIds(media?.user_id ?? "", media?.type ?? "film", !!media);
+  const isDemo = useIsDemo();
+  const [addItem, setAddItem] = useState<any | null>(null);
+
+  // "More Like This" — drop titles already in the library (like For You), then
+  // keep 6. Over-fetched upstream so this still yields 6 addable recommendations.
+  const recommendations = useMemo(() => {
+    const owned = new Set(ownedIds);
+    return (similar as any[]).filter((s) => !owned.has(s.id)).slice(0, 6);
+  }, [similar, ownedIds]);
 
   const [notes, setNotes] = useState("");
   const [starRating, setStarRating] = useState(0);
@@ -205,6 +218,25 @@ export default function MediaDetailPage() {
     media.directors?.map((d) => ({ id: -1, name: d.name, profile_url: d.profile_url ?? null })) ??
     [];
   const cast = credits?.cast ?? [];
+  const hasCastCrew = cast.length > 0 || (!isSeries && directors.length > 0);
+
+  const handleAddSimilar = (sim: any) => {
+    const tmdbMediaType = media.type === "film" ? "movie" : "tv";
+    setAddItem({
+      id: sim.id,
+      title: sim.title ?? sim.name,
+      name: sim.name ?? sim.title,
+      poster_path: sim.poster_path,
+      backdrop_path: sim.backdrop_path ?? null,
+      vote_average: sim.vote_average ?? 0,
+      overview: sim.overview ?? "",
+      genre_ids: sim.genre_ids ?? [],
+      media_type: tmdbMediaType,
+      ...(media.type === "film"
+        ? { release_date: sim.release_date }
+        : { first_air_date: sim.first_air_date }),
+    });
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -232,9 +264,11 @@ export default function MediaDetailPage() {
             />
           </div>
 
-          <div className="rounded-2xl bg-surface-1 p-4">
-            <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
-          </div>
+          {hasCastCrew && (
+            <div className="rounded-2xl bg-surface-1 p-4">
+              <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
+            </div>
+          )}
 
           {isSeries && (media.in_progress || media.watched) && (
             <div className="rounded-2xl bg-surface-1 p-4">
@@ -242,9 +276,11 @@ export default function MediaDetailPage() {
             </div>
           )}
 
-          <div className="rounded-2xl bg-surface-1 p-4">
-            <MoreLikeThis items={similar as any[]} />
-          </div>
+          {recommendations.length > 0 && (
+            <div className="rounded-2xl bg-surface-1 p-4">
+              <MoreLikeThis items={recommendations} onAddClick={isDemo ? undefined : handleAddSimilar} />
+            </div>
+          )}
 
           {/* Connections — placeholder */}
           <div className="rounded-2xl bg-surface-1 p-4">
@@ -285,6 +321,15 @@ export default function MediaDetailPage() {
         </div>
 
       </div>
+
+      <AddMediaModal
+        isOpen={!!addItem}
+        onClose={() => setAddItem(null)}
+        onAdded={() => setAddItem(null)}
+        defaultType={media.type}
+        listContext="wantToWatch"
+        initialItem={addItem}
+      />
 
       <FloatingSaveBar
         isDirty={isDirty}

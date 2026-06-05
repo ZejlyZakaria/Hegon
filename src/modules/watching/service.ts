@@ -99,6 +99,10 @@ export async function getMediaItems(
       .eq("favorite", true)
       .not("priority", "is", null)
       .order("priority", { ascending: true });
+  } else if (options.recentlyWatched) {
+    // "Recently Watched" = by actual watch date, not updated_at (which moves on
+    // any rating/favorite edit). watched_at is set when the item is marked watched.
+    query = query.order("watched_at", { ascending: false });
   } else {
     query = query.order("updated_at", { ascending: false });
   }
@@ -110,6 +114,20 @@ export async function getMediaItems(
   const { data, error } = await query;
   if (error) throw error;
   return (data as WatchingMedia[]) ?? [];
+}
+
+// tmdb_ids the user already owns for a given type — used to hide already-owned
+// recommendations from "More Like This" (mirrors the For You exclusion).
+export async function getOwnedTmdbIds(userId: string, type: MediaType): Promise<number[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_items")
+    .select("tmdb_id")
+    .eq("user_id", userId)
+    .eq("type", type);
+  if (error) throw error;
+  return (data ?? []).map((i: { tmdb_id: number }) => i.tmdb_id);
 }
 
 export interface StatsRawItem {
@@ -140,27 +158,6 @@ export async function getWatchingStatsData(userId: string): Promise<StatsRawItem
     .neq("is_reference", true);
   if (error) throw error;
   return (data ?? []) as StatsRawItem[];
-}
-
-export async function getAllWatchedMedia(
-  userId: string,
-  options: { type?: MediaType; limit?: number } = {}
-): Promise<WatchingMedia[]> {
-  const supabase = createClient();
-  let query = supabase
-    .schema("watching")
-    .from("media_items")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("watched", true)
-    .order("updated_at", { ascending: false });
-
-  if (options.type) query = query.eq("type", options.type);
-  if (options.limit) query = query.limit(options.limit);
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data as WatchingMedia[]) ?? [];
 }
 
 export async function updateMediaItem(
@@ -737,9 +734,11 @@ export async function getTmdbEpisode(tmdbId: number, season: number, episode: nu
   );
 }
 
-// Movie or tv details with credits
+// Movie or tv details with credits. TV/anime cast is sparse/empty in `credits`
+// (the recurring voice cast lives in `aggregate_credits`), so append both for tv.
 export async function getMediaDetails(id: number, type: "movie" | "tv") {
-  return tmdbFetch<any>(`${type}/${id}`, { append_to_response: "credits" });
+  const append = type === "tv" ? "credits,aggregate_credits" : "credits";
+  return tmdbFetch<any>(`${type}/${id}`, { append_to_response: append });
 }
 
 // Hero data (trending + recommendations) — client-side via proxy

@@ -20,10 +20,6 @@ export const WATCHING_KEYS = {
   inProgress: (type: MediaType) => 
     [...WATCHING_KEYS.all, type, 'in-progress'] as const,
   
-  // Library (tout)
-  library: (userId: string) => 
-    [...WATCHING_KEYS.all, 'library', userId] as const,
-  
   // Recently watched
   recentlyWatched: (type: MediaType) => 
     [...WATCHING_KEYS.all, type, 'recently-watched'] as const,
@@ -33,8 +29,12 @@ export const WATCHING_KEYS = {
     [...WATCHING_KEYS.all, type, 'want-to-watch'] as const,
   
   // Top rated
-  topRated: (type: MediaType) => 
+  topRated: (type: MediaType) =>
     [...WATCHING_KEYS.all, type, 'top-rated'] as const,
+
+  // tmdb_ids the user owns (per type) — for hiding owned recommendations
+  ownedIds: (type: MediaType) =>
+    [...WATCHING_KEYS.all, type, 'owned-ids'] as const,
     
   // Detail
   detail: (id: string) =>

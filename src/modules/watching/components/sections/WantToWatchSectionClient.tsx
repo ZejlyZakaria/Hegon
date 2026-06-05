@@ -20,7 +20,7 @@ export default function WantToWatchSectionClient({ userId, config }: Props) {
   const { data: items = [], isLoading } = hookMap[config.type]({
     userId,
     wantToWatch: true,
-    limit: 20,
+    limit: 50,
   });
 
   const deleteMediaMutation = useDeleteMedia();
@@ -40,9 +40,9 @@ export default function WantToWatchSectionClient({ userId, config }: Props) {
   return (
     <MediaCarousel
       title="Want to Watch"
-      subtitle={`Your watchlist — up to 20 ${config.labelPlural}`}
+      subtitle={`Your watchlist — ${items.length}/50`}
       items={items}
-      onAddClick={items.length < 20 ? () => openModal("wantToWatch") : undefined}
+      onAddClick={items.length < 50 ? () => openModal("wantToWatch") : undefined}
       onDelete={handleDelete}
     />
   );

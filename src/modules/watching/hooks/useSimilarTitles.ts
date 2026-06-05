@@ -14,7 +14,9 @@ async function fetchSimilarTitles(tmdbId: number, type: MediaType): Promise<any[
   if (type === "anime") {
     results = results.filter((r: any) => r.genre_ids?.includes(16));
   }
-  return results.slice(0, 6);
+  // Over-fetch: the detail page filters out already-owned titles, then slices to
+  // 6 — so we keep enough headroom to still show 6 addable recommendations.
+  return results.slice(0, 20);
 }
 
 export function useSimilarTitles(tmdbId: number, type: MediaType, enabled = true) {

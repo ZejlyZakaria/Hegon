@@ -24,7 +24,13 @@ export interface MediaCredits {
 
 function mapCredits(details: any, type: MediaType): MediaCredits {
   const credits = details?.credits ?? {};
-  const rawCast: any[] = credits.cast ?? [];
+  const aggregate = details?.aggregate_credits ?? {};
+  // TV/anime: the recurring (voice) cast lives in aggregate_credits — `credits`
+  // is often empty. Movies keep `credits`. Crew (directors) stays on `credits`.
+  const rawCast: any[] =
+    type === "film"
+      ? credits.cast ?? []
+      : (aggregate.cast?.length ? aggregate.cast : credits.cast) ?? [];
   const rawCrew: any[] = credits.crew ?? [];
 
   const cast: CastMember[] = rawCast

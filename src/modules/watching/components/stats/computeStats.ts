@@ -1,4 +1,5 @@
 import type { StatsRawItem } from "../../service";
+import type { Achievement } from "@/shared/components/achievements/types";
 
 export interface ComputedStats {
   availableYears: number[];
@@ -16,17 +17,6 @@ export interface ComputedStats {
     activeMonthsCount: number;
     bestYear: { label: string; count: number } | null;
   };
-}
-
-export interface Achievement {
-  id: string;
-  label: string;
-  description: string;
-  unlocked: boolean;
-  progress: number; // 0–100
-  progressLabel: string;
-  color: string;
-  icon: string; // emoji
 }
 
 function toH(min: number) {
@@ -200,84 +190,84 @@ export function computeAchievements(items: StatsRawItem[]): Achievement[] {
 
   return [
     {
-      id: "century_club",
-      label: "Century Club",
+      key: "century_club",
+      name: "Century Club",
       description: "Watch 100 films",
-      unlocked: films >= 100,
-      progress: Math.min(100, Math.round((films / 100) * 100)),
-      progressLabel: `${films}/100`,
+      icon: "clapperboard",
       color: "var(--color-accent-watching-vivid)",
-      icon: "🎬",
+      unlocked: films >= 100,
+      progress: Math.min(1, films / 100),
+      progressLabel: `${films}/100`,
     },
     {
-      id: "series_addict",
-      label: "Series Addict",
+      key: "series_addict",
+      name: "Series Addict",
       description: "Complete 15 series",
-      unlocked: series >= 15,
-      progress: Math.min(100, Math.round((series / 15) * 100)),
-      progressLabel: `${series}/15`,
+      icon: "tv",
       color: "#818cf8",
-      icon: "📺",
+      unlocked: series >= 15,
+      progress: Math.min(1, series / 15),
+      progressLabel: `${series}/15`,
     },
     {
-      id: "otaku",
-      label: "Otaku",
+      key: "otaku",
+      name: "Otaku",
       description: "Watch 20 animes",
-      unlocked: animes >= 20,
-      progress: Math.min(100, Math.round((animes / 20) * 100)),
-      progressLabel: `${animes}/20`,
+      icon: "sparkles",
       color: "#fb923c",
-      icon: "⛩️",
+      unlocked: animes >= 20,
+      progress: Math.min(1, animes / 20),
+      progressLabel: `${animes}/20`,
     },
     {
-      id: "critic",
-      label: "The Critic",
+      key: "critic",
+      name: "The Critic",
       description: "Rate 50 titles",
-      unlocked: rated >= 50,
-      progress: Math.min(100, Math.round((rated / 50) * 100)),
-      progressLabel: `${rated}/50`,
+      icon: "star",
       color: "#fbbf24",
-      icon: "⭐",
+      unlocked: rated >= 50,
+      progress: Math.min(1, rated / 50),
+      progressLabel: `${rated}/50`,
     },
     {
-      id: "all_timer",
-      label: "All-Timer",
+      key: "all_timer",
+      name: "All-Timer",
       description: "Give a perfect 10/10",
-      unlocked: hasTen,
-      progress: hasTen ? 100 : 0,
-      progressLabel: hasTen ? "Achieved" : "Not yet",
+      icon: "trophy",
       color: "#f59e0b",
-      icon: "🏆",
+      unlocked: hasTen,
+      progress: hasTen ? 1 : 0,
+      progressLabel: hasTen ? "Achieved" : "Not yet",
     },
     {
-      id: "genre_nerd",
-      label: "Genre Nerd",
+      key: "genre_nerd",
+      name: "Genre Nerd",
       description: "10+ titles in one genre",
-      unlocked: maxGenreCount >= 10,
-      progress: Math.min(100, Math.round((maxGenreCount / 10) * 100)),
-      progressLabel: `${maxGenreCount}/10`,
+      icon: "drama",
       color: "#a855f7",
-      icon: "🎭",
+      unlocked: maxGenreCount >= 10,
+      progress: Math.min(1, maxGenreCount / 10),
+      progressLabel: `${maxGenreCount}/10`,
     },
     {
-      id: "binge_month",
-      label: "Binge Month",
+      key: "binge_month",
+      name: "Binge Month",
       description: "Watch 10+ titles in one month",
-      unlocked: bestMonthCount >= 10,
-      progress: Math.min(100, Math.round((bestMonthCount / 10) * 100)),
-      progressLabel: `${bestMonthCount}/10`,
+      icon: "flame",
       color: "#ef4444",
-      icon: "🔥",
+      unlocked: bestMonthCount >= 10,
+      progress: Math.min(1, bestMonthCount / 10),
+      progressLabel: `${bestMonthCount}/10`,
     },
     {
-      id: "well_rounded",
-      label: "Well-Rounded",
+      key: "well_rounded",
+      name: "Well-Rounded",
       description: "Watch films, series AND anime",
-      unlocked: typesWatched === 3,
-      progress: Math.round((typesWatched / 3) * 100),
-      progressLabel: `${typesWatched}/3 types`,
+      icon: "globe",
       color: "#22c55e",
-      icon: "🌐",
+      unlocked: typesWatched === 3,
+      progress: typesWatched / 3,
+      progressLabel: `${typesWatched}/3 types`,
     },
   ];
 }

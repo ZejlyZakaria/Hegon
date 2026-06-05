@@ -13,7 +13,11 @@ import { useWatchingStatsData } from "../../hooks/useWatchingStats";
 import type { StatsRawItem } from "../../service";
 import { displayTitle } from "../../utils";
 import { WrappedModal } from "./WrappedModal";
-import { computeStats } from "./computeStats";
+import { computeStats, computeAchievements } from "./computeStats";
+import { AchievementGrid } from "@/shared/components/achievements/AchievementGrid";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/shared/components/ui/select";
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 
@@ -447,6 +451,7 @@ export function StatsPage() {
   const [wrappedOpen, setWrappedOpen] = useState(false);
 
   const stats = useMemo(() => computeStats(rawData, selectedYear), [rawData, selectedYear]);
+  const achievements = useMemo(() => computeAchievements(rawData), [rawData]);
 
   if (!userId || isLoading) return <StatsSkeleton />;
 
@@ -472,7 +477,8 @@ export function StatsPage() {
 
       {/* Year filter + actions */}
       <div className="flex items-center gap-2">
-        <div className="flex flex-1 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Desktop: year pills */}
+        <div className="hidden flex-1 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex">
           <button
             type="button"
             onClick={() => setSelectedYear(null)}
@@ -500,6 +506,32 @@ export function StatsPage() {
               {year}
             </button>
           ))}
+        </div>
+
+        {/* Mobile: year select */}
+        <div className="flex-1 sm:hidden">
+          <Select
+            value={selectedYear === null ? "all" : String(selectedYear)}
+            onValueChange={(v) => setSelectedYear(v === "all" ? null : Number(v))}
+          >
+            <SelectTrigger className="h-9 w-full bg-surface-1 border-border-subtle text-text-secondary text-sm focus:ring-0 focus:ring-offset-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
+              <SelectItem value="all" className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
+                All time
+              </SelectItem>
+              {years.map((year) => (
+                <SelectItem
+                  key={year}
+                  value={String(year)}
+                  className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer"
+                >
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -570,6 +602,9 @@ export function StatsPage() {
         <TopFavoritesCard items={stats.topFavorites} />
         <TopGenresCard genres={stats.topGenres} />
       </div>
+
+      {/* Achievements — all-time, shared UI identical across every HEGON module */}
+      <AchievementGrid achievements={achievements} accent={TEAL} />
 
     </div>
   );

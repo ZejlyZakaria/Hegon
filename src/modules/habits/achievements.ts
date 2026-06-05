@@ -1,25 +1,12 @@
 import { computeStreak, isExpectedOnDate, toDateStr } from "./utils";
 import type { Habit } from "./types";
+import type { Achievement, AchievementIcon } from "@/shared/components/achievements/types";
 
-export type AchievementIcon =
-  | "flame"
-  | "medal"
-  | "trophy"
-  | "gem"
-  | "calendarCheck"
-  | "calendarRange"
-  | "layers"
-  | "rotateCcw";
-
-export interface AchievementResult {
-  key: string;
-  name: string;
-  description: string;
-  icon: AchievementIcon;
-  unlocked: boolean;
-  progress: number; // 0..1
-  progressLabel: string;
-}
+// Elemental colors for the streak tiers — the rest fall back to the module accent.
+const FIRE = "var(--color-fire)";
+const SILVER = "#cbd5e1";
+const GOLD = "var(--color-gold)";
+const ICE = "var(--color-ice)";
 
 interface Ctx {
   habits: Habit[];
@@ -46,19 +33,21 @@ function tier(
   icon: AchievementIcon,
   maxBest: number,
   threshold: number,
-): AchievementResult {
+  color: string,
+): Achievement {
   return {
     key,
     name,
     description,
     icon,
+    color,
     unlocked: maxBest >= threshold,
     progress: Math.min(maxBest / threshold, 1),
     progressLabel: `${Math.min(maxBest, threshold)} / ${threshold} days`,
   };
 }
 
-export function computeAchievements({ habits, recentCompletions, today }: Ctx): AchievementResult[] {
+export function computeAchievements({ habits, recentCompletions, today }: Ctx): Achievement[] {
   // Best streak across every habit (within the available completion window).
   let maxBest = 0;
   for (const h of habits) {
@@ -135,10 +124,10 @@ export function computeAchievements({ habits, recentCompletions, today }: Ctx): 
   const activeCount = habits.length;
 
   return [
-    tier("streak-7", "Week Warrior", "Reach a 7-day streak", "flame", maxBest, 7),
-    tier("streak-30", "Month Master", "Reach a 30-day streak", "medal", maxBest, 30),
-    tier("streak-100", "Centurion", "Reach a 100-day streak", "trophy", maxBest, 100),
-    tier("streak-365", "Legend", "Reach a 365-day streak", "gem", maxBest, 365),
+    tier("streak-7", "Week Warrior", "Reach a 7-day streak", "flame", maxBest, 7, FIRE),
+    tier("streak-30", "Month Master", "Reach a 30-day streak", "medal", maxBest, 30, SILVER),
+    tier("streak-100", "Centurion", "Reach a 100-day streak", "trophy", maxBest, 100, GOLD),
+    tier("streak-365", "Legend", "Reach a 365-day streak", "gem", maxBest, 365, ICE),
     {
       key: "perfect-week",
       name: "Perfect Week",
