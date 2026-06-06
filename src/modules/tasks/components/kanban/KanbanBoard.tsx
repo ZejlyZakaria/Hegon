@@ -120,9 +120,11 @@ export function KanbanBoard() {
       .filter((t) => t.status_id === statusId)
       .sort((a, b) => a.position - b.position);
 
-  // §2.1 chirurgical : ne pas attendre workspaces/projects en arrière-plan.
-  // Empty state seulement une fois que projects est résolu et vide.
-  if (!projectsLoading && !hasProjects) {
+  // Onboarding empty-state ONLY once we actually have a workspace AND its projects
+  // resolved empty. Guard on `firstWorkspaceId`: while workspaces are still loading
+  // it's null, which *disables* the projects query — making `projectsLoading` false
+  // for a non-resolved query. Without this guard the empty-state flashes on refresh.
+  if (firstWorkspaceId && !projectsLoading && !hasProjects) {
     return <TasksEmptyState />;
   }
 

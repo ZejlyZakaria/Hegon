@@ -7,6 +7,7 @@ import { useAllActiveTasks } from "../../hooks/useAllActiveTasks";
 import { useTasksStore } from "../../store";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
 import { cn } from "@/shared/utils/utils";
+import { TasksLoader } from "../TasksSkeletons";
 import type { Task, Priority } from "../../types";
 
 // ─── Scoring ─────────────────────────────────────────────────────────────────
@@ -67,13 +68,7 @@ export function NowView() {
       .slice(0, 7);
   }, [tasks]);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-subtle border-t-text-tertiary" />
-      </div>
-    );
-  }
+  if (isLoading) return <TasksLoader />;
 
   if (ranked.length === 0) {
     return (
@@ -91,7 +86,7 @@ export function NowView() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-2xl px-6 py-8">
+      <div className="px-4 py-6">
 
         {/* Header */}
         <div className="mb-8">

@@ -138,6 +138,10 @@ export interface TasksState {
   // Sidebar
   isSidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  // Mobile sidebar — ephemeral overlay drawer (not persisted, separate from desktop collapse)
+  isMobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
+  toggleMobileSidebar: () => void;
 }
 
 // =====================================================

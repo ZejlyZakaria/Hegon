@@ -139,7 +139,7 @@ export function TaskDetailPanel() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={SPRING}
-            className="fixed right-0 top-0 z-50 flex h-full w-120 flex-col border-l border-border-strong bg-surface-2"
+            className="fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-border-strong bg-surface-2 sm:w-120"
           >
             <PanelContent key={task.id} task={task} onClose={closeEditModal} />
           </motion.div>

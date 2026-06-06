@@ -53,6 +53,11 @@ export const useTasksStore = create<TasksState>()(
         isSidebarCollapsed: false,
         toggleSidebar: () =>
           set((state: TasksState) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+        // Mobile sidebar — ephemeral overlay drawer (not persisted)
+        isMobileSidebarOpen: false,
+        setMobileSidebarOpen: (open: boolean) => set({ isMobileSidebarOpen: open }),
+        toggleMobileSidebar: () =>
+          set((state: TasksState) => ({ isMobileSidebarOpen: !state.isMobileSidebarOpen })),
       }),
       {
         name: 'tasks-storage',

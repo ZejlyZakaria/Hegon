@@ -148,7 +148,7 @@ export function CreateTaskModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-125 bg-surface-3 border-border-strong">
+      <DialogContent className="sm:max-w-125 max-h-[87dvh] overflow-y-auto bg-surface-3 border-border-strong">
         <DialogHeader>
           <DialogTitle className="text-sm font-semibold text-text-primary">
             Create task in{" "}

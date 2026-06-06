@@ -133,7 +133,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 280 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-120 flex-col border-l shadow-lg"
+            className="fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l shadow-lg sm:w-120"
             style={{
               backgroundColor: "var(--color-surface-0)",
               borderColor: "var(--color-border-subtle)",
@@ -464,7 +464,7 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
                             type="button"
                             onClick={() => deleteTag.mutate(tag.id)}
                             disabled={deleteTag.isPending}
-                            className="opacity-0 group-hover:opacity-100 h-6 w-6 rounded flex items-center justify-center text-text-tertiary transition-colors hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                            className="opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 h-6 w-6 rounded flex items-center justify-center text-text-tertiary transition-colors hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50"
                             title="Delete tag"
                           >
                             <Trash2 size={11} />

@@ -17,12 +17,12 @@ export function CalendarHeader({
 }: CalendarHeaderProps) {
   return (
     <div
-      className="flex items-center justify-between px-4 pb-4 pt-6"
+      className="flex flex-wrap items-center justify-between gap-2 px-4 pb-4 pt-6"
       style={{ borderColor: "var(--color-border-subtle)" }}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <h2
-          className="min-w-45 text-xl font-semibold leading-tight"
+          className="text-lg font-semibold leading-tight sm:min-w-45 sm:text-xl"
           style={{ color: "var(--color-text-primary)" }}
         >
           {format(currentDate, "MMMM yyyy")}
@@ -58,7 +58,7 @@ export function CalendarHeader({
         </Button>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="hidden items-center gap-2 sm:flex">
         <span
           className="rounded px-2 py-0.5 text-xs font-medium"
           style={{

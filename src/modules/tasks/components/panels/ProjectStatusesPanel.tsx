@@ -292,7 +292,7 @@ function SortableStatusRow({ status, onEdit, onDelete, isDeleting }: {
       <span className="text-[10px] capitalize" style={{ color: "var(--color-text-tertiary)" }}>
         {status.type.replace("_", " ")}
       </span>
-      <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 [@media(hover:none)]:opacity-100">
         <button
           type="button"
           onClick={onEdit}
@@ -414,7 +414,7 @@ export function ProjectStatusesPanel({ open, onClose, projectId, projectName }: 
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 280 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-130 flex-col border-l shadow-lg"
+            className="fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l shadow-lg sm:w-130"
             style={{
               backgroundColor: "var(--color-surface-0)",
               borderColor: "var(--color-border-subtle)",

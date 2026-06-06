@@ -12,7 +12,6 @@ import {
   Settings,
   SlidersHorizontal,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useTasksStore } from "@/modules/tasks/store";
 import { useWorkspaces } from "@/modules/tasks/hooks/useWorkspaces";
 import { useProjects } from "@/modules/tasks/hooks/useProjects";
@@ -48,7 +47,7 @@ function WorkspaceItem({
   onToggle,
   currentUserId,
 }: WorkspaceItemProps) {
-  const { selectedProjectId, setSelectedProjectId, activeWorkspaceId, setActiveWorkspaceId } = useTasksStore();
+  const { selectedProjectId, setSelectedProjectId, activeWorkspaceId, setActiveWorkspaceId, setMobileSidebarOpen } = useTasksStore();
   const { data: projects, isLoading, isFetching } = useProjects(workspace.id);
   useRealtimeProjects(workspace.id);
 
@@ -108,7 +107,7 @@ function WorkspaceItem({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md opacity-0 transition-opacity group-hover:opacity-100 hover:bg-surface-2"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md opacity-0 transition-opacity group-hover:opacity-100 [@media(hover:none)]:opacity-100 hover:bg-surface-2"
             >
               <MoreHorizontal size={12} className="text-text-tertiary" />
             </button>
@@ -171,7 +170,7 @@ function WorkspaceItem({
             >
               <button
                 type="button"
-                onClick={() => { setSelectedProjectId(project.id); setActiveWorkspaceId(workspace.id); }}
+                onClick={() => { setSelectedProjectId(project.id); setActiveWorkspaceId(workspace.id); setMobileSidebarOpen(false); }}
                 className="flex min-w-0 flex-1 items-center gap-2"
               >
                 <Folder
@@ -301,7 +300,7 @@ function WorkspaceItem({
 }
 
 export function TasksSidebar() {
-  const { isSidebarCollapsed, toggleSidebar, activeWorkspaceId, setActiveWorkspaceId } = useTasksStore();
+  const { isSidebarCollapsed, toggleSidebar, isMobileSidebarOpen, setMobileSidebarOpen, activeWorkspaceId, setActiveWorkspaceId } = useTasksStore();
   const { data: workspaces } = useWorkspaces();
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(new Set());
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
@@ -334,16 +333,26 @@ export function TasksSidebar() {
     if (!isCurrentlyExpanded) setActiveWorkspaceId(workspaceId);
   };
 
-  if (isSidebarCollapsed) return null;
-
   return (
     <>
-      <motion.aside
-        initial={{ width: 0, opacity: 0 }}
-        animate={{ width: 250, opacity: 1 }}
-        exit={{ width: 0, opacity: 0 }}
-        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-        className="relative h-full shrink-0 border-r"
+      {/* Mobile backdrop — overlay drawer */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={cn(
+          "z-50 h-full w-62.5 shrink-0 border-r",
+          // Mobile: fixed overlay that slides in from the left
+          "fixed inset-y-0 left-0 transition-transform duration-200 ease-out",
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full",
+          // Desktop: in-flow column, toggled by the collapse state
+          "lg:static lg:translate-x-0 lg:transition-none",
+          isSidebarCollapsed ? "lg:hidden" : "lg:block",
+        )}
         style={{
           backgroundColor: "var(--color-surface-1)",
           borderColor: "var(--color-border-subtle)",
@@ -362,7 +371,7 @@ export function TasksSidebar() {
             </h2>
             <button
               type="button"
-              onClick={toggleSidebar}
+              onClick={() => (isMobileSidebarOpen ? setMobileSidebarOpen(false) : toggleSidebar())}
               className="flex h-8 w-8 items-center justify-center rounded-md transition-colors duration-100 text-text-tertiary hover:bg-surface-2 hover:text-text-primary"
             >
               <PanelLeftClose size={16} />
@@ -396,7 +405,7 @@ export function TasksSidebar() {
 
           </div>
         </div>
-      </motion.aside>
+      </aside>
 
       <WorkspaceModal
         open={createWorkspaceOpen}

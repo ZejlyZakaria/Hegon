@@ -42,6 +42,7 @@ export function TasksTopbar() {
     selectedProjectId,
     isSidebarCollapsed,
     toggleSidebar,
+    toggleMobileSidebar,
   } = useTasksStore();
 
   const { data: statuses } = useStatuses(selectedProjectId);
@@ -107,11 +108,19 @@ export function TasksTopbar() {
     >
       {viewMode !== "now" ? (
         <div className="flex max-w-md flex-1 items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleMobileSidebar}
+            aria-label="Open projects"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100 bg-surface-2 hover:bg-surface-3 border border-border-default text-text-tertiary hover:text-text-primary lg:hidden"
+          >
+            <PanelLeftOpen size={16} />
+          </button>
           {isSidebarCollapsed && (
             <button
               type="button"
               onClick={toggleSidebar}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100 bg-surface-2 hover:bg-surface-3 border border-border-default text-text-tertiary hover:text-text-primary"
+              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100 bg-surface-2 hover:bg-surface-3 border border-border-default text-text-tertiary hover:text-text-primary lg:flex"
             >
               <PanelLeftOpen size={16} />
             </button>
@@ -126,19 +135,23 @@ export function TasksTopbar() {
         </div>
       ) : (
         <div className="flex flex-1 items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleMobileSidebar}
+            aria-label="Open projects"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100 bg-surface-2 hover:bg-surface-3 border border-border-default text-text-tertiary hover:text-text-primary lg:hidden"
+          >
+            <PanelLeftOpen size={16} />
+          </button>
           {isSidebarCollapsed && (
             <button
               type="button"
               onClick={toggleSidebar}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100 bg-surface-2 hover:bg-surface-3 border border-border-default text-text-tertiary hover:text-text-primary"
+              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-100 bg-surface-2 hover:bg-surface-3 border border-border-default text-text-tertiary hover:text-text-primary lg:flex"
             >
               <PanelLeftOpen size={16} />
             </button>
           )}
-          <div className="flex items-center gap-1.5">
-            <Zap size={13} className="text-amber-400" />
-            <span className="text-xs text-text-tertiary">Ranked by priority, due date, and goals</span>
-          </div>
         </div>
       )}
 
@@ -155,7 +168,7 @@ export function TasksTopbar() {
               }}
             >
               <SlidersHorizontal size={14} />
-              <span>Filters</span>
+              <span className="hidden sm:inline">Filters</span>
               {activeFiltersCount > 0 && (
                 <span
                   className="rounded px-1.5 py-0.5 text-xs font-semibold"

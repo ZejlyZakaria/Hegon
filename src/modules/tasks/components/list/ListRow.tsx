@@ -55,9 +55,9 @@ export function ListRow({ task }: ListRowProps) {
           </span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           {/* Tags */}
-          <div className="flex w-fit items-center gap-1">
+          <div className="hidden w-fit items-center gap-1 sm:flex">
             {task.tags?.slice(0, 2).map((tag) => (
               <span
                 key={tag.id}
@@ -90,7 +90,7 @@ export function ListRow({ task }: ListRowProps) {
           </div>
 
           {/* Start date — no icon */}
-          <div className="w-14 shrink-0 flex justify-end">
+          <div className="hidden w-14 shrink-0 justify-end sm:flex">
             {task.start_date ? (
               <span className="text-xs text-text-tertiary">{format(new Date(task.start_date), "MMM d")}</span>
             ) : (
@@ -116,7 +116,7 @@ export function ListRow({ task }: ListRowProps) {
                 <button
                   type="button"
                   onClick={(e) => e.stopPropagation()}
-                  className="flex h-8 w-8 items-center justify-center rounded-md opacity-0 transition-colors duration-100 group-hover:opacity-100 text-text-tertiary hover:bg-surface-2"
+                  className="flex h-8 w-8 items-center justify-center rounded-md opacity-0 transition-colors duration-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100 text-text-tertiary hover:bg-surface-2"
                 >
                   <MoreHorizontal size={14} />
                 </button>

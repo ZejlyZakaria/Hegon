@@ -16,14 +16,16 @@ export function TasksLayout({ children }: TasksLayoutProps) {
   const userId = useCurrentUserId();
   const { selectedProjectId, viewMode } = useTasksStore();
 
-  const { data: workspaces } = useWorkspaces(userId || "");
+  const { data: workspaces, isLoading: workspacesLoading } = useWorkspaces(userId || "");
   const hasWorkspaces = !!workspaces && workspaces.length > 0;
 
   const showNoProjectSelected = hasWorkspaces && !selectedProjectId && viewMode !== "now";
 
   return (
     <div className="flex h-full w-full overflow-hidden">
-      {hasWorkspaces && <TasksSidebar />}
+      {/* Render the sidebar shell during loading too, so the board skeleton sits in
+          its final position (no chrome pop-in / content shift when data arrives). */}
+      {(workspacesLoading || hasWorkspaces) && <TasksSidebar />}
 
       <div className="flex h-full flex-1 flex-col overflow-hidden">
         {(selectedProjectId || viewMode === "now") && <TasksTopbar />}
