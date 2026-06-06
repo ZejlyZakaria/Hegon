@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
 import { markMediaAsWatched } from "../service";
 import { syncWatchingGoals } from "../lib/sync-goals";
+import { syncWatchingHabits } from "../lib/sync-habits";
 import { toast } from "@/shared/utils/toast";
 import { DemoReadOnlyError, handledDemoError } from "../lib/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
@@ -18,6 +19,7 @@ export function useMarkAsWatched() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all });
       void syncWatchingGoals(queryClient);
+      void syncWatchingHabits(queryClient);
     },
     onError: (error) => {
       if (handledDemoError(error)) return;

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeStreak,
   streakWindowDays,
+  resolveActivityTickDate,
   getDaysAgoStr,
   getTodayStr,
   MAX_STREAK_WINDOW,
@@ -83,5 +84,37 @@ describe("streakWindowDays", () => {
 
   it("is capped so an ancient date cannot blow up the scan", () => {
     expect(streakWindowDays("1900-01-01", getTodayStr())).toBe(MAX_STREAK_WINDOW);
+  });
+});
+
+// Reference week (Mon-Sun): 2026-06-01 Mon · 06-02 Tue · 06-03 Wed · 06-04 Thu
+// 06-05 Fri · 06-06 Sat · 06-07 Sun. (dow: Sun=0 Mon=1 … Sat=6.)
+describe("resolveActivityTickDate — Watching→Habits", () => {
+  it("daily → ticks the activity day itself", () => {
+    expect(resolveActivityTickDate({ frequency: "daily", custom_days: null }, "2026-06-05")).toBe("2026-06-05");
+  });
+
+  it("activity on a scheduled day → that day", () => {
+    expect(resolveActivityTickDate({ frequency: "weekly", custom_days: [2] }, "2026-06-02")).toBe("2026-06-02");
+  });
+
+  it("weekly Tuesday, watched Friday → that week's Tuesday (flexible)", () => {
+    expect(resolveActivityTickDate({ frequency: "weekly", custom_days: [2] }, "2026-06-05")).toBe("2026-06-02");
+  });
+
+  it("weekly Tuesday, watched Monday (before the day) → same week's Tuesday", () => {
+    expect(resolveActivityTickDate({ frequency: "weekly", custom_days: [2] }, "2026-06-01")).toBe("2026-06-02");
+  });
+
+  it("custom Mon/Wed/Fri, watched Saturday → nearest scheduled (Friday)", () => {
+    expect(resolveActivityTickDate({ frequency: "custom", custom_days: [1, 3, 5] }, "2026-06-06")).toBe("2026-06-05");
+  });
+
+  it("custom Mon/Wed/Fri, watched Wednesday → that Wednesday", () => {
+    expect(resolveActivityTickDate({ frequency: "custom", custom_days: [1, 3, 5] }, "2026-06-03")).toBe("2026-06-03");
+  });
+
+  it("weekly with no day set → falls back to the activity day (any-day)", () => {
+    expect(resolveActivityTickDate({ frequency: "weekly", custom_days: null }, "2026-06-05")).toBe("2026-06-05");
   });
 });

@@ -8,6 +8,7 @@ import {
 } from "../service";
 import { createClient } from "@/infrastructure/supabase/client";
 import { syncWatchingGoals } from "../lib/sync-goals";
+import { syncWatchingHabits } from "../lib/sync-habits";
 import { toast } from "@/shared/utils/toast";
 import { resolveTransition } from "../lib/resolve-transition";
 import { DemoReadOnlyError, handledDemoError } from "../lib/demo-guard";
@@ -214,8 +215,10 @@ export function useAddMedia() {
         queryClient.invalidateQueries({ queryKey: forYouKey });
       }
 
-      // Cross-module: adding a watched title can move a Goal's progress.
+      // Cross-module: adding a watched title can move a Goal's progress and
+      // auto-tick a Watching-linked habit.
       void syncWatchingGoals(queryClient);
+      void syncWatchingHabits(queryClient);
     },
     onError: (error: Error) => {
       if (handledDemoError(error)) return;

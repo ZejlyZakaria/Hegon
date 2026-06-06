@@ -174,11 +174,21 @@ function TopHabits({
   rows: { habit: HabitWithStatus; rate: number | null }[];
   onOpen: (id: string) => void;
 }) {
+  const setActiveTab = useHabitsUIStore((s) => s.setActiveTab);
   return (
     <div className="flex flex-col rounded-2xl border border-border-subtle bg-surface-1 p-5">
       <div className="mb-3 flex items-baseline justify-between">
-        <h3 className="text-sm font-semibold text-text-primary">Top Habits</h3>
-        <span className="text-[11px] text-text-tertiary">by streak</span>
+        <div className="flex items-baseline gap-2">
+          <h3 className="text-sm font-semibold text-text-primary">Top Habits</h3>
+          <span className="text-[11px] text-text-tertiary">by streak</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab("all")}
+          className="text-[11px] font-medium text-text-tertiary transition-colors hover:text-text-primary"
+        >
+          View all
+        </button>
       </div>
 
       {rows.length === 0 ? (
@@ -447,7 +457,7 @@ export function HabitsStats() {
     }
     return (b.rate ?? 0) - (a.rate ?? 0);
   });
-  const top = topRows.slice(0, 5);
+  const top = topRows.slice(0, 3);
 
   // ── Year aggregates for tiles + bar chart ──
   const countMap = new Map(yearData.map((d) => [d.date, d.count]));

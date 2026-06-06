@@ -176,6 +176,30 @@ export async function getWatchingStatsData(userId: string): Promise<StatsRawItem
   return (data ?? []) as StatsRawItem[];
 }
 
+// Recent watched activity (type + date) for the Watching→Habits bridge. Only
+// what's needed to auto-tick linked habits; window-limited by the caller.
+export async function getRecentWatchedActivity(
+  since: string, // 'YYYY-MM-DD'
+): Promise<{ type: string; watched_at: string }[]> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_items")
+    .select("type, watched_at")
+    .eq("user_id", user.id)
+    .eq("watched", true)
+    .neq("is_reference", true)
+    .gte("watched_at", since);
+  if (error) throw error;
+
+  return (data ?? [])
+    .filter((r: { type: string | null; watched_at: string | null }) => !!r.type && !!r.watched_at)
+    .map((r: { type: string; watched_at: string }) => ({ type: r.type, watched_at: r.watched_at }));
+}
+
 export async function updateMediaItem(
   id: string,
   data: Record<string, any>

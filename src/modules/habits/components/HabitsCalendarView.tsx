@@ -154,14 +154,18 @@ export function HabitsCalendarView() {
               <div
                 key={`head-${h.id}`}
                 className="flex items-center justify-center border-b border-l border-border-subtle py-2.5"
-                title={h.title}
               >
-                <div
-                  className="flex h-7 w-7 items-center justify-center rounded-md border border-border-subtle bg-surface-2"
-                  style={{ color }}
-                >
-                  <Icon size={14} />
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="flex h-7 w-7 items-center justify-center rounded-md border border-border-subtle bg-surface-2"
+                      style={{ color }}
+                    >
+                      <Icon size={14} />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{h.title}</TooltipContent>
+                </Tooltip>
               </div>
             );
           })}

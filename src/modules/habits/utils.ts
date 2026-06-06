@@ -40,6 +40,23 @@ export function isExpectedOnDate(
   return habit.custom_days?.includes(dow) ?? false;
 }
 
+// A weekly habit with no specific day = "once per week, any day" — the WEEK is the
+// unit (vs. a weekly habit anchored to a day, or `custom` multi-day). Such habits
+// are day-agnostic: they show all week and their streak counts in weeks.
+export function isWeeklyAnyDay(
+  habit: Pick<Habit, "frequency" | "custom_days">,
+): boolean {
+  return habit.frequency === "weekly" && (habit.custom_days?.length ?? 0) === 0;
+}
+
+/** Monday (YYYY-MM-DD) of the week containing `dateStr`. */
+export function weekStartStr(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  const dow = d.getDay();
+  d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
+  return toDateStr(d);
+}
+
 // Heatmap intensity ramp, derived from the module accent so it always follows
 // the CSS variable (change the accent → the heatmap follows automatically).
 export function heatmapColor(count: number): string {
@@ -65,6 +82,57 @@ export function formatFrequency(
   return DOW_DISPLAY_ORDER.filter((d) => days.includes(d))
     .map((d) => DOW_SHORT[d])
     .join("/");
+}
+
+// ─── Cross-module auto-completion ────────────────────────────────────────────────
+
+/**
+ * Maps an activity date (e.g. when a film was watched) to the habit completion
+ * date it should satisfy. The streak engine only counts completions on *scheduled*
+ * days, so for weekly/custom habits we can't just tick the raw activity day.
+ *
+ * "Flexible" rule (agreed with owner): any day of the period counts.
+ *  - daily            → the activity day itself (always scheduled).
+ *  - activity on a scheduled day → that day.
+ *  - weekly/custom otherwise → the scheduled day inside the Monday-start week that
+ *    contains the activity, nearest to it. So "1 film/week" anchored on Tuesday
+ *    ticks Tuesday no matter which day you actually watched that week.
+ * Returns null if the habit has no scheduled day in that week.
+ */
+export function resolveActivityTickDate(
+  habit: Pick<Habit, "frequency" | "custom_days">,
+  activityDate: string,
+): string | null {
+  if (habit.frequency === "daily") return activityDate;
+  if (isExpectedOnDate(habit, activityDate)) return activityDate;
+
+  const days = habit.custom_days ?? [];
+  if (days.length === 0) return activityDate; // weekly w/o a day → treat as any-day
+
+  // Monday-start week containing the activity date.
+  const base = new Date(activityDate + "T12:00:00");
+  const dow = base.getDay(); // 0=Sun … 6=Sat
+  const monday = new Date(base);
+  monday.setDate(base.getDate() - (dow === 0 ? 6 : dow - 1));
+
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return toDateStr(d);
+  });
+
+  const candidates = weekDates.filter((d) =>
+    days.includes(new Date(d + "T12:00:00").getDay()),
+  );
+  if (candidates.length === 0) return null;
+
+  const target = Date.parse(activityDate + "T12:00:00");
+  return candidates.reduce((best, d) =>
+    Math.abs(Date.parse(d + "T12:00:00") - target) <
+    Math.abs(Date.parse(best + "T12:00:00") - target)
+      ? d
+      : best,
+  );
 }
 
 // ─── Streak calculations ───────────────────────────────────────────────────────
@@ -99,10 +167,57 @@ export function streakWindowDays(earliest: string, today: string = getTodayStr()
 }
 
 /**
+ * Streak engine for "weekly, any day" habits — the unit is the week. A run counts
+ * consecutive weeks (Mon-Sun) with at least one completion. Fully-paused weeks are
+ * neutral (bridge), and the current week gets grace while it's still open.
+ */
+function computeWeeklyStreak(
+  completed: Set<string>,
+  pauses: PausePeriod[],
+  windowDays: number,
+): { current: number; best: number } {
+  const doneWeeks = new Set([...completed].map(weekStartStr));
+  const thisWeek = weekStartStr(getTodayStr());
+  const weeks = Math.min(Math.ceil(windowDays / 7) + 1, 600);
+
+  const weekAgo = (n: number) => {
+    const d = new Date(thisWeek + "T12:00:00");
+    d.setDate(d.getDate() - n * 7);
+    return toDateStr(d);
+  };
+  const neutral = (wk: string) => isWithinAnyPause(wk, pauses);
+
+  let current = 0;
+  for (let i = 0; i < weeks; i++) {
+    const wk = weekAgo(i);
+    if (neutral(wk)) continue;
+    if (doneWeeks.has(wk)) { current++; continue; }
+    if (i === 0) continue; // current week still open → grace
+    break;
+  }
+
+  let best = 0;
+  let run = 0;
+  for (let i = weeks - 1; i >= 0; i--) {
+    const wk = weekAgo(i);
+    if (neutral(wk)) continue;
+    if (doneWeeks.has(wk)) {
+      run++;
+      if (run > best) best = run;
+    } else if (i !== 0) {
+      run = 0;
+    }
+  }
+
+  return { current, best };
+}
+
+/**
  * Streak engine for every frequency. A streak counts consecutive *scheduled*
  * days that were completed. Days that are not scheduled, are skipped, or fall
  * inside a pause are neutral — they neither count nor break the run. Today is
  * given grace: if it's scheduled but not yet done, the streak isn't broken.
+ * Weekly-any-day habits delegate to the week-based engine above.
  */
 export function computeStreak(
   habit: Pick<Habit, "frequency" | "custom_days">,
@@ -110,6 +225,7 @@ export function computeStreak(
   { skipped, pauses = [], windowDays = 365 }: StreakOptions = {},
 ): { current: number; best: number } {
   if (completed.size === 0) return { current: 0, best: 0 };
+  if (isWeeklyAnyDay(habit)) return computeWeeklyStreak(completed, pauses, windowDays);
 
   const skips = skipped ?? new Set<string>();
   const isNeutral = (d: string) =>

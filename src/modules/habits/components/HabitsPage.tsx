@@ -4,11 +4,11 @@ import { useState, useEffect, startTransition } from "react";
 import { motion } from "framer-motion";
 import { useCommandCenter } from "@/modules/command-center/store";
 import { SearchInput } from "@/shared/components/ui/search-input";
-import { Pause, ChevronRight } from "lucide-react";
+import { Pause, ChevronRight, CalendarRange } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/utils";
 import { resolveIcon } from "@/shared/constants/icons";
-import { useHabits, useDeleteHabit } from "../hooks/useHabits";
+import { useHabits, useArchivedHabits, useArchiveHabit, useDeleteHabitPermanently } from "../hooks/useHabits";
 import {
   useHabitsToday,
   useCompleteHabit,
@@ -24,15 +24,16 @@ import {
 import type { Habit } from "../types";
 import { HabitsEmptyState } from "./HabitsEmptyState";
 import { HabitsTodayTable } from "./HabitsTodayTable";
+import { HabitRow } from "./HabitRow";
 import { HabitModal } from "./HabitModal";
 import { HabitsRightPanel } from "./HabitsRightPanel";
 import { HabitsCalendarView } from "./HabitsCalendarView";
 import { HabitsStats } from "./HabitsStats";
+import { HabitsAllView } from "./HabitsAllView";
 import { HabitsShowcase } from "./HabitsShowcase";
 import { HabitDetailPanel } from "./HabitDetailPanel";
 import { useHabitsUIStore } from "../store";
 import { HabitsLoadingSkeleton } from "./HabitsSkeleton";
-import type { HabitTab } from "../types";
 
 const ACCENT = "var(--color-accent-habits-vivid)";
 const ACCENT_DEEP = "var(--color-accent-habits)";
@@ -40,7 +41,6 @@ const ACCENT_DEEP = "var(--color-accent-habits)";
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function HabitsPage() {
-  const [tab, setTab] = useState<HabitTab>("today");
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [deletingHabit, setDeletingHabit] = useState<Habit | null>(null);
@@ -48,8 +48,10 @@ export function HabitsPage() {
   const today    = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-  const deleteHabit = useDeleteHabit();
-  const openPanel = useHabitsUIStore((s) => s.openPanel);
+  const archiveHabit = useArchiveHabit();
+  const deleteHabitPermanently = useDeleteHabitPermanently();
+  // Tab lives in the store so other surfaces (Stats "View all") can navigate here.
+  const { activeTab: tab, setActiveTab: setTab, openPanel } = useHabitsUIStore();
   useRealtimeHabits();
   const { pendingAction, clearPendingAction } = useCommandCenter();
   useEffect(() => {
@@ -60,8 +62,11 @@ export function HabitsPage() {
   }, [pendingAction, clearPendingAction]);
 
   const { data: allHabits = [], isLoading: habitsLoading } = useHabits();
+  const { data: archivedHabits = [] } = useArchivedHabits();
+  const hasAnyHabit = allHabits.length > 0 || archivedHabits.length > 0;
   const {
     habits: todayHabits,
+    weeklyHabits,
     pausedHabits,
     recentCompletions,
     completedCount,
@@ -92,6 +97,10 @@ export function HabitsPage() {
     ? todayHabits.filter((h) => h.title.toLowerCase().includes(search.toLowerCase()))
     : todayHabits;
 
+  const filteredWeeklyHabits = search.trim()
+    ? weeklyHabits.filter((h) => h.title.toLowerCase().includes(search.toLowerCase()))
+    : weeklyHabits;
+
   if (isLoading) return <HabitsLoadingSkeleton />;
 
   return (
@@ -101,14 +110,14 @@ export function HabitsPage() {
       transition={{ duration: 0.25, ease: "easeOut" }}
       className="flex min-h-full flex-col px-4 py-4 sm:px-6 sm:py-6 space-y-4"
     >
-      {allHabits.length === 0 && (
+      {!hasAnyHabit && (
         <>
           <HabitsEmptyState onCreateClick={() => setModalOpen(true)} />
           <HabitModal open={modalOpen} onClose={() => setModalOpen(false)} />
         </>
       )}
 
-      {allHabits.length > 0 && (
+      {hasAnyHabit && (
         <>
           {/* Main layout: persistent rail + center + right panel */}
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -129,7 +138,8 @@ export function HabitsPage() {
                   {([
                     { value: "today",    label: "Today" },
                     { value: "calendar", label: "Calendar" },
-                    { value: "all",      label: "Stats" },
+                    { value: "stats",    label: "Stats" },
+                    { value: "all",      label: "All" },
                   ] as const).map(({ value, label }) => (
                     <button
                       key={value}
@@ -153,10 +163,10 @@ export function HabitsPage() {
                   ))}
                 </div>
 
-                {/* Search + New Habit live on Today only — keeps the other tabs'
-                    header clean and avoids the add-button shift. ⌘K adds from anywhere. */}
-                {tab === "today" && (
-                  <div className="flex items-center gap-2 pb-1">
+                {/* New Habit stays on every tab (anchors the row height → no shift
+                    between tabs, and lets you add from anywhere). Search is Today-only. */}
+                <div className="flex items-center gap-2 pb-1">
+                  {tab === "today" && (
                     <SearchInput
                       placeholder="Search habits…"
                       value={search}
@@ -164,15 +174,15 @@ export function HabitsPage() {
                       onClear={() => setSearch("")}
                       containerClassName="flex-1 sm:w-48"
                     />
-                    <Button
-                      onClick={() => setModalOpen(true)}
-                      style={{ backgroundColor: ACCENT_DEEP }}
-                      className="h-9 shrink-0 px-3 text-sm font-medium text-white hover:opacity-90"
-                    >
-                      + New Habit
-                    </Button>
-                  </div>
-                )}
+                  )}
+                  <Button
+                    onClick={() => setModalOpen(true)}
+                    style={{ backgroundColor: ACCENT_DEEP }}
+                    className="h-9 shrink-0 px-3 text-sm font-medium text-white hover:opacity-90"
+                  >
+                    + New Habit
+                  </Button>
+                </div>
               </div>
 
               {/* Tab content */}
@@ -180,11 +190,13 @@ export function HabitsPage() {
                 {tab === "today" && (
                   <>
                     {filteredTodayHabits.length === 0 ? (
-                      <p className="py-6 text-center text-sm text-text-tertiary">
-                        {search.trim()
-                          ? "No habits match your search."
-                          : "No habits scheduled for today."}
-                      </p>
+                      (search.trim() || filteredWeeklyHabits.length === 0) && (
+                        <p className="py-6 text-center text-sm text-text-tertiary">
+                          {search.trim()
+                            ? "No habits match your search."
+                            : "No habits scheduled for today."}
+                        </p>
+                      )
                     ) : (
                       <HabitsTodayTable
                         habits={filteredTodayHabits}
@@ -198,6 +210,37 @@ export function HabitsPage() {
                         onEdit={(h) => openPanel(h.id)}
                         onDelete={(h) => setDeletingHabit(h)}
                       />
+                    )}
+
+                    {filteredWeeklyHabits.length > 0 && (
+                      <div className="mt-6">
+                        <div className="mb-2 flex items-center gap-1.5 px-3">
+                          <CalendarRange size={11} className="text-text-tertiary" />
+                          <p className="text-caption uppercase text-text-tertiary">
+                            This Week
+                          </p>
+                          <span className="text-[10px] text-text-tertiary">
+                            {filteredWeeklyHabits.filter((h) => h.completed_today).length}/{filteredWeeklyHabits.length}
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {filteredWeeklyHabits.map((h) => (
+                            <HabitRow
+                              key={h.id}
+                              habit={h}
+                              isPending={pendingId === h.id}
+                              onToggle={(hb) =>
+                                hb.completed_today && hb.week_completion_date
+                                  ? uncompleteHabit({ habitId: hb.id, date: hb.week_completion_date })
+                                  : completeHabit({ habit_id: hb.id, completed_date: todayStr })
+                              }
+                              onOpen={(hb) => openPanel(hb.id)}
+                              onEdit={() => openPanel(h.id)}
+                              onDelete={() => setDeletingHabit(h)}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     )}
 
                     {pausedHabits.length > 0 && (
@@ -247,7 +290,10 @@ export function HabitsPage() {
                 )}
 
                 {tab === "calendar" && <HabitsCalendarView />}
-                {tab === "all" && <HabitsStats />}
+                {tab === "stats" && <HabitsStats />}
+                {tab === "all" && (
+                  <HabitsAllView onDelete={(h) => setDeletingHabit(h)} />
+                )}
               </div>
             </div>
 
@@ -270,34 +316,59 @@ export function HabitsPage() {
         <DialogContent className="sm:max-w-sm bg-surface-3 border-border-strong">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold text-text-primary">
-              Delete habit
+              {deletingHabit?.archived ? "Delete habit" : "Remove habit"}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-text-secondary">
-            Delete{" "}
-            <span className="font-medium text-text-primary">&quot;{deletingHabit?.title}&quot;</span>?
-            {" "}All completion history will be lost.
+            {deletingHabit?.archived ? (
+              <>
+                Permanently delete{" "}
+                <span className="font-medium text-text-primary">&quot;{deletingHabit?.title}&quot;</span>
+                {" "}and all its history? This can&apos;t be undone.
+              </>
+            ) : (
+              <>
+                What do you want to do with{" "}
+                <span className="font-medium text-text-primary">&quot;{deletingHabit?.title}&quot;</span>?
+                {" "}Archiving keeps your streak and history; deleting is permanent.
+              </>
+            )}
           </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeletingHabit(null)}
-              className="h-8 px-3 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-2"
-            >
-              Cancel
-            </Button>
+          <div className="flex flex-col gap-2 pt-2">
+            {!deletingHabit?.archived && (
+              <Button
+                onClick={() => {
+                  if (deletingHabit) {
+                    archiveHabit.mutate(deletingHabit.id);
+                    setDeletingHabit(null);
+                  }
+                }}
+                disabled={archiveHabit.isPending}
+                style={{ backgroundColor: ACCENT_DEEP }}
+                className="h-9 w-full text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              >
+                Archive (keep history)
+              </Button>
+            )}
             <Button
               onClick={() => {
                 if (deletingHabit) {
-                  deleteHabit.mutate(deletingHabit.id);
+                  deleteHabitPermanently.mutate(deletingHabit.id);
                   setDeletingHabit(null);
                 }
               }}
-              disabled={deleteHabit.isPending}
-              className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"
+              disabled={deleteHabitPermanently.isPending}
+              className="h-9 w-full text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
               style={{ backgroundColor: "#ef4444" }}
             >
-              Delete
+              Delete permanently
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setDeletingHabit(null)}
+              className="h-9 w-full border-border-default text-text-secondary hover:bg-surface-2 hover:text-text-primary"
+            >
+              Cancel
             </Button>
           </div>
         </DialogContent>

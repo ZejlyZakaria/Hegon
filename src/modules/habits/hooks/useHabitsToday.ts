@@ -7,6 +7,8 @@ import {
   getTodayStr,
   getYesterdayStr,
   isExpectedOnDate,
+  isWeeklyAnyDay,
+  weekStartStr,
   isWithinAnyPause,
   calcStreaks,
   streakWindowDays,
@@ -134,9 +136,24 @@ export function useHabitsToday() {
       pauses: pausePeriods,
       windowDays,
     });
+
+    // Weekly-any-day: "done" means a completion anywhere in the current week.
+    let completedToday = todayDone.has(h.id);
+    let weekCompletionDate: string | null = null;
+    if (isWeeklyAnyDay(h)) {
+      const wStart = weekStartStr(today);
+      const inWeek = recentCompletions
+        .filter((c) => c.habit_id === h.id && c.completed_date >= wStart && c.completed_date <= today)
+        .map((c) => c.completed_date)
+        .sort();
+      completedToday = inWeek.length > 0;
+      weekCompletionDate = inWeek.length ? inWeek[inWeek.length - 1] : null;
+    }
+
     return {
       ...h,
-      completed_today:  todayDone.has(h.id),
+      completed_today:  completedToday,
+      week_completion_date: weekCompletionDate,
       completion_id:    completionMap[h.id]     ?? null,
       completion_time:  completionTimeMap[h.id] ?? null,
       at_risk:          h.frequency === 'daily'
@@ -158,6 +175,9 @@ export function useHabitsToday() {
   // (regardless of schedule) so they stay reachable to resume.
   const todayHabits  = allStatus.filter((h) => isExpectedToday(h) && !h.is_paused);
   const pausedHabits = allStatus.filter((h) => h.is_paused);
+  // Weekly-any-day habits aren't tied to a weekday → they'd never show in Today.
+  // They get their own always-visible "This Week" section (status = this week).
+  const weeklyHabits = allStatus.filter((h) => isWeeklyAnyDay(h) && !h.is_paused);
 
   // Skipped habits are neutral — excluded from today's progress denominator.
   const activeToday    = todayHabits.filter((h) => !h.skipped_today);
@@ -166,6 +186,7 @@ export function useHabitsToday() {
 
   return {
     habits:            todayHabits,
+    weeklyHabits,      // weekly-any-day habits → "This Week" section
     pausedHabits,
     allStatus,         // every habit with computed status (for Stats overview)
     pausesByHabit,     // pause periods per habit (Stats neutralises paused days)

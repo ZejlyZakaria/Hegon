@@ -8,6 +8,7 @@ import {
   CalendarClock,
   CalendarOff,
   Check,
+  Film,
   Flame,
   Pause,
   Play,
@@ -79,6 +80,12 @@ const WEEKDAYS = [
   "Friday",
   "Saturday",
 ];
+
+const SOURCE_KEY_LABEL: Record<string, string> = {
+  film: "Films",
+  serie: "Series",
+  anime: "Animes",
+};
 
 const DEFAULT_STATUS = {
   completed_today: false,
@@ -257,13 +264,15 @@ function PanelBody({
   const days = habit.custom_days ?? [];
   function setFrequency(f: HabitFrequency) {
     if (f === "daily") patch({ frequency: "daily", custom_days: null });
+    // weekly: keep the existing day if any, else null = "any day this week"
     else if (f === "weekly")
-      patch({ frequency: "weekly", custom_days: days.slice(0, 1).length ? days.slice(0, 1) : [1] });
+      patch({ frequency: "weekly", custom_days: days.length ? [days[0]] : null });
     else patch({ frequency: "custom", custom_days: days.length ? days : [1] });
   }
   function toggleDay(day: number) {
     if (habit.frequency === "weekly") {
-      patch({ custom_days: [day] });
+      // weekly: toggling the selected day off → null = any day this week
+      patch({ custom_days: days.includes(day) ? null : [day] });
     } else {
       const next = days.includes(day) ? days.filter((d) => d !== day) : [...days, day];
       if (next.length >= 1) patch({ custom_days: next });
@@ -274,6 +283,13 @@ function PanelBody({
   const [goalOpen, setGoalOpen] = useState(false);
   const activeGoals = goals.filter((g) => g.status === "active" || g.id === habit.goal_id);
   const currentGoal = goals.find((g) => g.id === habit.goal_id) ?? null;
+
+  // Source (auto-track) editing
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const sourceLabel =
+    habit.source_module === "watching"
+      ? `Watching${habit.source_key ? ` · ${SOURCE_KEY_LABEL[habit.source_key] ?? habit.source_key}` : ""}`
+      : "Manual";
 
   // Icon editing
   const [iconOpen, setIconOpen] = useState(false);
@@ -518,6 +534,80 @@ function PanelBody({
                     {habit.goal_id === g.id && <Check size={11} className="ml-auto shrink-0" />}
                   </button>
                 ))}
+              </PopoverContent>
+            </Popover>
+          </Prop>
+
+          {/* Auto-track (cross-module source) */}
+          <Prop label="Auto-track">
+            <Popover open={sourceOpen} onOpenChange={setSourceOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-3"
+                >
+                  <Film
+                    size={13}
+                    className={habit.source_module ? "" : "text-text-tertiary"}
+                    style={habit.source_module ? { color: ACCENT } : undefined}
+                  />
+                  <span className={habit.source_module ? "" : "text-text-tertiary"}>
+                    {sourceLabel}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 border-border-strong bg-surface-3 p-2">
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => { patch({ source_module: null, source_key: null }); setSourceOpen(false); }}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded px-2 py-1.5 text-xs transition-colors",
+                      !habit.source_module ? "bg-surface-2 text-text-primary" : "text-text-secondary hover:bg-surface-2",
+                    )}
+                  >
+                    Manual
+                    {!habit.source_module && <Check size={11} />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => patch({ source_module: "watching" })}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded px-2 py-1.5 text-xs transition-colors",
+                      habit.source_module === "watching" ? "bg-surface-2 text-text-primary" : "text-text-secondary hover:bg-surface-2",
+                    )}
+                  >
+                    From Watching
+                    {habit.source_module === "watching" && <Check size={11} />}
+                  </button>
+                </div>
+
+                {habit.source_module === "watching" && (
+                  <div className="mt-2 space-y-0.5 border-t border-border-subtle pt-2">
+                    {([
+                      { label: "Anything", key: null },
+                      { label: "Films", key: "film" },
+                      { label: "Series", key: "serie" },
+                      { label: "Animes", key: "anime" },
+                    ] as const).map((opt) => {
+                      const active = (habit.source_key ?? null) === opt.key;
+                      return (
+                        <button
+                          key={opt.label}
+                          type="button"
+                          onClick={() => { patch({ source_key: opt.key }); setSourceOpen(false); }}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded px-2 py-1.5 text-xs transition-colors",
+                            active ? "bg-surface-2 text-text-primary" : "text-text-secondary hover:bg-surface-2",
+                          )}
+                        >
+                          {opt.label}
+                          {active && <Check size={11} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </PopoverContent>
             </Popover>
           </Prop>

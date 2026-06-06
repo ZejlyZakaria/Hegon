@@ -45,7 +45,7 @@ export function useArchiveHabit() {
   return useMutation({
     mutationFn: (id: string) => HabitService.archiveHabit(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.lists() });
+      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.all });
       toast.success("Habit archived.");
     },
     onError: () => {
@@ -59,11 +59,47 @@ export function useDeleteHabit() {
   return useMutation({
     mutationFn: (id: string) => HabitService.deleteHabit(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.lists() });
+      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.all });
       toast.success("Habit deleted.");
     },
     onError: (error: Error) => {
       toast.error(error.message ?? "Failed to delete habit.");
+    },
+  });
+}
+
+export function useArchivedHabits() {
+  return useQuery({
+    queryKey: HABIT_KEYS.archived(),
+    queryFn:  () => HabitService.getArchivedHabits(),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useUnarchiveHabit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => HabitService.unarchiveHabit(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.all });
+      toast.success("Habit restored.");
+    },
+    onError: () => {
+      toast.error("Failed to restore habit.");
+    },
+  });
+}
+
+export function useDeleteHabitPermanently() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => HabitService.deleteHabitPermanently(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: HABIT_KEYS.all });
+      toast.success("Habit deleted.");
+    },
+    onError: () => {
+      toast.error("Failed to delete habit.");
     },
   });
 }

@@ -19,6 +19,8 @@ import {
   Home, Users, Smile, Star, Music, Headphones, Camera, Leaf,
   // Mindfulness & Spiritual
   CloudSun, TreePine, Coffee,
+  // Watching & Media
+  Film, Clapperboard, Tv, Popcorn, MonitorPlay,
 } from "lucide-react"
 
 export interface IconConfig {
@@ -100,6 +102,13 @@ export const ICONS: IconConfig[] = [
   { key: "headphones",     icon: Headphones,     label: "Podcast",     color: "#8b5cf6", tags: ["podcast", "music", "listen", "audio", "learn"]     },
   { key: "camera",         icon: Camera,         label: "Photography", color: "#ec4899", tags: ["photo", "picture", "creative", "art", "capture"]   },
   { key: "leaf",           icon: Leaf,           label: "Nature",      color: "#22c55e", tags: ["nature", "green", "plant", "eco", "outside"]       },
+
+  // ── Watching & Media ─────────────────────────────────────────────────────────
+  { key: "film",           icon: Film,           label: "Film",        color: "#2dd4bf", tags: ["film", "movie", "watch", "cinema", "screen"]        },
+  { key: "clapperboard",   icon: Clapperboard,   label: "Movies",      color: "#2dd4bf", tags: ["movie", "film", "watch", "cinema", "director"]      },
+  { key: "tv",             icon: Tv,             label: "TV Shows",    color: "#2dd4bf", tags: ["tv", "series", "show", "watch", "stream", "binge"]   },
+  { key: "popcorn",        icon: Popcorn,        label: "Cinema",      color: "#2dd4bf", tags: ["movie", "cinema", "popcorn", "watch", "theater"]     },
+  { key: "monitor-play",   icon: MonitorPlay,    label: "Watch",       color: "#2dd4bf", tags: ["watch", "stream", "video", "play", "screen"]        },
 
   // ── Mindfulness ─────────────────────────────────────────────────────────────
   { key: "cloud-sun",      icon: CloudSun,       label: "Gratitude",   color: "#f59e0b", tags: ["gratitude", "mindful", "calm", "positive", "reflect"]},

@@ -1,13 +1,17 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { WatchFace } from "./components/HabitWatch";
+import type { HabitTab } from "./types";
 
 // UI-only state for the Habits module. The selected watch face is a personal
 // preference, persisted locally (unlock eligibility is derived from streaks,
-// so nothing here needs the database). The detail panel target is transient.
+// so nothing here needs the database). The detail panel target + active tab
+// are transient (so cross-component navigation, e.g. Stats → All, can drive them).
 interface HabitsUIState {
   watchFace: WatchFace;
   setWatchFace: (face: WatchFace) => void;
+  activeTab: HabitTab;
+  setActiveTab: (tab: HabitTab) => void;
   openHabitId: string | null;
   openPanel: (habitId: string) => void;
   closePanel: () => void;
@@ -21,6 +25,8 @@ export const useHabitsUIStore = create<HabitsUIState>()(
     (set) => ({
       watchFace: "onyx",
       setWatchFace: (watchFace) => set({ watchFace }),
+      activeTab: "today",
+      setActiveTab: (activeTab) => set({ activeTab }),
       openHabitId: null,
       openPanel: (openHabitId) => set({ openHabitId }),
       closePanel: () => set({ openHabitId: null }),

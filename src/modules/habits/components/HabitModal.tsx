@@ -59,11 +59,14 @@ const habitSchema = z
     custom_days: z.array(z.number()).optional().nullable(),
     icon: z.string(),
     goal_id: z.string().optional().nullable(),
+    source_module: z.enum(["watching"]).nullable().optional(),
+    source_key: z.string().nullable().optional(),
   })
   .refine(
     (data) => {
+      // weekly: 0 days = "any day this week" (allowed), 1 = a specific day.
       if (data.frequency === "weekly")
-        return (data.custom_days?.length ?? 0) === 1;
+        return (data.custom_days?.length ?? 0) <= 1;
       if (data.frequency === "custom")
         return (data.custom_days?.length ?? 0) >= 1;
       return true;
@@ -98,10 +101,13 @@ export function HabitModal({ open, onClose, habit }: Props) {
       custom_days: null,
       icon: "star",
       goal_id: null,
+      source_module: null,
+      source_key: null,
     },
   });
 
   const frequency = form.watch("frequency");
+  const sourceModule = form.watch("source_module");
 
   useEffect(() => {
     if (open && habit) {
@@ -112,6 +118,8 @@ export function HabitModal({ open, onClose, habit }: Props) {
         custom_days: habit.custom_days ?? null,
         icon: habit.icon ?? "star",
         goal_id: habit.goal_id ?? null,
+        source_module: habit.source_module === "watching" ? "watching" : null,
+        source_key: habit.source_key ?? null,
       });
     } else if (open && !habit) {
       form.reset({
@@ -121,6 +129,8 @@ export function HabitModal({ open, onClose, habit }: Props) {
         custom_days: null,
         icon: "star",
         goal_id: null,
+        source_module: null,
+        source_key: null,
       });
     }
   }, [open, habit, form]);
@@ -145,11 +155,19 @@ export function HabitModal({ open, onClose, habit }: Props) {
       title: data.title,
       description: data.description || null,
       frequency: data.frequency,
+      // daily → no days; weekly with no day picked → null = "any day this week".
       custom_days:
-        data.frequency === "daily" ? null : (data.custom_days ?? null),
+        data.frequency === "daily"
+          ? null
+          : data.custom_days && data.custom_days.length > 0
+            ? data.custom_days
+            : null,
       icon: data.icon,
       color,
       goal_id: data.goal_id || null,
+      source_module: data.source_module ?? null,
+      // type filter only makes sense when an activity source is set
+      source_key: data.source_module ? (data.source_key ?? null) : null,
     };
 
     try {
@@ -267,7 +285,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       <FormControl>
                         <SelectTrigger
                           variant="tasks"
-                          className="w-full bg-surface-overlay focus:border-border-focus"
+                          className="w-full min-w-0 bg-surface-overlay focus:border-border-focus **:data-[slot=select-value]:min-w-0"
                         >
                           <SelectValue placeholder="None" />
                         </SelectTrigger>
@@ -275,7 +293,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       <SelectContent variant="tasks">
                         <SelectItem value="none">No goal</SelectItem>
                         {goals
-                          .filter((g) => g.status === "active")
+                          .filter((g) => g.status !== "abandoned")
                           .map((g) => (
                             <SelectItem key={g.id} value={g.id}>
                               {g.title}
@@ -311,7 +329,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                   return (
                     <div>
                       <p className="mb-2 text-xs font-medium text-text-secondary">
-                        {frequency === "weekly" ? "Which day?" : "Which days?"}
+                        {frequency === "weekly" ? "Which day? (optional)" : "Which days?"}
                       </p>
 
                       <div className="flex gap-1.5">
@@ -341,6 +359,12 @@ export function HabitModal({ open, onClose, habit }: Props) {
                         })}
                       </div>
 
+                      {frequency === "weekly" && selected.length === 0 && (
+                        <p className="mt-1.5 text-xs text-text-tertiary">
+                          No day selected = once a week, any day.
+                        </p>
+                      )}
+
                       {fieldState.error && (
                         <p className="mt-1 text-xs text-red-400">
                           {fieldState.error.message}
@@ -350,6 +374,81 @@ export function HabitModal({ open, onClose, habit }: Props) {
                   );
                 }}
               />
+            )}
+
+            {/* Auto-track from another module — a matching activity auto-completes
+                the habit for its period (flexible: any day of the period counts). */}
+            <div className="grid grid-cols-2 gap-3 *:min-w-0">
+              <FormField
+                control={form.control}
+                name="source_module"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium text-text-secondary">
+                      Auto-track
+                    </FormLabel>
+                    <Select
+                      onValueChange={(v) => field.onChange(v === "manual" ? null : v)}
+                      value={field.value ?? "manual"}
+                    >
+                      <FormControl>
+                        <SelectTrigger
+                          variant="tasks"
+                          className="w-full bg-surface-overlay focus:border-border-focus"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent variant="tasks">
+                        <SelectItem value="manual">Manual</SelectItem>
+                        <SelectItem value="watching">From Watching</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {sourceModule === "watching" && (
+                <FormField
+                  control={form.control}
+                  name="source_key"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-medium text-text-secondary">
+                        Counts
+                      </FormLabel>
+                      <Select
+                        onValueChange={(v) => field.onChange(v === "any" ? null : v)}
+                        value={field.value ?? "any"}
+                      >
+                        <FormControl>
+                          <SelectTrigger
+                            variant="tasks"
+                            className="w-full bg-surface-overlay focus:border-border-focus"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent variant="tasks">
+                          <SelectItem value="any">Anything</SelectItem>
+                          <SelectItem value="film">Films</SelectItem>
+                          <SelectItem value="serie">Series</SelectItem>
+                          <SelectItem value="anime">Animes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            {sourceModule === "watching" && (
+              <p className="-mt-1 text-xs text-text-tertiary">
+                Watching a matching title auto-completes this habit for its period.
+                You can still check it manually.
+              </p>
             )}
 
             <FormField

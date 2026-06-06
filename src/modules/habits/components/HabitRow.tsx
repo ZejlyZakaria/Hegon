@@ -1,13 +1,18 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Check, Flame, Link2, MoreHorizontal, Pencil, SkipForward, Trash2 } from "lucide-react";
+import { Check, Film, Flame, Link2, MoreHorizontal, Pencil, SkipForward, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/shared/components/ui/tooltip";
 import { cn } from "@/shared/utils/utils";
 import { resolveIcon } from "@/shared/constants/icons";
 import { formatFrequency } from "../utils";
@@ -38,46 +43,77 @@ export function HabitRow({
   const { icon: Icon, color: iconColor } = resolveIcon(habit.icon);
   const reduce = useReducedMotion();
 
+  // Source-linked habits are driven by activity (e.g. watching a film) — the
+  // manual toggle is locked so the activity stays the single source of truth.
+  const isLinked = !!habit.source_module;
+  const linkedTooltip =
+    habit.source_module === "watching"
+      ? completed_today
+        ? "Auto-completed from Watching — remove the film to undo"
+        : "Linked to Watching — log a film to complete this"
+      : completed_today
+        ? "Auto-completed — remove the activity to undo"
+        : "Auto-tracked — log the activity to complete this";
+
+  const completeButton = (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle(habit);
+      }}
+      disabled={isPending || isLinked}
+      aria-label={
+        isLinked
+          ? linkedTooltip
+          : completed_today
+            ? `Mark ${habit.title} as not done`
+            : `Complete ${habit.title}`
+      }
+      className={cn(
+        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+        "transition-[background-color,border-color,transform] duration-150 ease-out",
+        isLinked ? "cursor-not-allowed" : "active:scale-90 disabled:opacity-50",
+        completed_today
+          ? "border-transparent"
+          : isLinked
+            ? "border-border-strong"
+            : "border-border-strong hover:border-text-tertiary",
+      )}
+      style={completed_today ? { backgroundColor: HABITS_ACCENT } : undefined}
+    >
+      {completed_today && (
+        <motion.span
+          initial={reduce ? { opacity: 0 } : { scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: reduce ? 0.08 : 0.12, ease: "easeOut" }}
+          className="text-white"
+        >
+          <Check size={12} strokeWidth={3} />
+        </motion.span>
+      )}
+    </button>
+  );
+
   return (
     <div
       onClick={() => onOpen(habit)}
       className="group flex h-14 cursor-pointer items-center gap-3 rounded-lg border border-border-subtle bg-surface-1 px-3 transition-[background-color,opacity] duration-200 ease-out hover:bg-surface-2"
       style={{ opacity: completed_today ? 0.5 : 1 }}
     >
-      {/* Complete — leading checkbox. The primary, repeated action sits first. */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggle(habit);
-        }}
-        disabled={isPending}
-        aria-label={
-          completed_today
-            ? `Mark ${habit.title} as not done`
-            : `Complete ${habit.title}`
-        }
-        className={cn(
-          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-          "transition-[background-color,border-color,transform] duration-150 ease-out",
-          "active:scale-90 disabled:opacity-50",
-          completed_today
-            ? "border-transparent"
-            : "border-border-strong hover:border-text-tertiary",
-        )}
-        style={completed_today ? { backgroundColor: HABITS_ACCENT } : undefined}
-      >
-        {completed_today && (
-          <motion.span
-            initial={reduce ? { opacity: 0 } : { scale: 0.6, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: reduce ? 0.08 : 0.12, ease: "easeOut" }}
-            className="text-white"
-          >
-            <Check size={12} strokeWidth={3} />
-          </motion.span>
-        )}
-      </button>
+      {/* Complete — leading checkbox. The primary, repeated action sits first.
+          Source-linked habits lock the toggle and explain why via a tooltip. */}
+      {isLinked ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* span wrapper: a disabled button doesn't emit hover events */}
+            <span className="inline-flex shrink-0">{completeButton}</span>
+          </TooltipTrigger>
+          <TooltipContent side="right">{linkedTooltip}</TooltipContent>
+        </Tooltip>
+      ) : (
+        completeButton
+      )}
 
       {/* Habit — icon + title + (at-risk / description) */}
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -104,6 +140,15 @@ export function HabitRow({
             <span className="hidden shrink-0 text-xs text-text-tertiary sm:inline">
               {formatFrequency(habit)}
             </span>
+            {habit.source_module === "watching" && (
+              <span
+                className="hidden shrink-0 items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-text-tertiary sm:inline-flex"
+                title="Auto-tracked from Watching"
+              >
+                <Film size={10} />
+                Auto
+              </span>
+            )}
           </div>
           {skipped_today && !completed_today ? (
             <span className="mt-0.5 inline-flex items-center gap-1 leading-none">
