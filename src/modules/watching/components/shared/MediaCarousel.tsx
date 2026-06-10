@@ -84,7 +84,7 @@ function MovieCard({
           style={{ opacity: imgLoaded ? 1 : 0 }}
           sizes={isPoster ? "45vw" : "(max-width: 768px) 100vw, 50vw"}
           unoptimized
-          loading="eager"
+          loading={eagerLoad ? "eager" : "lazy"}
           priority={eagerLoad}
           onLoad={() => setImgLoaded(true)}
         />

@@ -154,6 +154,24 @@ export default function AddMediaModal({
     setSearchQuery("");
     setSearchResults([]);
 
+    // Reset all form fields so a second pick never inherits the first pick's data
+    setUserRating(0);
+    setNotes("");
+    setFavorite(false);
+    setConflict(null);
+    setCustomPoster(null);
+    setPreviewUrl(null);
+    setRuntime(null);
+    setDirectors(null);
+    setStudio(null);
+    setStatus(null);
+    setSeasons(null);
+    setEpisodes(null);
+    setSeasonInput("1");
+    setEpisodeInput("1");
+    setSeasonError(null);
+    setEpisodeError(null);
+
     try {
       const mediaType  = result.media_type || (result.first_air_date ? "tv" : "movie");
       const isMovie    = mediaType === "movie";
@@ -475,7 +493,7 @@ export default function AddMediaModal({
                       <span className="text-[10px] font-medium text-white">Custom</span>
                       <input type="file" accept="image/*" onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) { setCustomPoster(file); setPreviewUrl(URL.createObjectURL(file)); }
+                        if (file) { if (previewUrl) URL.revokeObjectURL(previewUrl); setCustomPoster(file); setPreviewUrl(URL.createObjectURL(file)); }
                       }} className="hidden" />
                     </label>
                   </div>

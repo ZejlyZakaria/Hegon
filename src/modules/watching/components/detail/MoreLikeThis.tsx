@@ -46,6 +46,7 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
                   alt={title}
                   fill
                   sizes="15vw"
+                  loading="lazy"
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                   unoptimized
                 />
