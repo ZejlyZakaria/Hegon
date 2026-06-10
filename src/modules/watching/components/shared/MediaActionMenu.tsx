@@ -13,7 +13,7 @@ import {
 import { cn } from "@/shared/utils/utils";
 import { useUpdateMedia } from "../../hooks/useUpdateMedia";
 import { useWatchingGoals } from "../../hooks/useWatchingGoals";
-import { goalWouldCount, goalCount } from "../../lib/goal-contribution";
+import { goalWouldCount } from "../../lib/goal-contribution";
 import { GoalRippleToast } from "../detail/GoalRippleToast";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
@@ -132,7 +132,7 @@ export function MediaActionMenu({
       const matched = watchingGoals.filter((g) => goalWouldCount(g, item.type));
       if (matched.length > 0) {
         matched.forEach((g) => {
-          const old = goalCount(g);
+          const old = g.metric_current;
           toast.custom(() => (
             <GoalRippleToast title={g.title} oldCount={old} newCount={old + 1} target={g.metric_target ?? 0} />
           ));

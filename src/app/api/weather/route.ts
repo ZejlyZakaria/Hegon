@@ -6,7 +6,10 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export async function GET(request: NextRequest) {
   const supabase = await createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Local JWT verification via getClaims() (asymmetric keys → no network round-trip;
+  // falls back to getUser() otherwise). Same perf fix as middleware — see CLAUDE.md §8.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims ?? null;
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

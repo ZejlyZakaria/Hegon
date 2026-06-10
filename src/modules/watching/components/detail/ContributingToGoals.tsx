@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Target, Check } from "lucide-react";
 import { useWatchingGoals } from "../../hooks/useWatchingGoals";
-import { goalMatchesMedia, goalCount } from "../../lib/goal-contribution";
+import { goalMatchesMedia } from "../../lib/goal-contribution";
 import type { WatchingMedia } from "../../types";
 
 // Goals accent (cross-module colour cue — you see this is a Goal, not a Watching thing).
@@ -26,7 +26,8 @@ export function ContributingToGoals({ media }: { media: WatchingMedia }) {
       <div className="space-y-2">
         {matching.map((g) => {
           const target = g.metric_target ?? 0;
-          const count = goalCount(g);
+          const count  = g.metric_current;
+          const pct    = target > 0 ? Math.min(100, (count / target) * 100) : g.progress;
           return (
             <button
               key={g.id}
@@ -43,7 +44,7 @@ export function ContributingToGoals({ media }: { media: WatchingMedia }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-text-primary">{g.title}</p>
                 <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-surface-3">
-                  <div className="h-full rounded-full" style={{ width: `${g.progress}%`, backgroundColor: GOALS_ACCENT }} />
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: GOALS_ACCENT }} />
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">

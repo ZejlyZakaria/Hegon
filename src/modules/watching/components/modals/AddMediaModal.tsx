@@ -104,6 +104,14 @@ export default function AddMediaModal({
     setTakenPriorities(await getTakenPriorities(defaultType));
   }, [listContext, defaultType]);
 
+  // ── Revoke the custom-poster object URL on change/unmount ───────────────────
+  // Covers every path that drops previewUrl (close, repick, unmount, swap) so the
+  // image blob never lingers in memory — important on mobile Safari.
+  useEffect(() => {
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
   // ── Reset on close ─────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -493,7 +501,7 @@ export default function AddMediaModal({
                       <span className="text-[10px] font-medium text-white">Custom</span>
                       <input type="file" accept="image/*" onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) { if (previewUrl) URL.revokeObjectURL(previewUrl); setCustomPoster(file); setPreviewUrl(URL.createObjectURL(file)); }
+                        if (file) { setCustomPoster(file); setPreviewUrl(URL.createObjectURL(file)); }
                       }} className="hidden" />
                     </label>
                   </div>

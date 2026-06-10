@@ -74,9 +74,22 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // TRACEABILITY (2026-06-10, perf — explicit owner request): replaced
+  // `getUser()` (a network round-trip to the Supabase Auth server on EVERY
+  // navigation, ~200-300ms) with `getClaims()`. When asymmetric JWT signing keys
+  // are enabled, getClaims verifies the JWT cryptographically in-process (zero
+  // network) → middleware drops to single-digit ms. When they are NOT enabled it
+  // transparently falls back to a server getUser() validation, so security and
+  // behaviour are never weaker than before — only faster when the keys allow it.
+  // Session refresh is preserved: getClaims reads the session, which refreshes and
+  // re-sets the auth cookies when the access token is expired. No gating logic below
+  // changed — only how `user` is derived. To realise the speed-up, the Supabase
+  // project must use asymmetric JWT signing keys (Dashboard → Auth → JWT Keys,
+  // zero-downtime migration). See hq/progress.md for the rollout note.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims
+    ? { id: claimsData.claims.sub, email: claimsData.claims.email }
+    : null;
 
   // Auth page: no user → allow; user → redirect away
   if (pathname === "/auth") {

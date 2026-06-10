@@ -28,12 +28,6 @@ export function goalWouldCount(goal: WatchingGoalSummary, type: string): boolean
   return true;
 }
 
-// Reconstruct the current count from the stored progress %.
-export function goalCount(goal: WatchingGoalSummary): number {
-  const target = goal.metric_target ?? 0;
-  return Math.round((goal.progress / 100) * target);
-}
-
 export function goalMetricLabel(goal: WatchingGoalSummary): string {
   return goal.metric_key === "films" ? "films"
     : goal.metric_key === "series" ? "TV shows"

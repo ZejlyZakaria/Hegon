@@ -16,7 +16,7 @@ import { WrappedModal } from "./WrappedModal";
 import { computeStats, computeAchievements } from "./computeStats";
 import { AchievementGrid } from "@/shared/components/achievements/AchievementGrid";
 import { useWatchingGoals } from "../../hooks/useWatchingGoals";
-import { goalCount, goalMetricLabel } from "../../lib/goal-contribution";
+import { goalMetricLabel } from "../../lib/goal-contribution";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
@@ -605,7 +605,8 @@ export function StatsPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {watchingGoals.map((g) => {
               const target = g.metric_target ?? 0;
-              const count  = goalCount(g);
+              const count  = g.metric_current; // exact count from the backend, never a % reconstruction
+              const pct    = target > 0 ? Math.min(100, (count / target) * 100) : g.progress;
               return (
                 <button
                   key={g.id}
@@ -620,11 +621,11 @@ export function StatsPage() {
                   <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
                     <div
                       className="h-full rounded-full transition-[width] duration-500"
-                      style={{ width: `${g.progress}%`, backgroundColor: GOALS_ACCENT }}
+                      style={{ width: `${pct}%`, backgroundColor: GOALS_ACCENT }}
                     />
                   </div>
                   <p className="mt-1.5 text-[11px] text-text-tertiary">
-                    {g.progress}% · {goalMetricLabel(g)} {g.metric_period === "year" ? `in ${g.metric_year}` : "all-time"}
+                    {Math.round(pct)}% · {goalMetricLabel(g)} {g.metric_period === "year" ? `in ${g.metric_year}` : "all-time"}
                   </p>
                 </button>
               );

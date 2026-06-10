@@ -175,13 +175,14 @@ export async function recalcWatchingGoals(): Promise<WatchingGoalDelta[]> {
 // Active watching-metric goals for the current org — used by the Watching module
 // to show "Contributing to" on a film + a goals strip in Stats.
 export interface WatchingGoalSummary {
-  id:            string;
-  title:         string;
-  progress:      number;
-  metric_key:    string | null;
-  metric_period: string | null;
-  metric_year:   number | null;
-  metric_target: number | null;
+  id:             string;
+  title:          string;
+  progress:       number;
+  metric_key:     string | null;
+  metric_period:  string | null;
+  metric_year:    number | null;
+  metric_target:  number | null;
+  metric_current: number; // exact count of matching watched media — the source of truth for "X / target"
 }
 
 export async function getActiveWatchingGoals(): Promise<WatchingGoalSummary[]> {
@@ -189,14 +190,24 @@ export async function getActiveWatchingGoals(): Promise<WatchingGoalSummary[]> {
   const orgId = await getCurrentOrgId();
   const { data, error } = await supabase
     .from("goals")
-    .select("id, title, progress, metric_key, metric_period, metric_year, metric_target")
+    .select("id, title, user_id, progress, metric_key, metric_period, metric_year, metric_target")
     .eq("org_id", orgId)
     .eq("status", "active")
     .eq("progress_mode", "auto")
     .eq("metric_module", "watching")
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as WatchingGoalSummary[];
+
+  type Row = Omit<WatchingGoalSummary, "metric_current"> & { user_id: string };
+  // Resolve the exact current count per goal (count-only query, no rows fetched).
+  // Reconstructing it from the rounded progress % freezes between integer ticks on
+  // large targets (e.g. each title is 0.2% of a 500-target).
+  return Promise.all(
+    ((data ?? []) as Row[]).map(async ({ user_id, ...g }) => ({
+      ...g,
+      metric_current: await countWatchingMedia(supabase, user_id, g.metric_key, g.metric_period, g.metric_year),
+    })),
+  );
 }
 
 // =====================================================
@@ -215,6 +226,35 @@ const METRIC_KEY_TO_TYPE: Record<string, string> = {
   series: "serie",
   anime:  "anime",
 };
+
+// Exact count of watched media matching a watching-metric goal (type + period).
+// Count-only (`head: true`) — Postgres returns the count without transferring rows.
+// `metric_key` of "titles"/null counts every type; a year period bounds by watched_at.
+async function countWatchingMedia(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  metricKey: string | null,
+  metricPeriod: string | null,
+  metricYear: number | null,
+): Promise<number> {
+  const type      = metricKey ? METRIC_KEY_TO_TYPE[metricKey] : undefined;
+  const yearStart = metricPeriod === "year" && metricYear ? `${metricYear}-01-01` : null;
+  const yearEnd   = metricPeriod === "year" && metricYear ? `${metricYear + 1}-01-01` : null;
+
+  let q = supabase
+    .schema("watching")
+    .from("media_items")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("watched", true)
+    .neq("is_reference", true);
+  if (type) q = q.eq("type", type);
+  if (yearStart && yearEnd) q = q.gte("watched_at", yearStart).lt("watched_at", yearEnd);
+
+  const { count, error } = await q;
+  if (error) throw error;
+  return count ?? 0;
+}
 
 // Collapse a binged saga ("Harry Potter and the…", "LOTR: …") to one entry so the
 // poster wall shows DIFFERENT films, not 7 of the same. Heuristic on the title.

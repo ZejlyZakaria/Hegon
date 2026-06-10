@@ -12,7 +12,7 @@ import { useSimilarTitles } from "@/modules/watching/hooks/useSimilarTitles";
 import { useMediaCredits } from "@/modules/watching/hooks/useMediaCredits";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { useWatchingGoals } from "@/modules/watching/hooks/useWatchingGoals";
-import { goalWouldCount, goalCount } from "@/modules/watching/lib/goal-contribution";
+import { goalWouldCount } from "@/modules/watching/lib/goal-contribution";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import { ContributingToGoals } from "@/modules/watching/components/detail/ContributingToGoals";
@@ -26,36 +26,8 @@ import { CurrentlyWatching } from "@/modules/watching/components/detail/Currentl
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { InList } from "@/modules/watching/components/detail/InList";
 import { FloatingSaveBar } from "@/modules/watching/components/detail/FloatingSaveBar";
+import { DetailSkeleton } from "@/modules/watching/components/WatchingSkeletons";
 import { toast } from "@/shared/utils/toast";
-
-function DetailSkeleton() {
-  return (
-    <div className="min-h-screen bg-zinc-950">
-      <div className="relative w-full animate-pulse bg-surface-1" style={{ aspectRatio: "21/9", maxHeight: "55vh", minHeight: 280 }}>
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-8 md:px-10">
-          <div className="flex items-end gap-6">
-            <div className="aspect-2/3 w-32 shrink-0 rounded-xl bg-surface-2 md:w-40" />
-            <div className="flex-1 space-y-3 pb-2">
-              <div className="h-7 w-2/3 rounded-lg bg-surface-2" />
-              <div className="h-4 w-1/3 rounded bg-surface-1" />
-              <div className="h-12 w-full max-w-xl rounded-lg bg-surface-1" />
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-5 p-6 md:p-10">
-          <div className="h-3 w-1/4 rounded bg-surface-2" />
-          <div className="h-40 rounded-2xl bg-surface-1" />
-        </div>
-        <div className="space-y-5 border-l border-border-subtle bg-[#0c0c0f] p-6">
-          <div className="h-3 w-1/3 rounded bg-surface-2" />
-          <div className="h-20 rounded-xl bg-surface-2" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function MediaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -150,7 +122,7 @@ export default function MediaDetailPage() {
       const matched = watchingGoals.filter((g) => goalWouldCount(g, media.type));
       if (matched.length > 0) {
         matched.forEach((g) => {
-          const old = goalCount(g);
+          const old = g.metric_current;
           toast.custom(() => (
             <GoalRippleToast title={g.title} oldCount={old} newCount={old + 1} target={g.metric_target ?? 0} />
           ));
