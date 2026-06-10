@@ -1,7 +1,7 @@
 // components/watching/LibraryClient.tsx
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Plus } from "lucide-react";
 import LibraryGrid from "@/modules/watching/components/library/LibraryGrid";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
@@ -9,6 +9,7 @@ import type { WatchingMedia } from "@/modules/watching/types";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useLibrary } from "@/modules/watching/hooks/useLibrary";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
+import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfirmModal";
 import { toast } from "@/shared/utils/toast";
 import { cn } from "@/shared/utils/utils";
@@ -48,18 +49,36 @@ interface Props {
 
 export default function LibraryClient({ initialItems, userId }: Props) {
   const deleteMediaMutation = useDeleteMedia();
+  const setLibraryFilter = useWatchingUIStore((s) => s.setLibraryFilter);
   // Live query (seeded by the server list) → cross-surface adds/deletes reflect
   // immediately, no stale RSC cache.
   const { data: allItems = [] } = useLibrary(userId, initialItems);
-  const [mediaType, setMediaType]     = useState<MediaType>("all");
-  const [sortBy, setSortBy]           = useState<SortKey>("added");
+  // Lazy-init from the in-memory store so Back from a detail page restores the view.
+  // getState() (not a subscription) — we read once on mount, no re-render coupling.
+  const [mediaType, setMediaType]     = useState<MediaType>(() => {
+    const t = useWatchingUIStore.getState().libraryFilter.type;
+    return t === "film" || t === "serie" || t === "anime" ? t : "all";
+  });
+  const [sortBy, setSortBy]           = useState<SortKey>(() => {
+    const s = useWatchingUIStore.getState().libraryFilter.sort;
+    return SORT_OPTIONS.some(o => o.value === s) ? (s as SortKey) : "added";
+  });
   const [search, setSearch]           = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const p = useWatchingUIStore.getState().libraryFilter.page;
+    return Number.isInteger(p) && p > 0 ? p : 1;
+  });
   const [modalOpen, setModalOpen]     = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const modalMediaType = mediaType === "all" ? "film" : mediaType as "film" | "serie" | "anime";
 
   const debouncedSearch = useDebounce(search, 300);
+
+  // Persist filter/sort/page to the in-memory store on every change, so the next
+  // mount (e.g. returning from a detail page) restores exactly where the user was.
+  useEffect(() => {
+    setLibraryFilter({ type: mediaType, sort: sortBy, page: currentPage });
+  }, [mediaType, sortBy, currentPage, setLibraryFilter]);
 
   const { paginatedItems, totalPages } = useMemo(() => {
     let result = [...allItems];
