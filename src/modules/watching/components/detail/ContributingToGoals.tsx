@@ -21,8 +21,8 @@ export function ContributingToGoals({ media }: { media: WatchingMedia }) {
   if (matching.length === 0) return null;
 
   return (
-    <div className="rounded-2xl bg-surface-1 p-4">
-      <h2 className="mb-3 text-sm font-semibold text-text-primary">Contributing to</h2>
+    <section>
+      <h2 className="mb-3 text-title text-text-primary">Contributing to</h2>
       <div className="space-y-2">
         {matching.map((g) => {
           const target = g.metric_target ?? 0;
@@ -55,6 +55,6 @@ export function ContributingToGoals({ media }: { media: WatchingMedia }) {
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }

@@ -231,73 +231,61 @@ export default function MediaDetailPage() {
 
       <MediaHero media={media} typeLabel={typeLabel} isSeries={isSeries} onBack={() => router.back()} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr]">
+      {/* Content rises slightly into the hero's lower gradient — magazine overlap. */}
+      <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
 
-        {/* ── LEFT ──────────────────────────────────────────────────── */}
-        <div className="space-y-4 p-3">
+        {/* ── LEFT — primary column ─────────────────────────────────── */}
+        <div className="min-w-0 space-y-8 px-4 py-6 lg:py-8 lg:pl-8 lg:pr-2">
 
-          <div className="rounded-2xl bg-surface-1 p-4">
-            <MyTakeRecord
-              notes={notes}
-              onNotesChange={(v) => { setNotes(v); markDirty(v, starRating); }}
-              starRating={starRating}
-              onStarRatingChange={(v) => { setStarRating(v); markDirty(notes, v); }}
-              media={media}
-              favorite={favorite}
-              onFavoriteToggle={toggleFavorite}
-              isSeries={isSeries}
-              onMarkWatched={handleMarkWatched}
-              onStartWatching={handleStartWatching}
-              isUpdating={updateMedia.isPending}
-            />
-          </div>
+          {/* Manage/track surfaces = cards (rendered inside the components); browse = open */}
+          <MyTakeRecord
+            notes={notes}
+            onNotesChange={(v) => { setNotes(v); markDirty(v, starRating); }}
+            starRating={starRating}
+            onStarRatingChange={(v) => { setStarRating(v); markDirty(notes, v); }}
+            media={media}
+            favorite={favorite}
+            onFavoriteToggle={toggleFavorite}
+            isSeries={isSeries}
+            onMarkWatched={handleMarkWatched}
+            onStartWatching={handleStartWatching}
+            isUpdating={updateMedia.isPending}
+          />
 
           {hasCastCrew && (
-            <div className="rounded-2xl bg-surface-1 p-4">
-              <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
-            </div>
+            <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
           )}
 
           {isSeries && (media.in_progress || media.watched) && (
-            <div className="rounded-2xl bg-surface-1 p-4">
-              <EpisodeHighlights mediaItemId={media.id} tmdbId={media.tmdb_id} userId={media.user_id} orgId={media.org_id} seasons={media.seasons ?? null} episodes={media.episodes ?? null} />
-            </div>
+            <EpisodeHighlights mediaItemId={media.id} tmdbId={media.tmdb_id} userId={media.user_id} orgId={media.org_id} seasons={media.seasons ?? null} episodes={media.episodes ?? null} />
           )}
 
           {recommendations.length > 0 && (
-            <div className="rounded-2xl bg-surface-1 p-4">
-              <MoreLikeThis items={recommendations} onAddClick={isDemo ? undefined : handleAddSimilar} />
-            </div>
+            <MoreLikeThis items={recommendations} onAddClick={isDemo ? undefined : handleAddSimilar} />
           )}
 
-          {/* Connections — goals this title contributes to */}
+          {/* Connections — goals this title contributes to (kept open: can render null) */}
           <ContributingToGoals media={media} />
 
         </div>
 
-        {/* ── RIGHT ─────────────────────────────────────────────────── */}
-        <div className="lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="space-y-4 p-3">
+        {/* ── RIGHT — quiet utility rail ────────────────────────────── */}
+        <div className="lg:sticky lg:top-0 lg:max-h-screen lg:self-start lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="space-y-6 px-4 py-6 lg:py-8 lg:pl-2 lg:pr-8">
 
             {isSeries && media.in_progress && (
-              <div className="rounded-2xl bg-surface-1 p-4">
-                <CurrentlyWatching
-                  currentSeason={currentSeason}
-                  currentEpisode={currentEpisode}
-                  onUpdate={updateProgress}
-                  media={media}
-                  onMarkCompleted={handleMarkWatched}
-                />
-              </div>
+              <CurrentlyWatching
+                currentSeason={currentSeason}
+                currentEpisode={currentEpisode}
+                onUpdate={updateProgress}
+                media={media}
+                onMarkCompleted={handleMarkWatched}
+              />
             )}
 
-            <div className="rounded-2xl bg-surface-1 p-4">
-              <InList mediaItemId={media.id} userId={media.user_id} />
-            </div>
+            <InList mediaItemId={media.id} userId={media.user_id} />
 
-            <div className="rounded-2xl bg-surface-1 p-4">
-              <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
-            </div>
+            <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
 
           </div>
         </div>

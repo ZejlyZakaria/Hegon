@@ -69,18 +69,18 @@ function MovieCard({
 
   return (
     <div
-      className="group relative w-full rounded-xl border border-white/10 cursor-pointer"
+      className={cn("group relative w-full cursor-pointer transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]", isPoster ? "rounded-lg" : "rounded-xl")}
       onClick={onView}
     >
       {/* overflow-hidden only on the image container so the dropdown can escape */}
-      <div className={cn("relative overflow-hidden rounded-xl bg-zinc-800", isPoster ? "aspect-2/3" : "aspect-video")}>
+      <div className={cn("relative overflow-hidden bg-zinc-800", isPoster ? "rounded-lg aspect-2/3" : "rounded-xl aspect-video")}>
         <Image
           src={isPoster
             ? (item.poster_url || item.backdrop_url || "/placeholder.svg")
             : (item.backdrop_url || item.poster_url || "/placeholder.svg")}
           alt={item.title}
           fill
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-cover transition-opacity duration-500"
           style={{ opacity: imgLoaded ? 1 : 0 }}
           sizes={isPoster ? "45vw" : "(max-width: 768px) 100vw, 50vw"}
           unoptimized
@@ -88,7 +88,7 @@ function MovieCard({
           priority={eagerLoad}
           onLoad={() => setImgLoaded(true)}
         />
-        <div className="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
 
         {/* rank badge */}
         {showRankBadge && item.priority && (
@@ -320,7 +320,7 @@ export function MediaCarousel({
     <section>
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-text-primary tracking-tight">
+          <h3 className="text-title text-text-primary">
             {title}
           </h3>
           {subtitle && (
@@ -345,7 +345,7 @@ export function MediaCarousel({
             type="button"
             onClick={() => canGoNext && scroll("next")}
             className={cn(
-              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
+              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,opacity,transform] duration-150 ease-out active:scale-[0.97]",
               canGoNext
                 ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
                 : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
@@ -370,7 +370,7 @@ export function MediaCarousel({
 
       <div
         ref={scrollRef}
-        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory"
+        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-3 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {sortedItems.map((item, i) => (
@@ -400,7 +400,7 @@ export function MediaCarousel({
 
       {/* Mobile: swipeable poster rail (~2.4 visible) — posters read better than
           wide backdrops on a phone. Native swipe; no arrows. */}
-      <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory">
+      <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory py-3">
         {sortedItems.map((item, i) => (
           <motion.div
             key={item.id}

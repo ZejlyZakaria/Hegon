@@ -510,7 +510,7 @@ function TableRow({
 
   return (
     <div className="flex flex-col">
-      <div className="group flex items-center gap-3 border-b border-border-subtle/40 bg-surface-1 p-1.5 transition-colors hover:bg-surface-2">
+      <div className="group flex items-center gap-3 border-b border-border-subtle/40 bg-surface-1 px-4 py-2 transition-colors hover:bg-surface-2">
         {/* Rank */}
         <div className="w-8 shrink-0 text-right">
           <span className={cn("text-sm tabular-nums", isRanked ? "font-bold text-amber-400" : "text-text-tertiary/40")}>
@@ -519,7 +519,7 @@ function TableRow({
         </div>
 
         {/* Poster */}
-        <div className="relative h-14 w-9 shrink-0 cursor-pointer overflow-hidden rounded-sm" onClick={onOpen}>
+        <div className="relative h-14 w-9 shrink-0 cursor-pointer overflow-hidden rounded-md" onClick={onOpen}>
           {item.media.poster_url
             ? <Image src={item.media.poster_url} alt="" fill unoptimized className="object-cover" sizes="28px" />
             : <div className="h-full w-full bg-zinc-800" />
@@ -661,15 +661,14 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
   return (
     <div className="group relative">
       <div className="relative cursor-pointer" onClick={onOpen}>
-        <div className="relative aspect-2/3 overflow-hidden rounded-lg">
+        <div className="relative aspect-2/3 overflow-hidden rounded-lg transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
           {item.media.poster_url ? (
-            <Image src={item.media.poster_url} alt={item.media.title} fill unoptimized className="object-cover transition-transform duration-300 group-hover:scale-105" sizes="15vw" />
+            <Image src={item.media.poster_url} alt={item.media.title} fill unoptimized className="object-cover" sizes="15vw" />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-zinc-800">
               <span className="text-2xl opacity-20">🎬</span>
             </div>
           )}
-          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
           {rank !== null && (
             <div className="absolute left-1.5 top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-black/70 px-1.5 text-[10px] font-bold tabular-nums text-white backdrop-blur-sm">
               {rank}
@@ -682,7 +681,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
         </div>
       </div>
 
-      <div className="absolute right-1 top-1 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+      <div className="absolute right-1 top-1 z-10 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setNoteOpen(!noteOpen); }}
@@ -918,7 +917,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
                 onChange={(e) => setEditName(e.target.value)}
                 onBlur={() => handleAutoSave()}
                 onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                className="flex-1 min-w-0 text-xl font-bold leading-tight text-text-primary bg-transparent focus:outline-none rounded px-1.5 -mx-1.5 hover:bg-white/5 focus:bg-white/5 transition-colors"
+                className="flex-1 min-w-0 text-xl font-bold leading-tight text-text-primary bg-transparent focus:outline-none"
               />
 
               <button
@@ -943,7 +942,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
               onBlur={() => handleAutoSave()}
               placeholder="Add description…"
               rows={2}
-              className="resize-none bg-transparent text-sm leading-relaxed text-text-tertiary placeholder:text-text-tertiary/30 focus:outline-none rounded px-1.5 -mx-1.5 hover:bg-white/5 focus:bg-white/5 transition-colors"
+              className="resize-none bg-transparent text-sm leading-relaxed text-text-secondary placeholder:text-text-tertiary/30 focus:outline-none"
             />
 
             <div className="flex-1" />
@@ -1046,30 +1045,38 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
         )}
 
         {!isLoading && items.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
-            {rawItems.length === 0 ? (
-              <>
-                <p className="text-sm text-text-secondary">This list is empty</p>
-                <p className="text-xs text-text-tertiary">Use &quot;Add title&quot; above to add from your library</p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-text-secondary">No results</p>
+          rawItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-4 px-6 py-20 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-2 text-3xl leading-none">
+                {list.emoji ?? <Film size={26} className="text-text-tertiary" />}
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-text-primary">This list is empty</p>
+                <p className="text-xs text-text-tertiary">Use “Add title” above to add from your library or TMDB</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-2">
+                <Search size={18} className="text-text-tertiary" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-text-primary">No results</p>
                 <p className="text-xs text-text-tertiary">Try a different filter or search term</p>
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          )
         )}
 
         {!isLoading && items.length > 0 && view === "table" && (
           <div className="flex flex-col">
             <div className="flex items-center gap-3 border-b border-border-subtle/50 px-4 py-2 text-caption uppercase text-text-tertiary/50">
               <div className="w-8 shrink-0 text-right">#</div>
-              <div className="w-7 shrink-0" />
+              <div className="w-9 shrink-0" />
               <div className="min-w-0 flex-1">Title</div>
               <div className="hidden w-12 shrink-0 sm:block">Year</div>
               <div className="hidden w-20 shrink-0 md:block">Type</div>
-              <div className="hidden w-16 shrink-0 lg:block">Rating</div>
+              <div className="hidden w-16 shrink-0 lg:block">TMDB</div>
               <div className="w-20 shrink-0">My rating</div>
               <div className="hidden w-28 shrink-0 sm:block">Status</div>
               <div className="hidden w-20 shrink-0 md:block">Added</div>

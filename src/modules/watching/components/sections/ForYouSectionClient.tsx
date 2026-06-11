@@ -80,7 +80,7 @@ function ForYouCard({
 
   return (
     <div
-      className="group relative w-full overflow-hidden rounded-xl border border-white/10 cursor-pointer"
+      className={cn("group relative w-full cursor-pointer overflow-hidden transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]", isPoster ? "rounded-lg" : "rounded-xl")}
       onClick={onClick}
     >
       <div className={cn("relative bg-zinc-800", isPoster ? "aspect-2/3" : "aspect-video")}>
@@ -90,7 +90,7 @@ function ForYouCard({
             alt={item.title}
             fill
             unoptimized
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className="object-cover transition-opacity duration-500"
             style={{ opacity: imgLoaded ? 1 : 0 }}
             sizes={isPoster ? "45vw" : "(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"}
             loading="eager"
@@ -98,7 +98,7 @@ function ForYouCard({
             onLoad={() => setImgLoaded(true)}
           />
         )}
-        <div className="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
 
         {/* Dismiss button */}
         <button
@@ -225,7 +225,7 @@ export default function ForYouSectionClient({
             type="button"
             onClick={() => canGoPrev && scroll("prev")}
             className={cn(
-              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
+              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,opacity,transform] duration-150 ease-out active:scale-[0.97]",
               canGoPrev
                 ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
                 : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
@@ -237,7 +237,7 @@ export default function ForYouSectionClient({
             type="button"
             onClick={() => canGoNext && scroll("next")}
             className={cn(
-              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,border-color,opacity] duration-300",
+              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,opacity,transform] duration-150 ease-out active:scale-[0.97]",
               canGoNext
                 ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
                 : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
@@ -250,13 +250,13 @@ export default function ForYouSectionClient({
 
       <div
         ref={scrollRef}
-        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory"
+        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-3 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {items.map((item, i) => (
           <div
             key={item.id}
-            className="shrink-0 snap-start transition-transform duration-500 ease-in-out"
+            className="shrink-0 snap-start"
             style={itemWidthStyle}
           >
             <ForYouCard

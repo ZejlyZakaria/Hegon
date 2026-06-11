@@ -111,7 +111,7 @@ function ListCard({ list, onClick, onDelete }: {
       onClick={onClick}
       className="group relative cursor-pointer overflow-hidden rounded-xl border border-border-subtle bg-surface-1 transition-colors hover:bg-surface-2"
     >
-      <div className="relative flex h-42 overflow-hidden bg-surface-2">
+      <div className="relative flex h-42 gap-0.5 overflow-hidden bg-black">
         {list.thumbnails.length === 0 ? (
           <div className="flex h-full w-full items-center justify-center text-4xl opacity-15">
             {list.emoji ?? "📋"}
@@ -168,13 +168,16 @@ function ListCard({ list, onClick, onDelete }: {
 interface Props { userId: string }
 
 export function ListsClient({ userId }: Props) {
-  const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [isCreating, setIsCreating]         = useState(false);
 
   const { data: lists = [], isLoading } = useListsWithThumbnails(userId);
   const createList = useCreateMediaList(userId);
   const deleteList = useDeleteMediaList(userId);
   const setDetailOpen = useWatchingUIStore((s) => s.setDetailOpen);
+  // Persisted in the UI store (not local state) so returning from a media detail
+  // page restores the open list instead of dropping back to the grid.
+  const selectedListId = useWatchingUIStore((s) => s.selectedListId);
+  const setSelectedListId = useWatchingUIStore((s) => s.setSelectedListId);
 
   // Sync list detail open state with layout (hides global tabs)
   useEffect(() => {

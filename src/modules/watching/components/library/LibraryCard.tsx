@@ -50,13 +50,13 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
   return (
     <div className="group relative cursor-pointer" onClick={onClick}>
       {/* image */}
-      <div className="relative aspect-2/3 overflow-hidden rounded-lg">
+      <div className="relative aspect-2/3 overflow-hidden rounded-lg transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
         <Image
           src={item.poster_url || "/placeholder.svg"}
           alt={item.title}
           fill
           unoptimized
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          className="object-cover"
           sizes="(max-width: 768px) 100vw, 50vw"
           loading={eagerLoad ? "eager" : "lazy"}
           priority={eagerLoad}
@@ -69,15 +69,6 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
           </div>
         )}
 
-        {/* hover overlay with rating */}
-        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
-          {item.user_rating != null && item.user_rating > 0 && (
-            <div className="flex items-center gap-1 text-white">
-              <Star size={12} className="fill-amber-400 text-amber-400" />
-              <span className="text-xs font-semibold">{item.user_rating}/10</span>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* action menu trigger */}
@@ -129,10 +120,18 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
         document.body
       )}
 
-      {/* title + year */}
+      {/* title + year · rating */}
       <div className="mt-2 px-0.5">
         <h4 className="text-xs font-medium text-text-primary line-clamp-1">{displayTitle(item)}</h4>
-        <p className="mt-0.5 text-[10px] text-text-tertiary">{item.year}</p>
+        <div className="mt-0.5 flex items-center justify-between text-[10px] text-text-tertiary">
+          <span>{item.year}</span>
+          {item.user_rating != null && item.user_rating > 0 && (
+            <span className="flex items-center gap-1">
+              <Star size={9} className="fill-amber-400 text-amber-400" />
+              {item.user_rating}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

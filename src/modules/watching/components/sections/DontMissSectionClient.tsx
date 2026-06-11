@@ -68,7 +68,7 @@ function DontMissCard({
 
   return (
     <div
-      className="relative rounded-2xl overflow-hidden cursor-pointer min-w-0"
+      className="relative rounded-2xl overflow-hidden cursor-pointer min-w-0 ring-1 ring-inset ring-white/10"
       style={{
         flex: isActive ? EXP : COL,
         transition: "flex 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -76,6 +76,15 @@ function DontMissCard({
       }}
       onMouseEnter={onHover}
     >
+      {/* ── ambient: the poster's own artwork, blurred, always fills the card so the
+            area beside the sharp poster reads as glow, never a flat dark panel ── */}
+      {posterUrl && (
+        <div className="absolute inset-0">
+          <Image src={posterUrl} alt="" aria-hidden fill unoptimized sizes="50vw" className="scale-[1.7] object-cover blur-3xl" />
+          <div className="absolute inset-0 bg-black/40" />
+        </div>
+      )}
+
       {/* ── portrait poster — left-anchored, natural 2:3 dimensions ── */}
       <div
         className="absolute left-0 top-0 bottom-0 bg-zinc-800"
@@ -102,31 +111,18 @@ function DontMissCard({
         {isActive && (
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.22, delay: 0.22 }}
+            animate={{ opacity: 1, transition: { duration: 0.22, delay: 0.15 } }}
+            exit={{ opacity: 0, transition: { duration: 0.1 } }}
             className="absolute inset-0"
           >
-            {/* fade poster right edge into dark background */}
-            <div
-              className="absolute inset-0"
-              style={{
-                background: `linear-gradient(to right, transparent ${POSTER_W - 32}px, ${CARD_BG} ${POSTER_W + 20}px)`,
-              }}
-            />
+            {/* darken toward the info side; the sharp poster melts into its own blurred art */}
+            <div className="absolute inset-0 bg-linear-to-r from-transparent via-black/35 to-black/65" />
 
             {/* info panel — starts right after the poster */}
             <div
               className="absolute right-0 top-0 bottom-0 flex flex-col justify-end pb-5 pr-6 pl-5 min-w-0"
               style={{ left: `${POSTER_W}px` }}
             >
-              {isTrending && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white bg-accent-watching backdrop-blur-sm self-start mb-3">
-                  <TrendingUp size={10} />
-                  Trending
-                </div>
-              )}
-
               {genres.length > 0 && (
                 <div className="flex gap-1.5 flex-wrap mb-2">
                   {genres.map((g) => (
@@ -137,7 +133,7 @@ function DontMissCard({
                 </div>
               )}
 
-              <h3 className="text-base font-bold text-white leading-snug line-clamp-2 mb-1.5">
+              <h3 className="text-base font-bold text-white leading-snug line-clamp-2 mb-1.5 min-h-11">
                 {title}
               </h3>
 
@@ -152,7 +148,7 @@ function DontMissCard({
               </div>
 
               {item.overview && (
-                <p className="text-[11px] text-white/60 line-clamp-3 leading-relaxed mb-3">
+                <p className="text-[11px] text-white/60 line-clamp-3 leading-relaxed mb-3 min-h-[3.3rem]">
                   {item.overview}
                 </p>
               )}
@@ -160,7 +156,7 @@ function DontMissCard({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                className="self-start flex items-center gap-1.5 rounded-lg bg-accent-watching px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                className="self-start flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-accent-watching transition-[transform,opacity] duration-150 ease-out hover:opacity-90 active:scale-[0.98]"
               >
                 <Plus size={12} />
                 Add to collection
@@ -195,9 +191,9 @@ function DontMissCard({
         )}
       </AnimatePresence>
 
-      {/* ── trending badge — collapsed poster only ── */}
-      {isTrending && !isActive && (
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white bg-accent-watching backdrop-blur-sm">
+      {/* ── trending badge — always on the poster (single source, never duplicated) ── */}
+      {isTrending && (
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white bg-accent-watching backdrop-blur-sm">
           <TrendingUp size={10} />
           Trending
         </div>
@@ -285,7 +281,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
 
       {/* Desktop: hover-expand accordion */}
       <div
-        className="hidden lg:flex gap-3 h-60"
+        className="hidden lg:flex gap-4 h-60"
         onMouseLeave={() => setActiveIndex(0)}
       >
         {items.map((item, i) => (

@@ -51,5 +51,19 @@ next-env.d.ts
 # Sentry Config File
 .env.sentry-build-plugin
 
+# Local-only dev tooling (screenshot harness — stays local)
+/scripts/.auth/
+/scripts/.shots/
+/scripts/auth-setup.mjs
+/scripts/shoot.mjs
+/test-results/
+
+# ⚠️ TEMP — icon system test, kept out of git for now.
+# REMOVE these 3 lines when wiring the icons into the dashboard,
+# otherwise the assets/component will be silently excluded from the build.
+/public/icons/
+/src/app/(main)/icon-lab/
+/src/shared/components/app-icon/
+
 # Migration Folder
 /supabase/

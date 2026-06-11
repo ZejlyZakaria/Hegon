@@ -58,7 +58,7 @@ export function EpisodeHighlights({ mediaItemId, tmdbId, userId, orgId, seasons,
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-text-primary">Best Episodes</h2>
+          <h2 className="text-title text-text-primary">Best Episodes</h2>
           <p className="mt-1 text-xs text-text-tertiary">
             Pin your favorite moments
             {highlights.length > 0 && (

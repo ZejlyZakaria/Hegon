@@ -13,6 +13,10 @@ interface WatchingUIState {
   // exact view the user left (survives the remount; resets on a full page reload).
   libraryFilter: LibraryFilter;
   setLibraryFilter: (f: LibraryFilter) => void;
+  // Open list in the Lists tab — same in-memory pattern, so Back from a media
+  // detail page restores the open list instead of dropping to the lists grid.
+  selectedListId: string | null;
+  setSelectedListId: (id: string | null) => void;
 }
 
 export const useWatchingUIStore = create<WatchingUIState>((set) => ({
@@ -22,4 +26,6 @@ export const useWatchingUIStore = create<WatchingUIState>((set) => ({
   setPageLabel: (pageLabel) => set({ pageLabel }),
   libraryFilter: { type: "all", sort: "added", page: 1 },
   setLibraryFilter: (libraryFilter) => set({ libraryFilter }),
+  selectedListId: null,
+  setSelectedListId: (selectedListId) => set({ selectedListId }),
 }));

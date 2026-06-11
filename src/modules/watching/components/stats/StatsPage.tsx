@@ -65,11 +65,7 @@ function MetricCard({ label, value, sub, icon }: {
   icon: React.ReactNode;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border-subtle bg-surface-1 p-4">
-      <div
-        className="absolute top-0 inset-x-0 h-px"
-        style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.06), transparent)" }}
-      />
+    <div className="relative overflow-hidden rounded-xl surface-card p-4">
       <div className="mb-3 flex items-center gap-2">
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-2">
           {icon}
@@ -121,7 +117,7 @@ function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] 
     : SEGMENTS.find((s) => s.key === filter)?.label.toLowerCase() ?? "";
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-1 p-5 h-60 flex flex-col overflow-hidden">
+    <div className="rounded-xl surface-card p-5 h-60 flex flex-col overflow-hidden">
       <div className="mb-3 flex items-center gap-2 shrink-0">
         <Clock size={14} className="text-text-tertiary" />
         <p className="text-sm font-semibold text-text-primary">Hours Watched</p>
@@ -193,7 +189,7 @@ function TopFavoritesCard({ items }: { items: StatsRawItem[] }) {
   const router = useRouter();
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-1 p-5">
+    <div className="rounded-xl surface-card p-5">
       <div className="mb-4 flex items-center gap-2">
         <Trophy size={14} className="text-text-tertiary" />
         <p className="text-sm font-semibold text-text-primary">Top Picks</p>
@@ -202,11 +198,11 @@ function TopFavoritesCard({ items }: { items: StatsRawItem[] }) {
       {items.length === 0 ? (
         <p className="text-sm text-text-tertiary/50">Rate or favorite items to see your top picks</p>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-0.5">
           {items.map((item, i) => (
             <div
               key={item.id}
-              className="group flex cursor-pointer items-center gap-3"
+              className="group flex cursor-pointer items-center gap-3 -mx-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-2"
               onClick={() => router.push(`/perso/watching/${item.id}`)}
             >
               <span
@@ -222,7 +218,7 @@ function TopFavoritesCard({ items }: { items: StatsRawItem[] }) {
                     alt={item.title}
                     fill
                     unoptimized
-                    className="object-cover transition-transform duration-300 group-hover:scale-110"
+                    className="object-cover"
                     sizes="40px"
                   />
                 ) : (
@@ -262,7 +258,7 @@ function TopGenresCard({ genres }: { genres: ReturnType<typeof computeStats>["to
   const max = genres[0]?.count ?? 1;
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-1 p-5">
+    <div className="rounded-xl surface-card p-5">
       <div className="mb-4 flex items-center gap-2">
         <BarChart2 size={14} className="text-text-tertiary" />
         <p className="text-sm font-semibold text-text-primary">Top Genres</p>
@@ -335,7 +331,7 @@ function RatingDistributionCard({ distribution }: { distribution: ReturnType<typ
     : "";
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-1 p-5 h-60 w-full flex flex-col overflow-hidden">
+    <div className="rounded-xl surface-card p-5 h-60 w-full flex flex-col overflow-hidden">
       <div className="mb-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Star size={14} className="text-text-tertiary" />
@@ -387,7 +383,7 @@ function ActivityCard({ activity, year, streaks }: {
   const title = year ? "Monthly Activity" : "Yearly Activity";
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-1 p-5 h-60 flex flex-col overflow-hidden">
+    <div className="rounded-xl surface-card p-5 h-60 flex flex-col overflow-hidden">
       <div className="mb-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <CalendarDays size={14} className="text-text-tertiary" />
@@ -612,7 +608,7 @@ export function StatsPage() {
                   key={g.id}
                   type="button"
                   onClick={() => router.push(`/life/goals/${g.id}`)}
-                  className="group cursor-pointer rounded-xl border border-border-subtle bg-surface-1 p-4 text-left transition-colors hover:border-border-default"
+                  className="group cursor-pointer rounded-xl surface-card p-4 text-left transition-colors hover:border-border-default"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-medium text-text-primary">{g.title}</p>

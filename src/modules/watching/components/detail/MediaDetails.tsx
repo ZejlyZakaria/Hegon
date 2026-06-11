@@ -4,7 +4,7 @@ import type { WatchingMedia } from "../../types";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 text-sm font-semibold text-text-primary">{children}</h2>
+    <h2 className="mb-3 text-title text-text-primary">{children}</h2>
   );
 }
 
@@ -27,7 +27,7 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
   return (
     <section>
       <SectionLabel>Details</SectionLabel>
-      <div className="overflow-hidden rounded-xl border border-border-subtle bg-surface-1/40">
+      <div className="surface-quiet overflow-hidden rounded-2xl">
         <div className="divide-y divide-border-subtle px-4">
           <DetailRow label="Type" value={typeLabel} />
           {media.year ? <DetailRow label="Year" value={media.year} /> : null}

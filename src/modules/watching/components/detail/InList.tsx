@@ -67,7 +67,7 @@ export function InList({ mediaItemId, userId }: Props) {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-text-primary">In List</h2>
+        <h2 className="text-title text-text-primary">In List</h2>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <button
@@ -130,7 +130,7 @@ export function InList({ mediaItemId, userId }: Props) {
                       if (e.key === "Escape") { setIsCreating(false); setNewName(""); }
                     }}
                     placeholder="List name…"
-                    className="flex-1 rounded-md border border-border-subtle bg-surface-1 px-2 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
+                    className="min-w-0 flex-1 rounded-md border border-border-subtle bg-surface-1 px-2 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
                   />
                   <button
                     type="button"
@@ -163,7 +163,7 @@ export function InList({ mediaItemId, userId }: Props) {
         </Popover>
       </div>
 
-      {/* List badges */}
+      {/* List badges — open (the pills are self-contained, no card needed) */}
       {isLoading ? (
         <div className="flex gap-2">
           {[1, 2].map((i) => (
@@ -171,7 +171,7 @@ export function InList({ mediaItemId, userId }: Props) {
           ))}
         </div>
       ) : mediaLists.length === 0 ? (
-        <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-default px-4 py-3.5">
+        <div className="flex items-center gap-2.5 py-0.5">
           <List size={14} className="shrink-0 text-text-tertiary/50" />
           <p className="text-xs text-text-tertiary">Not in any list yet</p>
         </div>

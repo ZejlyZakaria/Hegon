@@ -101,8 +101,8 @@ export function CurrentlyWatching({
 
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold text-text-primary">Currently Watching</h2>
-      <div className="space-y-3 rounded-xl border border-border-subtle bg-surface-1/50 p-4">
+      <h2 className="mb-3 text-title text-text-primary">Currently Watching</h2>
+      <div className="surface-quiet space-y-3 rounded-2xl p-4">
 
         <StepControl
           label="Season"

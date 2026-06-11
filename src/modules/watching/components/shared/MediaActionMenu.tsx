@@ -180,7 +180,7 @@ export function MediaActionMenu({
         type="button"
         onClick={handleOpen}
         className={cn(
-          "p-1.5 rounded-lg bg-black/60 text-white/70 hover:text-white hover:bg-black/80 transition-colors",
+          "p-1.5 rounded-full bg-black/70 backdrop-blur-sm text-white/70 hover:text-white hover:bg-black/80 transition-colors",
           triggerClassName,
         )}
       >

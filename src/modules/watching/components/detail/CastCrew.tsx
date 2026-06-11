@@ -6,7 +6,7 @@ import type { CastMember, CreditedDirector } from "../../hooks/useMediaCredits";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 text-sm font-semibold text-text-primary">{children}</h2>
+    <h2 className="mb-3 text-title text-text-primary">{children}</h2>
   );
 }
 
