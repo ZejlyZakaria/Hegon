@@ -8,4 +8,5 @@ export const BOOK_KEYS = {
   stats:      () => [...BOOK_KEYS.all, 'stats'] as const,
   rightPanel: () => [...BOOK_KEYS.all, 'right-panel'] as const,
   search:     (query: string) => [...BOOK_KEYS.all, 'search', query] as const,
+  quotes:     (bookId: string) => [...BOOK_KEYS.all, 'quotes', bookId] as const,
 } as const;

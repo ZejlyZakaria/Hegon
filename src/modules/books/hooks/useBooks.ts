@@ -103,6 +103,17 @@ export function useUpdateProgress() {
   });
 }
 
+// Silent autosave for the review/notes field — no toast, just refresh the detail.
+export function useUpdateBookNotes(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (notes: string | null) => BooksService.updateBook({ id, notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: BOOK_KEYS.detail(id) });
+    },
+  });
+}
+
 export function useDeleteBook() {
   const queryClient = useQueryClient();
   return useMutation({

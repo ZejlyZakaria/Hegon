@@ -44,6 +44,8 @@
   --color-accent-watching: var(--color-accent-watching);
   --color-accent-watching-vivid: var(--color-accent-watching-vivid);
   --color-accent-sports: var(--color-accent-sports);
+  --color-accent-books: var(--color-accent-books);
+  --color-accent-books-vivid: var(--color-accent-books-vivid);
 
   /* ── Elemental icon colors (shared, reusable across modules) ────────────── */
   --color-fire: var(--color-fire);
@@ -184,7 +186,32 @@
   --color-accent-watching: #0C3D4A;        /* fond solide — My Record, boutons | bordeaux cinéma : #6D0F1E */
   --color-accent-watching-vivid: #2dd4bf; /* dock icône, tab underline, indicators */
   --color-accent-sports: #10b981;
-  --color-accent-books: #0ea5e9;
+  --color-accent-books: #082f49;        /* deep blue — solid surfaces */
+  --color-accent-books-vivid: #0ea5e9;  /* sky blue — accents, tabs, progress, rating (owner preference) */
+
+  /* ════════════════════════════════════════════════════════════════════════
+     AGREED MODULE PALETTE (validated 2026-06 — NOT yet applied above).
+     Logic: PRIMARY modules take maximally-spaced anchor hues (instantly
+     distinct); SECONDARY modules fill the gaps between them. Each module has
+     a VIVID tone (accents/tabs/text) + a DEEP tone (solid surfaces).
+     TODO: replace the values above with these once we do the color pass.
+
+       PRIMARY                vivid       deep
+       Dashboard (neutral hub) #cbd5e1    #1e293b
+       Sport (volt | alt red)  #84cc16    #1a2e05   (alt: #ef4444 / #450a0a)
+       Books *owner=blue*      #0ea5e9    #082f49   (science said orange #f97316; owner prefers blue)
+       Goals                   #22c55e    #052e16
+       Watching                #2dd4bf    #0C3D4A   (already applied)
+       Tasks                   #3b82f6    #172554
+       Habits                  #8b5cf6    #2e1065
+
+       SECONDARY               vivid       deep
+       Travel                  #0ea5e9    #082f49
+       Job Hunt                #6366f1    #1e1b4b
+       Tech                    #c026d3    #4a044e
+       Journal                 #f59e0b    #451a03
+       Culture (burgundy)      #be123c    #4c0519
+     ════════════════════════════════════════════════════════════════════════ */
 
   /* ── Elemental icon colors — shared, reusable across modules ────────────── */
   --color-fire: #fb923c;  /* flame / streak */

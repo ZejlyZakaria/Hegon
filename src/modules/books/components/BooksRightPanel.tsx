@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useBooksRightPanel } from "../hooks/useBooks";
 import { BooksRightPanelLoadingSkeleton } from "./BooksSkeleton";
 
-const SKY = "#0ea5e9";
+const SKY = "var(--color-accent-books-vivid)";
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 const RING_R = 56;
 const RING_C = 2 * Math.PI * RING_R;
@@ -32,7 +32,7 @@ export function BooksRightPanel() {
   return (
     <div className="w-full flex flex-col gap-3">
       {/* ── Reading Streak ── */}
-      <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
+      <div className="surface-card rounded-xl p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold text-text-secondary">Reading Streak</h3>
           <span className="text-xs text-text-tertiary">Best {streak.best}</span>
@@ -55,16 +55,16 @@ export function BooksRightPanel() {
       </div>
 
       {/* ── Pages This Month ── */}
-      <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
+      <div className="surface-card rounded-xl p-4 flex flex-col gap-3">
         <h3 className="text-xs font-semibold text-text-secondary">Pages This Month</h3>
         <div className="flex items-center justify-center">
           <div className="relative w-28 h-28">
-            <svg className="w-full h-full -rotate-90" viewBox="0 0 128 128">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 128 128" style={{ color: SKY }}>
               <circle cx="64" cy="64" r={RING_R} fill="none" stroke="#27272a" strokeWidth="8" />
               <circle
                 cx="64" cy="64" r={RING_R}
                 fill="none"
-                stroke={SKY}
+                stroke="currentColor"
                 strokeWidth="8"
                 strokeDasharray={`${ringDash} ${RING_C}`}
                 strokeLinecap="round"
@@ -79,7 +79,7 @@ export function BooksRightPanel() {
       </div>
 
       {/* ── Recently Finished ── */}
-      <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
+      <div className="surface-card rounded-xl p-4 flex flex-col gap-3">
         <h3 className="text-xs font-semibold text-text-secondary">Recently Finished</h3>
         {recently_finished.length === 0 ? (
           <p className="text-xs text-text-tertiary">No books finished yet.</p>
@@ -99,13 +99,13 @@ export function BooksRightPanel() {
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
                   <p className="text-sm font-medium text-text-primary truncate">{book.title}</p>
                   {book.rating != null && (
-                    <div className="flex items-center gap-0.5">
+                    <div className="flex items-center gap-0.5" style={{ color: SKY }}>
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
                           key={i}
                           className="w-3 h-3"
-                          fill={i < book.rating! ? SKY : "none"}
-                          stroke={i < book.rating! ? SKY : "#71717a"}
+                          fill={i < book.rating! ? "currentColor" : "none"}
+                          stroke={i < book.rating! ? "currentColor" : "#71717a"}
                           strokeWidth={1.5}
                         />
                       ))}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, startTransition } from "react";
-import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { useCommandCenter } from "@/modules/command-center/store";
 import {
@@ -20,6 +19,7 @@ import { BooksSection } from "./BooksSection";
 import { BooksStatsZone } from "./BooksStatsZone";
 import { BooksLoadingSkeleton } from "./BooksSkeleton";
 import { useBookStats } from "../hooks/useBooks";
+import { useBooksUIStore } from "../hooks/useBooksUIStore";
 
 const TABS: { id: BookTab; label: string }[] = [
   { id: "reading",      label: "Reading" },
@@ -42,10 +42,12 @@ const SORT_OPTIONS: Array<{ value: BookSort; label: string }> = [
   { value: "most_read",      label: "Most Read" },
 ];
 
-const SKY = "#0ea5e9";
+const ACCENT = "var(--color-accent-books-vivid)";
 
 export function BooksPage() {
-  const [activeTab, setActiveTab] = useState<BookTab>("reading");
+  // Active tab persisted in-memory so Back from a detail page restores it.
+  const activeTab    = useBooksUIStore((s) => s.activeTab);
+  const setActiveTab = useBooksUIStore((s) => s.setActiveTab);
   const [search, setSearch]       = useState("");
   const [sort, setSort]           = useState<BookSort>("recently_added");
   const [modalOpen, setModalOpen] = useState(false);
@@ -66,27 +68,6 @@ export function BooksPage() {
 
   return (
     <div className="flex min-h-full flex-col px-6 py-6 space-y-4">
-      {/* Header — always visible */}
-      <motion.div
-        className="flex items-start justify-between gap-4"
-        initial={{ opacity: 0, y: -6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, ease: "easeOut" }}
-      >
-        <div>
-          <h1 className="text-xl font-bold leading-tight text-text-primary">Books</h1>
-          <p className="mt-0.5 text-sm text-text-tertiary">Read deeply. Think clearly.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="h-8 shrink-0 px-3 text-sm font-medium text-white rounded-md hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: SKY }}
-        >
-          + New Book
-        </button>
-      </motion.div>
-
       {isEmpty ? (
         <BooksEmptyState onAddClick={() => setModalOpen(true)} />
       ) : (
@@ -114,7 +95,7 @@ export function BooksPage() {
                         {isActive && (
                           <span
                             className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm"
-                            style={{ backgroundColor: SKY }}
+                            style={{ backgroundColor: ACCENT }}
                           />
                         )}
                       </button>
@@ -152,6 +133,14 @@ export function BooksPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(true)}
+                    className="h-9 shrink-0 rounded-md px-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: ACCENT }}
+                  >
+                    + New Book
+                  </button>
                 </div>
               </div>
 

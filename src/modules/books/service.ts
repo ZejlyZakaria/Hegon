@@ -6,9 +6,12 @@ import type {
   BookStatus,
   BookStats,
   BooksRightPanelData,
+  BookQuote,
   CreateBookInput,
   UpdateBookInput,
   UpdateProgressInput,
+  CreateQuoteInput,
+  UpdateQuoteInput,
 } from "./types";
 
 // =====================================================
@@ -70,15 +73,16 @@ export async function getBookStats(): Promise<BookStats> {
 
   const { data, error } = await supabase
     .from("books")
-    .select("status, rating, finished_at")
+    .select("status, rating, finished_at, favorite")
     .eq("org_id", orgId);
 
   if (error) throw error;
-  type BookStatsRow = Pick<Book, "status" | "rating" | "finished_at">;
+  type BookStatsRow = Pick<Book, "status" | "rating" | "finished_at" | "favorite">;
   const books = (data ?? []) as BookStatsRow[];
 
   const reading = books.filter((b: BookStatsRow) => b.status === "reading").length;
   const want_to_read = books.filter((b: BookStatsRow) => b.status === "want_to_read").length;
+  const favorites = books.filter((b: BookStatsRow) => b.favorite).length;
   const completed_this_year = books.filter(
     (b: BookStatsRow) => b.status === "read" && b.finished_at && b.finished_at >= thisYearStart
   ).length;
@@ -91,7 +95,7 @@ export async function getBookStats(): Promise<BookStats> {
         ) / 10
       : null;
 
-  return { total: books.length, reading, completed_this_year, want_to_read, avg_rating };
+  return { total: books.length, reading, completed_this_year, want_to_read, favorites, avg_rating };
 }
 
 export async function getRightPanelData(): Promise<BooksRightPanelData> {
@@ -222,6 +226,89 @@ export async function deleteBook(id: string): Promise<void> {
 
   const { error } = await supabase
     .from("books")
+    .delete()
+    .eq("id", id)
+    .eq("org_id", orgId);
+
+  if (error) throw error;
+}
+
+// =====================================================
+// QUOTES
+// =====================================================
+
+export async function getBookQuotes(bookId: string): Promise<BookQuote[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data, error } = await supabase
+    .from("book_quotes")
+    .select("*")
+    .eq("book_id", bookId)
+    .eq("org_id", orgId)
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function createQuote(input: CreateQuoteInput): Promise<BookQuote> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Append to the end of the book's quote list.
+  const { count } = await supabase
+    .from("book_quotes")
+    .select("id", { count: "exact", head: true })
+    .eq("book_id", input.book_id)
+    .eq("org_id", orgId);
+
+  const { data, error } = await supabase
+    .from("book_quotes")
+    .insert({
+      org_id:   orgId,
+      user_id:  user.id,
+      book_id:  input.book_id,
+      text:     input.text,
+      page:     input.page ?? null,
+      note:     input.note ?? null,
+      position: count ?? 0,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateQuote(input: UpdateQuoteInput): Promise<BookQuote> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { id, ...updates } = input;
+
+  const { data, error } = await supabase
+    .from("book_quotes")
+    .update(updates)
+    .eq("id", id)
+    .eq("org_id", orgId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteQuote(id: string): Promise<void> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { error } = await supabase
+    .from("book_quotes")
     .delete()
     .eq("id", id)
     .eq("org_id", orgId);

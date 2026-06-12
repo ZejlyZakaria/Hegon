@@ -4,8 +4,12 @@ import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBooks } from "../hooks/useBooks";
 import { BookCard } from "./BookCard";
-import { BookCardSkeleton } from "./BooksSkeleton";
+import { BookRow } from "./BookRow";
+import { BookCardSkeleton, BookRowSkeleton } from "./BooksSkeleton";
 import type { BookStatus, BookSort } from "../types";
+
+const GRID = "grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-7";
+const ROWS = "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3";
 
 interface BooksSectionProps {
   status?:       BookStatus;
@@ -22,6 +26,10 @@ export function BooksSection({
 }: BooksSectionProps) {
   const { data: allBooks, isLoading } = useBooks({ status, sort });
 
+  // "Reading" is a tracking view → info-rich rows. Everything else is a
+  // browse/collection view → cover grid.
+  const isReading = status === "reading";
+
   // Client-side filter — no re-fetch, no loading flash on keystroke
   const books = useMemo(() => {
     if (!allBooks) return [];
@@ -35,18 +43,20 @@ export function BooksSection({
   }, [allBooks, search]);
 
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <BookCardSkeleton key={i} />
-        ))}
+    return isReading ? (
+      <div className={ROWS}>
+        {Array.from({ length: 3 }).map((_, i) => <BookRowSkeleton key={i} />)}
+      </div>
+    ) : (
+      <div className={GRID}>
+        {Array.from({ length: 14 }).map((_, i) => <BookCardSkeleton key={i} />)}
       </div>
     );
   }
 
   if (books.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-32 gap-2">
+      <div className="flex h-32 flex-col items-center justify-center gap-2">
         <span className="text-xs text-text-tertiary">
           {search.trim() ? "No books match your search." : emptyMessage}
         </span>
@@ -55,7 +65,7 @@ export function BooksSection({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className={isReading ? ROWS : GRID}>
       <AnimatePresence mode="popLayout">
         {books.map((book, i) => (
           <motion.div
@@ -65,7 +75,7 @@ export function BooksSection({
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.18, delay: i * 0.04, ease: "easeOut" }}
           >
-            <BookCard book={book} />
+            {isReading ? <BookRow book={book} /> : <BookCard book={book} />}
           </motion.div>
         ))}
       </AnimatePresence>

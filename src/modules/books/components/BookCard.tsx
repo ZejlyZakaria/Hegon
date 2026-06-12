@@ -1,11 +1,11 @@
 "use client";
 
-import { BookOpen, Star } from "lucide-react";
+import { BookOpen, Heart, Star } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { Book } from "../types";
 
-const SKY = "#0ea5e9";
+const ACCENT = "var(--color-accent-books-vivid)";
 
 interface BookCardProps {
   book: Book;
@@ -14,114 +14,53 @@ interface BookCardProps {
 export function BookCard({ book }: BookCardProps) {
   const router = useRouter();
 
-  const progress =
-    book.total_pages && book.current_page
-      ? Math.round((book.current_page / book.total_pages) * 100)
-      : 0;
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "";
-    return new Date(dateStr).toLocaleDateString("en-GB", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
   return (
     <button
       type="button"
       onClick={() => router.push(`/life/books/${book.id}`)}
-      className="w-full cursor-pointer text-left p-3 bg-surface-1 hover:bg-surface-2 rounded-lg border border-border-subtle transition-colors duration-100"
+      className="group block w-full cursor-pointer text-left"
     >
-      <div className="flex gap-4">
-        {/* Cover */}
-        <div className="relative w-20 h-28 shrink-0 bg-surface-2 rounded overflow-hidden">
-          {book.cover_url ? (
-            <Image
-              src={book.cover_url}
-              alt={book.title}
-              fill
-              sizes="80px"
-              priority
-              className="object-contain"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <BookOpen className="w-4.5 h-4.5 text-text-tertiary" />
+      {/* Cover */}
+      <div className="relative aspect-2/3 overflow-hidden rounded-lg bg-surface-1 transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
+        {book.cover_url ? (
+          <Image src={book.cover_url} alt={book.title} fill sizes="160px" className="object-cover" />
+        ) : (
+          /* Generated cover for books without an image — keeps the shelf coherent */
+          <div className="flex h-full w-full flex-col justify-between bg-linear-to-br from-surface-2 to-surface-1 p-2.5">
+            <BookOpen size={12} className="text-text-tertiary/30" />
+            <div>
+              <p className="line-clamp-4 text-[11px] font-semibold leading-snug text-text-secondary">{book.title}</p>
+              {book.author && <p className="mt-1 line-clamp-1 text-[9px] text-text-tertiary">{book.author}</p>}
             </div>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0 flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-text-primary truncate">
-            {book.title}
-          </h3>
-
-          {book.author && (
-            <p className="text-xs text-text-secondary truncate">{book.author}</p>
-          )}
-
-          <div className="mt-auto">
-            {book.status === "reading" && book.total_pages && (
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-xs text-text-tertiary">
-                  <span>{book.current_page} / {book.total_pages} pages</span>
-                  <span>{progress}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${progress}%`, backgroundColor: SKY }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {book.status === "read" && (
-              <div className="flex items-center gap-3">
-                {book.rating && (
-                  <div className="flex items-center gap-0.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className="w-3 h-3"
-                        fill={i < book.rating! ? SKY : "none"}
-                        stroke={i < book.rating! ? SKY : "#71717a"}
-                        strokeWidth={1.5}
-                      />
-                    ))}
-                  </div>
-                )}
-                {book.finished_at && (
-                  <span className="text-xs text-text-tertiary">
-                    Finished {formatDate(book.finished_at)}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {book.status === "want_to_read" && book.genre.length > 0 && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {book.genre.slice(0, 2).map((genre) => (
-                  <span
-                    key={genre}
-                    className="text-xs text-text-tertiary bg-surface-2 px-2 py-0.5 rounded"
-                  >
-                    {genre}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {(book.status === "paused" || book.status === "abandoned") && (
-              <span className="text-xs text-text-tertiary capitalize">
-                {book.status}
-              </span>
-            )}
           </div>
-        </div>
+        )}
+
+        {/* Favorite — top-left */}
+        {book.favorite && (
+          <div className="absolute left-2.5 top-2.5">
+            <Heart size={12} className="fill-red-500 text-red-500 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]" />
+          </div>
+        )}
+
+        {/* Status badge — top-right, frosted pill */}
+        {book.status === "reading" && (
+          <div className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 ring-1 ring-white/15 backdrop-blur-md">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: ACCENT, boxShadow: `0 0 6px ${ACCENT}` }} />
+            <span className="text-[9px] font-semibold text-white">Reading</span>
+          </div>
+        )}
+        {book.status === "read" && book.rating != null && (
+          <div className="absolute right-2.5 top-2.5 flex items-center gap-0.5 rounded-full bg-black/55 px-2 py-0.5 ring-1 ring-white/15 backdrop-blur-md">
+            <Star size={9} className="fill-amber-400 text-amber-400" />
+            <span className="text-[9px] font-semibold text-white">{book.rating}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Meta */}
+      <div className="mt-2 px-0.5">
+        <h3 className="line-clamp-1 text-xs font-medium text-text-primary">{book.title}</h3>
+        {book.author && <p className="mt-0.5 line-clamp-1 text-[10px] text-text-tertiary">{book.author}</p>}
       </div>
     </button>
   );

@@ -78,6 +78,40 @@ export interface UpdateProgressInput {
 }
 
 // =====================================================
+// QUOTES (book_quotes table)
+// =====================================================
+
+export interface BookQuote {
+  id:         string;
+  org_id:     string;
+  user_id:    string;
+  book_id:    string;
+  text:       string;
+  page:       number | null;
+  note:       string | null;   // personal annotation on the quote
+  favorite:   boolean;
+  position:   number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateQuoteInput {
+  book_id: string;
+  text:    string;
+  page?:   number | null;
+  note?:   string | null;
+}
+
+export interface UpdateQuoteInput {
+  id:        string;
+  text?:     string;
+  page?:     number | null;
+  note?:     string | null;
+  favorite?: boolean;
+  position?: number;
+}
+
+// =====================================================
 // GOOGLE BOOKS API TYPES
 // =====================================================
 
@@ -123,6 +157,7 @@ export interface BookStats {
   reading:             number;
   completed_this_year: number;
   want_to_read:        number;
+  favorites:           number;
   avg_rating:          number | null;
 }
 
