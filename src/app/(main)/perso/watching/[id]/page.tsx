@@ -23,6 +23,8 @@ import { EpisodeHighlights } from "@/modules/watching/components/detail/EpisodeH
 import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis";
 import { CastCrew } from "@/modules/watching/components/detail/CastCrew";
 import { CurrentlyWatching } from "@/modules/watching/components/detail/CurrentlyWatching";
+import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
+import { stampSeasons, seasonRange } from "@/modules/watching/lib/season-years";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { InList } from "@/modules/watching/components/detail/InList";
 import { FloatingSaveBar } from "@/modules/watching/components/detail/FloatingSaveBar";
@@ -109,6 +111,12 @@ export default function MediaDetailPage() {
   const handleMarkWatched = async () => {
     if (!media) return;
     try {
+      // Stamp every season that has no year yet with the current year (seasons
+      // captured earlier keep their real years; the rest default to now).
+      const allSeasons = (media.season_episodes ?? []).map((_, idx) => idx + 1);
+      const seasonYears = allSeasons.length > 0
+        ? stampSeasons(media.season_years, allSeasons, new Date().getFullYear())
+        : undefined;
       await updateMedia.mutateAsync({
         id: media.id,
         watched: true,
@@ -117,6 +125,7 @@ export default function MediaDetailPage() {
         want_to_watch: false,
         is_reference: false,
         watched_at: new Date().toISOString(),
+        ...(seasonYears ? { season_years: seasonYears } : {}),
       });
       // Ripple: the felt moment — animate the count + bar for each goal it moves.
       const matched = watchingGoals.filter((g) => goalWouldCount(g, media.type));
@@ -168,14 +177,43 @@ export default function MediaDetailPage() {
     if (!media) return;
     setCurrentSeason(season);
     setCurrentEpisode(episode);
+    // Auto-capture: any season we just moved PAST is now watched → stamp its year
+    // (current year), without overwriting a year you set manually.
+    const prevSeason = media.current_season ?? 1;
+    const seasonYears = season > prevSeason
+      ? stampSeasons(media.season_years, seasonRange(prevSeason, season - 1), new Date().getFullYear())
+      : null;
     if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
     progressTimerRef.current = setTimeout(async () => {
       try {
-        await updateMedia.mutateAsync({ id: media.id, current_season: season, current_episode: episode });
+        await updateMedia.mutateAsync({
+          id: media.id,
+          current_season: season,
+          current_episode: episode,
+          ...(seasonYears ? { season_years: seasonYears } : {}),
+        });
       } catch {
         toast.error("Failed to update progress.");
       }
     }, 500);
+  };
+
+  const handleSeasonYearsChange = async (next: Record<string, number>) => {
+    if (!media) return;
+    try {
+      await updateMedia.mutateAsync({ id: media.id, season_years: next });
+    } catch {
+      toast.error("Failed to update.");
+    }
+  };
+
+  const handleSeasonRatingsChange = async (next: Record<string, number>) => {
+    if (!media) return;
+    try {
+      await updateMedia.mutateAsync({ id: media.id, season_ratings: next });
+    } catch {
+      toast.error("Failed to update.");
+    }
   };
 
   const typeLabel = useMemo(() => {
@@ -256,6 +294,30 @@ export default function MediaDetailPage() {
             <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
           )}
 
+          {/* TEMP — watched_at / updated_at reference for filling season years. REMOVE LATER. */}
+          {isSeries && (media.season_episodes?.length ?? 0) > 1 && (media.in_progress || media.watched) && (
+            <p className="rounded-md bg-amber-500/10 px-2 py-1 text-[11px] text-amber-300">
+              TEMP · watched_at: {media.watched_at ? new Date(media.watched_at).toLocaleString("en-GB") : "—"}
+              {" · "}updated_at: {media.updated_at ? new Date(media.updated_at).toLocaleString("en-GB") : "—"}
+            </p>
+          )}
+
+          {isSeries && (media.season_episodes?.length ?? 0) > 1 && (media.in_progress || media.watched) && (
+            <SeasonHistoryStrip
+              seasonEpisodes={media.season_episodes ?? []}
+              seasonPosters={media.season_posters}
+              seasonAirYears={media.season_air_years}
+              seasonYears={media.season_years}
+              seasonRatings={media.season_ratings}
+              showPoster={media.poster_url}
+              releaseYear={media.year ?? null}
+              currentSeason={currentSeason}
+              inProgress={media.in_progress}
+              onYearChange={handleSeasonYearsChange}
+              onRatingChange={handleSeasonRatingsChange}
+            />
+          )}
+
           {isSeries && (media.in_progress || media.watched) && (
             <EpisodeHighlights mediaItemId={media.id} tmdbId={media.tmdb_id} userId={media.user_id} orgId={media.org_id} seasons={media.seasons ?? null} episodes={media.episodes ?? null} />
           )}
@@ -270,7 +332,7 @@ export default function MediaDetailPage() {
         </div>
 
         {/* ── RIGHT — quiet utility rail ────────────────────────────── */}
-        <div className="lg:sticky lg:top-0 lg:max-h-screen lg:self-start lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="scrollbar-hide lg:sticky lg:top-0 lg:max-h-screen lg:self-start lg:overflow-y-auto">
           <div className="space-y-6 px-4 py-6 lg:py-8 lg:pl-2 lg:pr-8">
 
             {isSeries && media.in_progress && (

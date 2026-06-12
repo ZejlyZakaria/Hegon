@@ -29,8 +29,12 @@ export interface WatchingMedia {
   seasons?: number;
   episodes?: number;
   season_episodes?: number[] | null;
+  season_posters?: (string | null)[] | null;  // TMDB poster_path per season (season-1 indexed)
+  season_air_years?: (number | null)[] | null; // TMDB air year per season (season-1 indexed)
   current_episode?: number;
   current_season?: number;
+  season_years?: Record<string, number> | null;    // { "<season>": <year watched> }
+  season_ratings?: Record<string, number> | null;  // { "<season>": <rating 1–10> }
   rating: number;
   user_rating: number | null;
   watch_status?: WatchStatus;

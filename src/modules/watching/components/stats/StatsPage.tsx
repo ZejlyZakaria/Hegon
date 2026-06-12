@@ -185,7 +185,7 @@ function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] 
 const RANK_LABELS = ["#1", "#2", "#3"];
 const RANK_COLORS = ["rgba(245,158,11,0.9)", "rgba(148,163,184,0.7)", "rgba(180,120,60,0.7)"];
 
-function TopFavoritesCard({ items }: { items: StatsRawItem[] }) {
+function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel: string | null; rating: number | null; seasonPoster: string | null }[] }) {
   const router = useRouter();
 
   return (
@@ -199,7 +199,7 @@ function TopFavoritesCard({ items }: { items: StatsRawItem[] }) {
         <p className="text-sm text-text-tertiary/50">Rate or favorite items to see your top picks</p>
       ) : (
         <div className="flex flex-col gap-0.5">
-          {items.map((item, i) => (
+          {items.map(({ item, seasonLabel, rating, seasonPoster }, i) => (
             <div
               key={item.id}
               className="group flex cursor-pointer items-center gap-3 -mx-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-2"
@@ -212,9 +212,9 @@ function TopFavoritesCard({ items }: { items: StatsRawItem[] }) {
                 {RANK_LABELS[i]}
               </span>
               <div className="relative h-15 w-10 shrink-0 overflow-hidden rounded-lg">
-                {item.poster_url ? (
+                {(seasonPoster ? `https://image.tmdb.org/t/p/w300${seasonPoster}` : item.poster_url) ? (
                   <Image
-                    src={item.poster_url}
+                    src={seasonPoster ? `https://image.tmdb.org/t/p/w300${seasonPoster}` : item.poster_url!}
                     alt={item.title}
                     fill
                     unoptimized
@@ -230,15 +230,19 @@ function TopFavoritesCard({ items }: { items: StatsRawItem[] }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-text-primary">{displayTitle(item)}</p>
                 <div className="mt-0.5 flex items-center gap-2">
-                  {item.user_rating != null && (
+                  {rating != null && (
                     <div className="flex items-center gap-1">
                       <Star size={10} className="fill-amber-400 text-amber-400" />
                       <span className="text-[11px] tabular-nums text-amber-400 font-medium">
-                        {item.user_rating}
+                        {rating}
                       </span>
                     </div>
                   )}
-                  <span className="text-[11px] text-text-tertiary/50">{item.year}</span>
+                  {seasonLabel ? (
+                    <span className="text-[11px] font-medium" style={{ color: TEAL }}>{seasonLabel}</span>
+                  ) : (
+                    <span className="text-[11px] text-text-tertiary/50">{item.year}</span>
+                  )}
                 </div>
               </div>
               {item.favorite && (
@@ -539,7 +543,7 @@ export function StatsPage() {
           {/* Export CSV */}
           <button
             type="button"
-            onClick={() => exportCSV(rawData)}
+            onClick={() => exportCSV(rawData.filter((i) => i.watched))}
             className="flex items-center gap-1.5 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-tertiary transition-colors hover:border-border-strong hover:text-text-secondary"
             title="Export watchlist as CSV"
           >

@@ -9,7 +9,7 @@ export interface ComputedStats {
   ratedCount: number;
   topGenres: { name: string; count: number }[];
   ratingDistribution: { score: number; count: number }[];
-  topFavorites: StatsRawItem[];
+  topFavorites: { item: StatsRawItem; seasonLabel: string | null; rating: number | null; seasonPoster: string | null }[];
   wrappedPosters: StatsRawItem[];
   activity: { label: string; count: number }[];
   streaks: {
@@ -23,29 +23,155 @@ function toH(min: number) {
   return Math.round((min / 60) * 10) / 10;
 }
 
+// The date hours fall back to when a season has no explicit year: finish date
+// (watched_at) when completed, last-progress date (updated_at) when in-progress.
+function hoursDateOf(i: StatsRawItem): string | null {
+  return i.watched ? i.watched_at : i.updated_at;
+}
+
+// Per-season hour contributions of a series/anime: each finished season's episodes
+// attributed to the year you watched it (season_years, else the item's fallback
+// year); the current in-progress season counts only the episodes watched so far.
+// This is what makes a multi-year show (JJK S1→2021 … S3→2026) land in the right years.
+function seasonContributions(i: StatsRawItem): { episodes: number; year: number | null }[] {
+  const fallbackDate = hoursDateOf(i);
+  const fallbackYear = fallbackDate ? new Date(fallbackDate).getFullYear() : null;
+  const yearOf = (s: number) => i.season_years?.[String(s)] ?? fallbackYear;
+  const seasons = i.season_episodes ?? [];
+
+  // No per-season breakdown → single bucket on the fallback year.
+  if (seasons.length === 0) {
+    const eps = i.watched ? (i.episodes ?? 0) : (i.current_episode ?? 0);
+    return [{ episodes: eps, year: fallbackYear }];
+  }
+
+  if (i.watched) {
+    return seasons.map((eps, idx) => ({ episodes: eps, year: yearOf(idx + 1) }));
+  }
+
+  // In-progress: full finished seasons + the current partial season (live episodes).
+  const cs = i.current_season ?? 1;
+  const ce = i.current_episode ?? 0;
+  const out: { episodes: number; year: number | null }[] = [];
+  for (let s = 1; s < cs; s++) out.push({ episodes: seasons[s - 1] ?? 0, year: yearOf(s) });
+  out.push({ episodes: ce, year: yearOf(cs) });
+  return out;
+}
+
+// Years in which a title completed at least one season. A stamped season_years
+// entry = a completed season; legacy fully-watched shows without stamps fall back
+// to their finish year. The current in-progress partial season is NOT counted here
+// (its hours accrue live, but it only bumps the title count once finished).
+function completedSeasonYears(i: StatsRawItem): number[] {
+  const stamped = Object.values(i.season_years ?? {});
+  if (stamped.length > 0) return [...new Set(stamped)];
+  if (i.watched && i.watched_at) return [new Date(i.watched_at).getFullYear()];
+  return [];
+}
+
+// Does a title count toward a type/year total? Films: watched (in that year).
+// Series/anime: completed a season (in that year). All-time = once per title.
+function countsTitle(i: StatsRawItem, year: number | null): boolean {
+  if (i.type === "film") {
+    if (!i.watched) return false;
+    if (!year) return true;
+    return !!i.watched_at && new Date(i.watched_at).getFullYear() === year;
+  }
+  const ys = completedSeasonYears(i);
+  return year ? ys.includes(year) : ys.length > 0;
+}
+
+// The season's own poster for the year shown — only when a SINGLE season
+// represents that year on a multi-year show (so the Top Picks thumbnail matches
+// the labelled season). Otherwise null → fall back to the show poster.
+function seasonPosterFor(i: StatsRawItem, year: number | null): string | null {
+  if (!year || i.type === "film") return null;
+  const isMultiYear = new Set(Object.values(i.season_years ?? {})).size >= 2;
+  if (!isMultiYear) return null;
+  const seasonsInY = Object.entries(i.season_years ?? {})
+    .filter(([, y]) => y === year)
+    .map(([s]) => Number(s));
+  if (seasonsInY.length !== 1) return null;
+  return i.season_posters?.[seasonsInY[0] - 1] ?? null;
+}
+
+// For a given year, which season(s) of this title were watched → "Season 3",
+// "Seasons 1–8", or null (film / legacy / all-time → show the whole title).
+function seasonLabelFor(i: StatsRawItem, year: number | null): string | null {
+  if (!year || i.type === "film") return null;
+  const seasons = Object.entries(i.season_years ?? {})
+    .filter(([, y]) => y === year)
+    .map(([s]) => Number(s))
+    .sort((a, b) => a - b);
+  if (seasons.length === 0) return null;
+  if (seasons.length === 1) return `Season ${seasons[0]}`;
+  const contiguous = seasons.every((s, idx) => idx === 0 || s === seasons[idx - 1] + 1);
+  return contiguous ? `Seasons ${seasons[0]}–${seasons[seasons.length - 1]}` : `${seasons.length} seasons`;
+}
+
+// Rating to rank/show a title by for a given year. Smart filter: if the whole
+// show was watched in a SINGLE year (all seasons same year), use the title's
+// overall rating — even if seasons were rated individually. Only when the show
+// spans MULTIPLE years do we use the rating of the season watched that year.
+// Films and all-time always use the title rating.
+function effectiveRating(i: StatsRawItem, year: number | null): number | null {
+  if (i.type === "film" || !year) return i.user_rating;
+  const isMultiYear = new Set(Object.values(i.season_years ?? {})).size >= 2;
+  if (!isMultiYear) return i.user_rating;
+  const seasonsInY = Object.entries(i.season_years ?? {})
+    .filter(([, y]) => y === year)
+    .map(([s]) => Number(s));
+  const ratings = seasonsInY
+    .map((s) => i.season_ratings?.[String(s)])
+    .filter((r): r is number => r != null);
+  if (ratings.length === 0) return i.user_rating;
+  return Math.max(...ratings);
+}
+
 export function computeStats(items: StatsRawItem[], year: number | null): ComputedStats {
+  // Genres / ratings base — completed titles, dated by watched_at.
+  const completed = items.filter((i) => i.watched);
   const filtered = year
-    ? items.filter((i) => i.watched_at && new Date(i.watched_at).getFullYear() === year)
-    : items;
+    ? completed.filter((i) => i.watched_at && new Date(i.watched_at).getFullYear() === year)
+    : completed;
 
-  const byType = (t: string) => filtered.filter((i) => i.type === t);
-
+  // Counts — season-aware per year: a title counts in each year it completed a
+  // season (films: the year watched). All-time = distinct titles.
+  const countItems = items.filter((i) => countsTitle(i, year));
   const counts = {
-    film:  byType("film").length,
-    serie: byType("serie").length,
-    anime: byType("anime").length,
-    total: filtered.length,
+    film:  countItems.filter((i) => i.type === "film").length,
+    serie: countItems.filter((i) => i.type === "serie").length,
+    anime: countItems.filter((i) => i.type === "anime").length,
+    total: countItems.length,
   };
 
-  const filmMin  = byType("film").reduce((s, i) => s + (i.runtime ?? 0), 0);
-  const serieMin = byType("serie").reduce((s, i) => {
-    const eps = i.season_episodes?.reduce((a, b) => a + b, 0) ?? i.episodes ?? 0;
-    return s + eps * (i.runtime ?? 0);
-  }, 0);
-  const animeMin = byType("anime").reduce((s, i) => {
-    const eps = i.season_episodes?.reduce((a, b) => a + b, 0) ?? i.episodes ?? 0;
-    return s + eps * (i.runtime ?? 0);
-  }, 0);
+  // Hours Watched — completed films + series/anime episodes ACTUALLY watched (full
+  // when completed, current progress when in-progress), each × the real runtime.
+  // Completed titles are dated by watched_at, in-progress ones by updated_at.
+  const inHoursYear = (i: StatsRawItem) => {
+    if (!year) return true;
+    const d = hoursDateOf(i);
+    return !!d && new Date(d).getFullYear() === year;
+  };
+
+  const filmMin = items
+    .filter((i) => i.type === "film" && i.watched && inHoursYear(i))
+    .reduce((s, i) => s + (i.runtime ?? 0), 0);
+
+  // Series/anime: distribute each season's episodes to ITS year, then keep the
+  // ones matching the filter. This is why the year total is now accurate per show.
+  const tvMinutes = (type: string) =>
+    items
+      .filter((i) => i.type === type && (i.watched || i.in_progress))
+      .reduce((sum, i) => {
+        const rt = i.runtime ?? 0;
+        return sum + seasonContributions(i)
+          .filter((c) => !year || c.year === year)
+          .reduce((a, c) => a + c.episodes * rt, 0);
+      }, 0);
+
+  const serieMin = tvMinutes("serie");
+  const animeMin = tvMinutes("anime");
 
   const hours = {
     film:  toH(filmMin),
@@ -80,11 +206,15 @@ export function computeStats(items: StatsRawItem[], year: number | null): Comput
     count: dist[i + 1] ?? 0,
   }));
 
-  const topFavorites = [...filtered]
-    .filter((i) => i.favorite || (i.user_rating ?? 0) >= 8)
+  // Top Picks — season-aware: a show appears in the year it had a season watched,
+  // labelled with that season (e.g. JJK in 2026 → "Season 3"), ranked by the
+  // season's own rating when set, else the title rating.
+  const topFavorites = items
+    .map((item) => ({ item, rating: effectiveRating(item, year), seasonLabel: seasonLabelFor(item, year), seasonPoster: seasonPosterFor(item, year) }))
+    .filter((x) => countsTitle(x.item, year) && (x.item.favorite || (x.rating ?? 0) >= 8))
     .sort((a, b) => {
-      if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
-      return (b.user_rating ?? 0) - (a.user_rating ?? 0);
+      if (a.item.favorite !== b.item.favorite) return a.item.favorite ? -1 : 1;
+      return (b.rating ?? 0) - (a.rating ?? 0);
     })
     .slice(0, 3);
 
@@ -97,9 +227,11 @@ export function computeStats(items: StatsRawItem[], year: number | null): Comput
     .slice(0, 3);
 
   const availableYears = [
-    ...new Set(
-      items.filter((i) => i.watched_at).map((i) => new Date(i.watched_at!).getFullYear()),
-    ),
+    ...new Set([
+      ...completed.filter((i) => i.watched_at).map((i) => new Date(i.watched_at!).getFullYear()),
+      ...items.filter((i) => i.in_progress && i.updated_at).map((i) => new Date(i.updated_at!).getFullYear()),
+      ...items.flatMap((i) => Object.values(i.season_years ?? {})),
+    ]),
   ].sort((a, b) => b - a);
 
   let activity: { label: string; count: number }[];
@@ -161,15 +293,17 @@ export function computeStats(items: StatsRawItem[], year: number | null): Comput
 
 // Achievements are computed from ALL-TIME stats (ignore year filter)
 export function computeAchievements(items: StatsRawItem[]): Achievement[] {
-  const films  = items.filter((i) => i.type === "film").length;
-  const series = items.filter((i) => i.type === "serie").length;
-  const animes = items.filter((i) => i.type === "anime").length;
-  const rated  = items.filter((i) => i.user_rating != null).length;
-  const hasTen = items.some((i) => (i.user_rating ?? 0) >= 10);
+  // Achievements count COMPLETED titles only (rawData now also carries in-progress).
+  const completed = items.filter((i) => i.watched);
+  const films  = completed.filter((i) => i.type === "film").length;
+  const series = completed.filter((i) => i.type === "serie").length;
+  const animes = completed.filter((i) => i.type === "anime").length;
+  const rated  = completed.filter((i) => i.user_rating != null).length;
+  const hasTen = completed.some((i) => (i.user_rating ?? 0) >= 10);
 
   // Genre count
   const genreCount: Record<string, number> = {};
-  for (const item of items) {
+  for (const item of completed) {
     for (const tag of item.tags ?? []) {
       genreCount[tag] = (genreCount[tag] ?? 0) + 1;
     }
@@ -178,7 +312,7 @@ export function computeAchievements(items: StatsRawItem[]): Achievement[] {
 
   // Best month
   const monthCounts: Record<string, number> = {};
-  for (const item of items) {
+  for (const item of completed) {
     if (!item.watched_at) continue;
     const d = new Date(item.watched_at);
     const key = `${d.getFullYear()}-${d.getMonth()}`;

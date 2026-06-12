@@ -9,6 +9,8 @@ export const updateMediaSchema = z.object({
   user_rating: z.number().min(0).max(10).nullable().optional(),
   current_episode: z.number().optional(),
   current_season: z.number().optional(),
+  season_years: z.record(z.string(), z.number()).nullable().optional(),
+  season_ratings: z.record(z.string(), z.number()).nullable().optional(),
   favorite: z.boolean().optional(),
   notes: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),

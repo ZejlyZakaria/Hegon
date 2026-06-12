@@ -161,6 +161,15 @@ export interface StatsRawItem {
   favorite: boolean;
   watched_at: string | null;
   tags: string[] | null;  // genre names (stored from TMDB at add time)
+  // In-progress support — Hours Watched counts partially-watched series/anime too.
+  watched: boolean;
+  in_progress: boolean;
+  current_season: number | null;
+  current_episode: number | null;
+  updated_at: string | null;     // attribution date for in-progress hours
+  season_years: Record<string, number> | null;    // per-season watch year
+  season_ratings: Record<string, number> | null;  // per-season rating
+  season_posters: (string | null)[] | null;       // per-season TMDB poster_path
 }
 
 export async function getWatchingStatsData(userId: string): Promise<StatsRawItem[]> {
@@ -168,9 +177,9 @@ export async function getWatchingStatsData(userId: string): Promise<StatsRawItem
   const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("id, type, title, original_title, poster_url, backdrop_url, year, runtime, season_episodes, episodes, user_rating, favorite, watched_at, tags")
+    .select("id, type, title, original_title, poster_url, backdrop_url, year, runtime, season_episodes, episodes, user_rating, favorite, watched_at, tags, watched, in_progress, current_season, current_episode, updated_at, season_years, season_ratings, season_posters")
     .eq("user_id", userId)
-    .eq("watched", true)
+    .or("watched.eq.true,in_progress.eq.true")
     .neq("is_reference", true);
   if (error) throw error;
   return (data ?? []) as StatsRawItem[];
