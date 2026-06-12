@@ -17,7 +17,7 @@ import { useCreateBook } from "../hooks/useBooks";
 import { useBookSearch } from "../hooks/useBookSearch";
 import type { BookSearchResult, BookStatus } from "../types";
 
-const ACCENT = "var(--color-accent-books)";
+const ACCENT = "var(--color-accent-books-vivid)";
 
 interface AddBookModalProps {
   isOpen: boolean;
@@ -113,7 +113,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                   onClick={() => setSelectedStatus(status)}
                   className="px-1 text-xs font-medium transition-opacity hover:opacity-80"
                   style={{
-                    color: isActive ? "var(--color-accent-books)" : "#71717a",
+                    color: isActive ? "var(--color-accent-books-vivid)" : "#71717a",
                   }}
                 >
                   {STATUS_LABELS[status]}
@@ -165,7 +165,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                     type="button"
                     onClick={() => setShowManualForm(true)}
                     className="text-xs transition-opacity hover:opacity-80"
-                    style={{ color: "var(--color-accent-books)" }}
+                    style={{ color: "var(--color-accent-books-vivid)" }}
                   >
                     Add manually instead
                   </button>
@@ -220,7 +220,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                     type="button"
                     onClick={() => setShowManualForm(true)}
                     className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-80"
-                    style={{ color: "var(--color-accent-books)" }}
+                    style={{ color: "var(--color-accent-books-vivid)" }}
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Or add manually

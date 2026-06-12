@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as BooksService from "../service";
 import { BOOK_KEYS } from "./query-keys";
+import { syncBooksGoals } from "../lib/sync-goals";
 import { toast } from "@/shared/utils/toast";
 import type {
   BookStatus,
@@ -63,6 +64,7 @@ export function useCreateBook() {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.stats() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.rightPanel() });
+      void syncBooksGoals(queryClient);
       toast.success("Book added.");
     },
     onError: () => {
@@ -80,6 +82,7 @@ export function useUpdateBook() {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.stats() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.rightPanel() });
+      void syncBooksGoals(queryClient);
       toast.success("Book updated.");
     },
     onError: () => {
@@ -114,6 +117,24 @@ export function useUpdateBookNotes(id: string) {
   });
 }
 
+// Toggle a book's favorite flag — silent (no toast), just refresh the surfaces
+// that show it (card, detail, Favorites stat).
+export function useToggleFavorite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) =>
+      BooksService.updateBook({ id, favorite }),
+    onSuccess: (book) => {
+      queryClient.invalidateQueries({ queryKey: BOOK_KEYS.detail(book.id) });
+      queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
+      queryClient.invalidateQueries({ queryKey: BOOK_KEYS.stats() });
+    },
+    onError: () => {
+      toast.error("Failed to update favorite.");
+    },
+  });
+}
+
 export function useDeleteBook() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -122,6 +143,7 @@ export function useDeleteBook() {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.stats() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.rightPanel() });
+      void syncBooksGoals(queryClient);
       toast.success("Book removed.");
     },
     onError: () => {

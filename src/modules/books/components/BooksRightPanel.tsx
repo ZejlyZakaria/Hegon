@@ -1,17 +1,22 @@
 "use client";
 
-import { BookOpen, Star } from "lucide-react";
+import { BookOpen, Star, Target } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useBooksRightPanel } from "../hooks/useBooks";
+import { useBooksGoals } from "../hooks/useBooksGoals";
 import { BooksRightPanelLoadingSkeleton } from "./BooksSkeleton";
 
 const SKY = "var(--color-accent-books-vivid)";
+const GOALS = "var(--color-accent-goals)";
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 const RING_R = 56;
 const RING_C = 2 * Math.PI * RING_R;
 
 export function BooksRightPanel() {
+  const router = useRouter();
   const { data, isLoading } = useBooksRightPanel();
+  const { data: goals = [] } = useBooksGoals();
 
   if (isLoading) return <BooksRightPanelLoadingSkeleton />;
 
@@ -31,6 +36,44 @@ export function BooksRightPanel() {
 
   return (
     <div className="w-full flex flex-col gap-3">
+      {/* ── Reading Goals (cross-module — Goals accent) ── */}
+      {goals.length > 0 && (
+        <div className="surface-card rounded-xl p-4 flex flex-col gap-3">
+          <h3 className="text-xs font-semibold text-text-secondary">Reading Goals</h3>
+          <div className="flex flex-col gap-2.5">
+            {goals.map((g) => {
+              const target = g.metric_target ?? 0;
+              const count  = g.metric_current;
+              const pct    = target > 0 ? Math.min(100, (count / target) * 100) : g.progress;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => router.push(`/life/goals/${g.id}`)}
+                  className="group flex w-full items-center gap-2.5 text-left"
+                >
+                  <div
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                    style={{ backgroundColor: `color-mix(in srgb, ${GOALS} 16%, transparent)`, color: GOALS }}
+                  >
+                    <Target size={13} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-text-primary group-hover:text-white transition-colors">
+                      {g.title}
+                    </p>
+                    <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-surface-2">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: GOALS }} />
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-[11px] tabular-nums text-text-tertiary">{count}/{target}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Reading Streak ── */}
       <div className="surface-card rounded-xl p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">

@@ -121,17 +121,20 @@ export function BooksRightPanelLoadingSkeleton() {
 
 function TabsRowSkeleton() {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center">
-        <SkeletonBlock className="mx-3 h-3.5 w-16" />
-        <SkeletonBlock className="mx-3 h-3.5 w-24" />
-        <SkeletonBlock className="mx-3 h-3.5 w-20" />
-        <SkeletonBlock className="mx-3 h-3.5 w-8" />
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center overflow-x-auto">
+        <SkeletonBlock className="mx-3 h-3.5 w-16 shrink-0" />
+        <SkeletonBlock className="mx-3 h-3.5 w-24 shrink-0" />
+        <SkeletonBlock className="mx-3 h-3.5 w-20 shrink-0" />
+        <SkeletonBlock className="mx-3 h-3.5 w-8 shrink-0" />
       </div>
-      <div className="flex items-center gap-2">
-        <SkeletonBlock className="h-9 w-48 rounded-md" />
-        <SkeletonBlock className="h-9 w-36 rounded-md" />
-        <SkeletonBlock className="h-9 w-28 rounded-md" />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <SkeletonBlock className="h-9 w-full rounded-md sm:w-48" />
+        <div className="flex items-center gap-2">
+          <SkeletonBlock className="h-9 w-9 shrink-0 rounded-md" />
+          <SkeletonBlock className="h-9 w-36 rounded-md" />
+          <SkeletonBlock className="h-9 flex-1 rounded-md sm:w-28 sm:flex-none" />
+        </div>
       </div>
     </div>
   );
@@ -146,7 +149,7 @@ export function BooksLoadingSkeleton() {
   return (
     <div className="space-y-4 px-6 py-6">
       <StatsZoneSkeleton />
-      <div className="flex items-start gap-6">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-4">
           <TabsRowSkeleton />
           {isReading ? (
@@ -159,7 +162,7 @@ export function BooksLoadingSkeleton() {
             </div>
           )}
         </div>
-        <div className="w-72 shrink-0 space-y-3">
+        <div className="w-full space-y-3 lg:w-72 lg:shrink-0">
           <ReadingStreakSkeleton />
           <PagesMonthSkeleton />
           <RecentlyFinishedSkeleton />

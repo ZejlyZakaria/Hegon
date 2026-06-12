@@ -2,18 +2,22 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, BookOpen, MoreHorizontal, Star, Trash2 } from "lucide-react";
-import Image from "next/image";
+import { ArrowLeft, BookOpen, Heart, MoreHorizontal, Star, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as Popover from "@radix-ui/react-popover";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { useBook, useUpdateBook, useUpdateProgress, useUpdateBookNotes } from "../hooks/useBooks";
+import { useBook, useUpdateBook, useUpdateProgress, useUpdateBookNotes, useToggleFavorite } from "../hooks/useBooks";
+import { useBooksGoals } from "../hooks/useBooksGoals";
+import { goalBookWouldCount } from "../lib/goal-contribution";
 import { DeleteBookModal } from "./DeleteBookModal";
 import { BookDetailSkeleton } from "./BookDetailSkeleton";
 import { BookQuotesPanel } from "./BookQuotesPanel";
+import { ContributingToGoals } from "./ContributingToGoals";
+import { GoalRippleToast } from "./GoalRippleToast";
+import { toast } from "@/shared/utils/toast";
 import type { BookStatus } from "../types";
 
 const ACCENT = "var(--color-accent-books-vivid)";
@@ -45,6 +49,8 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
   const updateBook     = useUpdateBook();
   const updateProgress = useUpdateProgress();
   const saveNotes      = useUpdateBookNotes(id);
+  const toggleFav      = useToggleFavorite();
+  const { data: booksGoals = [] } = useBooksGoals();
 
   const [notes, setNotes]               = useState("");
   const [currentPage, setCurrentPage]   = useState("");
@@ -80,8 +86,20 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
     saveNotes.mutate(normalized);
   }, [debouncedNotes]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The "ripple" — when a book becomes read, animate the goals it moves.
+  const fireBooksRipple = useCallback(() => {
+    const matched = booksGoals.filter((g) => goalBookWouldCount(g));
+    matched.forEach((g) => {
+      const old = g.metric_current;
+      toast.custom(() => (
+        <GoalRippleToast title={g.title} oldCount={old} newCount={old + 1} target={g.metric_target ?? 0} />
+      ));
+    });
+  }, [booksGoals]);
+
   const handleStatusChange = useCallback((newStatus: BookStatus) => {
     if (!book || newStatus === book.status) return;
+    const wasRead = book.status === "read";
     const today = toLocalDate();
     const update: Parameters<typeof updateBook.mutate>[0] = { id: book.id, status: newStatus };
     switch (newStatus) {
@@ -101,7 +119,8 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
         break;
     }
     updateBook.mutate(update);
-  }, [book, updateBook]);
+    if (newStatus === "read" && !wasRead) fireBooksRipple();
+  }, [book, updateBook, fireBooksRipple]);
 
   const handleRating = (star: number) => {
     if (!book) return;
@@ -118,7 +137,9 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
     }
     setPageError(null);
     if (book.total_pages && page === book.total_pages) {
+      const wasRead = book.status === "read";
       updateBook.mutate({ id: book.id, status: "read", current_page: page, finished_at: toLocalDate() });
+      if (!wasRead) fireBooksRipple();
     } else {
       updateProgress.mutate({ id: book.id, current_page: page });
     }
@@ -131,6 +152,55 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
 
   const progress =
     book.total_pages && book.current_page ? Math.round((book.current_page / book.total_pages) * 100) : 0;
+
+  // Title + author + actions — rendered above the cover on mobile, at the top of
+  // the center column on desktop (the same block, placed differently per breakpoint).
+  const titleBlock = (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold leading-tight text-text-primary">{book.title}</h1>
+        {book.author && <p className="mt-1 text-sm text-text-secondary">{book.author}</p>}
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          onClick={() => toggleFav.mutate({ id: book.id, favorite: !book.favorite })}
+          title={book.favorite ? "Remove from favorites" : "Add to favorites"}
+          className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface-1 hover:text-text-primary"
+        >
+          <Heart className={`h-4 w-4 ${book.favorite ? "fill-red-500 text-red-500" : ""}`} />
+        </button>
+        <Popover.Root>
+          <Popover.Trigger asChild>
+            <button
+              type="button"
+              className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface-1 hover:text-text-primary"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content
+              align="end"
+              sideOffset={6}
+              className="z-50 w-40 overflow-hidden rounded-xl border border-border-strong bg-surface-3 p-1 shadow-md"
+            >
+              <Popover.Close asChild>
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalOpen(true)}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-red-400 transition-colors hover:bg-red-500/10"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete book
+                </button>
+              </Popover.Close>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -158,71 +228,50 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            {/* ── Left — cover + metadata (sticky) ── */}
-            <div className="flex flex-col gap-3 lg:sticky lg:top-1 lg:self-start">
-              <div className="relative aspect-2/3 w-full overflow-hidden rounded-lg border border-border-subtle bg-surface-1">
-                {book.cover_url ? (
-                  <Image src={book.cover_url} alt={book.title} fill priority sizes="176px" className="object-contain" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <BookOpen className="h-8 w-8 text-text-tertiary" />
+            {/* ── Mobile-only title, above the cover (hidden on desktop) ── */}
+            <div className="lg:hidden">{titleBlock}</div>
+
+            {/* ── Left — cover + metadata (sticky column on desktop, compact hero on mobile) ── */}
+            <div className="flex flex-row gap-4 lg:flex-col lg:gap-3 lg:sticky lg:top-1 lg:self-start">
+              {book.cover_url ? (
+                // Natural size — no frame: the cover keeps its own aspect ratio at the
+                // column width, so there's never empty padding around it.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={book.cover_url}
+                  alt={book.title}
+                  loading="eager"
+                  decoding="async"
+                  className="h-auto w-28 shrink-0 self-start rounded-lg lg:w-full"
+                />
+              ) : (
+                <div className="relative flex aspect-2/3 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-subtle bg-surface-1 lg:w-full">
+                  <BookOpen className="h-8 w-8 text-text-tertiary" />
+                </div>
+              )}
+
+              <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-none">
+                <div className="flex flex-col gap-1.5">
+                  {book.year && <MetaRow label="Year" value={book.year} />}
+                  {book.total_pages && <MetaRow label="Pages" value={book.total_pages} />}
+                  {book.started_at && <MetaRow label="Started" value={formatDate(book.started_at)} />}
+                  {book.finished_at && <MetaRow label="Finished" value={formatDate(book.finished_at)} />}
+                </div>
+
+                {book.genre.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {book.genre.map((g) => (
+                      <span key={g} className="rounded border border-border-subtle bg-surface-1 px-2 py-0.5 text-xs text-text-tertiary">{g}</span>
+                    ))}
                   </div>
                 )}
               </div>
-
-              <div className="flex flex-col gap-1.5">
-                {book.year && <MetaRow label="Year" value={book.year} />}
-                {book.total_pages && <MetaRow label="Pages" value={book.total_pages} />}
-                {book.started_at && <MetaRow label="Started" value={formatDate(book.started_at)} />}
-                {book.finished_at && <MetaRow label="Finished" value={formatDate(book.finished_at)} />}
-              </div>
-
-              {book.genre.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {book.genre.map((g) => (
-                    <span key={g} className="rounded border border-border-subtle bg-surface-1 px-2 py-0.5 text-xs text-text-tertiary">{g}</span>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* ── Center — title + tracking cards ── */}
             <div className="flex min-w-0 flex-col gap-3">
-              {/* Title + author + menu */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h1 className="text-2xl font-bold leading-tight text-text-primary">{book.title}</h1>
-                  {book.author && <p className="mt-1 text-sm text-text-secondary">{book.author}</p>}
-                </div>
-                <Popover.Root>
-                  <Popover.Trigger asChild>
-                    <button
-                      type="button"
-                      className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface-1 hover:text-text-primary"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                  </Popover.Trigger>
-                  <Popover.Portal>
-                    <Popover.Content
-                      align="end"
-                      sideOffset={6}
-                      className="z-50 w-40 overflow-hidden rounded-xl border border-border-strong bg-surface-3 p-1 shadow-md"
-                    >
-                      <Popover.Close asChild>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteModalOpen(true)}
-                          className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-red-400 transition-colors hover:bg-red-500/10"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Delete book
-                        </button>
-                      </Popover.Close>
-                    </Popover.Content>
-                  </Popover.Portal>
-                </Popover.Root>
-              </div>
+              {/* Title + author + menu (desktop — mobile shows it above the cover) */}
+              <div className="hidden lg:block">{titleBlock}</div>
 
               {/* Status */}
               <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface-1 p-4">
@@ -341,8 +390,9 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
               </div>
             </div>
 
-            {/* ── Right — Quotes ── */}
+            {/* ── Right — Goals connection + Quotes ── */}
             <aside className="min-w-0">
+              <ContributingToGoals book={book} />
               <BookQuotesPanel bookId={book.id} />
             </aside>
           </motion.div>

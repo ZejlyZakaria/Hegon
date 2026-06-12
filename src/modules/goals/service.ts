@@ -302,6 +302,139 @@ export async function getGoalContributingMedia(
 }
 
 // =====================================================
+// BOOKS METRIC GOALS  (mirror of the watching block above)
+// =====================================================
+
+// Recompute every active books-metric goal for the current org (called after a
+// book is marked read / removed). Returns per-goal deltas so the Books module can
+// surface a "+1" ripple. Reuses the WatchingGoalDelta shape (module-agnostic).
+export async function recalcBooksGoals(): Promise<WatchingGoalDelta[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data: goals, error } = await supabase
+    .from("goals")
+    .select("id, title, progress, metric_key, metric_target")
+    .eq("org_id", orgId)
+    .eq("status", "active")
+    .eq("progress_mode", "auto")
+    .eq("metric_module", "books");
+  if (error) throw error;
+  if (!goals || goals.length === 0) return [];
+
+  type GoalRow = { id: string; title: string; progress: number; metric_key: string | null; metric_target: number | null };
+  return Promise.all(
+    (goals as GoalRow[]).map(async (g) => {
+      const next = await recalculateProgress(g.id);
+      // Auto-complete the moment the target is reached (manual control still available).
+      if (g.progress < 100 && next >= 100) {
+        await supabase
+          .from("goals")
+          .update({ status: "completed", completed_at: new Date().toISOString() })
+          .eq("id", g.id);
+      }
+      return {
+        id:            g.id,
+        title:         g.title,
+        metric_key:    g.metric_key,
+        metric_target: g.metric_target,
+        oldProgress:   g.progress,
+        newProgress:   next >= 0 ? next : g.progress,
+      };
+    }),
+  );
+}
+
+// Active books-metric goals for the current org — used by the Books module to show
+// "Contributing to" on a finished book + a goals strip in the right panel.
+export interface BooksGoalSummary {
+  id:             string;
+  title:          string;
+  progress:       number;
+  metric_period:  string | null;
+  metric_year:    number | null;
+  metric_target:  number | null;
+  metric_current: number; // exact count of read books matching the period
+}
+
+export async function getActiveBooksGoals(): Promise<BooksGoalSummary[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { data, error } = await supabase
+    .from("goals")
+    .select("id, title, user_id, progress, metric_period, metric_year, metric_target")
+    .eq("org_id", orgId)
+    .eq("status", "active")
+    .eq("progress_mode", "auto")
+    .eq("metric_module", "books")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+
+  type Row = Omit<BooksGoalSummary, "metric_current"> & { user_id: string };
+  return Promise.all(
+    ((data ?? []) as Row[]).map(async ({ user_id, ...g }) => ({
+      ...g,
+      metric_current: await countReadBooks(supabase, user_id, g.metric_period, g.metric_year),
+    })),
+  );
+}
+
+// Exact count of read books matching a books-metric goal (period only — a book
+// has no sub-type). Count-only query, no rows fetched.
+async function countReadBooks(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  metricPeriod: string | null,
+  metricYear: number | null,
+): Promise<number> {
+  const yearStart = metricPeriod === "year" && metricYear ? `${metricYear}-01-01` : null;
+  const yearEnd   = metricPeriod === "year" && metricYear ? `${metricYear + 1}-01-01` : null;
+
+  let q = supabase
+    .from("books")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("status", "read");
+  if (yearStart && yearEnd) q = q.gte("finished_at", yearStart).lt("finished_at", yearEnd);
+
+  const { count, error } = await q;
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// The read books that fill a books-metric goal — exact count + the most recent
+// covers for display. Returns the ContributingMedia shape (poster_url = cover_url,
+// watched_at = finished_at) so the Goal detail gallery renders unchanged.
+export async function getGoalContributingBooks(
+  goal: Goal,
+): Promise<{ count: number; items: ContributingMedia[] }> {
+  if (goal.metric_module !== "books") return { count: 0, items: [] };
+  const supabase = createClient();
+
+  const yearStart = goal.metric_period === "year" && goal.metric_year ? `${goal.metric_year}-01-01` : null;
+  const yearEnd   = goal.metric_period === "year" && goal.metric_year ? `${goal.metric_year + 1}-01-01` : null;
+
+  let q = supabase
+    .from("books")
+    .select("id, title, cover_url, finished_at", { count: "exact" })
+    .eq("user_id", goal.user_id)
+    .eq("status", "read");
+  if (yearStart && yearEnd) q = q.gte("finished_at", yearStart).lt("finished_at", yearEnd);
+
+  const { data, count, error } = await q.order("finished_at", { ascending: false }).limit(18);
+  if (error) throw error;
+
+  type BookRow = { id: string; title: string; cover_url: string | null; finished_at: string | null };
+  const items: ContributingMedia[] = ((data ?? []) as BookRow[]).map((b) => ({
+    id:         b.id,
+    title:      b.title,
+    poster_url: b.cover_url,
+    watched_at: b.finished_at,
+  }));
+  return { count: count ?? 0, items };
+}
+
+// =====================================================
 // MILESTONES
 // =====================================================
 

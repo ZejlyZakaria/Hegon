@@ -51,14 +51,16 @@ const goalSchema = z
     priority:    z.enum(["low", "medium", "high", "critical"]),
     target_date: z.date().optional().nullable(),
     tracking:      z.enum(["manual", "tasks", "activity"]),
-    metric_key:    z.enum(["films", "series", "anime", "titles"]).optional(),
+    metric_source: z.enum(["watching", "books"]).optional(),
+    metric_key:    z.enum(["films", "series", "anime", "titles", "books"]).optional(),
     metric_period: z.enum(["year", "all_time"]).optional(),
     metric_target: z.string().optional(),
   })
   .refine(
     (d) =>
       d.tracking !== "activity" ||
-      (!!d.metric_key && !!d.metric_period && !!d.metric_target && Number(d.metric_target) > 0),
+      (!!d.metric_period && !!d.metric_target && Number(d.metric_target) > 0 &&
+        (d.metric_source === "books" || !!d.metric_key)),
     { message: "Choose what to count and a target", path: ["metric_target"] },
   );
 
@@ -69,7 +71,8 @@ type GoalFormData = {
   priority:    "low" | "medium" | "high" | "critical";
   target_date?: Date | null;
   tracking:      "manual" | "tasks" | "activity";
-  metric_key?:   "films" | "series" | "anime" | "titles";
+  metric_source?: "watching" | "books";
+  metric_key?:   "films" | "series" | "anime" | "titles" | "books";
   metric_period?: "year" | "all_time";
   metric_target?: string;
 };
@@ -102,6 +105,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
       priority:    "medium",
       target_date: null,
       tracking:      "manual",
+      metric_source: "watching",
       metric_key:    "films",
       metric_period: "year",
       metric_target: "",
@@ -109,6 +113,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
   });
 
   const tracking = form.watch("tracking");
+  const metricSource = form.watch("metric_source");
 
   useEffect(() => {
     if (open && goal) {
@@ -119,6 +124,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
         priority:    goal.priority,
         target_date: goal.target_date ? new Date(goal.target_date) : null,
         tracking:      trackingOf(goal),
+        metric_source: (goal.metric_module as GoalFormData["metric_source"]) ?? "watching",
         metric_key:    (goal.metric_key as GoalFormData["metric_key"]) ?? "films",
         metric_period: (goal.metric_period as GoalFormData["metric_period"]) ?? "year",
         metric_target: goal.metric_target != null ? String(goal.metric_target) : "",
@@ -131,6 +137,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
         priority:    "medium",
         target_date: null,
         tracking:      "manual",
+        metric_source: "watching",
         metric_key:    "films",
         metric_period: "year",
         metric_target: "",
@@ -147,6 +154,9 @@ export function GoalModal({ open, onClose, goal }: Props) {
 
   const onSubmit = async (data: GoalFormData) => {
     const isActivity = data.tracking === "activity";
+    const source     = data.metric_source ?? "watching";
+    // Books have a single key; Watching picks films/series/anime/titles.
+    const metricKey  = source === "books" ? "books" : data.metric_key ?? null;
     const input = {
       title:         data.title,
       description:   data.description || null,
@@ -154,8 +164,8 @@ export function GoalModal({ open, onClose, goal }: Props) {
       priority:      data.priority as GoalPriority,
       target_date:   data.target_date ? data.target_date.toISOString().split("T")[0] : null,
       progress_mode: (data.tracking === "manual" ? "manual" : "auto") as "manual" | "auto",
-      metric_module: isActivity ? ("watching" as const) : null,
-      metric_key:    isActivity ? data.metric_key ?? null : null,
+      metric_module: isActivity ? source : null,
+      metric_key:    isActivity ? metricKey : null,
       metric_period: isActivity ? data.metric_period ?? null : null,
       metric_year:   isActivity && data.metric_period === "year" ? currentYear : null,
       metric_target: isActivity && data.metric_target ? Number(data.metric_target) : null,
@@ -348,7 +358,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
                     <SelectContent variant="tasks">
                       <SelectItem value="manual">Manually</SelectItem>
                       <SelectItem value="tasks">From linked tasks</SelectItem>
-                      <SelectItem value="activity">From an activity (Watching)</SelectItem>
+                      <SelectItem value="activity">From an activity</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -359,7 +369,36 @@ export function GoalModal({ open, onClose, goal }: Props) {
 
             {tracking === "activity" && (
               <div className="space-y-3 rounded-lg border border-border-subtle bg-surface-overlay/40 p-3">
+                <FormField
+                  control={form.control}
+                  name="metric_source"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-medium text-text-secondary">Source</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? "watching"}>
+                        <FormControl>
+                          <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent variant="tasks">
+                          <SelectItem value="watching">Watching</SelectItem>
+                          <SelectItem value="books">Books</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {metricSource === "books" ? (
+                    <FormItem>
+                      <FormLabel className="text-xs font-medium text-text-secondary">Count</FormLabel>
+                      <div className="flex h-8 items-center rounded-md border border-border-default bg-surface-overlay px-3 text-xs text-text-secondary">
+                        Books
+                      </div>
+                    </FormItem>
+                  ) : (
                   <FormField
                     control={form.control}
                     name="metric_key"
@@ -383,6 +422,7 @@ export function GoalModal({ open, onClose, goal }: Props) {
                       </FormItem>
                     )}
                   />
+                  )}
                   <FormField
                     control={form.control}
                     name="metric_target"
@@ -426,7 +466,9 @@ export function GoalModal({ open, onClose, goal }: Props) {
                   />
                 </div>
                 <p className="text-[11px] leading-snug text-text-tertiary">
-                  Progress fills automatically as you mark titles watched.
+                  {metricSource === "books"
+                    ? "Progress fills automatically as you mark books read."
+                    : "Progress fills automatically as you mark titles watched."}
                 </p>
               </div>
             )}

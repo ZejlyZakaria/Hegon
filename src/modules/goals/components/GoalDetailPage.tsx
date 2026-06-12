@@ -39,6 +39,7 @@ import {
   useAvailableHabitsForGoal,
 } from "../hooks/useLinkedHabits";
 import { useGoalContributingMedia } from "../hooks/useGoalContributingMedia";
+import { useGoalContributingBooks } from "../hooks/useGoalContributingBooks";
 import { MilestoneList } from "./MilestoneList";
 import { GoalModal } from "./GoalModal";
 import { DeleteGoalModal } from "./DeleteGoalModal";
@@ -71,7 +72,8 @@ export function GoalDetailPage({ id }: Props) {
   const { data: linkedHabits  = [] } = useLinkedHabits(id);
   const { data: availableTasks  = [] } = useAvailableTasksForGoal();
   const { data: availableHabits = [] } = useAvailableHabitsForGoal();
-  const { data: contributing } = useGoalContributingMedia(goal);
+  const { data: contributingMedia } = useGoalContributingMedia(goal);
+  const { data: contributingBooks } = useGoalContributingBooks(goal);
 
   useRealtimeGoals(id, linkedHabits.map((h) => h.id));
 
@@ -121,6 +123,10 @@ export function GoalDetailPage({ id }: Props) {
 
   const displayMode     = localMode ?? goal.progress_mode;
   const isMetric        = !!goal.metric_module;
+  const isBooks         = goal.metric_module === "books";
+  const contributing    = isBooks ? contributingBooks : contributingMedia;
+  const metricVerb      = isBooks ? "read" : "watched";
+  const metricRoutePrefix = isBooks ? "/life/books/" : "/perso/watching/";
   const tasksTotal      = linkedTasks.length;
   const tasksCompleted  = linkedTasks.filter((t) => t.completed_at !== null).length;
   const autoProgress    = tasksTotal > 0 ? Math.round((tasksCompleted / tasksTotal) * 100) : 0;
@@ -134,7 +140,8 @@ export function GoalDetailPage({ id }: Props) {
   const metricCount  = contributing?.count ?? 0;
   const metricToGo   = Math.max(0, metricTarget - metricCount);
   const metricLabel  =
-    goal.metric_key === "films"  ? "films"
+    isBooks ? "books"
+    : goal.metric_key === "films"  ? "films"
     : goal.metric_key === "series" ? "TV shows"
     : goal.metric_key === "anime"  ? "animes"
     : "titles";
@@ -281,7 +288,7 @@ export function GoalDetailPage({ id }: Props) {
                 </div>
                 <p className="mt-1.5 text-xs text-text-tertiary">
                   {isMetric
-                    ? `${metricLabel} watched ${metricPeriodLabel}`
+                    ? `${metricLabel} ${metricVerb} ${metricPeriodLabel}`
                     : `${tasksCompleted}/${tasksTotal} tasks completed${displayMode === "auto" ? " · auto" : ""}`}
                 </p>
               </div>
@@ -571,7 +578,7 @@ export function GoalDetailPage({ id }: Props) {
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => router.push(`/perso/watching/${m.id}`)}
+                      onClick={() => router.push(`${metricRoutePrefix}${m.id}`)}
                       title={m.title}
                       className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-md border border-border-subtle"
                     >
@@ -600,7 +607,9 @@ export function GoalDetailPage({ id }: Props) {
                 </>
               ) : (
                 <p className="text-xs text-text-tertiary">
-                  Mark titles as watched in Watching to fill this goal.
+                  {isBooks
+                    ? "Mark books as read in Books to fill this goal."
+                    : "Mark titles as watched in Watching to fill this goal."}
                 </p>
               )}
             </motion.div>
@@ -676,7 +685,7 @@ export function GoalDetailPage({ id }: Props) {
               </div>
             ) : isMetric ? (
               <p className="text-xs text-text-tertiary text-center">
-                Counted from {metricLabel} watched {metricPeriodLabel}
+                Counted from {metricLabel} {metricVerb} {metricPeriodLabel}
               </p>
             ) : (
               <p className="text-xs text-text-tertiary text-center">
@@ -749,7 +758,7 @@ export function GoalDetailPage({ id }: Props) {
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
                   <div className="text-lg font-bold text-text-primary">{metricCount}</div>
-                  <div className="text-xs text-text-tertiary">Watched</div>
+                  <div className="text-xs text-text-tertiary">{isBooks ? "Read" : "Watched"}</div>
                 </div>
                 <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
                   <div className="text-lg font-bold" style={{ color: ACCENT }}>{metricTarget}</div>

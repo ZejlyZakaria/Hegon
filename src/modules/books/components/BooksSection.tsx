@@ -15,6 +15,7 @@ interface BooksSectionProps {
   status?:       BookStatus;
   sort?:         BookSort;
   search?:       string;
+  favorite?:     boolean;
   emptyMessage?: string;
 }
 
@@ -22,9 +23,10 @@ export function BooksSection({
   status,
   sort,
   search = "",
+  favorite,
   emptyMessage = "No books found",
 }: BooksSectionProps) {
-  const { data: allBooks, isLoading } = useBooks({ status, sort });
+  const { data: allBooks, isLoading } = useBooks({ status, sort, favorite });
 
   // "Reading" is a tracking view → info-rich rows. Everything else is a
   // browse/collection view → cover grid.

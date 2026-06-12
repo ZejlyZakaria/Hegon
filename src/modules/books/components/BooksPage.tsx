@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, startTransition } from "react";
-import { Search } from "lucide-react";
+import { Search, Heart } from "lucide-react";
 import { useCommandCenter } from "@/modules/command-center/store";
 import {
   Select,
@@ -50,6 +50,7 @@ export function BooksPage() {
   const setActiveTab = useBooksUIStore((s) => s.setActiveTab);
   const [search, setSearch]       = useState("");
   const [sort, setSort]           = useState<BookSort>("recently_added");
+  const [favOnly, setFavOnly]     = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
   const { pendingAction, clearPendingAction } = useCommandCenter();
@@ -76,11 +77,11 @@ export function BooksPage() {
           <BooksStatsZone />
 
           {/* Main layout */}
-          <div className="flex gap-6">
+          <div className="flex flex-col gap-6 lg:flex-row">
             <div className="min-w-0 flex-1 flex flex-col gap-4">
               {/* Tabs + search + sort */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center overflow-x-auto">
                   {TABS.map((tab) => {
                     const isActive = activeTab === tab.id;
                     return (
@@ -88,7 +89,7 @@ export function BooksPage() {
                         type="button"
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className="relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors duration-100"
+                        className="relative shrink-0 whitespace-nowrap px-4 pb-2.5 pt-1 text-sm font-medium transition-colors duration-100"
                         style={{ color: isActive ? "#e2e2e6" : "#71717a" }}
                       >
                         {tab.label}
@@ -103,7 +104,7 @@ export function BooksPage() {
                   })}
                 </div>
 
-                <div className="flex items-center gap-2 pb-1">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:pb-1">
                   <div className="relative flex items-center">
                     <Search
                       size={14}
@@ -115,9 +116,22 @@ export function BooksPage() {
                       placeholder="Search books…"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="h-9 py-0 pl-8 w-48 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
+                      className="h-9 py-0 pl-8 w-full sm:w-48 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
                     />
                   </div>
+                  <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFavOnly((v) => !v)}
+                    title={favOnly ? "Show all" : "Show favorites only"}
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                      favOnly
+                        ? "border-red-500/40 bg-red-500/10 text-red-400"
+                        : "border-border-subtle bg-surface-1 text-text-tertiary hover:bg-surface-2 hover:text-text-secondary"
+                    }`}
+                  >
+                    <Heart size={14} className={favOnly ? "fill-red-400" : ""} />
+                  </button>
                   <Select value={sort} onValueChange={(v) => setSort(v as BookSort)}>
                     <SelectTrigger
                       variant="tasks"
@@ -136,11 +150,12 @@ export function BooksPage() {
                   <button
                     type="button"
                     onClick={() => setModalOpen(true)}
-                    className="h-9 shrink-0 rounded-md px-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                    className="h-9 flex-1 sm:flex-none shrink-0 rounded-md px-3 text-sm font-medium text-white transition-opacity hover:opacity-90 whitespace-nowrap"
                     style={{ backgroundColor: ACCENT }}
                   >
                     + New Book
                   </button>
+                  </div>
                 </div>
               </div>
 
@@ -149,11 +164,13 @@ export function BooksPage() {
                 status={TAB_TO_STATUS[activeTab]}
                 sort={sort}
                 search={search}
+                favorite={favOnly || undefined}
+                emptyMessage={favOnly ? "No favorites yet" : "No books found"}
               />
             </div>
 
             {/* Right panel */}
-            <div className="w-72 shrink-0">
+            <div className="w-full lg:w-72 lg:shrink-0">
               <BooksRightPanel />
             </div>
           </div>
