@@ -9,24 +9,6 @@ function SkeletonBlock({ className }: { className?: string }) {
 const GRID = "grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-7";
 const ROWS = "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3";
 
-// ── Stats zone — mirrors the MetricCard grid (plain skeleton theme) ────────────
-
-export function StatsZoneSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="rounded-xl bg-surface-1 p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <SkeletonBlock className="h-6 w-6 rounded-md" />
-            <SkeletonBlock className="h-3.5 w-16" />
-          </div>
-          <SkeletonBlock className="h-7 w-10" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ── Grid cover card ───────────────────────────────────────────────────────────
 
 export function BookCardSkeleton() {
@@ -148,10 +130,9 @@ export function BooksLoadingSkeleton() {
 
   return (
     <div className="space-y-4 px-6 py-6">
-      <StatsZoneSkeleton />
+      <TabsRowSkeleton />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <div className="min-w-0 flex-1 space-y-4">
-          <TabsRowSkeleton />
+        <div className="min-w-0 flex-1">
           {isReading ? (
             <div className={ROWS}>
               {Array.from({ length: 3 }).map((_, i) => <BookRowSkeleton key={i} />)}

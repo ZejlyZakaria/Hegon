@@ -95,6 +95,13 @@ export interface BookQuote {
   updated_at: string;
 }
 
+// A quote joined with its book — for the global Quotes Wall.
+export interface QuoteWithBook extends BookQuote {
+  book_title:  string;
+  book_author: string | null;
+  book_cover:  string | null;
+}
+
 export interface CreateQuoteInput {
   book_id: string;
   text:    string;

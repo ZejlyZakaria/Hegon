@@ -9,4 +9,5 @@ export const BOOK_KEYS = {
   rightPanel: () => [...BOOK_KEYS.all, 'right-panel'] as const,
   search:     (query: string) => [...BOOK_KEYS.all, 'search', query] as const,
   quotes:     (bookId: string) => [...BOOK_KEYS.all, 'quotes', bookId] as const,
+  allQuotes:  () => [...BOOK_KEYS.all, 'all-quotes'] as const,
 } as const;

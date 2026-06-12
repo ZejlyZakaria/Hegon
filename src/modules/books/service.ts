@@ -12,6 +12,7 @@ import type {
   UpdateProgressInput,
   CreateQuoteInput,
   UpdateQuoteInput,
+  QuoteWithBook,
 } from "./types";
 
 // =====================================================
@@ -251,6 +252,27 @@ export async function getBookQuotes(bookId: string): Promise<BookQuote[]> {
 
   if (error) throw error;
   return data ?? [];
+}
+
+// Every quote across all books — for the global Quotes Wall (commonplace book).
+export async function getAllQuotes(): Promise<QuoteWithBook[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data, error } = await supabase
+    .from("book_quotes")
+    .select("*, book:books(title, author, cover_url)")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map((q) => ({
+    ...q,
+    book_title:  q.book?.title ?? "Unknown",
+    book_author: q.book?.author ?? null,
+    book_cover:  q.book?.cover_url ?? null,
+  }));
 }
 
 export async function createQuote(input: CreateQuoteInput): Promise<BookQuote> {

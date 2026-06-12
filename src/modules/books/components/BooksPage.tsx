@@ -16,16 +16,23 @@ import { AddBookModal } from "./AddBookModal";
 import { BooksEmptyState } from "./BooksEmptyState";
 import { BooksRightPanel } from "./BooksRightPanel";
 import { BooksSection } from "./BooksSection";
-import { BooksStatsZone } from "./BooksStatsZone";
 import { BooksLoadingSkeleton } from "./BooksSkeleton";
+import { BooksStatsPage } from "./stats/BooksStatsPage";
+import { BooksQuotesWall } from "./quotes/BooksQuotesWall";
 import { useBookStats } from "../hooks/useBooks";
-import { useBooksUIStore } from "../hooks/useBooksUIStore";
+import { useBooksUIStore, type BooksView } from "../hooks/useBooksUIStore";
 
 const TABS: { id: BookTab; label: string }[] = [
   { id: "reading",      label: "Reading" },
   { id: "want_to_read", label: "Want to Read" },
   { id: "completed",    label: "Completed" },
   { id: "all",          label: "All" },
+];
+
+// Destination tabs — sit after the status filters, behind a separator.
+const DEST_TABS: { id: Exclude<BooksView, "library">; label: string }[] = [
+  { id: "stats",  label: "Stats" },
+  { id: "quotes", label: "Quotes" },
 ];
 
 const TAB_TO_STATUS: Record<BookTab, BookStatus | undefined> = {
@@ -44,8 +51,12 @@ const SORT_OPTIONS: Array<{ value: BookSort; label: string }> = [
 
 const ACCENT = "var(--color-accent-books-vivid)";
 
+const tabClass = "relative shrink-0 whitespace-nowrap px-4 pb-2.5 pt-1 text-sm font-medium transition-colors duration-100";
+
 export function BooksPage() {
-  // Active tab persisted in-memory so Back from a detail page restores it.
+  // View + active tab persisted in-memory so Back from a detail page restores them.
+  const view         = useBooksUIStore((s) => s.view);
+  const setView      = useBooksUIStore((s) => s.setView);
   const activeTab    = useBooksUIStore((s) => s.activeTab);
   const setActiveTab = useBooksUIStore((s) => s.setActiveTab);
   const [search, setSearch]       = useState("");
@@ -66,6 +77,7 @@ export function BooksPage() {
   if (statsLoading) return <BooksLoadingSkeleton />;
 
   const isEmpty = stats?.total === 0;
+  const isLibrary = view === "library";
 
   return (
     <div className="flex min-h-full flex-col px-6 py-6 space-y-4">
@@ -73,107 +85,133 @@ export function BooksPage() {
         <BooksEmptyState onAddClick={() => setModalOpen(true)} />
       ) : (
         <>
-          {/* Stats zone */}
-          <BooksStatsZone />
-
-          {/* Main layout */}
-          <div className="flex flex-col gap-6 lg:flex-row">
-            <div className="min-w-0 flex-1 flex flex-col gap-4">
-              {/* Tabs + search + sort */}
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center overflow-x-auto">
-                  {TABS.map((tab) => {
-                    const isActive = activeTab === tab.id;
-                    return (
-                      <button
-                        type="button"
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className="relative shrink-0 whitespace-nowrap px-4 pb-2.5 pt-1 text-sm font-medium transition-colors duration-100"
-                        style={{ color: isActive ? "#e2e2e6" : "#71717a" }}
-                      >
-                        {tab.label}
-                        {isActive && (
-                          <span
-                            className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm"
-                            style={{ backgroundColor: ACCENT }}
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:pb-1">
-                  <div className="relative flex items-center">
-                    <Search
-                      size={14}
-                      className="absolute left-2.5 text-text-tertiary pointer-events-none"
-                    />
-                    <Input
-                      variant="tasks"
-                      type="text"
-                      placeholder="Search books…"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="h-9 py-0 pl-8 w-full sm:w-48 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
+          {/* Unified bar — status filters · Stats · Quotes  +  toolbar */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center overflow-x-auto">
+              {/* status filter tabs */}
+              {TABS.map((tab) => {
+                const isActive = isLibrary && activeTab === tab.id;
+                return (
                   <button
                     type="button"
-                    onClick={() => setFavOnly((v) => !v)}
-                    title={favOnly ? "Show all" : "Show favorites only"}
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors ${
-                      favOnly
-                        ? "border-red-500/40 bg-red-500/10 text-red-400"
-                        : "border-border-subtle bg-surface-1 text-text-tertiary hover:bg-surface-2 hover:text-text-secondary"
-                    }`}
+                    key={tab.id}
+                    onClick={() => { setView("library"); setActiveTab(tab.id); }}
+                    className={tabClass}
+                    style={{ color: isActive ? "#e2e2e6" : "#71717a" }}
                   >
-                    <Heart size={14} className={favOnly ? "fill-red-400" : ""} />
+                    {tab.label}
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm" style={{ backgroundColor: ACCENT }} />
+                    )}
                   </button>
-                  <Select value={sort} onValueChange={(v) => setSort(v as BookSort)}>
-                    <SelectTrigger
-                      variant="tasks"
-                      className="h-9 w-36 text-xs bg-surface-1 hover:bg-surface-2 focus:border-border-focus"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent variant="tasks">
-                      {SORT_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                );
+              })}
+
+              {/* separator — filters → destinations */}
+              <div className="mx-2 h-4 w-px shrink-0 bg-border-subtle" />
+
+              {/* destination tabs */}
+              {DEST_TABS.map((d) => {
+                const isActive = view === d.id;
+                return (
                   <button
                     type="button"
-                    onClick={() => setModalOpen(true)}
-                    className="h-9 flex-1 sm:flex-none shrink-0 rounded-md px-3 text-sm font-medium text-white transition-opacity hover:opacity-90 whitespace-nowrap"
-                    style={{ backgroundColor: ACCENT }}
+                    key={d.id}
+                    onClick={() => setView(d.id)}
+                    className={tabClass}
+                    style={{ color: isActive ? "#e2e2e6" : "#71717a" }}
                   >
-                    + New Book
+                    {d.label}
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm" style={{ backgroundColor: ACCENT }} />
+                    )}
                   </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Book grid */}
-              <BooksSection
-                status={TAB_TO_STATUS[activeTab]}
-                sort={sort}
-                search={search}
-                favorite={favOnly || undefined}
-                emptyMessage={favOnly ? "No favorites yet" : "No books found"}
-              />
+                );
+              })}
             </div>
 
-            {/* Right panel */}
-            <div className="w-full lg:w-72 lg:shrink-0">
-              <BooksRightPanel />
+            {/* toolbar — library controls hidden on Stats/Quotes; New Book always shown */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:pb-1">
+              {isLibrary && (
+                <div className="relative flex items-center">
+                  <Search size={14} className="absolute left-2.5 text-text-tertiary pointer-events-none" />
+                  <Input
+                    variant="tasks"
+                    type="text"
+                    placeholder="Search books…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="h-9 py-0 pl-8 w-full sm:w-48 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
+                  />
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                {isLibrary && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setFavOnly((v) => !v)}
+                      title={favOnly ? "Show all" : "Show favorites only"}
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                        favOnly
+                          ? "border-red-500/40 bg-red-500/10 text-red-400"
+                          : "border-border-subtle bg-surface-1 text-text-tertiary hover:bg-surface-2 hover:text-text-secondary"
+                      }`}
+                    >
+                      <Heart size={14} className={favOnly ? "fill-red-400" : ""} />
+                    </button>
+                    <Select value={sort} onValueChange={(v) => setSort(v as BookSort)}>
+                      <SelectTrigger
+                        variant="tasks"
+                        className="h-9 w-36 text-xs bg-surface-1 hover:bg-surface-2 focus:border-border-focus"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent variant="tasks">
+                        {SORT_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="h-9 flex-1 sm:flex-none shrink-0 rounded-md px-3 text-sm font-medium text-white transition-opacity hover:opacity-90 whitespace-nowrap"
+                  style={{ backgroundColor: ACCENT }}
+                >
+                  + New Book
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Content */}
+          {view === "stats" ? (
+            <BooksStatsPage />
+          ) : view === "quotes" ? (
+            <BooksQuotesWall />
+          ) : (
+            <div className="flex flex-col gap-6 lg:flex-row">
+              <div className="min-w-0 flex-1">
+                <BooksSection
+                  status={TAB_TO_STATUS[activeTab]}
+                  sort={sort}
+                  search={search}
+                  favorite={favOnly || undefined}
+                  emptyMessage={favOnly ? "No favorites yet" : "No books found"}
+                />
+              </div>
+
+              {/* Right panel */}
+              <div className="w-full lg:w-72 lg:shrink-0">
+                <BooksRightPanel />
+              </div>
+            </div>
+          )}
         </>
       )}
 

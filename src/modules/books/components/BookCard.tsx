@@ -26,19 +26,15 @@ export function BookCard({ book }: BookCardProps) {
       <button
         type="button"
         onClick={open}
-        className="block w-full cursor-pointer"
+        className="block w-full cursor-pointer text-left"
       >
         <div className="relative aspect-2/3 overflow-hidden rounded-lg bg-surface-1 transition-transform duration-300 ease-out group-hover:scale-[1.04]">
           {book.cover_url ? (
             <Image src={book.cover_url} alt={book.title} fill sizes="160px" className="object-cover" />
           ) : (
-            /* Generated cover for books without an image — keeps the shelf coherent */
-            <div className="flex h-full w-full flex-col justify-between bg-linear-to-br from-surface-2 to-surface-1 p-2.5">
-              <BookOpen size={12} className="text-text-tertiary/30" />
-              <div>
-                <p className="line-clamp-4 text-[11px] font-semibold leading-snug text-text-secondary">{book.title}</p>
-                {book.author && <p className="mt-1 line-clamp-1 text-[9px] text-text-tertiary">{book.author}</p>}
-              </div>
+            /* Simple placeholder for books without a cover — title/author show below */
+            <div className="flex h-full w-full items-center justify-center bg-surface-2">
+              <BookOpen size={22} className="text-text-tertiary/40" />
             </div>
           )}
 
