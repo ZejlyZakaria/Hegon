@@ -1,4 +1,4 @@
-import { LibrarySkeleton } from "@/modules/watching/components/WatchingSkeletons";
+import { LibrarySkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 
 export default function LibraryLoading() {
   return (

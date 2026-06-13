@@ -1,5 +1,4 @@
-import { DontMissSkeleton } from "@/modules/watching/components/sections/DontMissSectionClient";
-import { CarouselSkeleton } from "@/modules/watching/components/WatchingSkeletons";
+import { DontMissSkeleton, CarouselSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 
 export default function WatchingLoading() {
   return (

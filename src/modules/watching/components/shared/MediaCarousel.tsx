@@ -124,10 +124,10 @@ function MovieCard({
             {displayTitle(item)}
           </h4>
 
-          {/* episode progress */}
+          {/* episode progress — show once started: current episode, OR past season 1
+              (a season bump resets the episode to 0 but prior seasons are done). */}
           {showEpisodeBadge &&
-            item.current_episode != null &&
-            item.current_episode > 0 && (
+            ((item.current_episode ?? 0) > 0 || (item.current_season ?? 1) > 1) && (
               <div className="space-y-1.5">
                 <span
                   className="text-[10px] font-semibold px-2 py-0.5 rounded-full"

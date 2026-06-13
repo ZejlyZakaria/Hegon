@@ -119,17 +119,23 @@ export async function getMediaItems(
 // All watched media (any type) for the Library, newest first. Backs a live client
 // query so the Library reflects cross-surface adds/deletes (independent of the
 // Next.js RSC router cache).
+// Only the columns the Library actually renders/sorts/searches on — NOT select("*").
+// At a few hundred watched titles, dropping description/notes/backdrop/season arrays
+// cuts the payload several-fold. Keep in sync with the server seed in library/page.tsx.
+const LIBRARY_COLUMNS =
+  "id, type, title, original_title, poster_url, favorite, year, user_rating, watched_at, tags";
+
 export async function getAllWatchedMedia(userId: string): Promise<WatchingMedia[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("*")
+    .select(LIBRARY_COLUMNS)
     .eq("user_id", userId)
     .eq("watched", true)
     .order("watched_at", { ascending: false });
   if (error) throw error;
-  return (data as WatchingMedia[]) ?? [];
+  return (data as unknown as WatchingMedia[]) ?? [];
 }
 
 // tmdb_ids the user already owns for a given type — used to hide already-owned
@@ -235,48 +241,6 @@ export async function deleteMediaItem(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function markMediaAsWatched(mediaId: string): Promise<WatchingMedia> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-
-  const { data, error } = await supabase
-    .schema("watching")
-    .from("media_items")
-    .update({
-      watched: true,
-      recently_watched: true,
-      want_to_watch: false,
-      in_progress: false,
-      watched_at: new Date().toISOString(),
-    })
-    .eq("id", mediaId)
-    .eq("user_id", user.id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as WatchingMedia;
-}
-
-export async function bulkUpdatePriorities(
-  items: Array<{ id: string; priority: number }>,
-  userId: string
-): Promise<void> {
-  const supabase = createClient();
-  const results = await Promise.all(
-    items.map((item) =>
-      supabase
-        .schema("watching")
-        .from("media_items")
-        .update({ priority: item.priority })
-        .eq("id", item.id)
-        .eq("user_id", userId)
-    )
-  );
-  const failed = results.find((r) => r.error);
-  if (failed?.error) throw failed.error;
-}
-
 export async function getExistingMediaItem(
   userId: string,
   type: MediaType,
@@ -318,13 +282,6 @@ export async function getMediaItemById(id: string): Promise<WatchingMedia | null
     .maybeSingle();
   if (error) throw error;
   return data as WatchingMedia | null;
-}
-
-export async function getCurrentUserId(): Promise<string> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  return user.id;
 }
 
 // =====================================================
@@ -421,10 +378,13 @@ export async function deleteMediaList(listId: string): Promise<void> {
 }
 
 // =====================================================
-// FOR YOU — TMDB RECOMMENDATIONS BASED ON FAVORITES
+// FOR YOU — precomputed recommendations (read-only)
 // =====================================================
-
-const WATCHED_THRESHOLD: Record<MediaType, number> = { film: 50, serie: 10, anime: 10 };
+// The heavy work (favorites → TMDB "more like this" → score → rank) runs in the
+// `for-you-refresh` edge function on a 5-day cron and is stored in
+// watching.for_you_cache. Here we just READ that table → instant. Owned/dismissed
+// filtering and the 10-of-20 reserve slice happen client-side, so adding a title
+// updates the carousel live without recomputing or refetching from TMDB.
 
 export interface ForYouItem {
   id: number;
@@ -435,6 +395,7 @@ export interface ForYouItem {
   year: string;
   overview: string;
   genre_ids: number[];
+  is_new?: boolean;   // newly surfaced in the latest 5-day rotation
 }
 
 export async function getForYouRecommendations(
@@ -442,79 +403,16 @@ export async function getForYouRecommendations(
   type: MediaType
 ): Promise<ForYouItem[]> {
   const supabase = createClient();
-  const tmdbType = type === "film" ? "movie" : "tv";
-
-  const [favoritesRes, existingRes, watchedRes] = await Promise.all([
-    supabase.schema("watching").from("media_items")
-      .select("tmdb_id, user_rating")
-      .eq("user_id", userId).eq("type", type).eq("favorite", true)
-      .not("user_rating", "is", null)
-      .order("user_rating", { ascending: false })
-      .limit(5),
-    supabase.schema("watching").from("media_items")
-      .select("tmdb_id")
-      .eq("user_id", userId).eq("type", type),
-    supabase.schema("watching").from("media_items")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId).eq("type", type).eq("watched", true),
-  ]);
-
-  if (favoritesRes.error) throw favoritesRes.error;
-  if (existingRes.error) throw existingRes.error;
-
-  const favorites = (favoritesRes.data ?? []) as { tmdb_id: number; user_rating: number }[];
-  const watchedCount = watchedRes.count ?? 0;
-
-  if (favorites.length === 0 || watchedCount < WATCHED_THRESHOLD[type]) return [];
-
-  const existingIds = new Set((existingRes.data ?? []).map((i: any) => i.tmdb_id));
-
-  // 1 fixed (#1 rated) + up to 2 deterministic from the rest — rotates daily, stable across reloads
-  const seeds: number[] = [favorites[0].tmdb_id];
-  const pool = favorites.slice(1);
-  if (pool.length > 0) {
-    const dayIndex = Math.floor(Date.now() / 86_400_000);
-    const idx1 = dayIndex % pool.length;
-    const idx2 = (dayIndex + 1) % pool.length;
-    seeds.push(pool[idx1].tmdb_id);
-    if (idx2 !== idx1) seeds.push(pool[idx2].tmdb_id);
-  }
-
-  const recoResults = await Promise.all(
-    seeds.map((tmdbId) =>
-      tmdbFetch<{ results: any[] }>(`${tmdbType}/${tmdbId}/recommendations`, { page: "1" })
-        .then((d) => d.results ?? [])
-        .catch(() => [])
-    )
-  );
-
-  const MIN_VOTE_AVERAGE = 7.0;
-  const MIN_VOTE_COUNT = type === "film" ? 200 : 50;
-
-  const seen = new Set<number>();
-  const candidates: ForYouItem[] = [];
-
-  for (const batch of recoResults) {
-    for (const item of batch) {
-      if (seen.has(item.id) || existingIds.has(item.id)) continue;
-      if ((item.vote_average ?? 0) < MIN_VOTE_AVERAGE) continue;
-      if ((item.vote_count ?? 0) < MIN_VOTE_COUNT) continue;
-      seen.add(item.id);
-      candidates.push({
-        id: item.id,
-        title: item.title ?? item.name ?? "",
-        poster_path: item.poster_path ?? null,
-        backdrop_path: item.backdrop_path ?? null,
-        vote_average: item.vote_average ?? 0,
-        year: (item.release_date ?? item.first_air_date ?? "").slice(0, 4),
-        overview: item.overview ?? "",
-        genre_ids: item.genre_ids ?? [],
-      });
-    }
-  }
-
-  candidates.sort((a, b) => b.vote_average - a.vote_average);
-  return candidates.slice(0, 10);
+  const { data, error } = await supabase
+    .schema("watching").from("for_you_cache")
+    .select("items")
+    .eq("user_id", userId)
+    .eq("type", type)
+    .maybeSingle();
+  if (error) throw error;
+  // Returns the full stored reserve (~20); the client filters owned/dismissed
+  // and slices to 10. Empty/no row (e.g. not enough watched yet) → no section.
+  return (data?.items ?? []) as ForYouItem[];
 }
 
 function deriveWatchStatus(item: any): WatchStatus {
@@ -591,9 +489,12 @@ export async function addTmdbItemToList(
 ): Promise<MediaListItem> {
   const supabase = createClient();
 
+  // "Anime" here = Asian animation (Japanese, plus donghua/Korean which TMDB also
+  // tags genre 16). Animation from elsewhere stays a regular series.
+  const ASIAN_ANIMATION = ["JP", "KR", "CN"];
   const type: MediaType =
     tmdbItem.media_type === "movie" ? "film"
-    : tmdbItem.genre_ids.includes(16) && tmdbItem.origin_country.includes("JP") ? "anime"
+    : tmdbItem.genre_ids.includes(16) && tmdbItem.origin_country.some((c) => ASIAN_ANIMATION.includes(c)) ? "anime"
     : "serie";
 
   // Check if already in DB (any type, match by tmdb_id)

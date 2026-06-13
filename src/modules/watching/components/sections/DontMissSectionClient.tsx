@@ -8,6 +8,7 @@ import { Plus, Star, TrendingUp } from "lucide-react";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
 import { useWatchingHero } from "@/modules/watching/hooks/useWatchingHero";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
+import { DontMissSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import type { WatchingConfig } from "@/modules/watching/types";
 
 const TMDB_W500 = "https://image.tmdb.org/t/p/w500";
@@ -16,31 +17,6 @@ const EXP       = 22;   // 22/(22+7×4) = 44%
 const COL       = 7;    // 7/50         = 14%
 // card row height = h-60 = 240px → portrait poster width = 240 × 2/3 = 160px
 const POSTER_W  = 160;
-
-// ─── skeleton ─────────────────────────────────────────────────────────────────
-
-export function DontMissSkeleton() {
-  return (
-    <section>
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-3.5 h-3.5 rounded-full bg-surface-2 animate-pulse" />
-        <div className="w-20 h-3 rounded bg-surface-2 animate-pulse" />
-      </div>
-      {/* Desktop: accordion shape */}
-      <div className="hidden h-60 gap-3 lg:flex">
-        {[EXP, COL, COL, COL, COL, COL].map((f, i) => (
-          <div key={i} className="rounded-2xl bg-surface-1 animate-pulse" style={{ flex: f }} />
-        ))}
-      </div>
-      {/* Mobile: poster rail */}
-      <div className="flex gap-3 lg:hidden">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="aspect-2/3 w-[42%] shrink-0 animate-pulse rounded-xl bg-surface-1" />
-        ))}
-      </div>
-    </section>
-  );
-}
 
 // ─── card ─────────────────────────────────────────────────────────────────────
 

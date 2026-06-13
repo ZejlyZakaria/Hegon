@@ -132,11 +132,11 @@ export function useAddMedia() {
                 .filter((s: any) => s.season_number > 0)
                 .map((s: any) => (s.poster_path ?? null) as string | null)
             : [],
-        season_air_years:
+        season_air_dates:
           (defaultType === "serie" || defaultType === "anime") && Array.isArray(selectedItem.seasons)
             ? selectedItem.seasons
                 .filter((s: any) => s.season_number > 0)
-                .map((s: any) => (s.air_date ? Number(s.air_date.slice(0, 4)) : null))
+                .map((s: any) => (s.air_date ?? null) as string | null)
             : [],
         current_episode: listContext === "inProgress" ? currentEpisode : null,
         current_season: listContext === "inProgress" ? currentSeason : null,
@@ -180,11 +180,11 @@ export function useAddMedia() {
                     .filter((s: any) => s.season_number > 0)
                     .map((s: any) => (s.poster_path ?? null) as string | null)
                 : undefined,
-            season_air_years:
+            season_air_dates:
               (defaultType === "serie" || defaultType === "anime") && Array.isArray(selectedItem.seasons)
                 ? selectedItem.seasons
                     .filter((s: any) => s.season_number > 0)
-                    .map((s: any) => (s.air_date ? Number(s.air_date.slice(0, 4)) : null))
+                    .map((s: any) => (s.air_date ?? null) as string | null)
                 : undefined,
             in_progress: true,
             watched: false,

@@ -4,7 +4,9 @@ import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react
 import Image from "next/image";
 import { Star, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useForYouRecommendations } from "@/modules/watching/hooks/useForYouRecommendations";
+import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
+import { ForYouSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { cn } from "@/shared/utils/utils";
 import type { WatchingConfig } from "@/modules/watching/types";
 import type { ForYouItem } from "@/modules/watching/service";
@@ -30,30 +32,6 @@ function addDismissed(type: string, id: number) {
     set.add(id);
     localStorage.setItem(getDismissedKey(type), JSON.stringify([...set]));
   } catch { /* ignore */ }
-}
-
-// ─── skeleton ─────────────────────────────────────────────────────────────────
-
-function ForYouSkeleton() {
-  return (
-    <section>
-      <div className="mb-3 flex items-center justify-between">
-        <div className="h-5 w-24 rounded bg-surface-2 animate-pulse" />
-      </div>
-      {/* Desktop: backdrop row */}
-      <div className="hidden gap-4 lg:flex">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex-1 aspect-video rounded-xl bg-surface-1 animate-pulse" />
-        ))}
-      </div>
-      {/* Mobile: poster rail */}
-      <div className="flex gap-3 lg:hidden">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="aspect-2/3 w-[42%] shrink-0 rounded-xl bg-surface-1 animate-pulse" />
-        ))}
-      </div>
-    </section>
-  );
 }
 
 // ─── card ─────────────────────────────────────────────────────────────────────
@@ -100,6 +78,13 @@ function ForYouCard({
         )}
         <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
 
+        {/* "New" badge — surfaced in the latest 5-day rotation */}
+        {item.is_new && (
+          <div className="absolute top-2 left-2 z-10 rounded-full bg-[#2dd4bf] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-950 shadow-sm">
+            New
+          </div>
+        )}
+
         {/* Dismiss button */}
         <button
           type="button"
@@ -137,6 +122,7 @@ export default function ForYouSectionClient({
   config: WatchingConfig;
 }) {
   const { data: rawItems = [], isLoading } = useForYouRecommendations(userId, config.type);
+  const { data: ownedIds = [] } = useOwnedTmdbIds(userId, config.type);
   const [dismissed, setDismissed] = useState<Set<number>>(() => getDismissed(config.type));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(5);
@@ -144,7 +130,11 @@ export default function ForYouSectionClient({
   const { openModalWithItem } = useWatching();
   const gap = 16;
 
-  const items = rawItems.filter((i) => !dismissed.has(i.id));
+  // Live filter against the library (handles titles added since the last 5-day
+  // refresh) + dismissed, then take 10 — the stored ~20 is the reserve, so adding
+  // or dismissing one slides the next in without refetching.
+  const owned = new Set(ownedIds);
+  const items = rawItems.filter((i) => !dismissed.has(i.id) && !owned.has(i.id)).slice(0, 10);
 
   // Reset scroll when items change (data reload or dismissal)
   useLayoutEffect(() => {

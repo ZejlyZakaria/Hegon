@@ -10,6 +10,15 @@ import type { UpdateMediaInput } from "../schemas/media.schema";
 
 const STATUS_FIELDS = ["watched", "in_progress", "want_to_watch", "is_reference", "recently_watched"] as const;
 
+// Any field whose change can move a number on the Stats page (counts, hours,
+// ratings, genres, top picks, activity). Notes are the only common edit that does
+// NOT affect Stats, so we skip the stats refetch for a notes-only save.
+const STATS_FIELDS = [
+  "watched", "in_progress", "recently_watched", "want_to_watch", "is_reference",
+  "user_rating", "favorite", "watched_at", "season_years", "season_ratings",
+  "current_season", "current_episode",
+] as const;
+
 export function useUpdateMedia() {
   const queryClient = useQueryClient();
   const isDemo = useIsDemo();
@@ -53,7 +62,7 @@ export function useUpdateMedia() {
           queryClient.setQueryData(key, data);
         }
       }
-      toast.error("La mise à jour a échoué. Réessaie.");
+      toast.error("Update failed. Please try again.");
     },
 
     onSuccess: (_, input) => {
@@ -77,6 +86,22 @@ export function useUpdateMedia() {
         // auto-tick a Watching-linked habit.
         void syncWatchingGoals(queryClient);
         void syncWatchingHabits(queryClient);
+      }
+
+      // A season/episode progress change must refresh the In Progress carousels so
+      // their progress bar reflects the new position (status change already does).
+      if (!isStatusChange && (input.current_season != null || input.current_episode != null)) {
+        for (const type of ["film", "serie", "anime"] as const) {
+          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.inProgress(type) });
+        }
+      }
+
+      // Stats reads ratings / season years / hours / favorites — refetch it whenever
+      // any of those change (prefix-match invalidates the per-user stats key). Keeps
+      // Stats honest after a rating or Watch-History edit, not only after the
+      // optimistic patch. Notes-only saves are skipped.
+      if (STATS_FIELDS.some((f) => input[f] != null)) {
+        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "stats"] });
       }
     },
   });

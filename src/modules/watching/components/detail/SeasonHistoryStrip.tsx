@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Star, Pencil, Tv, Lock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, Pencil, Tv, Lock, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/shared/components/ui/popover";
@@ -12,7 +12,7 @@ import {
 interface Props {
   seasonEpisodes: number[];
   seasonPosters: (string | null)[] | null | undefined;
-  seasonAirYears: (number | null)[] | null | undefined;
+  seasonAirDates: (string | null)[] | null | undefined;
   seasonYears: Record<string, number> | null | undefined;
   seasonRatings: Record<string, number> | null | undefined;
   showPoster: string | null;        // fallback when a season has no poster
@@ -26,21 +26,35 @@ interface Props {
 const TMDB_IMG = "https://image.tmdb.org/t/p/w300";
 const TEAL = "var(--color-accent-watching-vivid)";
 
+const fmtDate = (d: string) =>
+  new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
 // Visual per-season watch history — a row of season poster cards (sized to match
 // "More Like This" so the two rows align), each showing the year + rating you gave
 // it. Click a card → popover to set year & rating. Not-yet-started seasons of an
-// in-progress show are masked/locked (real-time with Currently Watching).
+// in-progress show are locked; seasons that haven't aired yet show "Coming soon".
 export function SeasonHistoryStrip({
-  seasonEpisodes, seasonPosters, seasonAirYears, seasonYears, seasonRatings,
+  seasonEpisodes, seasonPosters, seasonAirDates, seasonYears, seasonRatings,
   showPoster, releaseYear, currentSeason, inProgress, onYearChange, onRatingChange,
 }: Props) {
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const nowMs = now.getTime();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   if (seasonEpisodes.length <= 1) return null;
 
-  const isLocked  = (s: number) => inProgress && s > currentSeason;
-  const airYearOf = (idx: number) => seasonAirYears?.[idx] ?? releaseYear ?? 1900;
+  // A season that hasn't aired yet (air_date in the future) → not watchable.
+  const comingSoonAt = (idx: number) => {
+    const d = seasonAirDates?.[idx];
+    return !!d && new Date(d).getTime() > nowMs;
+  };
+  // Locked = unreleased OR (in-progress show, season after the one you're watching).
+  const lockedAt = (idx: number) => comingSoonAt(idx) || (inProgress && idx + 1 > currentSeason);
+  const airYearOf = (idx: number) => {
+    const d = seasonAirDates?.[idx];
+    return (d ? new Date(d).getFullYear() : null) ?? releaseYear ?? 1900;
+  };
 
   // Year options for a given season — never before it aired, never after now.
   const yearsFor = (idx: number) => {
@@ -49,13 +63,11 @@ export function SeasonHistoryStrip({
     return out;
   };
 
-  // "Set all" range — only years on/after the latest unlocked season aired (you
-  // can only have binged the whole show once its last watched season was out).
+  // "Set all" range — only years on/after the latest editable season aired.
   const setAllYears = (() => {
     let floor = releaseYear ?? 1900;
     seasonEpisodes.forEach((_, idx) => {
-      const s = idx + 1;
-      if (isLocked(s)) return;
+      if (lockedAt(idx)) return;
       floor = Math.max(floor, airYearOf(idx));
     });
     const out: number[] = [];
@@ -69,8 +81,7 @@ export function SeasonHistoryStrip({
   const setAll = (year: number) => {
     const next = { ...(seasonYears ?? {}) };
     seasonEpisodes.forEach((_, idx) => {
-      const s = idx + 1;
-      if (!isLocked(s)) next[String(s)] = year;
+      if (!lockedAt(idx)) next[String(idx + 1)] = year;
     });
     onYearChange(next);
   };
@@ -115,13 +126,14 @@ export function SeasonHistoryStrip({
       <div ref={scrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
         {seasonEpisodes.map((eps, idx) => {
           const s = idx + 1;
-          const locked = isLocked(s);
+          const comingSoon = comingSoonAt(idx);
+          const locked = lockedAt(idx);
           const current = inProgress && s === currentSeason;
           const year = seasonYears?.[String(s)];
           const rating = seasonRatings?.[String(s)];
           const posterPath = seasonPosters?.[idx] ?? null;
           const poster = posterPath ? `${TMDB_IMG}${posterPath}` : (showPoster ?? null);
-          const airYear = seasonAirYears?.[idx] ?? null;
+          const airDate = seasonAirDates?.[idx] ?? null;
 
           const cardInner = (
             <div className={`relative aspect-2/3 w-36 overflow-hidden rounded-lg border border-border-subtle bg-surface-1 transition-transform duration-200 ease-out ${
@@ -146,7 +158,7 @@ export function SeasonHistoryStrip({
               )}
 
               {/* "Now" badge — current season of an in-progress show (top-right) */}
-              {current && (
+              {current && !comingSoon && (
                 <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-black/55 px-1.5 py-0.5 ring-1 ring-white/15 backdrop-blur-md">
                   <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: TEAL, boxShadow: `0 0 6px ${TEAL}` }} />
                   <span className="text-[9px] font-semibold text-white">Now</span>
@@ -165,8 +177,15 @@ export function SeasonHistoryStrip({
                 </div>
               </div>
 
-              {locked ? (
-                /* Mask — not started yet */
+              {comingSoon ? (
+                /* Mask — not aired yet */
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/70 px-2 text-center">
+                  <Clock size={14} className="text-white/75" />
+                  <span className="text-[10px] font-semibold text-white/85">Coming soon</span>
+                  {airDate && <span className="text-[9px] text-white/50">{fmtDate(airDate)}</span>}
+                </div>
+              ) : locked ? (
+                /* Mask — released but not started yet */
                 <div className="absolute inset-0 flex items-center justify-center bg-black/65">
                   <Lock size={15} className="text-white/55" />
                 </div>
@@ -183,7 +202,7 @@ export function SeasonHistoryStrip({
 
           if (locked) {
             return (
-              <div key={s} className="w-36 shrink-0 cursor-not-allowed" title="Not started yet">
+              <div key={s} className="w-36 shrink-0 cursor-not-allowed" title={comingSoon ? "Not aired yet" : "Not started yet"}>
                 {cardInner}
               </div>
             );
@@ -200,7 +219,7 @@ export function SeasonHistoryStrip({
               <PopoverContent align="start" className="w-52 bg-surface-3 border-border-strong p-3">
                 <div className="mb-2">
                   <p className="text-xs font-semibold text-text-primary">Season {s}</p>
-                  {airYear && <p className="text-[10px] text-text-tertiary">Aired {airYear} · {eps} ep{eps > 1 ? "s" : ""}</p>}
+                  {airDate && <p className="text-[10px] text-text-tertiary">Aired {fmtDate(airDate)} · {eps} ep{eps > 1 ? "s" : ""}</p>}
                 </div>
 
                 <label className="mb-1 block text-[11px] text-text-tertiary">Year watched</label>
@@ -222,7 +241,7 @@ export function SeasonHistoryStrip({
                   </SelectTrigger>
                   <SelectContent className="bg-surface-3 border-border-strong">
                     <SelectItem value="none" className="text-xs focus:bg-surface-2 focus:text-text-primary">—</SelectItem>
-                    {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => (
+                    {[10, 9.5, 9, 8.5, 8, 7.5, 7, 6.5, 6, 5.5, 5].map((n) => (
                       <SelectItem key={n} value={String(n)} className="text-xs focus:bg-surface-2 focus:text-text-primary">{n}/10</SelectItem>
                     ))}
                   </SelectContent>

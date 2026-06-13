@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Clapperboard } from "lucide-react";
 import { useMediaItem } from "@/modules/watching/hooks/useMediaItem";
 import { useUpdateMedia } from "@/modules/watching/hooks/useUpdateMedia";
+import { useSeasonRefresh } from "@/modules/watching/hooks/useSeasonRefresh";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import { useSimilarTitles } from "@/modules/watching/hooks/useSimilarTitles";
 import { useMediaCredits } from "@/modules/watching/hooks/useMediaCredits";
@@ -28,7 +29,7 @@ import { stampSeasons, seasonRange } from "@/modules/watching/lib/season-years";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { InList } from "@/modules/watching/components/detail/InList";
 import { FloatingSaveBar } from "@/modules/watching/components/detail/FloatingSaveBar";
-import { DetailSkeleton } from "@/modules/watching/components/WatchingSkeletons";
+import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { toast } from "@/shared/utils/toast";
 
 export default function MediaDetailPage() {
@@ -37,6 +38,7 @@ export default function MediaDetailPage() {
 
   const { data: media, isLoading } = useMediaItem(id);
   const updateMedia = useUpdateMedia();
+  useSeasonRefresh(media);  // ongoing shows: pull new/just-released seasons from TMDB
   const setPageLabel = useWatchingUIStore((s) => s.setPageLabel);
 
   useEffect(() => {
@@ -216,6 +218,23 @@ export default function MediaDetailPage() {
     }
   };
 
+  // "Watched" year edit for titles without a Watch History strip — films stamp
+  // watched_at (Dec 31 noon of that year, like the backfill), single-season shows
+  // stamp season_years["1"]. Lets Stats attribute them to the real year.
+  const handleWatchedYearChange = async (yr: number) => {
+    if (!media) return;
+    try {
+      if (media.type === "film") {
+        await updateMedia.mutateAsync({ id: media.id, watched_at: `${yr}-12-31T12:00:00Z` });
+      } else {
+        await updateMedia.mutateAsync({ id: media.id, season_years: { ...(media.season_years ?? {}), "1": yr } });
+      }
+      toast("Year updated.");
+    } catch {
+      toast.error("Failed to update.");
+    }
+  };
+
   const typeLabel = useMemo(() => {
     if (!media) return "";
     return media.type === "film" ? "Movie" : media.type === "serie" ? "TV Show" : "Anime";
@@ -306,7 +325,7 @@ export default function MediaDetailPage() {
             <SeasonHistoryStrip
               seasonEpisodes={media.season_episodes ?? []}
               seasonPosters={media.season_posters}
-              seasonAirYears={media.season_air_years}
+              seasonAirDates={media.season_air_dates}
               seasonYears={media.season_years}
               seasonRatings={media.season_ratings}
               showPoster={media.poster_url}
@@ -347,7 +366,7 @@ export default function MediaDetailPage() {
 
             <InList mediaItemId={media.id} userId={media.user_id} />
 
-            <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
+            <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} onWatchedYearChange={isDemo ? undefined : handleWatchedYearChange} />
 
           </div>
         </div>

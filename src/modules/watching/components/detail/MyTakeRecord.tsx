@@ -215,11 +215,11 @@ export function MyTakeRecord({
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors active:scale-[0.97]",
                       favorite
-                        ? "bg-white/12 text-white"
+                        ? "bg-red-500/15 text-white"
                         : "bg-white/5 text-white/55 hover:text-white/80",
                     )}
                   >
-                    <Heart size={10} className={cn(favorite && "fill-current")} />
+                    <Heart size={10} className={cn(favorite && "fill-red-500 text-red-500")} />
                     {favorite ? "Favorited" : "Favorite"}
                   </button>
                 </div>

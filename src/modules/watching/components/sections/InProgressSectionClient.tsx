@@ -2,7 +2,7 @@
 
 import { toast } from "@/shared/utils/toast";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
-import { CarouselSkeleton } from "@/modules/watching/components/WatchingSkeletons";
+import { CarouselSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import { useMovies } from "@/modules/watching/hooks/useMovies";

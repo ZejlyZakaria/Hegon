@@ -10,6 +10,8 @@ import {
 import { cn } from "@/shared/utils/utils";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useWatchingStatsData } from "../../hooks/useWatchingStats";
+import { useWatchingUIStore } from "../../hooks/useWatchingUIStore";
+import { StatsSkeleton } from "../shared/WatchingSkeletons";
 import type { StatsRawItem } from "../../service";
 import { displayTitle } from "../../utils";
 import { WrappedModal } from "./WrappedModal";
@@ -182,9 +184,6 @@ function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] 
 
 // ── Top Picks ─────────────────────────────────────────────────────────────────
 
-const RANK_LABELS = ["#1", "#2", "#3"];
-const RANK_COLORS = ["rgba(245,158,11,0.9)", "rgba(148,163,184,0.7)", "rgba(180,120,60,0.7)"];
-
 function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel: string | null; rating: number | null; seasonPoster: string | null }[] }) {
   const router = useRouter();
 
@@ -198,20 +197,14 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
       {items.length === 0 ? (
         <p className="text-sm text-text-tertiary/50">Rate or favorite items to see your top picks</p>
       ) : (
-        <div className="flex flex-col gap-0.5">
-          {items.map(({ item, seasonLabel, rating, seasonPoster }, i) => (
+        <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+          {items.map(({ item, seasonLabel, rating, seasonPoster }) => (
             <div
               key={item.id}
-              className="group flex cursor-pointer items-center gap-3 -mx-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-2"
+              className="group -m-1.5 flex cursor-pointer items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface-2"
               onClick={() => router.push(`/perso/watching/${item.id}`)}
             >
-              <span
-                className="w-5 shrink-0 text-center text-[11px] font-bold tabular-nums"
-                style={{ color: RANK_COLORS[i] }}
-              >
-                {RANK_LABELS[i]}
-              </span>
-              <div className="relative h-15 w-10 shrink-0 overflow-hidden rounded-lg">
+              <div className="relative h-14 w-9 shrink-0 overflow-hidden rounded-md">
                 {(seasonPoster ? `https://image.tmdb.org/t/p/w300${seasonPoster}` : item.poster_url) ? (
                   <Image
                     src={seasonPoster ? `https://image.tmdb.org/t/p/w300${seasonPoster}` : item.poster_url!}
@@ -219,34 +212,32 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
                     fill
                     unoptimized
                     className="object-cover"
-                    sizes="40px"
+                    sizes="36px"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-surface-2">
-                    <Play size={12} className="text-text-tertiary" />
+                    <Play size={11} className="text-text-tertiary" />
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-text-primary">{displayTitle(item)}</p>
-                <div className="mt-0.5 flex items-center gap-2">
+                <p className="truncate text-xs font-medium text-text-primary">{displayTitle(item)}</p>
+                <div className="mt-0.5 flex items-center gap-1.5">
                   {rating != null && (
-                    <div className="flex items-center gap-1">
-                      <Star size={10} className="fill-amber-400 text-amber-400" />
-                      <span className="text-[11px] tabular-nums text-amber-400 font-medium">
-                        {rating}
-                      </span>
+                    <div className="flex items-center gap-0.5">
+                      <Star size={9} className="fill-amber-400 text-amber-400" />
+                      <span className="text-[10px] tabular-nums font-medium text-amber-400">{rating}</span>
                     </div>
                   )}
                   {seasonLabel ? (
-                    <span className="text-[11px] font-medium" style={{ color: TEAL }}>{seasonLabel}</span>
+                    <span className="truncate text-[10px] font-medium" style={{ color: TEAL }}>{seasonLabel}</span>
                   ) : (
-                    <span className="text-[11px] text-text-tertiary/50">{item.year}</span>
+                    <span className="text-[10px] text-text-tertiary/50">{item.year}</span>
                   )}
                 </div>
               </div>
               {item.favorite && (
-                <Heart size={11} className="shrink-0 fill-red-400 text-red-400 opacity-70" />
+                <Heart size={10} className="shrink-0 fill-red-400 text-red-400 opacity-70" />
               )}
             </div>
           ))}
@@ -378,24 +369,24 @@ function RatingDistributionCard({ distribution }: { distribution: ReturnType<typ
 
 // ── Activity ──────────────────────────────────────────────────────────────────
 
-function ActivityCard({ activity, year, streaks }: {
+function ActivityCard({ activity, selectedYear }: {
   activity: ReturnType<typeof computeStats>["activity"];
-  year: number | null;
-  streaks: ReturnType<typeof computeStats>["streaks"];
+  selectedYear: number | null;
 }) {
   const max = Math.max(...activity.map((a) => a.count), 1);
-  const title = year ? "Monthly Activity" : "Yearly Activity";
+  const best = activity.reduce<{ label: string; count: number } | null>(
+    (b, a) => (a.count > (b?.count ?? 0) ? a : b), null);
 
   return (
     <div className="rounded-xl surface-card p-5 h-60 flex flex-col overflow-hidden">
       <div className="mb-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <CalendarDays size={14} className="text-text-tertiary" />
-          <p className="text-sm font-semibold text-text-primary">{title}</p>
+          <p className="text-sm font-semibold text-text-primary">Activity</p>
         </div>
-        {streaks.bestMonth && (
+        {best && best.count > 0 && (
           <p className="text-[10px] text-text-tertiary/50 tabular-nums">
-            Best: <span className="text-text-tertiary">{streaks.bestMonth.label}</span> ({streaks.bestMonth.count})
+            Best: <span className="text-text-tertiary">{best.label}</span> ({best.count})
           </p>
         )}
       </div>
@@ -404,43 +395,24 @@ function ActivityCard({ activity, year, streaks }: {
         <p className="text-sm text-text-tertiary/50">No activity yet</p>
       ) : (
         <div className="flex flex-1 items-end gap-1 min-h-0">
-          {activity.map((a) => (
-            <div key={a.label} className="flex flex-1 flex-col items-center gap-1">
-              <div
-                className="w-full rounded-t-sm transition-[height] duration-500"
-                style={{
-                  height: a.count > 0 ? `${Math.max(4, (a.count / max) * 60)}px` : 0,
-                  backgroundColor: TEAL,
-                  opacity: a.count > 0 ? Math.max(0.25, a.count / max) : 0,
-                }}
-              />
-              <span className="text-[9px] tabular-nums text-text-tertiary/70 leading-none">{a.label}</span>
-            </div>
-          ))}
+          {activity.map((a) => {
+            const isSel = selectedYear != null && a.label === String(selectedYear);
+            return (
+              <div key={a.label} className="flex flex-1 flex-col items-center gap-1">
+                <div
+                  className="w-full rounded-t-sm transition-[height] duration-500"
+                  style={{
+                    height: a.count > 0 ? `${Math.max(6, (a.count / max) * 130)}px` : 3,
+                    backgroundColor: TEAL,
+                    opacity: isSel ? 1 : (a.count > 0 ? Math.max(0.25, (a.count / max) * 0.65) : 0.12),
+                  }}
+                />
+                <span className={`text-[9px] tabular-nums leading-none ${isSel ? "font-semibold text-text-secondary" : "text-text-tertiary/70"}`}>{a.label}</span>
+              </div>
+            );
+          })}
         </div>
       )}
-    </div>
-  );
-}
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
-
-function StatsSkeleton() {
-  return (
-    <div className="space-y-4 p-4 md:p-6 animate-pulse">
-      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {[1, 2, 3].map((i) => <div key={i} className="h-7 w-16 shrink-0 rounded-lg bg-surface-1" />)}
-      </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-28 rounded-xl bg-surface-1" />)}
-      </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        {[1, 2, 3].map((i) => <div key={i} className="h-60 rounded-xl bg-surface-1" />)}
-      </div>
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="h-52 rounded-xl bg-surface-1" />
-        <div className="h-52 rounded-xl bg-surface-1" />
-      </div>
     </div>
   );
 }
@@ -452,7 +424,15 @@ export function StatsPage() {
   const userId = useCurrentUserId();
   const { data: rawData = [], isLoading } = useWatchingStatsData(userId ?? "");
   const { data: watchingGoals = [] } = useWatchingGoals();
-  const [selectedYear, setSelectedYear] = useState<number | null>(() => new Date().getFullYear());
+  // Year filter lives in the UI store (not local state) so navigating into a
+  // media detail and pressing Back restores the year you were on instead of
+  // snapping to the current year. `ready` distinguishes "never set → default to
+  // current year" from an explicit "All time" (null) choice.
+  const currentYear = new Date().getFullYear();
+  const statsYear = useWatchingUIStore((s) => s.statsYear);
+  const statsYearReady = useWatchingUIStore((s) => s.statsYearReady);
+  const setStatsYear = useWatchingUIStore((s) => s.setStatsYear);
+  const selectedYear = statsYearReady ? statsYear : currentYear;
   const [wrappedOpen, setWrappedOpen] = useState(false);
 
   const stats = useMemo(() => computeStats(rawData, selectedYear), [rawData, selectedYear]);
@@ -460,7 +440,6 @@ export function StatsPage() {
 
   if (!userId || isLoading) return <StatsSkeleton />;
 
-  const currentYear = new Date().getFullYear();
   const years = stats.availableYears.filter((y) => y <= currentYear);
 
   return (
@@ -486,7 +465,7 @@ export function StatsPage() {
         <div className="hidden flex-1 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex">
           <button
             type="button"
-            onClick={() => setSelectedYear(null)}
+            onClick={() => setStatsYear(null)}
             className={cn(
               "shrink-0 rounded-lg px-4 py-1.5 text-xs font-medium transition-colors border",
               selectedYear === null
@@ -500,7 +479,7 @@ export function StatsPage() {
             <button
               key={year}
               type="button"
-              onClick={() => setSelectedYear(year)}
+              onClick={() => setStatsYear(year)}
               className={cn(
                 "shrink-0 rounded-lg px-4 py-1.5 text-xs font-medium transition-colors border",
                 selectedYear === year
@@ -517,7 +496,7 @@ export function StatsPage() {
         <div className="flex-1 sm:hidden">
           <Select
             value={selectedYear === null ? "all" : String(selectedYear)}
-            onValueChange={(v) => setSelectedYear(v === "all" ? null : Number(v))}
+            onValueChange={(v) => setStatsYear(v === "all" ? null : Number(v))}
           >
             <SelectTrigger className="h-9 w-full bg-surface-1 border-border-subtle text-text-secondary text-sm focus:ring-0 focus:ring-offset-0">
               <SelectValue />
@@ -568,7 +547,7 @@ export function StatsPage() {
       {/* Metric cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <MetricCard
-          label="Total watched"
+          label={selectedYear ? "Total watched" : "Total"}
           value={stats.counts.total}
           icon={<Play size={14} style={{ color: TEAL }} />}
         />
@@ -580,11 +559,17 @@ export function StatsPage() {
         <MetricCard
           label="TV Shows"
           value={stats.counts.serie}
+          sub={stats.inProgressCounts.serie > 0
+            ? `${stats.counts.serie - stats.inProgressCounts.serie} watched · ${stats.inProgressCounts.serie} in progress`
+            : undefined}
           icon={<Tv size={14} style={{ color: TEAL }} />}
         />
         <MetricCard
           label="Anime"
           value={stats.counts.anime}
+          sub={stats.inProgressCounts.anime > 0
+            ? `${stats.counts.anime - stats.inProgressCounts.anime} watched · ${stats.inProgressCounts.anime} in progress`
+            : undefined}
           icon={<Sparkles size={14} style={{ color: TEAL }} />}
         />
         <MetricCard
@@ -637,7 +622,7 @@ export function StatsPage() {
       {/* Row 2 — charts */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <HoursCard hours={stats.hours} />
-        <ActivityCard activity={stats.activity} year={selectedYear} streaks={stats.streaks} />
+        <ActivityCard activity={stats.activity} selectedYear={selectedYear} />
         <RatingDistributionCard distribution={stats.ratingDistribution} />
       </div>
 

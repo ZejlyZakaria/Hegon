@@ -1,6 +1,9 @@
-// components/watching/WatchingSkeletons.tsx
-// single source of truth for all watching skeletons
-// same pulse animation + zinc-800 everywhere
+// modules/watching/components/shared/WatchingSkeletons.tsx
+// Single source of truth for every full-section Watching skeleton.
+// Same pulse animation + surface tokens everywhere. (Tiny 1–3 div micro-loaders
+// that live inside a larger component's render — InList chips, EpisodeHighlights,
+// list rows — stay local to that component on purpose: they're layout-coupled,
+// not reusable skeletons.)
 
 function Pulse({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-lg bg-surface-2 ${className}`} />;
@@ -32,6 +35,79 @@ export function CarouselSkeleton({ cards = 4 }: { cards?: number }) {
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="w-[42%] shrink-0 animate-pulse rounded-xl overflow-hidden bg-surface-2 aspect-2/3" />
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Trending (DontMiss) skeleton ──────────────────────────────────────────────
+
+export function DontMissSkeleton() {
+  const EXP = 22;
+  const COL = 7;
+  return (
+    <section>
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-3.5 h-3.5 rounded-full bg-surface-2 animate-pulse" />
+        <div className="w-20 h-3 rounded bg-surface-2 animate-pulse" />
+      </div>
+      {/* Desktop: accordion shape */}
+      <div className="hidden h-60 gap-3 lg:flex">
+        {[EXP, COL, COL, COL, COL, COL].map((f, i) => (
+          <div key={i} className="rounded-2xl bg-surface-1 animate-pulse" style={{ flex: f }} />
+        ))}
+      </div>
+      {/* Mobile: poster rail */}
+      <div className="flex gap-3 lg:hidden">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="aspect-2/3 w-[42%] shrink-0 animate-pulse rounded-xl bg-surface-1" />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── For You skeleton ──────────────────────────────────────────────────────────
+
+export function ForYouSkeleton() {
+  return (
+    <section>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="h-5 w-24 rounded bg-surface-2 animate-pulse" />
+      </div>
+      {/* Desktop: backdrop row */}
+      <div className="hidden gap-4 lg:flex">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex-1 aspect-video rounded-xl bg-surface-1 animate-pulse" />
+        ))}
+      </div>
+      {/* Mobile: poster rail */}
+      <div className="flex gap-3 lg:hidden">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="aspect-2/3 w-[42%] shrink-0 rounded-xl bg-surface-1 animate-pulse" />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── Stats skeleton ────────────────────────────────────────────────────────────
+
+export function StatsSkeleton() {
+  return (
+    <div className="space-y-4 p-4 md:p-6 animate-pulse">
+      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {[1, 2, 3].map((i) => <div key={i} className="h-7 w-16 shrink-0 rounded-lg bg-surface-1" />)}
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-28 rounded-xl bg-surface-1" />)}
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {[1, 2, 3].map((i) => <div key={i} className="h-60 rounded-xl bg-surface-1" />)}
+      </div>
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="h-52 rounded-xl bg-surface-1" />
+        <div className="h-52 rounded-xl bg-surface-1" />
       </div>
     </div>
   );

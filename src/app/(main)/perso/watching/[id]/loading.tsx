@@ -1,4 +1,4 @@
-import { DetailSkeleton } from "@/modules/watching/components/WatchingSkeletons";
+import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 
 // Route-level loading boundary for the media detail page. Without it, Next falls
 // back to the parent watching/loading.tsx (carousel skeleton) during navigation,
