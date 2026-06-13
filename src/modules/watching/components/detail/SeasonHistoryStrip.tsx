@@ -24,6 +24,7 @@ interface Props {
 }
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w300";
+const TEAL = "var(--color-accent-watching-vivid)";
 
 // Visual per-season watch history — a row of season poster cards (sized to match
 // "More Like This" so the two rows align), each showing the year + rating you gave
@@ -123,9 +124,9 @@ export function SeasonHistoryStrip({
           const airYear = seasonAirYears?.[idx] ?? null;
 
           const cardInner = (
-            <div className={`relative aspect-2/3 w-36 overflow-hidden rounded-lg border bg-surface-1 transition-transform duration-200 ease-out ${
-              locked ? "border-border-subtle" : "border-border-subtle group-hover:scale-[1.03]"
-            } ${current ? "ring-2 ring-accent-watching" : ""}`}>
+            <div className={`relative aspect-2/3 w-36 overflow-hidden rounded-lg border border-border-subtle bg-surface-1 transition-transform duration-200 ease-out ${
+              locked ? "" : "group-hover:scale-[1.03]"
+            }`}>
               {poster ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={poster} alt={`Season ${s}`} loading="lazy" className="h-full w-full object-cover" />
@@ -135,12 +136,20 @@ export function SeasonHistoryStrip({
                 </div>
               )}
 
-              {/* Year pill — top */}
+              {/* Year pill — top-left */}
               {!locked && (
                 <div className={`absolute left-1.5 top-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-white/15 backdrop-blur-md ${
                   year ? "bg-black/65 text-white" : "bg-black/45 text-white/70"
                 }`}>
                   {year ?? "Year"}
+                </div>
+              )}
+
+              {/* "Now" badge — current season of an in-progress show (top-right) */}
+              {current && (
+                <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-black/55 px-1.5 py-0.5 ring-1 ring-white/15 backdrop-blur-md">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: TEAL, boxShadow: `0 0 6px ${TEAL}` }} />
+                  <span className="text-[9px] font-semibold text-white">Now</span>
                 </div>
               )}
 

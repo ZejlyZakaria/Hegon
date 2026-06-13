@@ -125,18 +125,19 @@ export function useAddMedia() {
                 .filter((s: any) => s.season_number > 0)
                 .map((s: any) => s.episode_count as number)
             : null,
+        // [] (not null) for non-series — these columns are NOT NULL DEFAULT '[]'.
         season_posters:
           (defaultType === "serie" || defaultType === "anime") && Array.isArray(selectedItem.seasons)
             ? selectedItem.seasons
                 .filter((s: any) => s.season_number > 0)
                 .map((s: any) => (s.poster_path ?? null) as string | null)
-            : null,
+            : [],
         season_air_years:
           (defaultType === "serie" || defaultType === "anime") && Array.isArray(selectedItem.seasons)
             ? selectedItem.seasons
                 .filter((s: any) => s.season_number > 0)
                 .map((s: any) => (s.air_date ? Number(s.air_date.slice(0, 4)) : null))
-            : null,
+            : [],
         current_episode: listContext === "inProgress" ? currentEpisode : null,
         current_season: listContext === "inProgress" ? currentSeason : null,
         in_progress: listContext === "inProgress",
