@@ -13,10 +13,13 @@ export const weatherRatelimit = new Ratelimit({
   prefix: "rl:weather",
 });
 
-// 30 requests per minute per IP
+// 120 requests per minute per IP. Each detail page open fires 2-3 TMDB calls
+// (credits/cast, similar, season refresh), so 30/min throttled the owner's own
+// browsing into 429s after ~10 quick opens. TMDB's real limit is ~3000/min, so
+// 120 is still safe for the key while leaving plenty of headroom.
 export const tmdbRatelimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(30, "1 m"),
+  limiter: Ratelimit.slidingWindow(120, "1 m"),
   prefix: "rl:tmdb",
 });
 

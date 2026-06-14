@@ -8,7 +8,7 @@ async function fetchSimilarTitles(tmdbId: number, type: MediaType): Promise<any[
   const res = await fetch(
     `/api/tmdb?endpoint=${encodeURIComponent(`${tmdbType}/${tmdbId}/recommendations`)}&language=en-US`,
   );
-  if (!res.ok) throw new Error("Failed to fetch recommendations");
+  if (!res.ok) throw new Error(`Failed to fetch recommendations: ${res.status}`);
   const data = await res.json();
   let results: any[] = data.results ?? [];
   if (type === "anime") {

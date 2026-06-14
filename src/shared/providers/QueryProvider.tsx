@@ -15,7 +15,13 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             gcTime: 10 * 60 * 1000,
             refetchOnWindowFocus: false,
             refetchOnReconnect: true,
-            retry: 3,
+            // Never retry client errors — a 429 (TMDB rate-limit) or 404 only burns
+            // more quota when retried. One retry for transient network/5xx blips.
+            retry: (failureCount, error) => {
+              const msg = error instanceof Error ? error.message : String(error);
+              if (/\b4\d\d\b/.test(msg)) return false;
+              return failureCount < 1;
+            },
           },
           mutations: {
             retry: 1,
