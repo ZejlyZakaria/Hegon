@@ -240,8 +240,12 @@ export function computeStats(items: StatsRawItem[], year: number | null): Comput
     .map((item) => ({ item, rating: effectiveRating(item, year), seasonLabel: seasonLabelFor(item, year), seasonPoster: seasonPosterFor(item, year) }))
     .filter((x) => countsTitle(x.item, year) && (x.item.favorite || (x.rating ?? 0) >= 8))
     .sort((a, b) => {
+      // Rank by YOUR rating first — a 9.0 must beat a 7.5 even if the 7.5 is a
+      // favorite. Favorite is only a tiebreaker between equal ratings.
+      const byRating = (b.rating ?? 0) - (a.rating ?? 0);
+      if (byRating !== 0) return byRating;
       if (a.item.favorite !== b.item.favorite) return a.item.favorite ? -1 : 1;
-      return (b.rating ?? 0) - (a.rating ?? 0);
+      return 0;
     })
     .slice(0, 6);
 
