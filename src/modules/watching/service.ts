@@ -76,6 +76,13 @@ export async function uploadCustomPoster(file: File): Promise<string | null> {
   return urlData.publicUrl;
 }
 
+// Section carousels (In Progress / Recently Watched / Want to Watch / Top 10) only
+// need what MediaCarousel + MovieCard + MediaActionMenu render — NOT select("*").
+// Deliberately excludes description/notes/season jsonbs/cast_members/directors, etc.
+// Clicking a card refetches the full row by id, so nothing downstream is starved.
+const SECTION_COLUMNS =
+  "id, type, title, original_title, poster_url, backdrop_url, year, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, in_progress, current_season, current_episode, season_episodes";
+
 export async function getMediaItems(
   userId: string,
   type: MediaType,
@@ -85,7 +92,7 @@ export async function getMediaItems(
   let query = supabase
     .schema("watching")
     .from("media_items")
-    .select("*")
+    .select(SECTION_COLUMNS)
     .eq("user_id", userId)
     .eq("type", type);
 
@@ -113,7 +120,7 @@ export async function getMediaItems(
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data as WatchingMedia[]) ?? [];
+  return (data as unknown as WatchingMedia[]) ?? [];
 }
 
 // All watched media (any type) for the Library, newest first. Backs a live client

@@ -92,6 +92,7 @@ export default function AddMediaModal({
   const [episodeError, setEpisodeError] = useState<string | null>(null);
   const [runtime, setRuntime]         = useState<number | null>(null);
   const [directors, setDirectors]     = useState<{ name: string; profile_url: string | null }[] | null>(null);
+  const [cast, setCast]               = useState<{ id: number; name: string; character: string | null; profile_url: string | null }[]>([]);
   const [studio, setStudio]           = useState<string | null>(null);
   const [status, setStatus]           = useState<string | null>(null);
 
@@ -183,7 +184,7 @@ export default function AddMediaModal({
     try {
       const mediaType  = result.media_type || (result.first_air_date ? "tv" : "movie");
       const isMovie    = mediaType === "movie";
-      const res        = await fetch(`/api/tmdb?endpoint=${isMovie ? `movie/${result.id}` : `tv/${result.id}`}&append_to_response=credits&language=en-US`);
+      const res        = await fetch(`/api/tmdb?endpoint=${isMovie ? `movie/${result.id}` : `tv/${result.id}`}&append_to_response=credits,aggregate_credits&language=en-US`);
       const details: TmdbModalResult = await res.json();
 
       let runtimeMinutes: number | null = null;
@@ -205,12 +206,26 @@ export default function AddMediaModal({
             profile_url: c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : null,
           }));
 
+      // Cast — movies expose it on credits.cast; TV/anime recurring cast lives on
+      // aggregate_credits.cast (character is under roles[]). Cached (top 12) so the
+      // detail page renders Cast & Crew from the DB with no extra TMDB call.
+      const rawCast: any[] = isMovie
+        ? (details.credits?.cast ?? [])
+        : (details.aggregate_credits?.cast ?? []);
+      const extractedCast = rawCast.slice(0, 12).map((p) => ({
+        id: p.id,
+        name: p.name,
+        character: p.character ?? p.roles?.[0]?.character ?? null,
+        profile_url: p.profile_path ? `https://image.tmdb.org/t/p/w185${p.profile_path}` : null,
+      }));
+
       const extractedStudio  = isMovie ? (details.production_companies?.[0]?.name ?? null) : (details.networks?.[0]?.name ?? null);
       const rawStatus        = details.status?.toLowerCase() ?? null;
       const extractedStatus  = isMovie ? rawStatus : (rawStatus === "ended" ? "ended" : "ongoing");
 
       setRuntime(runtimeMinutes);
       setDirectors(extractedDirectors);
+      setCast(extractedCast);
       setStudio(extractedStudio);
       setStatus(extractedStatus);
       if (!isMovie) { setSeasons(details.number_of_seasons ?? null); setEpisodes(details.number_of_episodes ?? null); }
@@ -316,7 +331,7 @@ export default function AddMediaModal({
         userRating, notes, favorite, priority, priorityLevel,
         currentSeason: parseInt(seasonInput) || 1,
         currentEpisode: parseInt(episodeInput) || 1,
-        seasons, episodes, runtime, directors, studio, status,
+        seasons, episodes, runtime, directors, cast, studio, status,
         customPosterUrl: finalPosterUrl,
         genres: mapTmdbGenres(selectedItem.genre_ids),
         watchedAt,

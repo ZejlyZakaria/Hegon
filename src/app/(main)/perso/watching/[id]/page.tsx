@@ -50,7 +50,10 @@ export default function MediaDetailPage() {
   const isSeries = media?.type === "serie" || media?.type === "anime";
 
   const { data: similar = [] } = useSimilarTitles(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
-  const { data: credits } = useMediaCredits(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
+  // Cast is cached in the DB (stored at add time / backfilled) → render straight
+  // from there and skip the TMDB credits call. Only fall back to TMDB when absent.
+  const hasStoredCast = (media?.cast_members?.length ?? 0) > 0;
+  const { data: credits } = useMediaCredits(media?.tmdb_id ?? 0, media?.type ?? "film", !!media && !hasStoredCast);
   const { data: ownedIds = [] } = useOwnedTmdbIds(media?.user_id ?? "", media?.type ?? "film", !!media);
   const { data: watchingGoals = [] } = useWatchingGoals();
   const isDemo = useIsDemo();
@@ -262,7 +265,7 @@ export default function MediaDetailPage() {
     credits?.directors ??
     media.directors?.map((d) => ({ id: -1, name: d.name, profile_url: d.profile_url ?? null })) ??
     [];
-  const cast = credits?.cast ?? [];
+  const cast = hasStoredCast ? (media.cast_members ?? []) : (credits?.cast ?? []);
   const hasCastCrew = cast.length > 0 || (!isSeries && directors.length > 0);
 
   const handleAddSimilar = (sim: any) => {

@@ -30,6 +30,7 @@ interface AddMediaInput {
   episodes: number | null;
   runtime: number | null;
   directors: { name: string; profile_url: string | null }[] | null;
+  cast: { id: number; name: string; character: string | null; profile_url: string | null }[];
   studio: string | null;
   status: string | null;
   customPosterUrl?: string | null;
@@ -64,6 +65,7 @@ export function useAddMedia() {
         episodes,
         runtime,
         directors,
+        cast,
         studio,
         status,
         customPosterUrl,
@@ -147,6 +149,7 @@ export function useAddMedia() {
         tags: genres,
         notes,
         directors: directors || null,
+        cast_members: cast ?? [],
         studio: studio || null,
         status: status || null,
       };
