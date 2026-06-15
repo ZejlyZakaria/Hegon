@@ -139,7 +139,7 @@ export function TaskDetailPanel() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={SPRING}
-            className="fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-border-strong bg-surface-2 sm:w-120"
+            className="fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-border-strong bg-surface-1 sm:w-120"
           >
             <PanelContent key={task.id} task={task} onClose={closeEditModal} />
           </motion.div>
@@ -536,7 +536,7 @@ function PanelContent({ task, onClose }: { task: Task; onClose: () => void }) {
             onBlur={handleDescBlur}
             placeholder="Add a description…"
             rows={3}
-            className="w-full resize-none overflow-hidden rounded-lg border border-border-subtle bg-surface-1 px-3 py-2.5 text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary transition-colors focus:border-border-focus"
+            className="w-full resize-none overflow-hidden rounded-lg border border-border-subtle bg-surface-2 px-3 py-2.5 text-sm leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary transition-colors focus:border-border-focus"
           />
         </div>
 
@@ -588,7 +588,7 @@ function PanelContent({ task, onClose }: { task: Task; onClose: () => void }) {
               if (e.key === "Escape") setNewSubTask("");
             }}
             placeholder="Add sub-task…"
-            className="w-full rounded-lg border border-transparent bg-surface-1 px-3 py-2 text-xs text-text-primary outline-none placeholder:text-text-tertiary transition-colors focus:border-border-focus"
+            className="w-full rounded-lg border border-transparent bg-surface-2 px-3 py-2 text-xs text-text-primary outline-none placeholder:text-text-tertiary transition-colors focus:border-border-focus"
           />
         </div>
 
@@ -598,7 +598,7 @@ function PanelContent({ task, onClose }: { task: Task; onClose: () => void }) {
             <p className="mb-3 text-xs font-medium text-text-tertiary">Context</p>
 
             {/* Goal card */}
-            <div className="mb-3 rounded-lg border border-border-subtle bg-surface-1 px-3 py-2.5">
+            <div className="mb-3 rounded-lg border border-border-subtle bg-surface-2 px-3 py-2.5">
               <div className="flex items-center gap-2">
                 <Target size={13} className="shrink-0 text-[#22c55e]" />
                 <span className="flex-1 truncate text-xs font-medium text-text-primary">{currentGoal.title}</span>
@@ -702,7 +702,7 @@ function PanelContent({ task, onClose }: { task: Task; onClose: () => void }) {
                 }}
                 placeholder="Add a comment… (@ to mention)"
                 rows={1}
-                className="flex-1 resize-none rounded-lg border border-border-subtle bg-surface-1 px-3 py-2 text-xs leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary transition-colors focus:border-border-focus"
+                className="flex-1 resize-none rounded-lg border border-border-subtle bg-surface-2 px-3 py-2 text-xs leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary transition-colors focus:border-border-focus"
               />
               <button
                 type="button"
@@ -890,7 +890,7 @@ function CommentBubble({ activity, isOwn, taskId }: { activity: TaskActivity; is
               }}
               rows={2}
               autoFocus
-              className="w-full resize-none rounded-lg border border-border-focus bg-surface-1 px-3 py-2 text-xs leading-relaxed text-text-primary outline-none"
+              className="w-full resize-none rounded-lg border border-border-focus bg-surface-2 px-3 py-2 text-xs leading-relaxed text-text-primary outline-none"
             />
             <div className="flex gap-3 text-[10px]">
               <button
@@ -906,7 +906,7 @@ function CommentBubble({ activity, isOwn, taskId }: { activity: TaskActivity; is
             </div>
           </div>
         ) : (
-          <p className="mt-1 rounded-lg bg-surface-1 px-3 py-2 text-xs leading-relaxed text-text-primary">
+          <p className="mt-1 rounded-lg bg-surface-2 px-3 py-2 text-xs leading-relaxed text-text-primary">
             {renderCommentText((activity.changes.text as string) ?? "")}
           </p>
         )}
@@ -973,7 +973,7 @@ function SubTaskRow({
 
   return (
     <div
-      className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-1"
+      className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-2"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

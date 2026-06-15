@@ -46,7 +46,7 @@ interface Props {
 export function CastCrew({ cast, directors, isSeries }: Props) {
   if (cast.length === 0 && (isSeries || directors.length === 0)) return null;
 
-  const MAX_TOTAL = 8;
+  const MAX_TOTAL = 9;
   const directorEntries = !isSeries
     ? directors
         .filter((d, i, arr) => arr.findIndex((x) => x.name === d.name) === i)

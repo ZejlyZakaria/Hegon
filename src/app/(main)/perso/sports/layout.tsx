@@ -9,7 +9,7 @@ const TABS = [
 
 export default function SportLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-zinc-950">
+    <div className="bg-surface-0">
       <SectionHeader
         title="Sport"
         subtitle="Football, Tennis, F1 — follow every match, every season."

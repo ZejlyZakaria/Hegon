@@ -32,7 +32,7 @@ export default function WatchingLayout({ children }: { children: React.ReactNode
   const isDetail = isDetailOpen || (pathname.startsWith("/perso/watching/") && !TAB_HREFS.has(pathname));
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-surface-0">
       {!isDetail && (
         <SectionHeader
           accent="var(--color-accent-watching-vivid)"

@@ -4,7 +4,7 @@
 
 export type GoalStatus   = 'active' | 'completed' | 'paused' | 'abandoned';
 export type GoalPriority = 'low' | 'medium' | 'high' | 'critical';
-export type GoalCategory = 'personal' | 'work' | 'health' | 'learning' | 'finance' | 'other';
+export type GoalCategory = 'career' | 'health' | 'finance' | 'growth' | 'lifestyle' | 'other';
 export type ProgressMode = 'manual' | 'auto';
 export type MilestoneStatus = 'pending' | 'completed';
 
@@ -20,6 +20,7 @@ export interface Goal {
   user_id:       string;
   title:         string;
   description:   string | null;
+  why:           string | null;   // motivation / north-star, surfaced on detail
   category:      GoalCategory | null;
   status:        GoalStatus;
   priority:      GoalPriority;
@@ -31,6 +32,7 @@ export interface Goal {
   metric_year:   number | null;
   metric_target: number | null;
   target_date:   string | null;
+  parent_goal_id: string | null;   // the bigger goal this one contributes to
   started_at:    string;
   completed_at:  string | null;
   created_at:    string;
@@ -105,6 +107,7 @@ export interface GoalMetricInput {
 export interface CreateGoalInput extends GoalMetricInput {
   title:         string;
   description?:  string | null;
+  why?:          string | null;
   category?:     GoalCategory | null;
   priority?:     GoalPriority;
   progress_mode?: ProgressMode;
@@ -115,12 +118,14 @@ export interface UpdateGoalInput extends GoalMetricInput {
   id: string;
   title?:         string;
   description?:   string | null;
+  why?:           string | null;
   category?:      GoalCategory | null;
   status?:        GoalStatus;
   priority?:      GoalPriority;
   progress?:      number;
   progress_mode?: ProgressMode;
   target_date?:   string | null;
+  parent_goal_id?: string | null;
   completed_at?:  string | null;
 }
 
@@ -153,4 +158,62 @@ export interface CategoryStats {
   avgProgress: number;
   total:       number;
   atRisk:      number;  // active + target_date < now + 14 days + progress < 50
+}
+
+// One daily snapshot of a goal's progress — powers the Momentum sparkline.
+export interface GoalProgressPoint {
+  recorded_on: string;  // YYYY-MM-DD
+  progress:    number;  // 0–100
+}
+
+// =====================================================
+// REVIEW RITUAL
+// =====================================================
+
+// One goal's state captured inside a review's snapshot.
+export interface ReviewGoalSnapshot {
+  goal_id:  string;
+  title:    string;
+  progress: number;
+}
+
+export interface GoalReview {
+  id:               string;
+  org_id:           string;
+  user_id:          string;
+  period_start:     string;  // YYYY-MM-DD
+  period_end:       string;  // YYYY-MM-DD
+  wins:             string;
+  blockers:         string;
+  focus:            string;
+  snapshot:         ReviewGoalSnapshot[];
+  journal_entry_id: string | null;
+  created_at:       string;
+}
+
+export interface CreateReviewInput {
+  wins:          string;
+  blockers:      string;
+  focus:         string;
+  saveToJournal: boolean;
+}
+
+// One row of the "what moved since last review" mirror — current progress + the
+// delta against the previous review's snapshot. `delta` is null for goals that
+// didn't exist at the last review (i.e. brand-new since then).
+export interface ReviewMovement {
+  goal_id:  string;
+  title:    string;
+  category: GoalCategory | null;
+  progress: number;
+  delta:    number | null;
+  isNew:    boolean;
+}
+
+// The pre-computed material for a fresh review: the period it covers + the
+// movement mirror, so the modal opens already filled with "what changed".
+export interface ReviewDraft {
+  period_start: string;  // YYYY-MM-DD
+  period_end:   string;  // YYYY-MM-DD (today)
+  movements:    ReviewMovement[];
 }

@@ -279,7 +279,7 @@ export default function TopBar() {
         avatarUrl={avatarUrl}
       />
 
-      <header className="shrink-0 bg-[#09090b]">
+      <header className="shrink-0 bg-surface-0">
         <div className="max-w-400 mx-auto px-4 sm:px-6 h-14 flex items-center justify-between w-full">
           <div className="flex min-w-0 items-center gap-1.5">
             <MobileNav />

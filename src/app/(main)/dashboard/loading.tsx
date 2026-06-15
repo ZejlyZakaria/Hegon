@@ -4,7 +4,7 @@ function Pulse({ className }: { className: string }) {
 
 export default function DashboardLoading() {
   return (
-    <div className="min-h-screen bg-[#09090b] overflow-y-auto">
+    <div className="min-h-screen bg-surface-0 overflow-y-auto">
       <div className="px-6 py-5 flex flex-col gap-6">
 
         {/* Header */}

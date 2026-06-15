@@ -46,42 +46,41 @@ export function GoalRightPanel({
 
   return (
     <div className="space-y-3">
-      {/* Life Compass */}
-      <LifeCompass
-        goals={goals}
-        activeCategory={activeCategory}
-        onCategoryClick={onCategoryClick}
-      />
-
-      {/* Focus Goal */}
+      {/* Focus Goal — the module's branded hero card (deep-green solid surface).
+          First in the rail by design: it's the single most actionable goal. */}
       {focusGoal && (
         <button
           type="button"
           onClick={() => router.push(`/life/goals/${focusGoal.id}`)}
-          className="w-full text-left relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-3 cursor-pointer transition-colors duration-100 hover:bg-surface-2"
+          className="relative w-full cursor-pointer overflow-hidden rounded-xl p-3.5 text-left transition-transform duration-200 ease-out hover:scale-[1.01]"
+          style={{
+            background: "var(--color-accent-goals-deep)",
+            boxShadow:
+              "inset 0 1px 0 0 rgba(255,255,255,0.08), inset 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px 0 rgba(0,0,0,0.35), 0 10px 30px -12px rgba(0,0,0,0.5)",
+          }}
         >
-          <h3 className="mb-3 text-xs font-semibold text-text-secondary">
-            Focus
-          </h3>
-          <p className="text-xs font-medium mb-3 line-clamp-2 leading-snug" style={{ color: "var(--color-text-secondary)" }}>
+          <div className="mb-3 flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: ACCENT }} />
+            <h3 className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#86efac" }}>
+              Focus
+            </h3>
+          </div>
+          <p className="mb-3 line-clamp-2 text-sm font-semibold leading-snug text-white">
             {focusGoal.title}
           </p>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="flex-1 h-1 rounded-full bg-surface-2 overflow-hidden">
+          <div className="mb-2 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/30">
               <div
                 className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${focusGoal.progress}%`,
-                  backgroundColor: ACCENT,
-                }}
+                style={{ width: `${focusGoal.progress}%`, backgroundColor: ACCENT }}
               />
             </div>
-            <span className="text-xs font-medium text-text-primary shrink-0 tabular-nums">
+            <span className="shrink-0 text-xs font-semibold tabular-nums text-white">
               {focusGoal.progress}%
             </span>
           </div>
           {focusGoal.target_date && (
-            <p className="text-xs text-text-tertiary">
+            <p className="text-xs text-white/55">
               {new Date(focusGoal.target_date).toLocaleDateString("en-GB", {
                 day: "numeric",
                 month: "short",
@@ -92,8 +91,15 @@ export function GoalRightPanel({
         </button>
       )}
 
+      {/* Life Compass */}
+      <LifeCompass
+        goals={goals}
+        activeCategory={activeCategory}
+        onCategoryClick={onCategoryClick}
+      />
+
       {/* Quick Stats */}
-      <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-3">
+      <div className="surface-card relative overflow-hidden rounded-xl p-3">
         <h3 className="mb-3 text-xs font-semibold text-text-secondary">
           Stats
         </h3>

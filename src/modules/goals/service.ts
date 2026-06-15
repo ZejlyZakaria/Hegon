@@ -3,6 +3,12 @@ import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type {
   Goal,
   GoalMilestone,
+  GoalProgressPoint,
+  GoalReview,
+  ReviewDraft,
+  ReviewGoalSnapshot,
+  ReviewMovement,
+  CreateReviewInput,
   LinkedTask,
   LinkedHabit,
   AvailableTask,
@@ -57,6 +63,7 @@ export async function createGoal(input: CreateGoalInput): Promise<Goal> {
       user_id:       user.id,
       title:         input.title,
       description:   input.description ?? null,
+      why:           input.why ?? null,
       category:      input.category ?? null,
       priority:      input.priority ?? "medium",
       progress_mode: input.progress_mode ?? "manual",
@@ -95,8 +102,10 @@ export async function updateGoal(input: UpdateGoalInput): Promise<Goal> {
 
   if (error) throw error;
 
-  // Keep metric-goal progress in sync after an edit (e.g. target changed).
-  if (data.progress_mode === "auto" && data.metric_module) {
+  // Keep auto-goal progress in sync after an edit — for BOTH task-driven and
+  // metric-driven goals. Critical when switching tracking mode (e.g. activity →
+  // tasks): metric_module becomes null, so gating on it would leave the bar stale.
+  if (data.progress_mode === "auto") {
     const p = await recalculateProgress(data.id);
     if (p >= 0) data.progress = p;
   }
@@ -108,6 +117,21 @@ export async function deleteGoal(id: string): Promise<void> {
   const orgId = await getCurrentOrgId();
   const { error } = await supabase.from("goals").delete().eq("id", id).eq("org_id", orgId);
   if (error) throw error;
+}
+
+// Daily progress snapshots for the Momentum sparkline (filled server-side by the
+// snapshot_goal_progress trigger on goals.progress — see migration).
+export async function getGoalProgressHistory(goalId: string): Promise<GoalProgressPoint[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { data, error } = await supabase
+    .from("goal_progress_history")
+    .select("recorded_on, progress")
+    .eq("goal_id", goalId)
+    .eq("org_id", orgId)
+    .order("recorded_on", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as GoalProgressPoint[];
 }
 
 // =====================================================
@@ -299,6 +323,74 @@ export async function getGoalContributingMedia(
     if (items.length >= 18) break;
   }
   return { count: count ?? 0, items };
+}
+
+// Cumulative daily progress curve from a list of event timestamps. Each event adds
+// 1 to a running count; progress = count / denominator. Used by both task and
+// metric momentum so the curve always reflects WHEN the work actually happened.
+function cumulativeCurve(dates: string[], denominator: number): GoalProgressPoint[] {
+  if (dates.length === 0 || denominator <= 0) return [];
+  const byDay = new Map<string, number>();
+  for (const ts of dates) {
+    const day = ts.slice(0, 10);
+    byDay.set(day, (byDay.get(day) ?? 0) + 1);
+  }
+  let cum = 0;
+  return [...byDay.keys()].sort().map((day) => {
+    cum += byDay.get(day)!;
+    return { recorded_on: day, progress: Math.min(100, Math.round((cum / denominator) * 100)) };
+  });
+}
+
+// Real, RETROACTIVE momentum for an AUTO goal — reconstructed from when the work
+// actually happened, never from when `progress` was recalculated (which can fire
+// any day). Works for goals that predate the feature, since the source events
+// already carry their own dates:
+//   • task goal   → cumulative completed tasks ÷ current total (completed_at)
+//   • metric goal → cumulative watched/read ÷ target (watched_at / finished_at)
+export async function getGoalActivityMomentum(goal: Goal): Promise<GoalProgressPoint[]> {
+  const supabase = createClient();
+
+  // ── Task-driven ──
+  if (!goal.metric_module) {
+    const { data, error } = await supabase.from("tasks").select("completed_at").eq("goal_id", goal.id);
+    if (error) throw error;
+    const tasks = (data ?? []) as { completed_at: string | null }[];
+    const done = tasks.map((t) => t.completed_at).filter((d): d is string => !!d);
+    return cumulativeCurve(done, tasks.length);
+  }
+
+  // ── Metric-driven ──
+  if (!goal.metric_target) return [];
+  const yearStart = goal.metric_period === "year" && goal.metric_year ? `${goal.metric_year}-01-01` : null;
+  const yearEnd   = goal.metric_period === "year" && goal.metric_year ? `${goal.metric_year + 1}-01-01` : null;
+
+  let dates: string[] = [];
+  if (goal.metric_module === "watching") {
+    const type = goal.metric_key ? METRIC_KEY_TO_TYPE[goal.metric_key] : undefined;
+    let q = supabase
+      .schema("watching").from("media_items")
+      .select("watched_at")
+      .eq("user_id", goal.user_id).eq("watched", true).neq("is_reference", true)
+      .not("watched_at", "is", null);
+    if (type) q = q.eq("type", type);
+    if (yearStart && yearEnd) q = q.gte("watched_at", yearStart).lt("watched_at", yearEnd);
+    const { data, error } = await q.order("watched_at", { ascending: true });
+    if (error) throw error;
+    dates = ((data ?? []) as { watched_at: string }[]).map((d) => d.watched_at);
+  } else if (goal.metric_module === "books") {
+    let q = supabase
+      .from("books")
+      .select("finished_at")
+      .eq("user_id", goal.user_id).eq("status", "read")
+      .not("finished_at", "is", null);
+    if (yearStart && yearEnd) q = q.gte("finished_at", yearStart).lt("finished_at", yearEnd);
+    const { data, error } = await q.order("finished_at", { ascending: true });
+    if (error) throw error;
+    dates = ((data ?? []) as { finished_at: string }[]).map((d) => d.finished_at);
+  }
+
+  return cumulativeCurve(dates, goal.metric_target);
 }
 
 // =====================================================
@@ -742,4 +834,188 @@ export async function getAvailableHabitsForGoal(): Promise<AvailableHabit[]> {
 
   if (error) throw error;
   return (data ?? []) as AvailableHabit[];
+}
+
+// =====================================================
+// REVIEW RITUAL
+// =====================================================
+
+function toLocalDate(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// All past reviews for the org, newest first — powers the Reviews history.
+export async function getReviews(): Promise<GoalReview[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { data, error } = await supabase
+    .from("goal_reviews")
+    .select("*")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as GoalReview[];
+}
+
+// The most recent review (or null) — used both for the "due" nudge and as the
+// snapshot anchor for the next review's movement mirror.
+export async function getLastReview(): Promise<GoalReview | null> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { data, error } = await supabase
+    .from("goal_reviews")
+    .select("*")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as GoalReview | null) ?? null;
+}
+
+// Pre-compute a fresh review: the period it covers + the movement mirror (each
+// active goal's current progress and its delta vs the last review's snapshot).
+export async function getReviewDraft(): Promise<ReviewDraft> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const today = toLocalDate();
+
+  const [{ data: goals, error }, last] = await Promise.all([
+    supabase
+      .from("goals")
+      .select("id, title, category, progress")
+      .eq("org_id", orgId)
+      .eq("status", "active")
+      .order("priority", { ascending: true }),
+    getLastReview(),
+  ]);
+  if (error) throw error;
+
+  const prev = new Map<string, number>(
+    (last?.snapshot ?? []).map((s) => [s.goal_id, s.progress]),
+  );
+
+  type Row = { id: string; title: string; category: Goal["category"]; progress: number };
+  const movements: ReviewMovement[] = ((goals ?? []) as Row[]).map((g) => {
+    const had  = prev.has(g.id);
+    const base = prev.get(g.id);
+    return {
+      goal_id:  g.id,
+      title:    g.title,
+      category: g.category,
+      progress: g.progress,
+      delta:    had && base != null ? g.progress - base : null,
+      isNew:    !had && !!last, // only flag "new" when there WAS a prior review to be new against
+    };
+  });
+
+  // Most movement first (then highest progress) so the mirror leads with signal.
+  movements.sort((a, b) => (Math.abs(b.delta ?? 0) - Math.abs(a.delta ?? 0)) || (b.progress - a.progress));
+
+  const period_start = last ? last.period_end : toLocalDate(new Date(Date.now() - 7 * 86_400_000));
+  return { period_start, period_end: today, movements };
+}
+
+// Format the review as a Journal section — the bridge that lands a review in the
+// Journal timeline (tagged `review`), appended to today's entry if one exists.
+function reviewToMarkdown(input: CreateReviewInput, movements: ReviewMovement[]): string {
+  const moved = movements
+    .filter((m) => (m.delta ?? 0) > 0)
+    .map((m) => `${m.title} +${m.delta}%`)
+    .join(" · ");
+  const lines = [
+    `## Weekly Review — ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`,
+    "",
+    `**Wins**\n${input.wins.trim() || "—"}`,
+    "",
+    `**Blockers**\n${input.blockers.trim() || "—"}`,
+    "",
+    `**Focus next week**\n${input.focus.trim() || "—"}`,
+  ];
+  if (moved) { lines.push("", `_Goals that moved: ${moved}_`); }
+  return lines.join("\n");
+}
+
+// Write the review into the Journal (the "bridge"): append to today's entry, or
+// create a new one. Returns the journal entry id (or null on any failure — the
+// review itself must never fail because the mirror copy did).
+async function mirrorReviewToJournal(
+  supabase: ReturnType<typeof createClient>,
+  orgId: string,
+  userId: string,
+  markdown: string,
+): Promise<string | null> {
+  try {
+    const today = toLocalDate();
+    const { data: existing } = await supabase
+      .from("journal_entries")
+      .select("id, content, tags")
+      .eq("org_id", orgId)
+      .eq("entry_date", today)
+      .maybeSingle();
+
+    if (existing) {
+      const tags = Array.from(new Set([...(existing.tags ?? []), "review"]));
+      const content = existing.content?.trim()
+        ? `${existing.content.trim()}\n\n---\n\n${markdown}`
+        : markdown;
+      const { data, error } = await supabase
+        .from("journal_entries")
+        .update({ content, tags })
+        .eq("id", existing.id)
+        .eq("org_id", orgId)
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data.id;
+    }
+
+    const { data, error } = await supabase
+      .from("journal_entries")
+      .insert({ org_id: orgId, user_id: userId, entry_date: today, content: markdown, tags: ["review"] })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return data.id;
+  } catch {
+    return null;
+  }
+}
+
+export async function createReview(input: CreateReviewInput): Promise<GoalReview> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Snapshot the current active goals — this becomes the anchor for the next review.
+  const draft = await getReviewDraft();
+  const snapshot: ReviewGoalSnapshot[] = draft.movements.map((m) => ({
+    goal_id:  m.goal_id,
+    title:    m.title,
+    progress: m.progress,
+  }));
+
+  const journalId = input.saveToJournal
+    ? await mirrorReviewToJournal(supabase, orgId, user.id, reviewToMarkdown(input, draft.movements))
+    : null;
+
+  const { data, error } = await supabase
+    .from("goal_reviews")
+    .insert({
+      org_id:           orgId,
+      user_id:          user.id,
+      period_start:     draft.period_start,
+      period_end:       draft.period_end,
+      wins:             input.wins.trim(),
+      blockers:         input.blockers.trim(),
+      focus:            input.focus.trim(),
+      snapshot,
+      journal_entry_id: journalId,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as GoalReview;
 }

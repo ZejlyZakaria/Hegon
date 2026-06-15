@@ -6,29 +6,29 @@ import type { Goal, GoalCategory, CategoryStats } from "../types";
 const ACCENT = "var(--color-accent-goals)";
 
 const CATEGORIES: GoalCategory[] = [
-  "personal",
-  "work",
+  "career",
   "health",
-  "learning",
   "finance",
+  "growth",
+  "lifestyle",
   "other",
 ];
 
 const CATEGORY_LABELS: Record<GoalCategory, string> = {
-  personal: "Personal",
-  work: "Work",
+  career: "Career",
   health: "Health",
-  learning: "Learning",
   finance: "Finance",
+  growth: "Growth",
+  lifestyle: "Lifestyle",
   other: "Other",
 };
 
 const CATEGORY_COLORS: Record<GoalCategory, string> = {
-  personal: "#f472b6",
-  work: "#60a5fa",
+  career: "#60a5fa",
   health: "#f87171",
-  learning: "#facc15",
   finance: "#22d3ee",
+  growth: "#facc15",
+  lifestyle: "#f472b6",
   other: "#a1a1aa",
 };
 
@@ -90,7 +90,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
     : null;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1">
+    <div className="surface-card relative overflow-hidden rounded-xl">
       <div className="relative p-3">
         <h3
           className="mb-3 text-xs font-semibold text-text-secondary"

@@ -35,7 +35,7 @@ export default function DashboardPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#09090b] overflow-y-auto">
+    <div className="min-h-screen bg-surface-0 overflow-y-auto">
       <DashboardContent />
     </div>
   );

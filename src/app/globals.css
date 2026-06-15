@@ -37,6 +37,7 @@
   /* ── Module accents ─────────────────────────────────────────────────── */
   --color-accent-dashboard: var(--color-accent-dashboard);
   --color-accent-goals: var(--color-accent-goals);
+  --color-accent-goals-deep: var(--color-accent-goals-deep);
   --color-accent-habits: var(--color-accent-habits);
   --color-accent-habits-vivid: var(--color-accent-habits-vivid);
   --color-accent-journal: var(--color-accent-journal);
@@ -157,28 +158,32 @@
 :root {
   color-scheme: dark;
 
-  /* ── HEGON core tokens ──────────────────────────────────────────────── */
-  --color-surface-0: #09090b;
-  --color-surface-1: #0e0e10;
-  --color-surface-2: #141416;
-  --color-surface-3: #1a1a1d;
-  --color-surface-overlay: #1f1f22;
+  /* ── HEGON core tokens — Apple "graphite" dark scale ─────────────────────
+     Built on Apple's systemGray DNA: neutral greys with a whisper of cool
+     (B = R+2/3), lifted off pure black, perceptually even elevation steps, and
+     ~92% white text (never #fff). Clean, never muddy, never fights the accents. */
+  --color-surface-0: #0e0e11;   /* app background */
+  --color-surface-1: #161619;   /* cards */
+  --color-surface-2: #1e1e22;   /* raised / fields */
+  --color-surface-3: #28282d;   /* hover / inset */
+  --color-surface-overlay: #313137;   /* popovers / menus */
 
-  --color-text-primary: #e2e2e6;
-  --color-text-secondary: #a0a0a8;
-  --color-text-tertiary: #71717a;
-  --color-text-disabled: #3d3d44;
+  --color-text-primary: #ececee;   /* ~92% white */
+  --color-text-secondary: #9e9ea6;
+  --color-text-tertiary: #707078;
+  --color-text-disabled: #404048;
 
-  --color-border-subtle: rgba(255, 255, 255, 0.04);
-  --color-border-default: rgba(255, 255, 255, 0.07);
-  --color-border-strong: rgba(255, 255, 255, 0.11);
-  --color-border-focus: rgba(255, 255, 255, 0.20);
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+  --color-border-default: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+  --color-border-focus: rgba(255, 255, 255, 0.22);
 
-  --color-sidebar-bg: #0e0e10;
-  --color-sidebar-active: #141416;
+  --color-sidebar-bg: #161619;
+  --color-sidebar-active: #1e1e22;
 
   --color-accent-dashboard: #60a5fa;
   --color-accent-goals: #22c55e;
+  --color-accent-goals-deep: #103a26;    /* deep forest green — solid branded surfaces (hero card) */
   --color-accent-habits: #6d28d9;        /* deep violet — solid surfaces, buttons */
   --color-accent-habits-vivid: #8b5cf6;  /* vivid violet — rings, checkbox, indicators */
   --color-accent-journal: #f97316;
@@ -347,21 +352,23 @@
    ════════════════════════════════════════════════════════════════════════ */
 
 @utility surface-card {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0) 88px),
-    var(--color-surface-1);
+  /* Solid surface — the elevation SCALE already separates it from the bg, so no
+     gradient wash. Depth comes from the Apple trio: a 1px top rim light that
+     catches the light, a hairline edge, and one soft restrained shadow. */
+  background: var(--color-surface-1);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.07),   /* top rim light */
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),   /* hairline edge */
-    0 2px 6px -2px rgba(0, 0, 0, 0.55),          /* contact shadow */
-    0 18px 44px -18px rgba(0, 0, 0, 0.72);       /* soft lift */
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),   /* top rim light */
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),   /* hairline edge */
+    0 1px 2px 0 rgba(0, 0, 0, 0.35),             /* contact shadow */
+    0 10px 30px -12px rgba(0, 0, 0, 0.5);        /* soft lift */
 }
 
 @utility surface-quiet {
+  /* Same skin, no lift — for secondary panels that should sit, not float. */
   background: var(--color-surface-1);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.05),   /* top rim light */
-    inset 0 0 0 1px rgba(255, 255, 255, 0.045);  /* hairline edge */
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),   /* top rim light */
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);   /* hairline edge */
 }
 
 /* ════════════════════════════════════════════════════════════════════════

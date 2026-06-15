@@ -287,7 +287,7 @@ export default function MediaDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-surface-0">
 
       <MediaHero media={media} typeLabel={typeLabel} isSeries={isSeries} onBack={() => router.back()} />
 
@@ -314,14 +314,6 @@ export default function MediaDetailPage() {
 
           {hasCastCrew && (
             <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
-          )}
-
-          {/* TEMP — watched_at / updated_at reference for filling season years. REMOVE LATER. */}
-          {isSeries && (media.season_episodes?.length ?? 0) > 1 && (media.in_progress || media.watched) && (
-            <p className="rounded-md bg-amber-500/10 px-2 py-1 text-[11px] text-amber-300">
-              TEMP · watched_at: {media.watched_at ? new Date(media.watched_at).toLocaleString("en-GB") : "—"}
-              {" · "}updated_at: {media.updated_at ? new Date(media.updated_at).toLocaleString("en-GB") : "—"}
-            </p>
           )}
 
           {isSeries && (media.season_episodes?.length ?? 0) > 1 && (media.in_progress || media.watched) && (

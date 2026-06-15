@@ -4,19 +4,12 @@ import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ArrowLeft, MoreHorizontal, Unlink, Pencil, Trash2, Plus, Search, Folder } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Unlink, Pencil, Trash2, Plus, Search, Folder, Check, ChevronDown } from "lucide-react";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
 import { StatusIcon } from "@/shared/components/icons/StatusIcon";
 import { resolveIcon } from "@/shared/constants/icons";
 import { Slider } from "@/shared/components/ui/slider";
 import { cn } from "@/shared/utils/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui/select";
 import {
   Popover,
   PopoverContent,
@@ -29,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { useGoal } from "../hooks/useGoal";
-import { useUpdateGoal } from "../hooks/useGoals";
+import { useGoals, useUpdateGoal } from "../hooks/useGoals";
 import { useLinkedTasks, useLinkTask, useUnlinkTask } from "../hooks/useLinkedTasks";
 import {
   useLinkedHabits,
@@ -40,17 +33,129 @@ import {
 } from "../hooks/useLinkedHabits";
 import { useGoalContributingMedia } from "../hooks/useGoalContributingMedia";
 import { useGoalContributingBooks } from "../hooks/useGoalContributingBooks";
+import { useGoalMomentum } from "../hooks/useGoalMomentum";
 import { MilestoneList } from "./MilestoneList";
-import { GoalModal } from "./GoalModal";
+import { GoalEditPanel } from "./GoalEditPanel";
 import { DeleteGoalModal } from "./DeleteGoalModal";
 import { GoalDetailSkeleton } from "./GoalDetailSkeleton";
 import * as GoalService from "../service";
 import { useQueryClient } from "@tanstack/react-query";
 import { GOAL_KEYS } from "../hooks/query-keys";
 import { useRealtimeGoals } from "../hooks/useRealtimeGoals";
-import type { GoalStatus } from "../types";
+import { categoryColor } from "../constants";
+import type { GoalStatus, GoalProgressPoint } from "../types";
 
 const ACCENT = "var(--color-accent-goals)";
+
+// Momentum sparkline — daily progress snapshots, so the goal feels alive ("you
+// went 20% → 60% this month") instead of being a single static number.
+// Extend the curve flat to today so the sparkline ends "now" — showing the recent
+// plateau honestly — instead of stopping at the last update.
+function withToday(history: GoalProgressPoint[]): GoalProgressPoint[] {
+  if (history.length === 0) return history;
+  const today = new Date().toISOString().slice(0, 10);
+  const last = history[history.length - 1];
+  return last.recorded_on >= today ? history : [...history, { recorded_on: today, progress: last.progress }];
+}
+
+type MomentumPace = { tone: "good" | "bad" | "neutral"; status: string | null; text: string } | null;
+
+// Momentum should answer, in 3 seconds: am I advancing? am I behind? did I progress
+// recently? → a velocity headline (or a stall nudge) + the pace + a recency line,
+// with a retroactive, time-accurate sparkline as support.
+function MomentumCard({ history: raw, pace }: { history: GoalProgressPoint[]; pace: MomentumPace }) {
+  if (raw.length === 0) {
+    return (
+      <div className="relative overflow-hidden surface-card rounded-xl p-4">
+        <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-tertiary">Momentum</h3>
+        <p className="text-xs text-text-tertiary">No progress yet — your momentum builds as you make progress.</p>
+      </div>
+    );
+  }
+
+  const MS_DAY = 86_400_000;
+  const today = new Date();
+  const last = raw[raw.length - 1];
+  const current = last.progress;
+  const daysSince = Math.max(0, Math.round((today.getTime() - new Date(last.recorded_on).getTime()) / MS_DAY));
+
+  // Recent velocity — progress gained over the last 30 days (the real "momentum").
+  const cutoff = new Date(today.getTime() - 30 * MS_DAY).toISOString().slice(0, 10);
+  const before = [...raw].reverse().find((p) => p.recorded_on <= cutoff)?.progress ?? 0;
+  const delta30 = current - before;
+  const stalled = daysSince >= 10;
+
+  // Sparkline — flat-extended to today, time-accurate x-axis.
+  const history = withToday(raw);
+  const hasLine = history.length >= 2;
+  const W = 260, H = 52, pad = 5;
+  const n = history.length;
+  const t0 = new Date(history[0].recorded_on).getTime();
+  const t1 = new Date(history[n - 1].recorded_on).getTime();
+  const span = Math.max(1, t1 - t0);
+  const xs = history.map((p) => pad + ((new Date(p.recorded_on).getTime() - t0) / span) * (W - 2 * pad));
+  const ys = history.map((p) => pad + (1 - p.progress / 100) * (H - 2 * pad));
+  const linePath = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L ${xs[n - 1].toFixed(1)} ${H} L ${xs[0].toFixed(1)} ${H} Z`;
+  const since = new Date(history[0].recorded_on).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const recency = daysSince === 0 ? "today" : daysSince === 1 ? "yesterday" : `${daysSince} days ago`;
+
+  return (
+    <div className="relative overflow-hidden surface-card rounded-xl p-4">
+      <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-text-tertiary">Momentum</h3>
+
+      {/* Headline — am I advancing right now? */}
+      {stalled ? (
+        <p className="text-xs font-medium text-amber-400">⏸ No progress in {daysSince} days</p>
+      ) : delta30 > 0 ? (
+        <p className="text-xs font-medium text-green-400">▲ +{delta30}% · last 30 days</p>
+      ) : (
+        <p className="text-xs font-medium text-text-tertiary">Steady · no recent change</p>
+      )}
+
+      {/* Pace — am I behind? (metric year goals) */}
+      {pace?.status && (
+        <p className="mt-0.5 text-[11px] text-text-tertiary">
+          <span className={cn(
+            "font-semibold",
+            pace.tone === "good" ? "text-green-400" : pace.tone === "bad" ? "text-amber-400" : "text-text-tertiary",
+          )}>
+            {pace.status}
+          </span>
+          {pace.text ? ` · ${pace.text}` : ""}
+        </p>
+      )}
+
+      {/* Sparkline + axis context */}
+      {hasLine && (
+        <>
+          <svg viewBox={`0 0 ${W} ${H}`} className="mt-2.5 w-full" preserveAspectRatio="none" style={{ height: 52 }}>
+            <defs>
+              <linearGradient id="momentumGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={ACCENT} stopOpacity={0.22} />
+                <stop offset="100%" stopColor={ACCENT} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <path d={areaPath} fill="url(#momentumGrad)" />
+            <path d={linePath} fill="none" stroke={ACCENT} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx={xs[n - 1]} cy={ys[n - 1]} r={2.5} fill={ACCENT} />
+          </svg>
+          <div className="mt-1 flex items-center justify-between text-[10px] text-text-tertiary">
+            <span>{since}</span>
+            <span>today</span>
+          </div>
+        </>
+      )}
+
+      {/* Recency — did I progress recently? */}
+      {!stalled && (
+        <p className={cn("text-[11px] text-text-tertiary", hasLine ? "mt-1.5" : "mt-2")}>
+          Last activity {recency}
+        </p>
+      )}
+    </div>
+  );
+}
 
 const PRIORITY_COLOR: Record<string, string> = {
   low:      "text-text-tertiary",
@@ -58,6 +163,14 @@ const PRIORITY_COLOR: Record<string, string> = {
   high:     "text-orange-400",
   critical: "text-red-400",
 };
+
+const STATUS_META: Record<GoalStatus, { label: string; color: string }> = {
+  active:    { label: "Active",    color: "#22c55e" },
+  completed: { label: "Completed", color: "#22c55e" },
+  paused:    { label: "Paused",    color: "#fbbf24" },
+  abandoned: { label: "Abandoned", color: "#a1a1aa" },
+};
+const STATUS_ORDER: GoalStatus[] = ["active", "completed", "paused", "abandoned"];
 
 interface Props {
   id: string;
@@ -74,6 +187,8 @@ export function GoalDetailPage({ id }: Props) {
   const { data: availableHabits = [] } = useAvailableHabitsForGoal();
   const { data: contributingMedia } = useGoalContributingMedia(goal);
   const { data: contributingBooks } = useGoalContributingBooks(goal);
+  const { data: progressHistory = [] } = useGoalMomentum(goal);
+  const { data: allGoals = [] } = useGoals();
 
   useRealtimeGoals(id, linkedHabits.map((h) => h.id));
 
@@ -89,6 +204,8 @@ export function GoalDetailPage({ id }: Props) {
   const [localMode,       setLocalMode]        = useState<"manual" | "auto" | null>(null);
   const [taskPickerOpen,  setTaskPickerOpen]   = useState(false);
   const [taskSearch,      setTaskSearch]       = useState("");
+  const [statusOpen,      setStatusOpen]       = useState(false);
+  const [parentOpen,      setParentOpen]       = useState(false);
 
   // Reset local draft when DB value confirms — prevents flicker after save
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -122,6 +239,7 @@ export function GoalDetailPage({ id }: Props) {
   if (isLoading || !goal) return <GoalDetailSkeleton />;
 
   const displayMode     = localMode ?? goal.progress_mode;
+  const accent          = goal.category ? categoryColor(goal.category) : ACCENT;
   const isMetric        = !!goal.metric_module;
   const isBooks         = goal.metric_module === "books";
   const contributing    = isBooks ? contributingBooks : contributingMedia;
@@ -129,11 +247,18 @@ export function GoalDetailPage({ id }: Props) {
   const metricRoutePrefix = isBooks ? "/life/books/" : "/perso/watching/";
   const tasksTotal      = linkedTasks.length;
   const tasksCompleted  = linkedTasks.filter((t) => t.completed_at !== null).length;
-  const autoProgress    = tasksTotal > 0 ? Math.round((tasksCompleted / tasksTotal) * 100) : 0;
+  // Single source of truth: auto goals (task + metric) always read the server-recalc'd
+  // goals.progress, so the list / timeline / compass can never diverge from the detail.
   const displayProgress = displayMode === "auto"
-    ? (isMetric ? goal.progress : autoProgress)   // metric goals: trust the recalc'd value
+    ? goal.progress
     : (localProgress ?? goal.progress);
   const isOverdue       = goal.target_date && goal.status === "active" && new Date(goal.target_date) < new Date();
+
+  // Goal↔goal links. childGoals = the goals contributing to THIS one. parentCandidates
+  // excludes self + direct children (cheap loop guard) + abandoned.
+  const childGoals       = allGoals.filter((g) => g.parent_goal_id === goal.id);
+  const parentGoal       = allGoals.find((g) => g.id === goal.parent_goal_id) ?? null;
+  const parentCandidates = allGoals.filter((g) => g.id !== goal.id && g.parent_goal_id !== goal.id && g.status !== "abandoned");
 
   // Watching-metric display values
   const metricTarget = goal.metric_target ?? 0;
@@ -202,6 +327,10 @@ export function GoalDetailPage({ id }: Props) {
     });
   }
 
+  async function handleParentChange(value: string) {
+    await updateGoal.mutateAsync({ id, parent_goal_id: value === "none" ? null : value });
+  }
+
 
   return (
     <div className="w-full px-4 py-4 sm:px-6">
@@ -227,13 +356,16 @@ export function GoalDetailPage({ id }: Props) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, delay: 0 }}
-            className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1"
+            className="relative overflow-hidden surface-card rounded-xl"
           >
             <div className="relative p-3">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex-1 min-w-0">
                   {goal.category && (
-                    <span className="mb-1.5 inline-flex w-fit items-center rounded border border-green-500/20 bg-green-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-green-400">
+                    <span
+                      className="mb-1.5 inline-flex w-fit items-center rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
+                      style={{ border: `1px solid ${accent}33`, backgroundColor: `${accent}1a`, color: accent }}
+                    >
                       {goal.category}
                     </span>
                   )}
@@ -282,7 +414,7 @@ export function GoalDetailPage({ id }: Props) {
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${displayProgress}%`,
-                      backgroundColor: ACCENT,
+                      backgroundColor: accent,
                     }}
                   />
                 </div>
@@ -295,12 +427,26 @@ export function GoalDetailPage({ id }: Props) {
             </div>
           </motion.div>
 
+          {/* Why this matters — the north star, surfaced not buried */}
+          {goal.why && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: 0.04 }}
+              className="relative overflow-hidden surface-card rounded-xl p-4"
+            >
+              <div className="absolute inset-y-0 left-0 w-0.5" style={{ backgroundColor: ACCENT }} />
+              <h3 className="mb-1.5 text-xs font-medium uppercase tracking-wider text-text-tertiary">Why this matters</h3>
+              <p className="text-sm italic leading-relaxed text-text-secondary">{goal.why}</p>
+            </motion.div>
+          )}
+
           {/* Milestones */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, delay: 0.06 }}
-            className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4"
+            className="relative overflow-hidden surface-card rounded-xl p-4"
           >
             <MilestoneList goalId={id} />
           </motion.div>
@@ -311,7 +457,7 @@ export function GoalDetailPage({ id }: Props) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, delay: 0.12 }}
-            className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4"
+            className="relative overflow-hidden surface-card rounded-xl p-4"
           >
             <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-4">
               Fueling this Goal
@@ -549,27 +695,11 @@ export function GoalDetailPage({ id }: Props) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: 0.12 }}
-              className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4"
+              className="relative overflow-hidden surface-card rounded-xl p-4"
             >
               <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-tertiary">
                 Counting toward this goal
               </h3>
-
-              {pace && (
-                <div className="mb-3 flex items-center gap-2 rounded-md bg-surface-2 px-3 py-2">
-                  {pace.status && (
-                    <span className={cn(
-                      "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold",
-                      pace.tone === "good" ? "bg-green-500/10 text-green-400"
-                      : pace.tone === "bad" ? "bg-amber-500/10 text-amber-400"
-                      : "bg-surface-3 text-text-tertiary",
-                    )}>
-                      {pace.status}
-                    </span>
-                  )}
-                  {pace.text && <span className="text-xs text-text-tertiary">{pace.text}</span>}
-                </div>
-              )}
 
               {contributing && contributing.items.length > 0 ? (
                 <>
@@ -625,7 +755,7 @@ export function GoalDetailPage({ id }: Props) {
         >
 
           {/* Progress Control */}
-          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4">
+          <div className="relative overflow-hidden surface-card rounded-xl p-4">
             <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">
               Progress Control
             </h3>
@@ -694,26 +824,51 @@ export function GoalDetailPage({ id }: Props) {
             )}
           </div>
 
+          {/* Momentum */}
+          <MomentumCard history={progressHistory} pace={pace} />
+
           {/* Goal Info */}
-          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-4">
+          <div className="relative overflow-hidden surface-card rounded-xl p-4">
             <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">Goal Info</h3>
             <div className="space-y-3">
-              <div>
-                <label className="text-xs text-text-tertiary block mb-1">Status</label>
-                <Select value={goal.status} onValueChange={(v) => handleStatusChange(v as GoalStatus)}>
-                  <SelectTrigger variant="tasks" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent variant="tasks">
-                    <SelectItem value="active">Active</SelectItem>
-                    {/* Auto goals complete themselves at the target — no manual "Completed" until then. */}
-                    <SelectItem value="completed" disabled={displayMode === "auto" && goal.status !== "completed"}>
-                      Completed
-                    </SelectItem>
-                    <SelectItem value="paused">Paused</SelectItem>
-                    <SelectItem value="abandoned">Abandoned</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-tertiary">Status</span>
+                <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 rounded-md bg-surface-2 px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-surface-3"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: STATUS_META[goal.status].color }} />
+                      {STATUS_META[goal.status].label}
+                      <ChevronDown size={12} className="text-text-tertiary" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-40 p-1 bg-surface-3 border-border-strong">
+                    {STATUS_ORDER.map((s) => {
+                      // Auto goals complete themselves at the target — no manual "Completed" until then.
+                      const disabled = s === "completed" && displayMode === "auto" && goal.status !== "completed";
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => { handleStatusChange(s); setStatusOpen(false); }}
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors",
+                            disabled
+                              ? "cursor-not-allowed opacity-40"
+                              : goal.status === s ? "bg-surface-2 text-text-primary" : "text-text-secondary hover:bg-surface-2",
+                          )}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: STATUS_META[s].color }} />
+                          {STATUS_META[s].label}
+                          {goal.status === s && <Check size={11} className="ml-auto" />}
+                        </button>
+                      );
+                    })}
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="flex items-center justify-between">
@@ -752,7 +907,7 @@ export function GoalDetailPage({ id }: Props) {
           </div>
 
           {/* Stats — the single home for the goal's numbers */}
-          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-surface-1 p-3">
+          <div className="relative overflow-hidden surface-card rounded-xl p-3">
             <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">Stats</h3>
             {isMetric ? (
               <div className="grid grid-cols-3 gap-2">
@@ -792,11 +947,79 @@ export function GoalDetailPage({ id }: Props) {
               </div>
             )}
           </div>
+
+          {/* Connections — goal↔goal links (the contributes-to chain) */}
+          <div className="relative overflow-hidden surface-card rounded-xl p-4">
+            <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-tertiary">Connections</h3>
+
+            <div className={cn(childGoals.length > 0 && "mb-3")}>
+              <label className="mb-1 block text-[11px] text-text-tertiary">Contributes to</label>
+              <Popover open={parentOpen} onOpenChange={setParentOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-2 rounded-md bg-surface-2 px-2.5 py-1.5 text-xs transition-colors hover:bg-surface-3"
+                  >
+                    <span className={cn("truncate", parentGoal ? "text-text-secondary" : "text-text-tertiary")}>
+                      {parentGoal ? parentGoal.title : "None"}
+                    </span>
+                    <ChevronDown size={13} className="shrink-0 text-text-tertiary" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="max-h-60 w-(--radix-popover-trigger-width) overflow-y-auto p-1 bg-surface-3 border-border-strong">
+                  <button
+                    type="button"
+                    onClick={() => { handleParentChange("none"); setParentOpen(false); }}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors",
+                      !goal.parent_goal_id ? "bg-surface-2 text-text-primary" : "text-text-secondary hover:bg-surface-2",
+                    )}
+                  >
+                    None
+                    {!goal.parent_goal_id && <Check size={11} className="ml-auto" />}
+                  </button>
+                  {parentCandidates.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => { handleParentChange(g.id); setParentOpen(false); }}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors",
+                        goal.parent_goal_id === g.id ? "bg-surface-2 text-text-primary" : "text-text-secondary hover:bg-surface-2",
+                      )}
+                    >
+                      <span className="truncate">{g.title}</span>
+                      {goal.parent_goal_id === g.id && <Check size={11} className="ml-auto shrink-0" />}
+                    </button>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {childGoals.length > 0 && (
+              <div>
+                <label className="mb-1.5 block text-[11px] text-text-tertiary">Fueled by</label>
+                <div className="space-y-1">
+                  {childGoals.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => router.push(`/life/goals/${c.id}`)}
+                      className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-surface-2"
+                    >
+                      <span className="min-w-0 truncate text-xs text-text-secondary">{c.title}</span>
+                      <span className="shrink-0 text-[10px] tabular-nums text-text-tertiary">{c.progress}%</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
 
       {/* Edit modal */}
-      <GoalModal open={isEditOpen} onClose={() => setIsEditOpen(false)} goal={goal} />
+      <GoalEditPanel open={isEditOpen} onClose={() => setIsEditOpen(false)} goal={goal} />
 
       <DeleteGoalModal
         open={deleteModalOpen}

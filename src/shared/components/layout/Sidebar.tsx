@@ -554,7 +554,7 @@ export default function Sidebar() {
           "relative flex flex-col h-screen shrink-0 overflow-hidden border-r border-zinc-800/40",
           isGlass && "backdrop-blur-xl", // ← Glass effect uniquement pour Tasks
         )}
-        style={{ background: "#09090b" }}
+        style={{ background: "var(--color-surface-0)" }}
       >
         {/* section ambient */}
         <div

@@ -15,8 +15,10 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { GoalCard } from "./GoalCard";
-import { GoalModal } from "./GoalModal";
+import { GoalPanel } from "./GoalPanel";
 import { GoalsEmptyState } from "./GoalsEmptyState";
+import { GoalsRoadmap } from "./GoalsRoadmap";
+import { ReviewsView } from "./ReviewsView";
 import { GoalRightPanel } from "./GoalFocusPanel";
 import { GoalsLoadingSkeleton } from "./GoalsSkeleton";
 import { useGoals } from "../hooks/useGoals";
@@ -25,22 +27,27 @@ import type { Goal, GoalSort, GoalCategory } from "../types";
 
 const ACCENT = "var(--color-accent-goals)";
 
-const STATUS_TABS = [
+// One tab bar: the list filters (All/Active/Completed) and the alternate views
+// (Timeline/Reviews) are the same control — "List" is implied by All/Active/Completed.
+const TABS = [
   { value: "all",       label: "All" },
   { value: "active",    label: "Active" },
   { value: "completed", label: "Completed" },
+  { value: "timeline",  label: "Timeline" },
+  { value: "reviews",   label: "Reviews" },
 ] as const;
 
+type Tab = "all" | "active" | "completed" | "timeline" | "reviews";
 type StatusFilter = "all" | "active" | "completed";
 
 const CATEGORIES: { value: GoalCategory | "all"; label: string }[] = [
-  { value: "all",      label: "All categories" },
-  { value: "personal", label: "Personal" },
-  { value: "work",     label: "Work" },
-  { value: "health",   label: "Health" },
-  { value: "learning", label: "Learning" },
-  { value: "finance",  label: "Finance" },
-  { value: "other",    label: "Other" },
+  { value: "all",       label: "All categories" },
+  { value: "career",    label: "Career" },
+  { value: "health",    label: "Health" },
+  { value: "finance",   label: "Finance" },
+  { value: "growth",    label: "Growth" },
+  { value: "lifestyle", label: "Lifestyle" },
+  { value: "other",     label: "Other" },
 ];
 
 const SORTS: { value: GoalSort; label: string }[] = [
@@ -99,12 +106,17 @@ export function GoalsPage() {
   const { data: goals = [], isLoading } = useGoals();
   useRealtimeGoals();
 
-  const [status, setStatus]         = useState<StatusFilter>("all");
+  const [tab, setTab]               = useState<Tab>("all");
   const [category, setCategory]     = useState<GoalCategory | "all">("all");
   const [sort, setSort]             = useState<GoalSort>("deadline");
-  const [search, setSearch]             = useState("");
+  const [search, setSearch]         = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<GoalCategory | null>(null);
+
+  // The tab drives both the view mode and (for list tabs) the status filter.
+  const view: "list" | "timeline" | "reviews" =
+    tab === "timeline" ? "timeline" : tab === "reviews" ? "reviews" : "list";
+  const statusFilter: StatusFilter = tab === "active" || tab === "completed" ? tab : "all";
 
   const { pendingAction, clearPendingAction } = useCommandCenter();
   useEffect(() => {
@@ -120,8 +132,8 @@ export function GoalsPage() {
   }
 
   const displayed = useMemo(
-    () => filterAndSort(goals, status, category, sort, search),
-    [goals, status, category, sort, search],
+    () => filterAndSort(goals, statusFilter, category, sort, search),
+    [goals, statusFilter, category, sort, search],
   );
 
   return (
@@ -131,97 +143,89 @@ export function GoalsPage() {
           <GoalsLoadingSkeleton />
         ) : (
           <>
-            {/* ── Module header ── */}
-            <motion.div
-              className="flex items-start justify-between gap-4"
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-            >
-              <div>
-                <h1 className="text-xl font-bold leading-tight text-text-primary">Goals</h1>
-                <p className="mt-0.5 text-sm text-text-tertiary">Big picture. Clear path.</p>
-              </div>
-              <Button
-                type="button"
-                onClick={() => setIsModalOpen(true)}
-                style={{ backgroundColor: ACCENT }}
-                className="h-8 shrink-0 px-3 text-sm font-medium text-white hover:opacity-90"
+            {/* ── Unified toolbar — replaces the page title; the TopBar breadcrumb
+                 ("Life / Goals") already names the page, so the H1 was redundant. ── */}
+            {goals.length > 0 && (
+              <motion.div
+                className="flex flex-wrap items-center gap-x-3 gap-y-2"
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
               >
-                + New Goal
-              </Button>
-            </motion.div>
+                {/* Unified tab bar — list filters (All/Active/Completed) and the
+                    alternate views (Timeline/Reviews) are one control. */}
+                <div className="flex items-center overflow-x-auto custom-scrollbar-hide">
+                  {TABS.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setTab(value)}
+                      className={cn(
+                        "relative shrink-0 whitespace-nowrap px-3 pb-2 pt-1 text-sm font-medium transition-colors",
+                        tab === value ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary",
+                      )}
+                    >
+                      {label}
+                      {tab === value && (
+                        <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm" style={{ backgroundColor: ACCENT }} />
+                      )}
+                    </button>
+                  ))}
+                </div>
 
-            {goals.length === 0 ? (
-              <GoalsEmptyState onCreateClick={() => setIsModalOpen(true)} />
-            ) : (
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-                {/* Left — tabs + list */}
-                <div className="flex-1 min-w-0">
-                  {/* Tabs row */}
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center overflow-x-auto custom-scrollbar-hide">
-                      {STATUS_TABS.map(({ value, label }) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setStatus(value)}
-                          className={cn(
-                            "relative shrink-0 whitespace-nowrap px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
-                            status === value ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary"
-                          )}
-                        >
-                          {label}
-                          {status === value && (
-                            <span
-                              className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm"
-                              style={{ backgroundColor: ACCENT }}
-                            />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex flex-col gap-2 pb-1 sm:flex-row sm:items-center">
-                      <div className="relative flex w-full items-center sm:w-48">
-                        <Search size={14} className="absolute left-2.5 text-text-tertiary pointer-events-none" />
+                {/* Right cluster — filters + action */}
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  {view === "list" && (
+                    <>
+                      <div className="relative flex w-40 items-center sm:w-48">
+                        <Search size={14} className="pointer-events-none absolute left-2.5 text-text-tertiary" />
                         <Input
                           variant="tasks"
                           placeholder="Search goals…"
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
-                          className="h-9 w-full py-0 pl-8 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
+                          className="h-8 w-full bg-surface-1 py-0 pl-8 text-xs hover:bg-surface-2 border-border-subtle focus:border-border-focus"
                         />
                       </div>
+                      <Select value={category} onValueChange={(v) => setCategory(v as GoalCategory | "all")}>
+                        <SelectTrigger variant="tasks" className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent variant="tasks">
+                          {CATEGORIES.map((c) => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={sort} onValueChange={(v) => setSort(v as GoalSort)}>
+                        <SelectTrigger variant="tasks" className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent variant="tasks">
+                          {SORTS.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
 
-                      <div className="flex gap-2">
-                        <Select value={category} onValueChange={(v) => setCategory(v as GoalCategory | "all")}>
-                          <SelectTrigger variant="tasks" className="h-9 flex-1 text-xs sm:h-7 sm:w-36 sm:flex-none">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent variant="tasks">
-                            {CATEGORIES.map((c) => (
-                              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                  <Button
+                    type="button"
+                    onClick={() => setIsModalOpen(true)}
+                    style={{ backgroundColor: "var(--color-accent-goals-deep)" }}
+                    className="h-8 shrink-0 px-3 text-sm font-medium text-white hover:opacity-90"
+                  >
+                    + New Goal
+                  </Button>
+                </div>
+              </motion.div>
+            )}
 
-                        <Select value={sort} onValueChange={(v) => setSort(v as GoalSort)}>
-                          <SelectTrigger variant="tasks" className="h-9 flex-1 text-xs sm:h-7 sm:w-28 sm:flex-none">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent variant="tasks">
-                            {SORTS.map((s) => (
-                              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-
+            {goals.length === 0 ? (
+              <GoalsEmptyState onCreateClick={() => setIsModalOpen(true)} />
+            ) : view === "timeline" ? (
+              <GoalsRoadmap goals={goals} />
+            ) : view === "reviews" ? (
+              <ReviewsView />
+            ) : (
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+                {/* Left — list */}
+                <div className="flex-1 min-w-0">
                   {/* List */}
-                  <div className="mt-3 space-y-3">
+                  <div className="space-y-3">
                     {displayed.length === 0 ? (
                       <p className="py-16 text-center text-sm text-text-tertiary">
                         No goals match this filter.
@@ -258,7 +262,7 @@ export function GoalsPage() {
         )}
       </div>
 
-      <GoalModal open={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <GoalPanel open={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }
