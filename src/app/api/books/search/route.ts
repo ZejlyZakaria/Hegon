@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
     }
 
     const normalizedQ = q.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/-/g, " ");
-    const url = `${GOOGLE_BOOKS_BASE}?q=${encodeURIComponent(normalizedQ)}&maxResults=20&key=${API_KEY}`;
+    // A bare numeric query like "1984" matches years / volume numbers in thousands
+    // of scanned periodicals, burying the real book → bias it to the title.
+    const searchQ = /^[\d\s]+$/.test(normalizedQ) ? `intitle:${normalizedQ}` : normalizedQ;
+    const url = `${GOOGLE_BOOKS_BASE}?q=${encodeURIComponent(searchQ)}&maxResults=20&key=${API_KEY}`;
 
     const res = await fetch(url);
     if (!res.ok) {
