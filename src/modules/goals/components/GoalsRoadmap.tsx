@@ -3,19 +3,12 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { cn } from "@/shared/utils/utils";
+import { CATEGORY_COLOR } from "../constants";
 import type { Goal, GoalCategory } from "../types";
 
-const CATEGORY_COLOR: Record<GoalCategory, string> = {
-  career:    "#3b82f6",
-  health:    "#22c55e",
-  finance:   "#06b6d4",
-  growth:    "#eab308",
-  lifestyle: "#ec4899",
-  other:     "#71717a",
-};
 const colorOf = (c: GoalCategory | null) => CATEGORY_COLOR[c ?? "other"];
 
-const LABEL_W = "11rem"; // keep in sync with the track offset
+const LABEL_W = "13rem"; // keep in sync with the track offset
 
 function monthLabel(d: Date) {
   const m = d.toLocaleDateString("en-GB", { month: "short" });
@@ -61,7 +54,7 @@ function Roadmap({ goals }: { goals: Goal[] }) {
   const now = new Date();
 
   return (
-    <div className="rounded-lg border border-border-subtle bg-surface-1 p-4">
+    <div className="surface-card rounded-xl p-4">
       {/* Month axis */}
       <div className="flex">
         <div className="shrink-0" style={{ width: LABEL_W }} />
@@ -84,7 +77,9 @@ function Roadmap({ goals }: { goals: Goal[] }) {
           {months.map((mo, i) => (
             <div key={i} className="absolute inset-y-0 w-px bg-border-subtle/50" style={{ left: `${mo.left}%` }} />
           ))}
-          <div className="absolute inset-y-0 w-px" style={{ left: `${todayLeft}%`, backgroundColor: "var(--color-accent-goals)" }} />
+          <div className="absolute inset-y-0 w-px" style={{ left: `${todayLeft}%`, backgroundColor: "var(--color-accent-goals)" }}>
+            <span className="absolute -top-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full" style={{ backgroundColor: "var(--color-accent-goals)" }} />
+          </div>
         </div>
 
         <div className="relative space-y-1.5 py-2">
@@ -141,13 +136,22 @@ function Roadmap({ goals }: { goals: Goal[] }) {
                       );
                     })}
 
-                    {/* End marker */}
-                    <span
-                      className={cn("absolute top-1/2 -translate-y-1/2 text-[9px] tabular-nums", overdue ? "text-red-400" : "text-text-tertiary")}
-                      style={{ left: `calc(${Math.min(100, left + width)}% + 4px)` }}
-                    >
-                      {end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                    </span>
+                    {/* End marker — sits after the bar, but flips to the left of the
+                        bar end when it's too close to the right edge (no wrap/overflow). */}
+                    {(() => {
+                      const endPct = Math.min(100, left + width);
+                      const nearRight = endPct > 86;
+                      return (
+                        <span
+                          className={cn("absolute top-1/2 -translate-y-1/2 whitespace-nowrap text-[9px] tabular-nums", overdue ? "text-red-400" : "text-text-tertiary")}
+                          style={nearRight
+                            ? { right: `calc(${100 - endPct}% + 4px)` }
+                            : { left: `calc(${endPct}% + 4px)` }}
+                        >
+                          {end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </Link>
               );
@@ -227,7 +231,7 @@ function MobileBuckets({ goals }: { goals: Goal[] }) {
                 <Link
                   key={g.id}
                   href={`/life/goals/${g.id}`}
-                  className="flex items-center gap-2 rounded-md border border-border-subtle bg-surface-1 p-2.5"
+                  className="surface-card flex items-center gap-2 rounded-lg p-2.5 transition-transform duration-200 ease-out hover:scale-[1.01]"
                 >
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colorOf(g.category) }} />
                   <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{g.title}</span>
