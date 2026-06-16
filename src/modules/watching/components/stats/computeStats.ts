@@ -107,16 +107,30 @@ function countsTitle(i: StatsRawItem, year: number | null): boolean {
   return contributionYears(i).includes(year);
 }
 
+// Mirror the Watch History lock: on an in-progress series you've only REACHED the
+// current season, so any season stamped beyond it is stale (e.g. you bumped the
+// current season to 10 to test, then reverted to 9 — the season-10 stamp lingers).
+// Stats must ignore those so a show isn't labelled "Seasons 1–10" when you're on 9.
+function isSeasonWatched(i: StatsRawItem, season: number): boolean {
+  if (!i.watched && i.current_season != null) return season <= i.current_season;
+  return true;
+}
+// season→year stamps, minus any season you haven't actually reached.
+function watchedSeasonYears(i: StatsRawItem): [number, number][] {
+  return Object.entries(i.season_years ?? {})
+    .map(([s, y]) => [Number(s), y] as [number, number])
+    .filter(([s]) => isSeasonWatched(i, s));
+}
+
 // The season's own poster for the year shown — only when a SINGLE season
 // represents that year on a multi-year show (so the Top Picks thumbnail matches
 // the labelled season). Otherwise null → fall back to the show poster.
 function seasonPosterFor(i: StatsRawItem, year: number | null): string | null {
   if (!year || i.type === "film") return null;
-  const isMultiYear = new Set(Object.values(i.season_years ?? {})).size >= 2;
+  const wy = watchedSeasonYears(i);
+  const isMultiYear = new Set(wy.map(([, y]) => y)).size >= 2;
   if (!isMultiYear) return null;
-  const seasonsInY = Object.entries(i.season_years ?? {})
-    .filter(([, y]) => y === year)
-    .map(([s]) => Number(s));
+  const seasonsInY = wy.filter(([, y]) => y === year).map(([s]) => s);
   if (seasonsInY.length !== 1) return null;
   return i.season_posters?.[seasonsInY[0] - 1] ?? null;
 }
@@ -125,9 +139,9 @@ function seasonPosterFor(i: StatsRawItem, year: number | null): string | null {
 // "Seasons 1–8", or null (film / legacy / all-time → show the whole title).
 function seasonLabelFor(i: StatsRawItem, year: number | null): string | null {
   if (!year || i.type === "film") return null;
-  const seasons = Object.entries(i.season_years ?? {})
+  const seasons = watchedSeasonYears(i)
     .filter(([, y]) => y === year)
-    .map(([s]) => Number(s))
+    .map(([s]) => s)
     .sort((a, b) => a - b);
   if (seasons.length === 0) return null;
   if (seasons.length === 1) return `Season ${seasons[0]}`;
@@ -142,11 +156,10 @@ function seasonLabelFor(i: StatsRawItem, year: number | null): string | null {
 // Films and all-time always use the title rating.
 function effectiveRating(i: StatsRawItem, year: number | null): number | null {
   if (i.type === "film" || !year) return i.user_rating;
-  const isMultiYear = new Set(Object.values(i.season_years ?? {})).size >= 2;
+  const wy = watchedSeasonYears(i);
+  const isMultiYear = new Set(wy.map(([, y]) => y)).size >= 2;
   if (!isMultiYear) return i.user_rating;
-  const seasonsInY = Object.entries(i.season_years ?? {})
-    .filter(([, y]) => y === year)
-    .map(([s]) => Number(s));
+  const seasonsInY = wy.filter(([, y]) => y === year).map(([s]) => s);
   const ratings = seasonsInY
     .map((s) => i.season_ratings?.[String(s)])
     .filter((r): r is number => r != null);
