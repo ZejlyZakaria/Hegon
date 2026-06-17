@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { Input } from "@/shared/components/ui/input";
+import { TabNav } from "@/shared/components/ui/tab-nav";
 import type { BookTab, BookStatus, BookSort } from "../types";
 import { AddBookModal } from "./AddBookModal";
 import { BooksEmptyState } from "./BooksEmptyState";
@@ -51,7 +52,6 @@ const SORT_OPTIONS: Array<{ value: BookSort; label: string }> = [
 
 const ACCENT = "var(--color-accent-books-vivid)";
 
-const tabClass = "relative shrink-0 whitespace-nowrap px-4 pb-2.5 pt-1 text-sm font-medium transition-colors duration-100";
 
 export function BooksPage() {
   // View + active tab persisted in-memory so Back from a detail page restores them.
@@ -86,49 +86,15 @@ export function BooksPage() {
       ) : (
         <>
           {/* Unified bar — status filters · Stats · Quotes  +  toolbar */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center overflow-x-auto">
-              {/* status filter tabs */}
-              {TABS.map((tab) => {
-                const isActive = isLibrary && activeTab === tab.id;
-                return (
-                  <button
-                    type="button"
-                    key={tab.id}
-                    onClick={() => { setView("library"); setActiveTab(tab.id); }}
-                    className={tabClass}
-                    style={{ color: isActive ? "#e2e2e6" : "#71717a" }}
-                  >
-                    {tab.label}
-                    {isActive && (
-                      <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm" style={{ backgroundColor: ACCENT }} />
-                    )}
-                  </button>
-                );
-              })}
-
-              {/* separator — filters → destinations */}
-              <div className="mx-2 h-4 w-px shrink-0 bg-border-subtle" />
-
-              {/* destination tabs */}
-              {DEST_TABS.map((d) => {
-                const isActive = view === d.id;
-                return (
-                  <button
-                    type="button"
-                    key={d.id}
-                    onClick={() => setView(d.id)}
-                    className={tabClass}
-                    style={{ color: isActive ? "#e2e2e6" : "#71717a" }}
-                  >
-                    {d.label}
-                    {isActive && (
-                      <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm" style={{ backgroundColor: ACCENT }} />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex flex-col gap-3 border-b border-border-subtle sm:flex-row sm:items-center sm:justify-between">
+            <TabNav
+              accent={ACCENT}
+              activeKey={isLibrary ? activeTab : view}
+              items={[
+                ...TABS.map((t) => ({ key: t.id, label: t.label, onClick: () => { setView("library"); setActiveTab(t.id); } })),
+                ...DEST_TABS.map((d, i) => ({ key: d.id, label: d.label, onClick: () => setView(d.id), separatorBefore: i === 0 })),
+              ]}
+            />
 
             {/* toolbar — library controls hidden on Stats/Quotes; New Book always shown */}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:pb-1">

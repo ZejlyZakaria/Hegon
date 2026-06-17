@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, startTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCommandCenter } from "@/modules/command-center/store";
 import { Search } from "lucide-react";
-import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import {
@@ -21,6 +20,7 @@ import { GoalsRoadmap } from "./GoalsRoadmap";
 import { ReviewsView } from "./ReviewsView";
 import { GoalRightPanel } from "./GoalFocusPanel";
 import { GoalsLoadingSkeleton } from "./GoalsSkeleton";
+import { TabNav } from "@/shared/components/ui/tab-nav";
 import { useGoals } from "../hooks/useGoals";
 import { useRealtimeGoals } from "../hooks/useRealtimeGoals";
 import type { Goal, GoalSort, GoalCategory } from "../types";
@@ -147,34 +147,21 @@ export function GoalsPage() {
                  ("Life / Goals") already names the page, so the H1 was redundant. ── */}
             {goals.length > 0 && (
               <motion.div
-                className="flex flex-wrap items-center gap-x-3 gap-y-2"
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-subtle"
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.22, ease: "easeOut" }}
               >
                 {/* Unified tab bar — list filters (All/Active/Completed) and the
                     alternate views (Timeline/Reviews) are one control. */}
-                <div className="flex items-center overflow-x-auto custom-scrollbar-hide">
-                  {TABS.map(({ value, label }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setTab(value)}
-                      className={cn(
-                        "relative shrink-0 whitespace-nowrap px-3 pb-2 pt-1 text-sm font-medium transition-colors",
-                        tab === value ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary",
-                      )}
-                    >
-                      {label}
-                      {tab === value && (
-                        <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm" style={{ backgroundColor: ACCENT }} />
-                      )}
-                    </button>
-                  ))}
-                </div>
+                <TabNav
+                  accent={ACCENT}
+                  activeKey={tab}
+                  items={TABS.map((t) => ({ key: t.value, label: t.label, onClick: () => setTab(t.value) }))}
+                />
 
                 {/* Right cluster — filters + action */}
-                <div className="ml-auto flex flex-wrap items-center gap-2">
+                <div className="ml-auto flex flex-wrap items-center gap-2 pb-1.5">
                   {view === "list" && (
                     <>
                       <div className="relative flex w-40 items-center sm:w-48">

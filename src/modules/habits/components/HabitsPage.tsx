@@ -4,9 +4,9 @@ import { useState, useEffect, startTransition } from "react";
 import { motion } from "framer-motion";
 import { useCommandCenter } from "@/modules/command-center/store";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { TabNav } from "@/shared/components/ui/tab-nav";
 import { Pause, ChevronRight, CalendarRange } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import { cn } from "@/shared/utils/utils";
 import { resolveIcon } from "@/shared/constants/icons";
 import { useHabits, useArchivedHabits, useArchiveHabit, useDeleteHabitPermanently } from "../hooks/useHabits";
 import {
@@ -133,39 +133,21 @@ export function HabitsPage() {
             {/* Center column */}
             <div className="flex-1 min-w-0">
               {/* Tabs + search + new habit */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                <div className="flex items-center overflow-x-auto custom-scrollbar-hide">
-                  {([
-                    { value: "today",    label: "Today" },
-                    { value: "calendar", label: "Calendar" },
-                    { value: "stats",    label: "Stats" },
-                    { value: "all",      label: "All" },
-                  ] as const).map(({ value, label }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setTab(value)}
-                      className={cn(
-                        "relative shrink-0 whitespace-nowrap px-4 pb-2.5 pt-1 text-sm font-medium transition-colors",
-                        tab === value
-                          ? "text-text-primary"
-                          : "text-text-tertiary hover:text-text-secondary",
-                      )}
-                    >
-                      {label}
-                      {tab === value && (
-                        <span
-                          className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm"
-                          style={{ backgroundColor: ACCENT }}
-                        />
-                      )}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-subtle">
+                <TabNav
+                  accent={ACCENT}
+                  activeKey={tab}
+                  items={[
+                    { key: "today",    label: "Today",    onClick: () => setTab("today") },
+                    { key: "calendar", label: "Calendar", onClick: () => setTab("calendar") },
+                    { key: "stats",    label: "Stats",    onClick: () => setTab("stats") },
+                    { key: "all",      label: "All",      onClick: () => setTab("all") },
+                  ]}
+                />
 
-                {/* New Habit stays on every tab (anchors the row height → no shift
-                    between tabs, and lets you add from anywhere). Search is Today-only. */}
-                <div className="flex items-center gap-2 pb-1">
+                {/* New Habit stays on every tab (anchors the row → no shift between
+                    tabs, and lets you add from anywhere). Search is Today-only. */}
+                <div className="ml-auto flex items-center gap-2 pb-1.5">
                   {tab === "today" && (
                     <SearchInput
                       placeholder="Search habits…"

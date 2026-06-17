@@ -10,6 +10,7 @@ import { JournalEntryList } from "./JournalEntryList";
 import { JournalEditor } from "./JournalEditor";
 import { JournalRightPanel } from "./JournalRightPanel";
 import { JournalLoadingSkeleton } from "./JournalSkeleton";
+import { TabNav } from "@/shared/components/ui/tab-nav";
 import type { JournalEntry } from "../types";
 
 const ACCENT = "#f97316";
@@ -67,29 +68,15 @@ export function JournalPage() {
         </motion.div>
 
         {/* Tabs */}
-        <div className="flex items-center px-6 shrink-0">
-          {(["today", "all"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => {
-                setTab(t);
-                setSelectedEntry(null);
-              }}
-              className="relative px-4 pb-2.5 pt-1 text-sm font-medium transition-colors"
-              style={tab === t ? { color: "var(--color-text-primary)" } : undefined}
-            >
-              <span className={tab !== t ? "text-text-tertiary hover:text-text-secondary" : ""}>
-                {t === "today" ? "Today" : "All Entries"}
-              </span>
-              {tab === t && (
-                <span
-                  className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm"
-                  style={{ backgroundColor: ACCENT }}
-                />
-              )}
-            </button>
-          ))}
+        <div className="border-b border-border-subtle px-6 shrink-0">
+          <TabNav
+            accent={ACCENT}
+            activeKey={tab}
+            items={[
+              { key: "today", label: "Today",       onClick: () => { setTab("today"); setSelectedEntry(null); } },
+              { key: "all",   label: "All Entries", onClick: () => { setTab("all");   setSelectedEntry(null); } },
+            ]}
+          />
         </div>
 
         {/* Content */}
