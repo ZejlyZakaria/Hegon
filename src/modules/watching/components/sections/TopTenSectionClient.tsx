@@ -46,7 +46,7 @@ export default function TopTenSectionClient({ userId, config }: Props) {
   return (
     <MediaCarousel
       title={`My Top 10 ${label}`}
-      subtitle={`Your must-see ${config.labelPlural} — ${items.length}/10`}
+      subtitle={`Your highest-rated ${config.labelPlural} — ${items.length}/10`}
       items={items}
       onAddClick={items.length < 10 ? () => openModal("topTen") : undefined}
       onDelete={handleDelete}

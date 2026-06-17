@@ -51,7 +51,7 @@ export default function WatchingClient({ config, children }: Props) {
 
   return (
     <WatchingContext.Provider value={{ openModal, openModalWithItem, config }}>
-      <section className="p-4 sm:p-6 space-y-6">
+      <section className="p-4 sm:p-6 space-y-4">
         {children}
       </section>
 

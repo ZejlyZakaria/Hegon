@@ -61,7 +61,7 @@ function ForYouCard({
       className={cn("group relative w-full cursor-pointer overflow-hidden transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]", isPoster ? "rounded-lg" : "rounded-xl")}
       onClick={onClick}
     >
-      <div className={cn("relative bg-zinc-800", isPoster ? "aspect-2/3" : "aspect-video")}>
+      <div className={cn("relative bg-surface-2", !imgLoaded && "animate-pulse", isPoster ? "aspect-2/3" : "aspect-video")}>
         {imgSrc && (
           <Image
             src={imgSrc}
@@ -203,7 +203,7 @@ export default function ForYouSectionClient({
 
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-1 flex items-center justify-between">
         <div>
           <h3 className="text-title text-text-primary">
             For You

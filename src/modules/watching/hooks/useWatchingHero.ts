@@ -7,8 +7,8 @@ export function useWatchingHero(type: MediaType) {
   return useQuery({
     queryKey: TMDB_KEYS.hero(type),
     queryFn: () => getWatchingHeroData(type),
-    staleTime: 1000 * 60 * 60 * 24,   // 24h — TMDB trending doesn't change per session
-    gcTime: 1000 * 60 * 60 * 48,       // 48h in memory
+    staleTime: 1000 * 60 * 30,         // 30min — cheap DB read; the list only changes on the daily cron
+    gcTime: 1000 * 60 * 60 * 24,
     refetchOnWindowFocus: false,
   });
 }

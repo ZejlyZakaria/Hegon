@@ -61,9 +61,10 @@ function DontMissCard({
         </div>
       )}
 
-      {/* ── portrait poster — left-anchored, natural 2:3 dimensions ── */}
+      {/* ── portrait poster — left-anchored, natural 2:3 dimensions. Pulses while
+            the image streams (data is instant from the DB cache, posters aren't). ── */}
       <div
-        className="absolute left-0 top-0 bottom-0 bg-zinc-800"
+        className={`absolute left-0 top-0 bottom-0 bg-surface-2 ${posterLoaded ? "" : "animate-pulse"}`}
         style={{ aspectRatio: "2/3" }}
       >
         {posterUrl && (
@@ -197,7 +198,7 @@ function TrendingMobileCard({
     <button
       type="button"
       onClick={onAdd}
-      className="relative shrink-0 w-[42%] aspect-2/3 snap-start overflow-hidden rounded-xl bg-zinc-800 text-left"
+      className="relative shrink-0 w-[42%] aspect-2/3 snap-start overflow-hidden rounded-xl bg-surface-2 text-left"
     >
       {posterUrl && (
         <Image src={posterUrl} alt={title} fill unoptimized sizes="128px" className="object-cover" />
@@ -239,12 +240,14 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
 
   return (
     <section>
-      <div className="mb-3">
-        <h3 className="text-title text-text-primary">Trending</h3>
+      <div className="mb-1">
+        <h3 className="text-title text-text-primary">Don&apos;t Miss</h3>
+        <p className="mt-1 text-xs text-text-tertiary">Trending now, plus recent gems</p>
       </div>
 
-      {/* Mobile: swipeable poster rail (hover-accordion can't work on touch) */}
-      <div className="flex gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory lg:hidden">
+      {/* Mobile: swipeable poster rail (hover-accordion can't work on touch).
+          py-3 mirrors MediaCarousel so the header→content gap matches everywhere. */}
+      <div className="flex gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory py-3 lg:hidden">
         {items.map((item, i) => (
           <TrendingMobileCard
             key={`m-${item.id}-${i}`}
@@ -255,22 +258,22 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
         ))}
       </div>
 
-      {/* Desktop: hover-expand accordion */}
-      <div
-        className="hidden lg:flex gap-4 h-60"
-        onMouseLeave={() => setActiveIndex(0)}
-      >
-        {items.map((item, i) => (
-          <DontMissCard
-            key={`${item.id}-${i}`}
-            item={item}
-            isActive={activeIndex === i}
-            isTrending={i === 0}
-            isFirst={i < 3}
-            onHover={() => setActiveIndex(i)}
-            onAdd={() => openModalWithItem("wantToWatch", item)}
-          />
-        ))}
+      {/* Desktop: hover-expand accordion. py-3 wrapper matches MediaCarousel's
+          content padding so the header→content gap is identical across sections. */}
+      <div className="hidden py-3 lg:block">
+        <div className="flex h-60 gap-4" onMouseLeave={() => setActiveIndex(0)}>
+          {items.map((item, i) => (
+            <DontMissCard
+              key={`${item.id}-${i}`}
+              item={item}
+              isActive={activeIndex === i}
+              isTrending={i === 0}
+              isFirst={i < 3}
+              onHover={() => setActiveIndex(i)}
+              onAdd={() => openModalWithItem("wantToWatch", item)}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

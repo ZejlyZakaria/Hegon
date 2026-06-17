@@ -698,32 +698,22 @@ export async function getMediaDetails(id: number, type: "movie" | "tv") {
   return tmdbFetch<any>(`${type}/${id}`, { append_to_response: append });
 }
 
-// Hero data (trending + recommendations) — client-side via proxy
-export async function getWatchingHeroData(type: MediaType) {
-  const trendingEndpoint = type === "film" ? "trending/movie/week" : "discover/tv";
-  const trendingParams: Record<string, string> = type === "anime"
-    ? { sort_by: "popularity.desc", with_genres: "16", with_origin_country: "JP", "vote_average.gte": "7", "vote_count.gte": "100" }
-    : type === "serie"
-    ? { sort_by: "popularity.desc", without_genres: "16", "vote_average.gte": "7", "vote_count.gte": "100" }
-    : {};
-
-  const recoEndpoint = type === "film" ? "discover/movie" : "discover/tv";
-  const recoParams: Record<string, string> = type === "film"
-    ? { "vote_average.gte": "7.5", "vote_count.gte": "50", sort_by: "release_date.desc", page: "1" }
-    : type === "serie"
-    ? { "vote_average.gte": "7.5", "vote_count.gte": "50", sort_by: "first_air_date.desc", without_genres: "16", page: "1" }
-    : { "vote_average.gte": "7.5", "vote_count.gte": "50", sort_by: "first_air_date.desc", with_genres: "16", with_origin_country: "JP", page: "1" };
-
-  const [trendingData, recoData] = await Promise.all([
-    tmdbFetch<{ results: any[] }>(trendingEndpoint, trendingParams),
-    tmdbFetch<{ results: any[] }>(recoEndpoint, recoParams),
-  ]);
-
-  const trending = (trendingData.results ?? []).find(
-    (m: any) => m.vote_average >= 7 && m.vote_count >= 100
-  ) ?? trendingData.results?.[0] ?? null;
-
-  const recommendations = (recoData.results ?? []).slice(0, 8);
-
-  return { trending, recommendations };
+// Hero data (trending + recommendations) — read from the GLOBAL trending cache
+// (watching.trending_cache, refreshed daily by the `trending-refresh` cron). One
+// shared row per type → instant DB read, zero TMDB latency at request time. The
+// heavy TMDB fetching now lives in the edge function. Items are the raw TMDB list
+// objects, so "Add to collection" (which re-fetches full details by id) is
+// unaffected. Global reference content — not per-user, so it never duplicates.
+export async function getWatchingHeroData(
+  type: MediaType,
+): Promise<{ trending: any; recommendations: any[] }> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("trending_cache")
+    .select("items")
+    .eq("type", type)
+    .maybeSingle();
+  if (error) throw error;
+  const items = (data?.items ?? {}) as { trending?: any; recommendations?: any[] };
+  return { trending: items.trending ?? null, recommendations: items.recommendations ?? [] };
 }

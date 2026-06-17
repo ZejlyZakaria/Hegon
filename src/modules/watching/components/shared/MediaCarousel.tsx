@@ -279,7 +279,7 @@ export function MediaCarousel({
   if (localItems.length === 0) {
     return (
       <section>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-1 flex items-center justify-between">
           <div>
             <h3 className="text-title text-text-primary">
               {title}
@@ -318,7 +318,7 @@ export function MediaCarousel({
 
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-1 flex items-center justify-between">
         <div>
           <h3 className="text-title text-text-primary">
             {title}
