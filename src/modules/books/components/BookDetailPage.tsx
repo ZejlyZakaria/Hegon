@@ -312,7 +312,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
                       min="0"
                       value={currentPage}
                       onChange={(e) => { setCurrentPage(e.target.value); setPageError(null); }}
-                      className={`h-8 w-24 border-border-subtle bg-surface-1 hover:bg-surface-2 ${pageError ? "border-red-500/60" : ""}`}
+                      className={`h-8 w-24 border-border-subtle bg-surface-2 hover:bg-surface-3 ${pageError ? "border-red-500/60" : ""}`}
                       placeholder="Page"
                     />
                     {book.total_pages && <span className="text-xs text-text-tertiary">/ {book.total_pages} pages</span>}
@@ -385,7 +385,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Your thoughts, key ideas, takeaways…"
-                  className="min-h-28 border-border-subtle bg-surface-1 text-sm hover:bg-surface-2 focus:border-border-focus"
+                  className="min-h-28 border-border-subtle bg-surface-2 text-sm hover:bg-surface-3 focus:border-border-focus"
                 />
               </div>
             </div>

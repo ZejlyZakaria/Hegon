@@ -102,32 +102,25 @@ function JournalRightPanelSkeleton() {
 
 export function JournalLoadingSkeleton() {
   return (
-    <div className="flex h-full overflow-hidden gap-6 pr-6">
-      {/* Left column */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
-          <div className="space-y-1.5">
-            <SkeletonBlock className="h-5 w-16" />
-            <SkeletonBlock className="h-3.5 w-64" />
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* Full-width tab rail — flush under the TopBar (matches the real page). */}
+      <div className="flex items-center border-b border-border-subtle px-4 py-2 shrink-0 sm:px-6">
+        <SkeletonBlock className="h-3.5 w-12 mx-3" />
+        <SkeletonBlock className="h-3.5 w-20 mx-3" />
+      </div>
+
+      {/* Content row */}
+      <div className="flex flex-1 min-h-0 overflow-hidden gap-6 pr-6">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden pl-6 pt-4 pb-5">
+            <JournalTodayViewSkeleton />
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center px-6 shrink-0">
-          <SkeletonBlock className="h-3.5 w-12 mx-3" />
-          <SkeletonBlock className="h-3.5 w-20 mx-3" />
+        {/* Right panel */}
+        <div className="w-72 shrink-0 overflow-y-auto pt-4 pb-5">
+          <JournalRightPanelSkeleton />
         </div>
-
-        {/* Content */}
-        <div className="flex-1 min-h-0 overflow-hidden pl-6 pt-4 pb-5">
-          <JournalTodayViewSkeleton />
-        </div>
-      </div>
-
-      {/* Right panel */}
-      <div className="w-72 shrink-0 overflow-y-auto pt-4 pb-5">
-        <JournalRightPanelSkeleton />
       </div>
     </div>
   );

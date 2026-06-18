@@ -12,9 +12,9 @@ import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfirmModal";
 import { toast } from "@/shared/utils/toast";
-import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import {
   Select,
   SelectContent,
@@ -132,28 +132,17 @@ export default function LibraryClient({ initialItems, userId }: Props) {
   const handleAdded = useCallback(() => {}, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* header */}
       <div className="space-y-2">
         {/* ── Desktop: chips + search + sort + Add ── */}
         <div className="hidden items-center gap-3 sm:flex">
-          <div className="flex gap-2">
-            {MEDIA_TYPES.map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => { setMediaType(value); setCurrentPage(1); }}
-                className={cn(
-                  "rounded-md px-4 py-1.5 text-sm font-medium transition-[background-color,color] duration-150",
-                  mediaType === value
-                    ? "bg-white text-black"
-                    : "bg-surface-1 border border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default"
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            size="md"
+            value={mediaType}
+            onChange={(v) => { setMediaType(v); setCurrentPage(1); }}
+            items={MEDIA_TYPES.map(({ value, label }) => ({ value, label }))}
+          />
 
           <div className="flex items-center gap-2 ml-auto">
             <SearchInput

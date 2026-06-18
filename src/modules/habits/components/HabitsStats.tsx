@@ -96,7 +96,7 @@ function ScoreHero({
   const trendColor = trend === null || trend === 0 ? "var(--color-text-tertiary)" : trend > 0 ? UP : "#f87171";
 
   return (
-    <div className="rounded-2xl bg-surface-1 p-5">
+    <div className="rounded-card bg-surface-1 p-5">
       <div className="flex items-center gap-6">
         {/* Ring */}
         <div className="relative h-32 w-32 shrink-0">
@@ -176,7 +176,7 @@ function TopHabits({
 }) {
   const setActiveTab = useHabitsUIStore((s) => s.setActiveTab);
   return (
-    <div className="flex flex-col rounded-2xl border border-border-subtle bg-surface-1 p-5">
+    <div className="flex flex-col rounded-card border border-border-subtle bg-surface-1 p-5">
       <div className="mb-3 flex items-baseline justify-between">
         <div className="flex items-baseline gap-2">
           <h3 className="text-sm font-semibold text-text-primary">Top Habits</h3>
@@ -265,7 +265,7 @@ function MetricTile({
   label: string;
 }) {
   return (
-    <div className="flex flex-col justify-between rounded-2xl border border-border-subtle bg-surface-1 p-4">
+    <div className="flex flex-col justify-between rounded-card border border-border-subtle bg-surface-1 p-4">
       <div
         className="flex h-8 w-8 items-center justify-center rounded-lg"
         style={{ backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
@@ -298,7 +298,7 @@ function MonthlyBarChart({
   const router = useRouter();
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border-subtle bg-surface-1 p-5">
+    <div className="flex h-full flex-col rounded-card border border-border-subtle bg-surface-1 p-5">
       <div className="mb-5 flex items-baseline justify-between">
         <h3 className="text-sm font-semibold text-text-primary">Monthly rhythm</h3>
         <span className="text-[11px] text-text-tertiary">{year}</span>

@@ -26,7 +26,7 @@ export function BookRow({ book }: { book: Book }) {
     <button
       type="button"
       onClick={() => router.push(`/life/books/${book.id}`)}
-      className="surface-card w-full cursor-pointer rounded-xl p-3 text-left transition-transform duration-200 ease-out hover:scale-[1.01]"
+      className="surface-card w-full cursor-pointer rounded-card p-3 text-left transition-transform duration-200 ease-out hover:scale-[1.01]"
     >
       <div className="flex gap-4">
         {/* Cover */}

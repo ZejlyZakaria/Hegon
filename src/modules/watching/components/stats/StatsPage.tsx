@@ -67,7 +67,7 @@ function MetricCard({ label, value, sub, icon }: {
   icon: React.ReactNode;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-xl surface-card p-4">
+    <div className="relative overflow-hidden rounded-card surface-card p-4">
       <div className="mb-3 flex items-center gap-2">
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-2">
           {icon}
@@ -119,7 +119,7 @@ function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] 
     : SEGMENTS.find((s) => s.key === filter)?.label.toLowerCase() ?? "";
 
   return (
-    <div className="rounded-xl surface-card p-5 h-60 flex flex-col overflow-hidden">
+    <div className="rounded-card surface-card p-5 h-60 flex flex-col overflow-hidden">
       <div className="mb-3 flex items-center gap-2 shrink-0">
         <Clock size={14} className="text-text-tertiary" />
         <p className="text-sm font-semibold text-text-primary">Hours Watched</p>
@@ -188,7 +188,7 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
   const router = useRouter();
 
   return (
-    <div className="rounded-xl surface-card p-5">
+    <div className="rounded-card surface-card p-5">
       <div className="mb-4 flex items-center gap-2">
         <Trophy size={14} className="text-text-tertiary" />
         <p className="text-sm font-semibold text-text-primary">Top Picks</p>
@@ -253,7 +253,7 @@ function TopGenresCard({ genres }: { genres: ReturnType<typeof computeStats>["to
   const max = genres[0]?.count ?? 1;
 
   return (
-    <div className="rounded-xl surface-card p-5">
+    <div className="rounded-card surface-card p-5">
       <div className="mb-4 flex items-center gap-2">
         <BarChart2 size={14} className="text-text-tertiary" />
         <p className="text-sm font-semibold text-text-primary">Top Genres</p>
@@ -326,7 +326,7 @@ function RatingDistributionCard({ distribution }: { distribution: ReturnType<typ
     : "";
 
   return (
-    <div className="rounded-xl surface-card p-5 h-60 w-full flex flex-col overflow-hidden">
+    <div className="rounded-card surface-card p-5 h-60 w-full flex flex-col overflow-hidden">
       <div className="mb-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Star size={14} className="text-text-tertiary" />
@@ -378,7 +378,7 @@ function ActivityCard({ activity, selectedYear }: {
     (b, a) => (a.count > (b?.count ?? 0) ? a : b), null);
 
   return (
-    <div className="rounded-xl surface-card p-5 h-60 flex flex-col overflow-hidden">
+    <div className="rounded-card surface-card p-5 h-60 flex flex-col overflow-hidden">
       <div className="mb-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <CalendarDays size={14} className="text-text-tertiary" />
@@ -597,7 +597,7 @@ export function StatsPage() {
                   key={g.id}
                   type="button"
                   onClick={() => router.push(`/life/goals/${g.id}`)}
-                  className="group cursor-pointer rounded-xl surface-card p-4 text-left transition-colors hover:border-border-default"
+                  className="group cursor-pointer rounded-card surface-card p-4 text-left transition-colors hover:border-border-default"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-medium text-text-primary">{g.title}</p>

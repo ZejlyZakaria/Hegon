@@ -25,6 +25,7 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Button } from "@/shared/components/ui/button";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { useStatuses } from "@/modules/tasks/hooks/useStatuses";
 import { useTagsForProject } from "@/modules/tasks/hooks/useTags";
 import { useProjectAssignees } from "@/modules/tasks/hooks/useOrgMembers";
@@ -345,33 +346,13 @@ export function TasksTopbar() {
           </DropdownMenuContent>
         </DropdownMenu>}
 
-        <div
-          className="flex items-center rounded-md p-1"
-          style={{
-            backgroundColor: "var(--color-surface-2)",
-            border: "1px solid var(--color-border-default)",
-          }}
-        >
-          {views.map((view) => (
-            <button
-              key={view.mode}
-              type="button"
-              onClick={() => setViewMode(view.mode)}
-              className="flex h-7 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors duration-100"
-              style={{
-                backgroundColor:
-                  viewMode === view.mode ? "var(--color-surface-3)" : "transparent",
-                color:
-                  viewMode === view.mode
-                    ? "var(--color-text-primary)"
-                    : "var(--color-text-tertiary)",
-              }}
-            >
-              {view.icon}
-              <span className="hidden sm:inline">{view.label}</span>
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          size="sm"
+          responsiveLabels
+          value={viewMode}
+          onChange={setViewMode}
+          items={views.map((view) => ({ value: view.mode, label: view.label, icon: view.icon }))}
+        />
       </div>
     </div>
   );

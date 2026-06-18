@@ -28,7 +28,7 @@ export function BookCard({ book }: BookCardProps) {
         onClick={open}
         className="block w-full cursor-pointer text-left"
       >
-        <div className="relative aspect-2/3 overflow-hidden rounded-lg bg-surface-1 transition-transform duration-300 ease-out group-hover:scale-[1.04]">
+        <div className="relative aspect-2/3 overflow-hidden rounded-tile bg-surface-1 transition-transform duration-300 ease-out group-hover:scale-[1.04]">
           {book.cover_url ? (
             <Image src={book.cover_url} alt={book.title} fill sizes="160px" className="object-cover" />
           ) : (

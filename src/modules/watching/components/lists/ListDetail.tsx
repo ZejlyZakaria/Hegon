@@ -868,7 +868,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
 
       {/* ── Hero ── */}
       <div className="mx-4 sm:mx-6 my-4 overflow-hidden rounded-2xl bg-surface-1 p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-5 lg:min-h-47.5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6 lg:min-h-47.5">
 
           {/* Backdrop collage — full width on mobile, fills card height on desktop */}
           <div className="relative w-full shrink-0 aspect-video overflow-hidden rounded-xl ring-1 ring-white/20 lg:aspect-auto lg:w-80 lg:self-stretch">

@@ -65,7 +65,7 @@ export function BooksQuotesWall() {
             placeholder="Search quotes…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-full py-0 pl-8 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
+            className="h-9 w-full py-0 pl-8 text-xs bg-surface-2 hover:bg-surface-3 border-border-subtle focus:border-border-focus"
           />
         </div>
         <button

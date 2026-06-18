@@ -33,7 +33,7 @@ const selectTriggerVariants = cva(
       variant: {
         // Default shadcn style
         default: cn(
-          "rounded-md border border-input bg-transparent shadow-xs",
+          "rounded-control border border-input bg-transparent shadow-xs",
           "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
           "aria-invalid:border-destructive aria-invalid:ring-destructive/20",
           "dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:ring-destructive/40"
@@ -41,10 +41,10 @@ const selectTriggerVariants = cva(
         
         // HEGON field — matches the Input "tasks" variant exactly
         tasks: cn(
-          "rounded-lg border border-border-default",
-          "bg-surface-overlay",
+          "rounded-control border border-border-default",
+          "bg-surface-2",
           "text-text-primary",
-          "hover:bg-surface-2",
+          "hover:bg-surface-3",
           "focus:border-border-focus",
           "aria-invalid:border-destructive"
         ),

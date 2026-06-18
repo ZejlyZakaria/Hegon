@@ -38,7 +38,7 @@ export function DeleteGoalModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-110 bg-surface-3 border-border-strong rounded-xl">
+      <DialogContent className="sm:max-w-110 bg-surface-2 border-border-strong">
         <DialogHeader>
           <DialogTitle className="text-sm font-semibold text-text-primary">
             Delete goal?

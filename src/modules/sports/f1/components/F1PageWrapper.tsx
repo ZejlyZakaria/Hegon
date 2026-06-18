@@ -18,7 +18,7 @@ export default function F1PageWrapper() {
 
   if (isLoading || !data) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-4">
         <F1HeroSkeleton />
         <F1CalendarSkeleton />
         <F1RecentResultsSkeleton />
@@ -31,7 +31,7 @@ export default function F1PageWrapper() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-4">
       <F1HeroSection nextRace={data.nextRace} />
       <F1CalendarSection upcomingRaces={data.upcomingRaces} />
       <F1RecentResultsSection recentRaces={data.recentRaces} />

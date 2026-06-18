@@ -65,7 +65,7 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search entries..."
-            className="pl-10 pr-10 h-9 py-0 w-48 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
+            className="pl-10 pr-10 h-9 py-0 w-48 text-xs bg-surface-2 hover:bg-surface-3 border-border-subtle focus:border-border-focus"
           />
           {search && (
             <button

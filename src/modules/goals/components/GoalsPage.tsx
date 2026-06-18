@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, startTransition } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useCommandCenter } from "@/modules/command-center/store";
-import { Search } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
+import { Search, Plus } from "lucide-react";
 import { Input } from "@/shared/components/ui/input";
 import {
   Select,
@@ -21,6 +19,7 @@ import { ReviewsView } from "./ReviewsView";
 import { GoalRightPanel } from "./GoalFocusPanel";
 import { GoalsLoadingSkeleton } from "./GoalsSkeleton";
 import { TabNav } from "@/shared/components/ui/tab-nav";
+import { StaggerList, StaggerItem, FadeIn } from "@/shared/components/ui/motion";
 import { useGoals } from "../hooks/useGoals";
 import { useRealtimeGoals } from "../hooks/useRealtimeGoals";
 import type { Goal, GoalSort, GoalCategory } from "../types";
@@ -136,71 +135,78 @@ export function GoalsPage() {
     [goals, statusFilter, category, sort, search],
   );
 
+  // Search + filters — rendered on the tab row (desktop) OR a second row (mobile).
+  const filtersBlock = (
+    <>
+      <div className="relative flex flex-1 items-center sm:w-48 sm:flex-none">
+        <Search size={14} className="pointer-events-none absolute left-2.5 text-text-tertiary" />
+        <Input
+          variant="tasks"
+          placeholder="Search goals…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-9 w-full bg-surface-2 py-0 pl-8 text-xs hover:bg-surface-3 border-border-subtle focus:border-border-focus"
+        />
+      </div>
+      <Select value={category} onValueChange={(v) => setCategory(v as GoalCategory | "all")}>
+        <SelectTrigger variant="tasks" className="h-9 w-32 text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent variant="tasks">
+          {CATEGORIES.map((c) => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}
+        </SelectContent>
+      </Select>
+      <Select value={sort} onValueChange={(v) => setSort(v as GoalSort)}>
+        <SelectTrigger variant="tasks" className="h-9 w-28 text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent variant="tasks">
+          {SORTS.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}
+        </SelectContent>
+      </Select>
+    </>
+  );
+
   return (
     <div className="flex min-h-full flex-col">
-      <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-6">
-        {isLoading ? (
-          <GoalsLoadingSkeleton />
-        ) : (
-          <>
-            {/* ── Unified toolbar — replaces the page title; the TopBar breadcrumb
-                 ("Life / Goals") already names the page, so the H1 was redundant. ── */}
-            {goals.length > 0 && (
-              <motion.div
-                className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-subtle"
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-              >
-                {/* Unified tab bar — list filters (All/Active/Completed) and the
-                    alternate views (Timeline/Reviews) are one control. */}
+      {isLoading ? (
+        <GoalsLoadingSkeleton />
+      ) : (
+        <>
+          {/* ── Full-width toolbar rail — tabs + filters, flush under the TopBar.
+               The breadcrumb ("Life / Goals") names the page, so no H1. ── */}
+          {goals.length > 0 && (
+            <FadeIn y={-6} className="border-b border-border-subtle px-4 sm:px-6">
+              {/* Row 1 — tabs + action (mobile: icon-only "+" at right ; desktop: filters + full button) */}
+              <div className="flex items-center gap-x-3">
                 <TabNav
                   accent={ACCENT}
                   activeKey={tab}
                   items={TABS.map((t) => ({ key: t.value, label: t.label, onClick: () => setTab(t.value) }))}
                 />
 
-                {/* Right cluster — filters + action */}
-                <div className="ml-auto flex flex-wrap items-center gap-2 pb-1.5">
+                <div className="ml-auto flex items-center gap-2 pb-1.5">
                   {view === "list" && (
-                    <>
-                      <div className="relative flex w-40 items-center sm:w-48">
-                        <Search size={14} className="pointer-events-none absolute left-2.5 text-text-tertiary" />
-                        <Input
-                          variant="tasks"
-                          placeholder="Search goals…"
-                          value={search}
-                          onChange={(e) => setSearch(e.target.value)}
-                          className="h-8 w-full bg-surface-1 py-0 pl-8 text-xs hover:bg-surface-2 border-border-subtle focus:border-border-focus"
-                        />
-                      </div>
-                      <Select value={category} onValueChange={(v) => setCategory(v as GoalCategory | "all")}>
-                        <SelectTrigger variant="tasks" className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent variant="tasks">
-                          {CATEGORIES.map((c) => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}
-                        </SelectContent>
-                      </Select>
-                      <Select value={sort} onValueChange={(v) => setSort(v as GoalSort)}>
-                        <SelectTrigger variant="tasks" className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent variant="tasks">
-                          {SORTS.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}
-                        </SelectContent>
-                      </Select>
-                    </>
+                    <div className="hidden items-center gap-2 sm:flex">{filtersBlock}</div>
                   )}
-
-                  <Button
+                  <button
                     type="button"
                     onClick={() => setIsModalOpen(true)}
-                    style={{ backgroundColor: "var(--color-accent-goals-deep)" }}
-                    className="h-8 shrink-0 px-3 text-sm font-medium text-white hover:opacity-90"
+                    aria-label="New goal"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control text-sm font-medium text-white transition-opacity hover:opacity-90 sm:w-auto sm:px-3 sm:whitespace-nowrap"
+                    style={{ backgroundColor: "var(--color-accent-goals)" }}
                   >
-                    + New Goal
-                  </Button>
+                    <Plus size={16} className="sm:hidden" />
+                    <span className="hidden sm:inline">+ New Goal</span>
+                  </button>
                 </div>
-              </motion.div>
-            )}
+              </div>
 
+              {/* Row 2 (mobile only) — search + filters */}
+              {view === "list" && (
+                <div className="mt-1.5 flex items-center gap-2 pb-2 sm:hidden">{filtersBlock}</div>
+              )}
+            </FadeIn>
+          )}
+
+          {/* Content */}
+          <div className="px-4 py-4 sm:px-6 sm:py-6">
             {goals.length === 0 ? (
               <GoalsEmptyState onCreateClick={() => setIsModalOpen(true)} />
             ) : view === "timeline" ? (
@@ -211,43 +217,34 @@ export function GoalsPage() {
               <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
                 {/* Left — list */}
                 <div className="flex-1 min-w-0">
-                  {/* List */}
-                  <div className="space-y-3">
-                    {displayed.length === 0 ? (
-                      <p className="py-16 text-center text-sm text-text-tertiary">
-                        No goals match this filter.
-                      </p>
-                    ) : (
-                      <AnimatePresence mode="popLayout">
-                        {displayed.map((goal, i) => (
-                          <motion.div
-                            key={goal.id}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={{ duration: 0.18, delay: i * 0.04, ease: "easeOut" }}
-                          >
-                            <GoalCard goal={goal} />
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                    )}
-                  </div>
+                  {displayed.length === 0 ? (
+                    <p className="py-16 text-center text-sm text-text-tertiary">
+                      No goals match this filter.
+                    </p>
+                  ) : (
+                    <StaggerList className="space-y-3">
+                      {displayed.map((goal, i) => (
+                        <StaggerItem key={goal.id} index={i}>
+                          <GoalCard goal={goal} />
+                        </StaggerItem>
+                      ))}
+                    </StaggerList>
+                  )}
                 </div>
 
                 {/* Right panel */}
-                <div className="w-full lg:w-72 lg:shrink-0">
+                <FadeIn delay={0.08} className="w-full lg:w-72 lg:shrink-0">
                   <GoalRightPanel
                     goals={goals}
                     activeCategory={activeCategory}
                     onCategoryClick={handleCompassClick}
                   />
-                </div>
+                </FadeIn>
               </div>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
 
       <GoalPanel open={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>

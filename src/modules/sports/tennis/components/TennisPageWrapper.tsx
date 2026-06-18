@@ -17,7 +17,7 @@ export default function TennisPageWrapper() {
 
   if (isLoading || !data) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-4">
         <TennisHeroSkeleton />
         <TennisUpcomingSkeleton />
         <TennisRecentResultsSkeleton />
@@ -27,7 +27,7 @@ export default function TennisPageWrapper() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-4">
       <TennisHeroSection
         playerHeroes={data.playerHeroes}
         userId={data.userId}

@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Button } from "@/shared/components/ui/button";
+import { FadeIn } from "@/shared/components/ui/motion";
 
 const ACCENT_HEX = "#22c55e";
 
@@ -11,12 +11,7 @@ interface Props {
 
 export function GoalsEmptyState({ onCreateClick }: Props) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="flex flex-col items-center text-center max-w-xs mx-auto py-16"
-    >
+    <FadeIn y={12} className="flex flex-col items-center text-center max-w-xs mx-auto py-16">
       <svg width="96" height="96" viewBox="0 0 96 96" fill="none" className="mb-7">
         {/* Outer dashed ring */}
         <circle cx="48" cy="48" r="44" stroke={ACCENT_HEX} strokeWidth="1" strokeOpacity="0.08" strokeDasharray="3 6" />
@@ -46,11 +41,11 @@ export function GoalsEmptyState({ onCreateClick }: Props) {
       <Button
         type="button"
         onClick={onCreateClick}
-        className="h-8 px-4 text-sm font-medium text-white hover:opacity-90"
+        className="h-9 rounded-control px-4 text-sm font-medium text-white hover:opacity-90"
         style={{ backgroundColor: "var(--color-accent-goals)" }}
       >
         + Add New Goal
       </Button>
-    </motion.div>
+    </FadeIn>
   );
 }

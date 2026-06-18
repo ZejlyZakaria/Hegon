@@ -122,7 +122,7 @@ export function ProjectModal({ open, onOpenChange, workspaceId, project }: Proje
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md bg-surface-3 border-border-strong">
+      <DialogContent className="sm:max-w-md bg-surface-2 border-border-strong">
         <DialogHeader>
           <DialogTitle className="text-sm font-semibold text-text-primary">
             {isEdit ? "Rename project" : "New project"}

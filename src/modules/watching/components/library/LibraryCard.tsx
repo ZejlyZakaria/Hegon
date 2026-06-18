@@ -50,7 +50,7 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
   return (
     <div className="group relative cursor-pointer" onClick={onClick}>
       {/* image */}
-      <div className="relative aspect-2/3 overflow-hidden rounded-lg transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
+      <div className="relative aspect-2/3 overflow-hidden rounded-tile transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
         <Image
           src={item.poster_url || "/placeholder.svg"}
           alt={item.title}

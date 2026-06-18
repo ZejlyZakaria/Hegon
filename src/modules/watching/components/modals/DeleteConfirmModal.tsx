@@ -32,7 +32,7 @@ export default function DeleteConfirmModal({
 }: DeleteConfirmModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="sm:max-w-md bg-surface-3 border-border-strong rounded-xl">
+      <DialogContent className="sm:max-w-md bg-surface-2 border-border-strong">
         <DialogHeader>
           <DialogTitle className="text-sm font-semibold text-text-primary">
             {title}

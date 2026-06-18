@@ -20,10 +20,10 @@ const textareaVariants = cva(
         
         // HEGON field — matches the Input "tasks" variant exactly
         tasks: cn(
-          "min-h-20 resize-none rounded-lg border border-border-default",
-          "bg-surface-overlay",
+          "min-h-20 resize-none rounded-control border border-border-default",
+          "bg-surface-2",
           "text-text-primary placeholder:text-text-tertiary",
-          "hover:bg-surface-2",
+          "hover:bg-surface-3",
           "focus:border-border-focus",
           "aria-invalid:border-destructive"
         ),

@@ -13,8 +13,8 @@ function Pulse({ className }: { className: string }) {
 
 export function CarouselSkeleton({ cards = 4 }: { cards?: number }) {
   return (
-    <div className="mb-3">
-      <div className="flex items-center justify-between mb-1">
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
         <div className="space-y-2">
           <Pulse className="h-5 w-40 bg-surface-2" />
           <Pulse className="h-3 w-24 bg-surface-2" />
@@ -25,13 +25,13 @@ export function CarouselSkeleton({ cards = 4 }: { cards?: number }) {
         </div>
       </div>
       {/* Desktop: backdrop grid */}
-      <div className="hidden lg:grid gap-4" style={{ gridTemplateColumns: `repeat(${cards}, 1fr)` }}>
+      <div className="hidden lg:grid gap-4 py-1.5" style={{ gridTemplateColumns: `repeat(${cards}, 1fr)` }}>
         {Array.from({ length: cards }).map((_, i) => (
           <div key={i} className="animate-pulse rounded-xl overflow-hidden bg-surface-2 aspect-video" />
         ))}
       </div>
       {/* Mobile: poster rail (~2.4 visible) */}
-      <div className="flex gap-3 lg:hidden">
+      <div className="flex gap-3 py-1.5 lg:hidden">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="w-[42%] shrink-0 animate-pulse rounded-xl overflow-hidden bg-surface-2 aspect-2/3" />
         ))}
@@ -48,19 +48,19 @@ export function DontMissSkeleton() {
   return (
     <section>
       {/* header — mirrors the real "Don't Miss" title + subtitle (no shift on resolve) */}
-      <div className="mb-1">
+      <div className="mb-1.5">
         <div className="h-5 w-28 rounded bg-surface-2 animate-pulse" />
         <div className="mt-1 h-3 w-44 rounded bg-surface-2 animate-pulse" />
       </div>
       {/* Desktop: mirrors the real accordion card while images stream — a dark card
           with a pulsing poster anchored left (same as DontMissCard), and the same
-          py-3 wrapper, so skeleton → real-cards is seamless in shape AND spacing. */}
-      <div className="hidden py-3 lg:block">
+          py-1.5 wrapper, so skeleton → real-cards is seamless in shape AND spacing. */}
+      <div className="hidden py-1.5 lg:block">
         <div className="flex h-60 gap-4">
           {[EXP, COL, COL, COL, COL, COL].map((f, i) => (
             <div
               key={i}
-              className="relative overflow-hidden rounded-2xl ring-1 ring-inset ring-white/10"
+              className="relative overflow-hidden rounded-card ring-1 ring-inset ring-white/10"
               style={{ flex: f, backgroundColor: "#0e0e10" }}
             >
               <div className="absolute inset-y-0 left-0 bg-surface-2 animate-pulse" style={{ aspectRatio: "2/3" }} />
@@ -69,7 +69,7 @@ export function DontMissSkeleton() {
         </div>
       </div>
       {/* Mobile: poster rail */}
-      <div className="flex gap-3 py-3 lg:hidden">
+      <div className="flex gap-3 py-1.5 lg:hidden">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="aspect-2/3 w-[42%] shrink-0 animate-pulse rounded-xl bg-surface-2" />
         ))}
@@ -84,7 +84,7 @@ export function ForYouSkeleton() {
   return (
     <section>
       {/* header — title + subtitle + nav arrows, mirrors the real For You header */}
-      <div className="mb-1 flex items-center justify-between">
+      <div className="mb-1.5 flex items-center justify-between">
         <div>
           <div className="h-5 w-24 rounded bg-surface-2 animate-pulse" />
           <div className="mt-1 h-3 w-40 rounded bg-surface-2 animate-pulse" />
@@ -94,14 +94,14 @@ export function ForYouSkeleton() {
           <div className="h-8 w-8 rounded-full bg-surface-2 animate-pulse" />
         </div>
       </div>
-      {/* Desktop: backdrop row */}
-      <div className="hidden gap-4 lg:flex">
+      {/* Desktop: backdrop row — py-1.5 mirrors the real row's hover-scale headroom */}
+      <div className="hidden gap-4 py-1.5 lg:flex">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex-1 aspect-video rounded-xl bg-surface-2 animate-pulse" />
         ))}
       </div>
       {/* Mobile: poster rail */}
-      <div className="flex gap-3 lg:hidden">
+      <div className="flex gap-3 py-1.5 lg:hidden">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="aspect-2/3 w-[42%] shrink-0 rounded-xl bg-surface-2 animate-pulse" />
         ))}

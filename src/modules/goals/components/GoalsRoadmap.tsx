@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { cn } from "@/shared/utils/utils";
+import { FadeIn, StaggerList, StaggerItem } from "@/shared/components/ui/motion";
 import { CATEGORY_COLOR } from "../constants";
 import type { Goal, GoalCategory } from "../types";
 
@@ -54,7 +55,7 @@ function Roadmap({ goals }: { goals: Goal[] }) {
   const now = new Date();
 
   return (
-    <div className="surface-card rounded-xl p-4">
+    <FadeIn className="surface-card rounded-card p-4">
       {/* Month axis */}
       <div className="flex">
         <div className="shrink-0" style={{ width: LABEL_W }} />
@@ -82,11 +83,11 @@ function Roadmap({ goals }: { goals: Goal[] }) {
           </div>
         </div>
 
-        <div className="relative space-y-1.5 py-2">
+        <StaggerList className="relative space-y-1.5 py-2">
           {dated.length === 0 ? (
             <p className="py-8 text-center text-xs text-text-tertiary">No dated goals yet — add a target date to see them here.</p>
           ) : (
-            dated.map((g) => {
+            dated.map((g, gi) => {
               const start = new Date(g.started_at);
               const end = new Date(g.target_date!);
               const left = pct(start);
@@ -97,10 +98,10 @@ function Roadmap({ goals }: { goals: Goal[] }) {
               const milestones = (g.milestones ?? []).filter((m) => m.due_date);
 
               return (
+                <StaggerItem key={g.id} index={gi}>
                 <Link
-                  key={g.id}
                   href={`/life/goals/${g.id}`}
-                  className={cn("group flex items-center rounded-md py-1 transition-colors hover:bg-surface-2", done && "opacity-50")}
+                  className={cn("group flex items-center rounded-tile py-1 transition-colors hover:bg-surface-2", done && "opacity-50")}
                 >
                   {/* Label */}
                   <div className="flex shrink-0 items-center gap-1.5 pr-3" style={{ width: LABEL_W }}>
@@ -154,16 +155,17 @@ function Roadmap({ goals }: { goals: Goal[] }) {
                     })()}
                   </div>
                 </Link>
+                </StaggerItem>
               );
             })
           )}
-        </div>
+        </StaggerList>
       </div>
 
       {/* No-deadline shelf */}
       {undated.length > 0 && (
         <div className="mt-3 border-t border-border-subtle pt-3">
-          <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-tertiary">No deadline</p>
+          <p className="mb-2 text-xs font-semibold text-text-secondary">No deadline</p>
           <div className="flex flex-wrap gap-2">
             {undated.map((g) => (
               <Link
@@ -179,7 +181,7 @@ function Roadmap({ goals }: { goals: Goal[] }) {
           </div>
         </div>
       )}
-    </div>
+    </FadeIn>
   );
 }
 
@@ -223,27 +225,28 @@ function MobileBuckets({ goals }: { goals: Goal[] }) {
         if (!items || items.length === 0) return null;
         return (
           <div key={b.key}>
-            <p className={cn("mb-2 text-[11px] font-semibold uppercase tracking-wider", b.key === "overdue" ? "text-red-400" : "text-text-tertiary")}>
+            <p className={cn("mb-2 text-xs font-semibold", b.key === "overdue" ? "text-red-400" : "text-text-secondary")}>
               {b.label}
             </p>
-            <div className="space-y-1.5">
-              {items.map((g) => (
-                <Link
-                  key={g.id}
-                  href={`/life/goals/${g.id}`}
-                  className="surface-card flex items-center gap-2 rounded-lg p-2.5 transition-transform duration-200 ease-out hover:scale-[1.01]"
-                >
-                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colorOf(g.category) }} />
-                  <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{g.title}</span>
-                  <span className="shrink-0 text-xs tabular-nums text-text-tertiary">{g.progress}%</span>
-                  {g.target_date && (
-                    <span className="shrink-0 text-[10px] text-text-tertiary">
-                      {new Date(g.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                    </span>
-                  )}
-                </Link>
+            <StaggerList className="space-y-1.5">
+              {items.map((g, i) => (
+                <StaggerItem key={g.id} index={i}>
+                  <Link
+                    href={`/life/goals/${g.id}`}
+                    className="surface-card flex items-center gap-2 rounded-card p-2.5 transition-transform duration-200 ease-out hover:scale-[1.01]"
+                  >
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colorOf(g.category) }} />
+                    <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{g.title}</span>
+                    <span className="shrink-0 text-xs tabular-nums text-text-tertiary">{g.progress}%</span>
+                    {g.target_date && (
+                      <span className="shrink-0 text-[10px] text-text-tertiary">
+                        {new Date(g.target_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      </span>
+                    )}
+                  </Link>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerList>
           </div>
         );
       })}

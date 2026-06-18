@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TrendingUp, Sparkles, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Button } from "@/shared/components/ui/button";
@@ -71,7 +71,6 @@ export function ReviewPanel({ open, onClose }: Props) {
       open={open}
       onClose={handleClose}
       width="wide"
-      icon={<Sparkles size={14} style={{ color: ACCENT }} />}
       title={
         <div className="flex min-w-0 items-baseline gap-2">
           <span className="text-sm font-semibold text-text-primary">Weekly Review</span>
@@ -106,10 +105,9 @@ export function ReviewPanel({ open, onClose }: Props) {
     >
       <div className="space-y-4 p-4">
         {/* ── What moved — the mirror ── */}
-        <div className="rounded-lg border border-border-subtle bg-surface-2 p-3">
+        <div className="rounded-control border border-border-subtle bg-surface-2 p-3">
           <div className="mb-1.5 flex items-center gap-1.5">
-            <TrendingUp size={12} className="text-text-tertiary" />
-            <h3 className="text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+            <h3 className="text-[11px] font-semibold text-text-secondary">
               What moved
             </h3>
             {moved > 0 && (
@@ -138,7 +136,7 @@ export function ReviewPanel({ open, onClose }: Props) {
         <button
           type="button"
           onClick={() => setToJournal((v) => !v)}
-          className="flex w-full items-center gap-2.5 rounded-lg border border-border-subtle bg-surface-2 px-3 py-2.5 text-left transition-colors hover:bg-surface-3"
+          className="flex w-full items-center gap-2.5 rounded-control border border-border-subtle bg-surface-2 px-3 py-2.5 text-left transition-colors hover:bg-surface-3"
         >
           <span
             className={cn(
@@ -176,7 +174,7 @@ function Field({
         rows={2}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-surface-overlay focus:border-border-focus"
+        className="bg-surface-2 focus:border-border-focus"
       />
     </div>
   );

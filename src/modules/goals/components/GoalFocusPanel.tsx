@@ -52,7 +52,7 @@ export function GoalRightPanel({
         <button
           type="button"
           onClick={() => router.push(`/life/goals/${focusGoal.id}`)}
-          className="relative w-full cursor-pointer overflow-hidden rounded-xl p-3.5 text-left transition-transform duration-200 ease-out hover:scale-[1.01]"
+          className="relative w-full cursor-pointer overflow-hidden rounded-card p-3.5 text-left transition-transform duration-200 ease-out hover:scale-[1.01]"
           style={{
             background: "var(--color-accent-goals-deep)",
             boxShadow:
@@ -61,7 +61,7 @@ export function GoalRightPanel({
         >
           <div className="mb-3 flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: ACCENT }} />
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#86efac" }}>
+            <h3 className="text-xs font-semibold" style={{ color: "#86efac" }}>
               Focus
             </h3>
           </div>
@@ -99,7 +99,7 @@ export function GoalRightPanel({
       />
 
       {/* Quick Stats */}
-      <div className="surface-card relative overflow-hidden rounded-xl p-3">
+      <div className="surface-card relative overflow-hidden rounded-card p-3">
         <h3 className="mb-3 text-xs font-semibold text-text-secondary">
           Stats
         </h3>

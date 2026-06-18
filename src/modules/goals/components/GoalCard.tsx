@@ -5,6 +5,7 @@ import Link from "next/link";
 import { cn } from "@/shared/utils/utils";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
 import { categoryColor } from "../constants";
+import { Badge } from "@/shared/components/ui/badge";
 import type { Goal } from "../types";
 
 function formatDate(dateStr: string | null) {
@@ -50,7 +51,7 @@ export function GoalCard({ goal }: Props) {
     <Link
       href={`/life/goals/${goal.id}`}
       className={cn(
-        "surface-card group block rounded-xl p-3.5 transition-transform duration-200 ease-out hover:scale-[1.01]",
+        "surface-card group block rounded-card p-3.5 transition-transform duration-200 ease-out hover:scale-[1.01]",
         isCompleted && "opacity-60",
       )}
     >
@@ -58,13 +59,9 @@ export function GoalCard({ goal }: Props) {
         {/* Content */}
         <div className="min-w-0">
           {goal.category ? (
-            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: accent }}>
-              {goal.category}
-            </span>
+            <Badge color={accent} uppercase>{goal.category}</Badge>
           ) : (
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-              No category
-            </span>
+            <Badge uppercase>No category</Badge>
           )}
 
           <h3

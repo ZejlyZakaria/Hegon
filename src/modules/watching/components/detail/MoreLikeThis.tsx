@@ -40,21 +40,20 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
               onClick={() => onAddClick?.(sim)}
               className="group block w-full cursor-pointer text-left disabled:cursor-default"
             >
-              <div className="relative aspect-2/3 overflow-hidden rounded-lg border border-border-subtle">
+              <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
                 <Image
                   src={sim.poster_path ? `https://image.tmdb.org/t/p/w300${sim.poster_path}` : "/placeholder.svg"}
                   alt={title}
                   fill
                   sizes="15vw"
                   loading="lazy"
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="object-cover"
                   unoptimized
                 />
-                <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 {clickable && (
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-watching text-white shadow-lg">
-                      <Plus size={18} />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/25 group-hover:opacity-100">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 ring-1 ring-white/20 backdrop-blur-md">
+                      <Plus size={13} className="text-white" />
                     </div>
                   </div>
                 )}

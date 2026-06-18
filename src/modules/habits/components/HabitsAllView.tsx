@@ -32,7 +32,7 @@ export function HabitsAllView({ onDelete }: Props) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Active */}
       <section>
         <SectionLabel label="All Habits" count={habits.length} />

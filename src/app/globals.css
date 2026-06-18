@@ -62,6 +62,13 @@
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
+  /* Semantic radius by element role — the PREFERRED utilities. Change one
+     :root line to reskin a whole role. (rounded-card / -tile / -control / -chip / -modal) */
+  --radius-chip: var(--radius-chip);
+  --radius-control: var(--radius-control);
+  --radius-tile: var(--radius-tile);
+  --radius-card: var(--radius-card);
+  --radius-modal: var(--radius-modal);
 
   /* ── Motion ─────────────────────────────────────────────────────────── */
   --motion-fast: var(--motion-fast);
@@ -227,6 +234,14 @@
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
+
+  /* ── Semantic radius by element role — change ONE line to reskin a whole role ──
+     The visual answer wins: tweak a value, look, decide. */
+  --radius-chip: 6px;     /* tags, badges, small chips */
+  --radius-control: 8px;  /* buttons, inputs, selects, segmented */
+  --radius-tile: 8px;     /* vertical media tiles — posters, covers (Library, Books) */
+  --radius-card: 12px;    /* horizontal / content cards — carousels, Goals, Habits, Stats */
+  --radius-modal: 16px;   /* modals, sheets, large panels */
 
   --z-base: 0;
   --z-sticky: 10;

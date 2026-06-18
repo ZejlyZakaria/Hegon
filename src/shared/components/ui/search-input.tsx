@@ -37,11 +37,11 @@ export function SearchInput({
         data-slot="search-input"
         value={value}
         className={cn(
-          "h-9 w-full rounded-lg border border-border-default bg-surface-overlay py-0 pl-8 text-sm",
+          "h-9 w-full rounded-control border border-border-default bg-surface-2 py-0 pl-8 text-sm",
           onClear ? "pr-8" : "pr-3",
           "text-text-primary placeholder:text-text-tertiary",
           "transition-[background-color,border-color] duration-150 ease-out",
-          "hover:bg-surface-2 focus:border-border-focus focus:outline-none",
+          "hover:bg-surface-3 focus:border-border-focus focus:outline-none",
           className,
         )}
         {...props}

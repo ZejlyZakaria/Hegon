@@ -108,19 +108,58 @@ export function HabitsPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="flex min-h-full flex-col px-4 py-4 sm:px-6 sm:py-6 space-y-4"
+      className="flex min-h-full flex-col"
     >
       {!hasAnyHabit && (
-        <>
+        <div className="px-4 py-4 sm:px-6 sm:py-6">
           <HabitsEmptyState onCreateClick={() => setModalOpen(true)} />
           <HabitModal open={modalOpen} onClose={() => setModalOpen(false)} />
-        </>
+        </div>
       )}
 
       {hasAnyHabit && (
         <>
-          {/* Main layout: persistent rail + center + right panel */}
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          {/* Full-width tab rail — flush under the TopBar, identical placement to
+              every other module (Watching is the spacing reference). */}
+          <div className="border-b border-border-subtle px-4 sm:px-6">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <TabNav
+                accent={ACCENT}
+                activeKey={tab}
+                items={[
+                  { key: "today",    label: "Today",    onClick: () => setTab("today") },
+                  { key: "calendar", label: "Calendar", onClick: () => setTab("calendar") },
+                  { key: "stats",    label: "Stats",    onClick: () => setTab("stats") },
+                  { key: "all",      label: "All",      onClick: () => setTab("all") },
+                ]}
+              />
+
+              {/* New Habit stays on every tab (anchors the row → no shift between
+                  tabs, and lets you add from anywhere). Search is Today-only. */}
+              <div className="ml-auto flex items-center gap-2 pb-1.5">
+                {tab === "today" && (
+                  <SearchInput
+                    placeholder="Search habits…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onClear={() => setSearch("")}
+                    containerClassName="flex-1 sm:w-48"
+                  />
+                )}
+                <Button
+                  onClick={() => setModalOpen(true)}
+                  style={{ backgroundColor: ACCENT_DEEP }}
+                  className="h-9 shrink-0 px-3 text-sm font-medium text-white hover:opacity-90"
+                >
+                  + New Habit
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Content — persistent showcase rail + center + right panel */}
+          <div className="px-4 py-4 sm:px-6 sm:py-6">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
             {/* Persistent showcase rail — watch + today ring + streak + unlock */}
             <div className="hidden lg:block w-56 shrink-0 sticky top-0 self-start">
               <HabitsShowcase
@@ -132,43 +171,8 @@ export function HabitsPage() {
 
             {/* Center column */}
             <div className="flex-1 min-w-0">
-              {/* Tabs + search + new habit */}
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-subtle">
-                <TabNav
-                  accent={ACCENT}
-                  activeKey={tab}
-                  items={[
-                    { key: "today",    label: "Today",    onClick: () => setTab("today") },
-                    { key: "calendar", label: "Calendar", onClick: () => setTab("calendar") },
-                    { key: "stats",    label: "Stats",    onClick: () => setTab("stats") },
-                    { key: "all",      label: "All",      onClick: () => setTab("all") },
-                  ]}
-                />
-
-                {/* New Habit stays on every tab (anchors the row → no shift between
-                    tabs, and lets you add from anywhere). Search is Today-only. */}
-                <div className="ml-auto flex items-center gap-2 pb-1.5">
-                  {tab === "today" && (
-                    <SearchInput
-                      placeholder="Search habits…"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      onClear={() => setSearch("")}
-                      containerClassName="flex-1 sm:w-48"
-                    />
-                  )}
-                  <Button
-                    onClick={() => setModalOpen(true)}
-                    style={{ backgroundColor: ACCENT_DEEP }}
-                    className="h-9 shrink-0 px-3 text-sm font-medium text-white hover:opacity-90"
-                  >
-                    + New Habit
-                  </Button>
-                </div>
-              </div>
-
               {/* Tab content */}
-              <div className="mt-3 space-y-3">
+              <div className="space-y-3">
                 {tab === "today" && (
                   <>
                     {filteredTodayHabits.length === 0 ? (
@@ -288,6 +292,7 @@ export function HabitsPage() {
                 />
               </div>
             )}
+            </div>
           </div>
         </>
       )}
@@ -295,7 +300,7 @@ export function HabitsPage() {
       <HabitModal open={modalOpen} onClose={() => setModalOpen(false)} />
 
       <Dialog open={!!deletingHabit} onOpenChange={(v) => !v && setDeletingHabit(null)}>
-        <DialogContent className="sm:max-w-sm bg-surface-3 border-border-strong">
+        <DialogContent className="sm:max-w-sm bg-surface-2 border-border-strong">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold text-text-primary">
               {deletingHabit?.archived ? "Delete habit" : "Remove habit"}

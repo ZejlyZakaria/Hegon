@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Check, ChevronDown, Target } from "lucide-react";
+import { Calendar as CalendarIcon, Check, ChevronDown } from "lucide-react";
 
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import {
@@ -17,8 +17,6 @@ import { cn } from "@/shared/utils/utils";
 import { useUpdateGoal } from "../hooks/useGoals";
 import { CATEGORY_COLOR } from "../constants";
 import type { Goal, GoalCategory, GoalPriority, MetricModule, MetricPeriod, UpdateGoalInput } from "../types";
-
-const ACCENT = "var(--color-accent-goals)";
 
 const CATEGORIES: { value: GoalCategory | "none"; label: string }[] = [
   { value: "none",      label: "No category" },
@@ -61,7 +59,6 @@ export function GoalEditPanel({ open, onClose, goal }: Props) {
       open={open}
       onClose={onClose}
       width="wide"
-      icon={<Target size={14} style={{ color: ACCENT }} />}
       title="Edit Goal"
     >
       {goal && <EditBody key={goal.id} goal={goal} />}
@@ -91,7 +88,7 @@ function Menu({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-3"
+          className="flex items-center gap-1.5 rounded-control px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-3"
         >
           {trigger}
           <ChevronDown size={12} className="text-text-tertiary" />
@@ -223,7 +220,7 @@ function EditBody({ goal }: { goal: Goal }) {
 
       {/* Why */}
       <div className="border-t border-border-subtle px-4 py-3">
-        <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-text-tertiary">Why this matters</label>
+        <label className="mb-1 block text-xs font-medium text-text-secondary">Why this matters</label>
         <textarea
           value={why}
           onChange={(e) => setWhy(e.target.value)}
@@ -269,7 +266,7 @@ function EditBody({ goal }: { goal: Goal }) {
         <Prop label="Target date">
           <Popover open={dateOpen} onOpenChange={setDateOpen}>
             <PopoverTrigger asChild>
-              <button type="button" className={cn("flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-surface-3", goal.target_date ? "text-text-secondary" : "text-text-tertiary")}>
+              <button type="button" className={cn("flex items-center gap-1.5 rounded-control px-2 py-1 text-xs transition-colors hover:bg-surface-3", goal.target_date ? "text-text-secondary" : "text-text-tertiary")}>
                 <CalendarIcon size={13} />
                 {goal.target_date ? format(new Date(goal.target_date), "MMM d, yyyy") : "No date"}
               </button>
@@ -336,7 +333,7 @@ function EditBody({ goal }: { goal: Goal }) {
                 onChange={(e) => setTargetInput(e.target.value)}
                 onBlur={saveTarget}
                 placeholder="50"
-                className="w-20 rounded-md bg-surface-2 px-2 py-1 text-right text-xs text-text-primary outline-none transition-colors focus:bg-surface-3"
+                className="w-20 rounded-control bg-surface-2 px-2 py-1 text-right text-xs text-text-primary outline-none transition-colors focus:bg-surface-3"
               />
             </Prop>
 

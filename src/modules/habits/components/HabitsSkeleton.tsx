@@ -44,8 +44,8 @@ function HabitRowSkeleton() {
 
 function TabsRowSkeleton() {
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-1">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:pb-1.5">
+      <div className="flex items-center gap-1 py-2">
         <SkeletonBlock className="h-3.5 w-12 mx-3" />
         <SkeletonBlock className="h-3.5 w-20 mx-3" />
         <SkeletonBlock className="h-3.5 w-20 mx-3" />
@@ -109,45 +109,50 @@ export function StatsSkeleton() {
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.35fr_1fr]">
-        <SkeletonBlock className="h-44 w-full rounded-2xl" />
-        <SkeletonBlock className="h-44 w-full rounded-2xl" />
+        <SkeletonBlock className="h-44 w-full rounded-card" />
+        <SkeletonBlock className="h-44 w-full rounded-card" />
       </div>
-      <SkeletonBlock className="h-56 w-full rounded-2xl" />
+      <SkeletonBlock className="h-56 w-full rounded-card" />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
-          <SkeletonBlock key={i} className="h-28 w-full rounded-2xl" />
+          <SkeletonBlock key={i} className="h-28 w-full rounded-card" />
         ))}
       </div>
-      <SkeletonBlock className="h-56 w-full rounded-2xl" />
+      <SkeletonBlock className="h-56 w-full rounded-card" />
     </div>
   );
 }
 
 export function HabitsLoadingSkeleton() {
   return (
-    <div className="px-4 py-4 sm:px-6 sm:py-6">
-      {/* Main layout: rail + center + right */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        {/* Rail */}
-        <div className="hidden lg:block w-56 shrink-0">
-          <RailSkeleton />
-        </div>
-
-        {/* Center column */}
-        <div className="flex-1 min-w-0 space-y-3">
-          <TabsRowSkeleton />
-          <div className="space-y-2">
-            {[1, 2, 3, 4].map((i) => (
-              <HabitRowSkeleton key={i} />
-            ))}
+    <div>
+      {/* Full-width tab rail — flush under the TopBar (matches the real page). */}
+      <div className="border-b border-border-subtle px-4 sm:px-6">
+        <TabsRowSkeleton />
+      </div>
+      {/* Content: rail + center + right */}
+      <div className="px-4 py-4 sm:px-6 sm:py-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          {/* Rail */}
+          <div className="hidden lg:block w-56 shrink-0">
+            <RailSkeleton />
           </div>
-        </div>
 
-        {/* Right column */}
-        <div className="w-full lg:w-72 lg:shrink-0 space-y-3">
-          <ThisWeekSkeleton />
-          <ThisMonthSkeleton />
-          <CompactHeatmapSkeleton />
+          {/* Center column */}
+          <div className="flex-1 min-w-0 space-y-3">
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map((i) => (
+                <HabitRowSkeleton key={i} />
+              ))}
+            </div>
+          </div>
+
+          {/* Right column */}
+          <div className="w-full lg:w-72 lg:shrink-0 space-y-3">
+            <ThisWeekSkeleton />
+            <ThisMonthSkeleton />
+            <CompactHeatmapSkeleton />
+          </div>
         </div>
       </div>
     </div>

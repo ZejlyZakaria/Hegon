@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Target } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import {
@@ -178,7 +178,6 @@ export function GoalPanel({ open, onClose, goal }: Props) {
       open={open}
       onClose={handleClose}
       width="wide"
-      icon={<Target size={14} style={{ color: ACCENT }} />}
       title={isEdit ? "Edit Goal" : "New Goal"}
       footer={
         <div className="flex justify-end gap-2">
@@ -218,7 +217,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                     variant="tasks"
                     placeholder="e.g. Launch HEGON beta"
                     autoFocus
-                    className="bg-surface-overlay focus:border-border-focus"
+                    className="bg-surface-2 focus:border-border-focus"
                   />
                 </FormControl>
                 <FormMessage />
@@ -240,7 +239,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                     variant="tasks"
                     placeholder="What does success look like?"
                     rows={2}
-                    className="bg-surface-overlay focus:border-border-focus"
+                    className="bg-surface-2 focus:border-border-focus"
                   />
                 </FormControl>
                 <FormMessage />
@@ -262,7 +261,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                     variant="tasks"
                     placeholder="Your north star — why do you really want this?"
                     rows={2}
-                    className="bg-surface-overlay focus:border-border-focus"
+                    className="bg-surface-2 focus:border-border-focus"
                   />
                 </FormControl>
                 <FormMessage />
@@ -281,7 +280,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                   </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value ?? ""}>
                     <FormControl>
-                      <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
+                      <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
                         <SelectValue placeholder="None" />
                       </SelectTrigger>
                     </FormControl>
@@ -310,7 +309,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                   </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
+                      <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
@@ -344,9 +343,12 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                           type="button"
                           variant="outline"
                           className={cn(
-                            "w-full h-8 justify-start text-left font-normal",
-                            "bg-surface-overlay border-border-default",
-                            "text-text-primary hover:bg-surface-overlay hover:border-border-focus",
+                            // Match the canonical "tasks" field exactly (Input/Select):
+                            // h-9, rounded-control, surface-2 → hover surface-3, border
+                            // only shifts on focus.
+                            "h-9 w-full justify-start px-3 text-left text-sm font-normal",
+                            "rounded-control border-border-default bg-surface-2",
+                            "text-text-primary hover:bg-surface-3",
                             "focus-visible:border-border-focus",
                             !field.value && "text-text-tertiary"
                           )}
@@ -385,7 +387,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                   </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
+                      <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
@@ -402,7 +404,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
           </div>
 
           {tracking === "activity" && (
-            <div className="space-y-3 rounded-lg border border-border-subtle bg-surface-overlay/40 p-3">
+            <div className="space-y-3 rounded-control border border-border-subtle bg-surface-2/40 p-3">
               <FormField
                 control={form.control}
                 name="metric_source"
@@ -411,7 +413,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                     <FormLabel className="text-xs font-medium text-text-secondary">Source</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value ?? "watching"}>
                       <FormControl>
-                        <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
+                        <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -428,7 +430,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                 {metricSource === "books" ? (
                   <FormItem>
                     <FormLabel className="text-xs font-medium text-text-secondary">Count</FormLabel>
-                    <div className="flex h-8 items-center rounded-md border border-border-default bg-surface-overlay px-3 text-xs text-text-secondary">
+                    <div className="flex h-9 items-center rounded-control border border-border-default bg-surface-2 px-3 text-sm text-text-secondary">
                       Books
                     </div>
                   </FormItem>
@@ -441,7 +443,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                         <FormLabel className="text-xs font-medium text-text-secondary">Count</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value ?? "films"}>
                           <FormControl>
-                            <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
+                            <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
@@ -470,7 +472,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                           min={1}
                           variant="tasks"
                           placeholder="50"
-                          className="bg-surface-overlay focus:border-border-focus"
+                          className="bg-surface-2 focus:border-border-focus"
                         />
                       </FormControl>
                       <FormMessage />
@@ -485,7 +487,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                       <FormLabel className="text-xs font-medium text-text-secondary">Period</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value ?? "year"}>
                         <FormControl>
-                          <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
+                          <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>

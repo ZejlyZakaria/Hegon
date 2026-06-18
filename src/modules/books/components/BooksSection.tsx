@@ -8,7 +8,7 @@ import { BookRow } from "./BookRow";
 import { BookCardSkeleton, BookRowSkeleton } from "./BooksSkeleton";
 import type { BookStatus, BookSort } from "../types";
 
-const GRID = "grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-7";
+const GRID = "grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-7";
 const ROWS = "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3";
 
 interface BooksSectionProps {

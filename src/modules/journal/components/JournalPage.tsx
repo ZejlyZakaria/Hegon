@@ -49,70 +49,58 @@ export function JournalPage() {
   if (todayLoading) return <JournalLoadingSkeleton />;
 
   return (
-    <div className="flex h-full overflow-hidden gap-6 pr-6">
-      {/* ── Centre ──────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <motion.div
-          className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0"
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
-        >
-          <div>
-            <h1 className="text-xl font-bold text-text-primary">Journal</h1>
-            <p className="text-sm text-text-tertiary mt-0.5">
-              Write. Reflect. Understand. Turn thoughts into clarity.
-            </p>
-          </div>
-        </motion.div>
-
-        {/* Tabs */}
-        <div className="border-b border-border-subtle px-6 shrink-0">
-          <TabNav
-            accent={ACCENT}
-            activeKey={tab}
-            items={[
-              { key: "today", label: "Today",       onClick: () => { setTab("today"); setSelectedEntry(null); } },
-              { key: "all",   label: "All Entries", onClick: () => { setTab("all");   setSelectedEntry(null); } },
-            ]}
-          />
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-h-0 overflow-hidden pl-6 pt-4 pb-5">
-          {tab === "today" ? (
-            <JournalTodayView />
-          ) : selectedEntry ? (
-            <div className="flex flex-col h-full gap-4">
-              <motion.button
-                type="button"
-                onClick={handleBack}
-                className="flex items-center gap-1.5 text-sm text-text-tertiary hover:text-text-secondary transition-colors self-start"
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-              >
-                <ArrowLeft className="w-4 h-4" />
-                All Entries
-              </motion.button>
-              <div className="flex-1 min-h-0">
-                <JournalEditor
-                  key={(liveEntry ?? selectedEntry).id}
-                  entry={liveEntry ?? selectedEntry}
-                  onSave={handleSavePastEntry}
-                />
-              </div>
-            </div>
-          ) : (
-            <JournalEntryList onSelectEntry={handleSelectEntry} />
-          )}
-        </div>
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* Full-width tab rail — flush under the TopBar, identical placement to every
+          module (the page title was redundant with the "Life / Journal" breadcrumb). */}
+      <div className="border-b border-border-subtle px-4 shrink-0 sm:px-6">
+        <TabNav
+          accent={ACCENT}
+          activeKey={tab}
+          items={[
+            { key: "today", label: "Today",       onClick: () => { setTab("today"); setSelectedEntry(null); } },
+            { key: "all",   label: "All Entries", onClick: () => { setTab("all");   setSelectedEntry(null); } },
+          ]}
+        />
       </div>
 
-      {/* ── Right Panel ─────────────────────────── */}
-      <div className="w-72 shrink-0 overflow-y-auto pt-4 pb-5">
-        <JournalRightPanel />
+      {/* Content row — centre + right panel */}
+      <div className="flex flex-1 min-h-0 overflow-hidden gap-6 pr-6">
+        {/* ── Centre ──────────────────────────────── */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden pl-6 pt-4 pb-5">
+            {tab === "today" ? (
+              <JournalTodayView />
+            ) : selectedEntry ? (
+              <div className="flex flex-col h-full gap-4">
+                <motion.button
+                  type="button"
+                  onClick={handleBack}
+                  className="flex items-center gap-1.5 text-sm text-text-tertiary hover:text-text-secondary transition-colors self-start"
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  All Entries
+                </motion.button>
+                <div className="flex-1 min-h-0">
+                  <JournalEditor
+                    key={(liveEntry ?? selectedEntry).id}
+                    entry={liveEntry ?? selectedEntry}
+                    onSave={handleSavePastEntry}
+                  />
+                </div>
+              </div>
+            ) : (
+              <JournalEntryList onSelectEntry={handleSelectEntry} />
+            )}
+          </div>
+        </div>
+
+        {/* ── Right Panel ─────────────────────────── */}
+        <div className="w-72 shrink-0 overflow-y-auto pt-4 pb-5">
+          <JournalRightPanel />
+        </div>
       </div>
     </div>
   );

@@ -58,7 +58,7 @@ function ForYouCard({
 
   return (
     <div
-      className={cn("group relative w-full cursor-pointer overflow-hidden transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]", isPoster ? "rounded-lg" : "rounded-xl")}
+      className={cn("group relative w-full cursor-pointer overflow-hidden transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]", isPoster ? "rounded-tile" : "rounded-card")}
       onClick={onClick}
     >
       <div className={cn("relative bg-surface-2", !imgLoaded && "animate-pulse", isPoster ? "aspect-2/3" : "aspect-video")}>
@@ -203,7 +203,7 @@ export default function ForYouSectionClient({
 
   return (
     <section>
-      <div className="mb-1 flex items-center justify-between">
+      <div className="mb-1.5 flex items-center justify-between">
         <div>
           <h3 className="text-title text-text-primary">
             For You
@@ -240,7 +240,7 @@ export default function ForYouSectionClient({
 
       <div
         ref={scrollRef}
-        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-3 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
+        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-1.5 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {items.map((item, i) => (

@@ -80,13 +80,17 @@ export function BooksPage() {
   const isLibrary = view === "library";
 
   return (
-    <div className="flex min-h-full flex-col px-6 py-6 space-y-4">
+    <div className="flex min-h-full flex-col">
       {isEmpty ? (
-        <BooksEmptyState onAddClick={() => setModalOpen(true)} />
+        <div className="px-4 py-4 sm:px-6 sm:py-6">
+          <BooksEmptyState onAddClick={() => setModalOpen(true)} />
+        </div>
       ) : (
         <>
-          {/* Unified bar — status filters · Stats · Quotes  +  toolbar */}
-          <div className="flex flex-col gap-3 border-b border-border-subtle sm:flex-row sm:items-center sm:justify-between">
+          {/* Full-width bar rail — status filters · Stats · Quotes + toolbar,
+              flush under the TopBar (matches every module). */}
+          <div className="border-b border-border-subtle px-4 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <TabNav
               accent={ACCENT}
               activeKey={isLibrary ? activeTab : view}
@@ -107,7 +111,7 @@ export function BooksPage() {
                     placeholder="Search books…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="h-9 py-0 pl-8 w-full sm:w-48 text-xs bg-surface-1 hover:bg-surface-2 border-border-subtle focus:border-border-focus"
+                    className="h-9 py-0 pl-8 w-full sm:w-48 text-xs bg-surface-2 hover:bg-surface-3 border-border-subtle focus:border-border-focus"
                   />
                 </div>
               )}
@@ -129,7 +133,7 @@ export function BooksPage() {
                     <Select value={sort} onValueChange={(v) => setSort(v as BookSort)}>
                       <SelectTrigger
                         variant="tasks"
-                        className="h-9 w-36 text-xs bg-surface-1 hover:bg-surface-2 focus:border-border-focus"
+                        className="h-9 w-36 text-xs bg-surface-2 hover:bg-surface-3 focus:border-border-focus"
                       >
                         <SelectValue />
                       </SelectTrigger>
@@ -153,10 +157,12 @@ export function BooksPage() {
                 </button>
               </div>
             </div>
+            </div>
           </div>
 
           {/* Content */}
-          {view === "stats" ? (
+          <div className="px-4 py-4 sm:px-6 sm:py-6">
+            {view === "stats" ? (
             <BooksStatsPage />
           ) : view === "quotes" ? (
             <BooksQuotesWall />
@@ -178,6 +184,7 @@ export function BooksPage() {
               </div>
             </div>
           )}
+          </div>
         </>
       )}
 

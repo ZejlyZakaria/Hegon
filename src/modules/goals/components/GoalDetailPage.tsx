@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ArrowLeft, MoreHorizontal, Unlink, Pencil, Trash2, Plus, Search, Folder, Check, ChevronDown } from "lucide-react";
@@ -43,6 +42,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { GOAL_KEYS } from "../hooks/query-keys";
 import { useRealtimeGoals } from "../hooks/useRealtimeGoals";
 import { categoryColor } from "../constants";
+import { Badge } from "@/shared/components/ui/badge";
+import { FadeIn } from "@/shared/components/ui/motion";
 import type { GoalStatus, GoalProgressPoint } from "../types";
 
 const ACCENT = "var(--color-accent-goals)";
@@ -66,8 +67,8 @@ type MomentumPace = { tone: "good" | "bad" | "neutral"; status: string | null; t
 function MomentumCard({ history: raw, pace }: { history: GoalProgressPoint[]; pace: MomentumPace }) {
   if (raw.length === 0) {
     return (
-      <div className="relative overflow-hidden surface-card rounded-xl p-4">
-        <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-tertiary">Momentum</h3>
+      <div className="relative overflow-hidden surface-card rounded-card p-4">
+        <h3 className="mb-3 text-xs font-semibold text-text-secondary">Momentum</h3>
         <p className="text-xs text-text-tertiary">No progress yet — your momentum builds as you make progress.</p>
       </div>
     );
@@ -101,8 +102,8 @@ function MomentumCard({ history: raw, pace }: { history: GoalProgressPoint[]; pa
   const recency = daysSince === 0 ? "today" : daysSince === 1 ? "yesterday" : `${daysSince} days ago`;
 
   return (
-    <div className="relative overflow-hidden surface-card rounded-xl p-4">
-      <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-text-tertiary">Momentum</h3>
+    <div className="relative overflow-hidden surface-card rounded-card p-4">
+      <h3 className="mb-2 text-xs font-semibold text-text-secondary">Momentum</h3>
 
       {/* Headline — am I advancing right now? */}
       {stalled ? (
@@ -333,41 +334,31 @@ export function GoalDetailPage({ id }: Props) {
 
 
   return (
-    <div className="w-full px-4 py-4 sm:px-6">
-      {/* Back */}
-      <motion.button
-        type="button"
-        onClick={() => router.push("/life/goals")}
-        className="mb-4 flex items-center gap-2 text-sm text-text-tertiary hover:text-text-secondary transition-colors"
-        initial={{ opacity: 0, x: -6 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.18, ease: "easeOut" }}
-      >
-        <ArrowLeft size={14} />
-        Goals
-      </motion.button>
+    <div className="w-full">
+      {/* Back — flush under the topbar, same horizontal rhythm as a tab rail */}
+      <FadeIn className="px-4 sm:px-6">
+        <button
+          type="button"
+          onClick={() => router.push("/life/goals")}
+          className="flex items-center gap-2 py-2.5 text-sm text-text-tertiary hover:text-text-secondary transition-colors"
+        >
+          <ArrowLeft size={14} />
+          Go back
+        </button>
+      </FadeIn>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:gap-6 lg:items-start">
+      {/* Content — its own padding (the back link above stays flush) */}
+      <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:gap-6 lg:items-start">
         {/* ── LEFT COLUMN ── */}
         <div className="flex-1 min-w-0 space-y-3">
 
           {/* Hero card */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, delay: 0 }}
-            className="relative overflow-hidden surface-card rounded-xl"
-          >
+          <FadeIn className="relative overflow-hidden surface-card rounded-card">
             <div className="relative p-3">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex-1 min-w-0">
                   {goal.category && (
-                    <span
-                      className="mb-1.5 inline-flex w-fit items-center rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
-                      style={{ border: `1px solid ${accent}33`, backgroundColor: `${accent}1a`, color: accent }}
-                    >
-                      {goal.category}
-                    </span>
+                    <Badge color={accent} uppercase className="mb-1.5">{goal.category}</Badge>
                   )}
                   <h1 className="text-xl font-semibold text-text-primary leading-tight">{goal.title}</h1>
                   {goal.description && (
@@ -379,7 +370,7 @@ export function GoalDetailPage({ id }: Props) {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="h-8 w-8 rounded-md flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-surface-2 transition-colors shrink-0"
+                      className="h-8 w-8 rounded-control flex items-center justify-center text-text-tertiary hover:text-text-secondary hover:bg-surface-2 transition-colors shrink-0"
                     >
                       <MoreHorizontal size={16} />
                     </button>
@@ -425,48 +416,39 @@ export function GoalDetailPage({ id }: Props) {
                 </p>
               </div>
             </div>
-          </motion.div>
+          </FadeIn>
 
           {/* Why this matters — the north star, surfaced not buried */}
           {goal.why && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.04 }}
-              className="relative overflow-hidden surface-card rounded-xl p-4"
+            <FadeIn
+              delay={0.04}
+              className="relative overflow-hidden rounded-card p-4"
+              style={{
+                backgroundColor: `color-mix(in srgb, ${ACCENT} 7%, var(--color-surface-1))`,
+                boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${ACCENT} 18%, transparent)`,
+              }}
             >
-              <div className="absolute inset-y-0 left-0 w-0.5" style={{ backgroundColor: ACCENT }} />
-              <h3 className="mb-1.5 text-xs font-medium uppercase tracking-wider text-text-tertiary">Why this matters</h3>
+              <h3 className="mb-1.5 text-xs font-semibold" style={{ color: ACCENT }}>Why this matters</h3>
               <p className="text-sm italic leading-relaxed text-text-secondary">{goal.why}</p>
-            </motion.div>
+            </FadeIn>
           )}
 
           {/* Milestones */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, delay: 0.06 }}
-            className="relative overflow-hidden surface-card rounded-xl p-4"
-          >
+          <FadeIn delay={0.06} className="relative overflow-hidden surface-card rounded-card p-4">
             <MilestoneList goalId={id} />
-          </motion.div>
+          </FadeIn>
 
           {/* Fueling this Goal — tasks/habits (non-metric goals only) */}
           {!isMetric && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, delay: 0.12 }}
-            className="relative overflow-hidden surface-card rounded-xl p-4"
-          >
-            <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-4">
+          <FadeIn delay={0.12} className="relative overflow-hidden surface-card rounded-card p-4">
+            <h3 className="text-xs font-semibold text-text-secondary mb-4">
               Fueling this Goal
             </h3>
 
             {/* Tasks sub-section */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">Tasks</span>
+                <span className="text-[11px] font-semibold text-text-secondary">Tasks</span>
                 {availableTasks.length > 0 && (
                   <Popover
                     open={taskPickerOpen}
@@ -475,7 +457,7 @@ export function GoalDetailPage({ id }: Props) {
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="flex h-6 items-center gap-1 rounded-md px-2 text-[11px] text-text-tertiary hover:bg-surface-2 hover:text-text-secondary transition-colors"
+                        className="flex h-6 items-center gap-1 rounded-control bg-surface-2 px-2 text-[11px] text-text-secondary transition-colors hover:bg-surface-3"
                       >
                         <Plus size={10} />
                         Link task
@@ -514,7 +496,7 @@ export function GoalDetailPage({ id }: Props) {
                                   key={t.id}
                                   type="button"
                                   onClick={() => { linkTask.mutate(t.id); setTaskPickerOpen(false); setTaskSearch(""); }}
-                                  className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 transition-colors hover:bg-surface-2"
+                                  className="flex w-full items-center gap-2 rounded-control px-3 py-1.5 transition-colors hover:bg-surface-2"
                                 >
                                   <span className="h-1 w-1 shrink-0 rounded-full bg-text-tertiary" />
                                   <span className="flex-1 truncate text-left text-xs text-text-secondary">
@@ -537,7 +519,7 @@ export function GoalDetailPage({ id }: Props) {
                   {linkedTasks.map((task) => (
                     <div
                       key={task.id}
-                      className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface-2 transition-colors border border-border-subtle"
+                      className="group flex items-center gap-2 rounded-control px-2 py-1.5 hover:bg-surface-2 transition-colors border border-border-subtle"
                     >
                       {/* Status icon — kanban style */}
                       <div className="shrink-0">
@@ -575,7 +557,7 @@ export function GoalDetailPage({ id }: Props) {
                           <Unlink size={11} />
                         </button>
                         <div className="pointer-events-none absolute bottom-full right-0 mb-1.5 opacity-0 group-hover/unlink:opacity-100 transition-opacity z-20">
-                          <div className="rounded-md bg-zinc-900 border border-zinc-700/50 px-2 py-1 text-[10px] text-zinc-100 whitespace-nowrap shadow-lg">
+                          <div className="rounded-control bg-surface-overlay border border-border-strong px-2 py-1 text-[10px] text-text-primary whitespace-nowrap shadow-lg">
                             Unlink task
                           </div>
                         </div>
@@ -592,13 +574,13 @@ export function GoalDetailPage({ id }: Props) {
             {/* Habits sub-section */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">Habits</span>
+                <span className="text-[11px] font-semibold text-text-secondary">Habits</span>
                 {availableHabits.length > 0 && (
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="flex h-6 items-center gap-1 rounded-md px-2 text-[11px] text-text-tertiary hover:bg-surface-2 hover:text-text-secondary transition-colors"
+                        className="flex h-6 items-center gap-1 rounded-control bg-surface-2 px-2 text-[11px] text-text-secondary transition-colors hover:bg-surface-3"
                       >
                         <Plus size={10} />
                         Link habit
@@ -616,7 +598,7 @@ export function GoalDetailPage({ id }: Props) {
                               key={h.id}
                               type="button"
                               onClick={() => linkHabit.mutate(h.id)}
-                              className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-2"
+                              className="flex w-full items-start gap-2 rounded-control px-2 py-1.5 transition-colors hover:bg-surface-2"
                             >
                               <HabitIcon size={12} className="mt-0.5 shrink-0" style={{ color: habitIconColor }} />
                               <span className="flex-1 text-left text-xs leading-snug text-text-secondary">{h.title}</span>
@@ -637,7 +619,7 @@ export function GoalDetailPage({ id }: Props) {
                     return (
                       <div
                         key={habit.id}
-                        className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface-2 transition-colors"
+                        className="group flex items-center gap-2 rounded-control px-2 py-1.5 hover:bg-surface-2 transition-colors"
                       >
                         {/* Colored icon box */}
                         <div
@@ -675,7 +657,7 @@ export function GoalDetailPage({ id }: Props) {
                             <Unlink size={11} />
                           </button>
                           <div className="pointer-events-none absolute bottom-full right-0 mb-1.5 opacity-0 group-hover/unlink:opacity-100 transition-opacity z-20">
-                            <div className="rounded-md bg-zinc-900 border border-zinc-700/50 px-2 py-1 text-[10px] text-zinc-100 whitespace-nowrap shadow-lg">
+                            <div className="rounded-control bg-surface-overlay border border-border-strong px-2 py-1 text-[10px] text-text-primary whitespace-nowrap shadow-lg">
                               Unlink habit
                             </div>
                           </div>
@@ -686,18 +668,13 @@ export function GoalDetailPage({ id }: Props) {
                 </div>
               )}
             </div>
-          </motion.div>
+          </FadeIn>
           )}
 
           {/* Counting toward this goal — watching-metric goals */}
           {isMetric && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.12 }}
-              className="relative overflow-hidden surface-card rounded-xl p-4"
-            >
-              <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-tertiary">
+            <FadeIn delay={0.12} className="relative overflow-hidden surface-card rounded-card p-4">
+              <h3 className="mb-3 text-xs font-semibold text-text-secondary">
                 Counting toward this goal
               </h3>
 
@@ -710,7 +687,7 @@ export function GoalDetailPage({ id }: Props) {
                       type="button"
                       onClick={() => router.push(`${metricRoutePrefix}${m.id}`)}
                       title={m.title}
-                      className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-md border border-border-subtle"
+                      className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-control border border-border-subtle"
                     >
                       {m.poster_url ? (
                         <Image
@@ -742,26 +719,21 @@ export function GoalDetailPage({ id }: Props) {
                     : "Mark titles as watched in Watching to fill this goal."}
                 </p>
               )}
-            </motion.div>
+            </FadeIn>
           )}
         </div>
 
         {/* ── RIGHT COLUMN — sticky ── */}
-        <motion.div
-          className="w-full space-y-3 lg:w-72 lg:shrink-0 lg:sticky lg:top-6"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, delay: 0.06 }}
-        >
+        <FadeIn delay={0.06} className="w-full space-y-3 lg:w-72 lg:shrink-0 lg:sticky lg:top-6">
 
           {/* Progress Control */}
-          <div className="relative overflow-hidden surface-card rounded-xl p-4">
-            <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">
+          <div className="relative overflow-hidden surface-card rounded-card p-4">
+            <h3 className="mb-3 text-xs font-semibold text-text-secondary">
               Progress Control
             </h3>
 
             {/* Segmented toggle Manual / Auto */}
-            <div className="flex rounded-md bg-surface-2 p-0.5 mb-4">
+            <div className="flex rounded-control bg-surface-2 p-0.5 mb-4">
               <button
                 type="button"
                 onClick={() => displayMode !== "manual" && handleToggleProgressMode()}
@@ -828,8 +800,8 @@ export function GoalDetailPage({ id }: Props) {
           <MomentumCard history={progressHistory} pace={pace} />
 
           {/* Goal Info */}
-          <div className="relative overflow-hidden surface-card rounded-xl p-4">
-            <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">Goal Info</h3>
+          <div className="relative overflow-hidden surface-card rounded-card p-4">
+            <h3 className="mb-3 text-xs font-semibold text-text-secondary">Goal Info</h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-tertiary">Status</span>
@@ -837,7 +809,7 @@ export function GoalDetailPage({ id }: Props) {
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="flex items-center gap-1.5 rounded-md bg-surface-2 px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-surface-3"
+                      className="flex items-center gap-1.5 rounded-control bg-surface-2 px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-surface-3"
                     >
                       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: STATUS_META[goal.status].color }} />
                       {STATUS_META[goal.status].label}
@@ -907,38 +879,38 @@ export function GoalDetailPage({ id }: Props) {
           </div>
 
           {/* Stats — the single home for the goal's numbers */}
-          <div className="relative overflow-hidden surface-card rounded-xl p-3">
-            <h3 className="text-xs font-medium uppercase tracking-wider text-text-tertiary mb-3">Stats</h3>
+          <div className="relative overflow-hidden surface-card rounded-card p-3">
+            <h3 className="mb-3 text-xs font-semibold text-text-secondary">Stats</h3>
             {isMetric ? (
               <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                <div className="rounded-control bg-surface-2 px-3 py-2 text-center">
                   <div className="text-lg font-bold text-text-primary">{metricCount}</div>
                   <div className="text-xs text-text-tertiary">{isBooks ? "Read" : "Watched"}</div>
                 </div>
-                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                <div className="rounded-control bg-surface-2 px-3 py-2 text-center">
                   <div className="text-lg font-bold" style={{ color: ACCENT }}>{metricTarget}</div>
                   <div className="text-xs text-text-tertiary">Target</div>
                 </div>
-                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                <div className="rounded-control bg-surface-2 px-3 py-2 text-center">
                   <div className="text-lg font-bold text-text-primary">{metricToGo}</div>
                   <div className="text-xs text-text-tertiary">To go</div>
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                <div className="rounded-control bg-surface-2 px-3 py-2 text-center">
                   <div className="text-lg font-bold text-text-primary">{tasksTotal}</div>
                   <div className="text-xs text-text-tertiary">Tasks</div>
                 </div>
-                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                <div className="rounded-control bg-surface-2 px-3 py-2 text-center">
                   <div className="text-lg font-bold" style={{ color: ACCENT }}>{tasksCompleted}</div>
                   <div className="text-xs text-text-tertiary">Done</div>
                 </div>
-                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                <div className="rounded-control bg-surface-2 px-3 py-2 text-center">
                   <div className="text-lg font-bold text-text-primary">{linkedHabits.length}</div>
                   <div className="text-xs text-text-tertiary">Habits</div>
                 </div>
-                <div className="rounded-md bg-surface-2 px-3 py-2 text-center">
+                <div className="rounded-control bg-surface-2 px-3 py-2 text-center">
                   <div className="text-lg font-bold" style={{ color: "#f43f5e" }}>
                     {linkedHabits.filter((h) => h.completed_today).length}
                   </div>
@@ -949,8 +921,8 @@ export function GoalDetailPage({ id }: Props) {
           </div>
 
           {/* Connections — goal↔goal links (the contributes-to chain) */}
-          <div className="relative overflow-hidden surface-card rounded-xl p-4">
-            <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-tertiary">Connections</h3>
+          <div className="relative overflow-hidden surface-card rounded-card p-4">
+            <h3 className="mb-3 text-xs font-semibold text-text-secondary">Connections</h3>
 
             <div className={cn(childGoals.length > 0 && "mb-3")}>
               <label className="mb-1 block text-[11px] text-text-tertiary">Contributes to</label>
@@ -958,7 +930,7 @@ export function GoalDetailPage({ id }: Props) {
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between gap-2 rounded-md bg-surface-2 px-2.5 py-1.5 text-xs transition-colors hover:bg-surface-3"
+                    className="flex w-full items-center justify-between gap-2 rounded-control bg-surface-2 px-2.5 py-1.5 text-xs transition-colors hover:bg-surface-3"
                   >
                     <span className={cn("truncate", parentGoal ? "text-text-secondary" : "text-text-tertiary")}>
                       {parentGoal ? parentGoal.title : "None"}
@@ -1005,7 +977,7 @@ export function GoalDetailPage({ id }: Props) {
                       key={c.id}
                       type="button"
                       onClick={() => router.push(`/life/goals/${c.id}`)}
-                      className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-surface-2"
+                      className="flex w-full items-center justify-between gap-2 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-surface-2"
                     >
                       <span className="min-w-0 truncate text-xs text-text-secondary">{c.title}</span>
                       <span className="shrink-0 text-[10px] tabular-nums text-text-tertiary">{c.progress}%</span>
@@ -1015,7 +987,7 @@ export function GoalDetailPage({ id }: Props) {
               </div>
             )}
           </div>
-        </motion.div>
+        </FadeIn>
       </div>
 
       {/* Edit modal */}

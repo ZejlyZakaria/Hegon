@@ -15,7 +15,7 @@ export default function LibraryGrid({
 
   return (
     <div>
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 space-y-4">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
         {items.map((item, i) => (
           <LibraryCard
             key={item.id}

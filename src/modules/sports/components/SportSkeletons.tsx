@@ -239,7 +239,7 @@ export function FootballStandingsSkeleton() {
 
 export function FootballBestXISkeleton() {
   return (
-    <div className="flex flex-col lg:flex-row gap-4 w-full animate-pulse">
+    <div className="flex flex-col gap-4 lg:flex-row lg:gap-6 w-full animate-pulse">
       <div className="flex-1 lg:w-2/3 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <Pulse className="h-9 w-24 rounded-xl" />

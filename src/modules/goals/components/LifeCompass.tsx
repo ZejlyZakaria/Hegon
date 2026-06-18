@@ -90,7 +90,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
     : null;
 
   return (
-    <div className="surface-card relative overflow-hidden rounded-xl">
+    <div className="surface-card relative overflow-hidden rounded-card">
       <div className="relative p-3">
         <h3
           className="mb-3 text-xs font-semibold text-text-secondary"
@@ -117,7 +117,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
                   key={pct}
                   d={d}
                   fill="none"
-                  stroke="var(--color-surface-2)"
+                  stroke="var(--color-border-default)"
                   strokeWidth={1}
                 />
               );
@@ -133,7 +133,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
                   y1={CENTER}
                   x2={end.x}
                   y2={end.y}
-                  stroke="var(--color-surface-2)"
+                  stroke="var(--color-border-strong)"
                   strokeWidth={1}
                 />
               );
@@ -213,7 +213,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
 
         {/* Tooltip */}
         {tooltipStat && (
-          <div className="mt-2 rounded-md border border-border-default bg-surface-1 px-3 py-2 text-xs text-text-secondary">
+          <div className="mt-2 rounded-control border border-border-default bg-surface-1 px-3 py-2 text-xs text-text-secondary">
             <span
               className="font-medium"
               style={{ color: CATEGORY_COLORS[tooltipStat.category] }}

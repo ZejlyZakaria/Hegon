@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Sparkles, ChevronDown, Trophy, AlertTriangle, Target, BookOpen } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
+import { FadeIn, StaggerList, StaggerItem } from "@/shared/components/ui/motion";
 import { useReviews, useLastReview } from "../hooks/useReviews";
 import { ReviewPanel } from "./ReviewPanel";
 import type { GoalReview } from "../types";
@@ -30,24 +30,12 @@ function ReviewNudge({ last, onStart }: { last: GoalReview | null; onStart: () =
   const left  = CADENCE - since;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
-      className="surface-card relative overflow-hidden rounded-xl p-4"
-    >
-      <div
-        className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-20 blur-2xl"
-        style={{ backgroundColor: ACCENT }}
-      />
-      <div className="relative flex items-center justify-between gap-4">
+    <FadeIn y={-6} className="surface-card relative overflow-hidden rounded-card p-4">
+      <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Sparkles size={15} style={{ color: ACCENT }} />
-            <h2 className="text-sm font-semibold text-text-primary">
-              {due ? "Time for your weekly review" : "You're on top of it"}
-            </h2>
-          </div>
+          <h2 className="text-sm font-semibold text-text-primary">
+            {due ? "Time for your weekly review" : "You're on top of it"}
+          </h2>
           <p className="mt-0.5 text-xs text-text-tertiary">
             {!last
               ? "Take 3 minutes to reflect on your goals and set next week's focus."
@@ -60,15 +48,15 @@ function ReviewNudge({ last, onStart }: { last: GoalReview | null; onStart: () =
           type="button"
           onClick={onStart}
           className={cn(
-            "h-8 shrink-0 rounded-md px-3 text-sm font-medium transition-opacity hover:opacity-90",
-            due ? "text-white" : "border border-border-default text-text-secondary hover:text-text-primary",
+            "h-9 shrink-0 rounded-control px-3 text-sm font-semibold transition-opacity hover:opacity-90",
+            due ? "" : "border border-border-default text-text-secondary hover:text-text-primary",
           )}
-          style={due ? { backgroundColor: ACCENT } : undefined}
+          style={due ? { backgroundColor: "#fff", color: ACCENT } : undefined}
         >
           {due || !last ? "Start review" : "Review now"}
         </button>
       </div>
-    </motion.div>
+    </FadeIn>
   );
 }
 
@@ -78,7 +66,7 @@ function ReviewCard({ review }: { review: GoalReview }) {
   const moved = review.snapshot.length;
 
   return (
-    <div className="surface-card overflow-hidden rounded-xl">
+    <div className="surface-card overflow-hidden rounded-card">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -124,7 +112,7 @@ function ReflectionBlock({
     <div>
       <div className="mb-1 flex items-center gap-1.5">
         <Icon size={12} style={{ color }} />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">{label}</span>
+        <span className="text-[11px] font-semibold text-text-secondary">{label}</span>
       </div>
       <p className="whitespace-pre-wrap text-xs leading-relaxed text-text-secondary">
         {text.trim() || <span className="text-text-tertiary">—</span>}
@@ -139,19 +127,16 @@ export function ReviewsView() {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <ReviewNudge last={last} onStart={() => setModalOpen(true)} />
 
       <div>
-        <div className="mb-3 flex items-center gap-3">
-          <div className="h-1 w-10 rounded-full" style={{ background: `linear-gradient(to right, ${ACCENT}, transparent)` }} />
-          <h3 className="text-[11px] font-bold uppercase tracking-widest text-text-tertiary">Past reviews</h3>
-        </div>
+        <h3 className="mb-3 text-xs font-semibold text-text-secondary">Past reviews</h3>
 
         {isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-14 animate-pulse rounded-lg bg-surface-1" />
+              <div key={i} className="h-14 animate-pulse rounded-card bg-surface-2" />
             ))}
           </div>
         ) : reviews.length === 0 ? (
@@ -165,11 +150,13 @@ export function ReviewsView() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {reviews.map((r) => (
-              <ReviewCard key={r.id} review={r} />
+          <StaggerList className="space-y-2">
+            {reviews.map((r, i) => (
+              <StaggerItem key={r.id} index={i}>
+                <ReviewCard review={r} />
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerList>
         )}
       </div>
 

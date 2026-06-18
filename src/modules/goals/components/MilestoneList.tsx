@@ -64,11 +64,11 @@ function SortableRow({ m, idx, completedCount, onToggle, onDelete }: RowProps) {
         transition,
       }}
       className={cn(
-        "group flex items-center gap-3 rounded-lg border px-3 py-2.5",
-        isDragging && "bg-[#141416] shadow-lg shadow-black/40 z-50 relative border-white/4",
-        !isDragging && m.status === "completed" && "border-white/4 bg-[#0e0e10] opacity-50",
-        !isDragging && m.status !== "completed" && !isActive && "border-white/4 bg-[#0e0e10]",
-        !isDragging && m.status !== "completed" && isActive && "border-white/[0.07] bg-[#141416]"
+        "group flex items-center gap-3 rounded-tile border px-3 py-2.5",
+        isDragging && "bg-surface-2 shadow-lg shadow-black/40 z-50 relative border-border-subtle",
+        !isDragging && m.status === "completed" && "border-border-subtle bg-surface-1 opacity-50",
+        !isDragging && m.status !== "completed" && !isActive && "border-border-subtle bg-surface-1",
+        !isDragging && m.status !== "completed" && isActive && "border-border-default bg-surface-2"
       )}
     >
       <div
@@ -80,7 +80,7 @@ function SortableRow({ m, idx, completedCount, onToggle, onDelete }: RowProps) {
           size={12}
           className={cn(
             "transition-colors",
-            isDragging ? "text-[#a0a0a8]" : "text-[#71717a] group-hover:text-[#a0a0a8]"
+            isDragging ? "text-text-secondary" : "text-text-tertiary group-hover:text-text-secondary"
           )}
         />
       </div>
@@ -106,14 +106,14 @@ function SortableRow({ m, idx, completedCount, onToggle, onDelete }: RowProps) {
       <span
         className={cn(
           "flex-1 text-sm",
-          m.status === "completed" ? "line-through text-[#71717a]" : "text-[#e2e2e6]"
+          m.status === "completed" ? "line-through text-text-tertiary" : "text-text-primary"
         )}
       >
         {m.title}
       </span>
 
       {m.due_date && (
-        <span className="text-[11px] text-[#71717a] shrink-0">
+        <span className="text-[11px] text-text-tertiary shrink-0">
           {new Date(m.due_date).toLocaleDateString("en-GB", {
             day: "numeric",
             month: "short",
@@ -124,7 +124,7 @@ function SortableRow({ m, idx, completedCount, onToggle, onDelete }: RowProps) {
       <button
         type="button"
         onClick={() => onDelete(m.id)}
-        className="text-[#71717a] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+        className="text-text-tertiary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
       >
         <Trash2 size={12} />
       </button>
@@ -202,10 +202,10 @@ export function MilestoneList({ goalId }: Props) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-medium uppercase tracking-wider text-[#71717a]">
+        <h3 className="text-xs font-semibold text-text-secondary">
           The Path
         </h3>
-        <span className="text-xs text-[#71717a]">
+        <span className="text-xs text-text-tertiary">
           {completedCount}/{ordered.length} completed
         </span>
       </div>
@@ -237,7 +237,7 @@ export function MilestoneList({ goalId }: Props) {
               ))}
 
               {adding ? (
-                <div className="flex h-9 items-center gap-2 rounded-lg border border-white/[0.07] px-3">
+                <div className="flex h-9 items-center gap-2 rounded-tile border border-border-default px-3">
                   <input
                     autoFocus
                     value={newTitle}
@@ -247,7 +247,7 @@ export function MilestoneList({ goalId }: Props) {
                       if (e.key === "Escape") setAdding(false);
                     }}
                     placeholder="Milestone title…"
-                    className="flex-1 bg-transparent text-sm text-[#e2e2e6] placeholder:text-[#71717a] focus:outline-none"
+                    className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none"
                   />
                   <button
                     type="button"
@@ -261,7 +261,7 @@ export function MilestoneList({ goalId }: Props) {
                   <button
                     type="button"
                     onClick={() => setAdding(false)}
-                    className="text-xs text-[#71717a]"
+                    className="text-xs text-text-tertiary"
                   >
                     Cancel
                   </button>
@@ -270,7 +270,7 @@ export function MilestoneList({ goalId }: Props) {
                 <button
                   type="button"
                   onClick={() => setAdding(true)}
-                  className="flex h-9 items-center gap-2 w-full rounded-lg border border-dashed border-white/4 px-3 text-sm text-[#71717a] hover:text-[#a0a0a8] hover:border-white/[0.07] transition-colors"
+                  className="flex h-9 items-center gap-2 w-full rounded-tile border border-dashed border-border-subtle px-3 text-sm text-text-tertiary hover:text-text-secondary hover:border-border-default transition-colors"
                 >
                   <Plus size={12} />
                   Add milestone

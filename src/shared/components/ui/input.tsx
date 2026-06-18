@@ -10,7 +10,7 @@ const inputVariants = cva(
       variant: {
         // Default shadcn style (inchangé)
         default: cn(
-          "rounded-md border border-input bg-transparent shadow-xs",
+          "rounded-control border border-input bg-transparent shadow-xs",
           "text-base md:text-sm",
           "placeholder:text-muted-foreground",
           "selection:bg-primary selection:text-primary-foreground",
@@ -22,10 +22,10 @@ const inputVariants = cva(
         
         // HEGON field — tokens, uniform hover (surface-2), focus = border shift
         tasks: cn(
-          "rounded-lg border border-border-default",
-          "bg-surface-overlay",
+          "rounded-control border border-border-default",
+          "bg-surface-2",
           "text-text-primary placeholder:text-text-tertiary",
-          "hover:bg-surface-2",
+          "hover:bg-surface-3",
           "focus:border-border-focus",
           "aria-invalid:border-destructive",
           "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-text-secondary"

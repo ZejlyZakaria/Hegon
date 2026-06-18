@@ -69,11 +69,11 @@ function MovieCard({
 
   return (
     <div
-      className={cn("group relative w-full cursor-pointer transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]", isPoster ? "rounded-lg" : "rounded-xl")}
+      className={cn("group relative w-full cursor-pointer transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]", isPoster ? "rounded-tile" : "rounded-card")}
       onClick={onView}
     >
       {/* overflow-hidden only on the image container so the dropdown can escape */}
-      <div className={cn("relative overflow-hidden bg-zinc-800", isPoster ? "rounded-lg aspect-2/3" : "rounded-xl aspect-video")}>
+      <div className={cn("relative overflow-hidden bg-zinc-800", isPoster ? "rounded-tile aspect-2/3" : "rounded-card aspect-video")}>
         <Image
           src={isPoster
             ? (item.poster_url || item.backdrop_url || "/placeholder.svg")
@@ -279,7 +279,7 @@ export function MediaCarousel({
   if (localItems.length === 0) {
     return (
       <section>
-        <div className="mb-1 flex items-center justify-between">
+        <div className="mb-1.5 flex items-center justify-between">
           <div>
             <h3 className="text-title text-text-primary">
               {title}
@@ -291,7 +291,7 @@ export function MediaCarousel({
         </div>
         <div
           className={cn(
-            "rounded-xl border border-border-subtle bg-surface-1 flex flex-col items-center justify-center gap-3 py-12 transition-colors",
+            "rounded-card border border-border-subtle bg-surface-1 flex flex-col items-center justify-center gap-3 py-12 transition-colors",
             canAdd && "cursor-pointer group hover:border-border-default",
           )}
           onClick={canAdd ? onAddClick : undefined}
@@ -318,7 +318,7 @@ export function MediaCarousel({
 
   return (
     <section>
-      <div className="mb-1 flex items-center justify-between">
+      <div className="mb-1.5 flex items-center justify-between">
         <div>
           <h3 className="text-title text-text-primary">
             {title}
@@ -358,7 +358,7 @@ export function MediaCarousel({
             <button
               type="button"
               onClick={onAddClick}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 active:scale-[0.97]"
+              className="flex items-center gap-1.5 rounded-control px-3 py-1.5 text-xs font-medium text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 active:scale-[0.97]"
               style={{ backgroundColor: "var(--color-accent-watching)" }}
             >
               <Plus size={12} />
@@ -370,7 +370,7 @@ export function MediaCarousel({
 
       <div
         ref={scrollRef}
-        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-3 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
+        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-1.5 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {sortedItems.map((item, i) => (
@@ -400,7 +400,7 @@ export function MediaCarousel({
 
       {/* Mobile: swipeable poster rail (~2.4 visible) — posters read better than
           wide backdrops on a phone. Native swipe; no arrows. */}
-      <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory py-3">
+      <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory py-1.5">
         {sortedItems.map((item, i) => (
           <motion.div
             key={item.id}

@@ -19,7 +19,7 @@ export default function FootballPageWrapper() {
 
   if (isLoading || !data) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-4">
         <FootballHeroSkeleton />
         <FootballUpcomingSkeleton />
         <FootballRecentResultsSkeleton />
@@ -30,7 +30,7 @@ export default function FootballPageWrapper() {
   }
 
   return (
-    <div className=" p-6 space-y-6">
+    <div className=" p-6 space-y-4">
       <FootballHeroSection
         teamHeroes={data.teamHeroes}
         userId={data.userId}

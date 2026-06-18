@@ -55,10 +55,10 @@ export function IconPicker({ value, onChange, accentColor = "var(--color-text-pr
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex h-9 w-full items-center gap-2 rounded-lg border px-3 text-sm",
-          "border-border-default bg-surface-overlay text-text-primary",
+          "flex h-9 w-full items-center gap-2 rounded-control border px-3 text-sm",
+          "border-border-default bg-surface-2 text-text-primary",
           "transition-[background-color,border-color] duration-150 ease-out",
-          "hover:bg-surface-2 focus:border-border-focus focus:outline-none",
+          "hover:bg-surface-3 focus:border-border-focus focus:outline-none",
           open && "border-border-focus",
         )}
       >
