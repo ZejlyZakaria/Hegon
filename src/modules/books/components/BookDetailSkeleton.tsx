@@ -18,7 +18,7 @@ export function BookDetailSkeleton() {
 
           {/* Left — cover + meta (hero on mobile, column on desktop) */}
           <div className="flex flex-row gap-4 lg:flex-col lg:gap-3">
-            <div className="aspect-2/3 w-28 shrink-0 animate-pulse rounded-lg bg-surface-1 lg:w-full" />
+            <div className="aspect-2/3 w-28 shrink-0 animate-pulse rounded-tile bg-surface-2 lg:w-full" />
             <div className="flex flex-1 flex-col gap-2 lg:flex-none">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="h-3.5 w-full animate-pulse rounded bg-surface-2" />
@@ -33,12 +33,12 @@ export function BookDetailSkeleton() {
               <div className="h-4 w-1/3 animate-pulse rounded bg-surface-2" />
             </div>
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-lg bg-surface-1" />
+              <div key={i} className="h-24 animate-pulse rounded-card bg-surface-2" />
             ))}
           </div>
 
           {/* Right — quotes */}
-          <div className="h-48 animate-pulse rounded-lg bg-surface-1" />
+          <div className="h-48 animate-pulse rounded-card bg-surface-2" />
         </div>
       </div>
     </div>

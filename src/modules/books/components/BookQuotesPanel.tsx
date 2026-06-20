@@ -38,14 +38,14 @@ function QuoteForm({
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-border-subtle bg-surface-1 p-3">
+    <div className="flex flex-col gap-2 rounded-card border border-border-subtle bg-surface-1 p-3">
       <textarea
         autoFocus
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Paste or type the passage…"
         rows={3}
-        className="resize-none rounded-lg bg-surface-2 px-3 py-2 text-sm leading-relaxed text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-white/15"
+        className="resize-none rounded-control bg-surface-2 px-3 py-2 text-sm leading-relaxed text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-white/15"
       />
       <div className="flex items-center gap-2">
         <input
@@ -54,13 +54,13 @@ function QuoteForm({
           type="number"
           min="0"
           placeholder="Page"
-          className="w-20 rounded-lg bg-surface-2 px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-white/15"
+          className="w-20 rounded-control bg-surface-2 px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-white/15"
         />
         <div className="ml-auto flex items-center gap-1.5">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md px-2 py-1 text-xs text-text-tertiary transition-colors hover:text-text-primary"
+            className="rounded-control px-2 py-1 text-xs text-text-tertiary transition-colors hover:text-text-primary"
           >
             Cancel
           </button>
@@ -68,7 +68,7 @@ function QuoteForm({
             type="button"
             onClick={submit}
             disabled={!text.trim() || pending}
-            className="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            className="flex items-center gap-1 rounded-control px-2.5 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
             style={{ backgroundColor: ACCENT }}
           >
             <Check size={11} /> Save
@@ -105,7 +105,7 @@ function QuoteItem({ quote, bookId }: { quote: BookQuote; bookId: string }) {
 
   return (
     <div
-      className="group relative rounded-xl border border-border-subtle bg-surface-1 py-3 pl-4 pr-3.5"
+      className="group relative rounded-card border border-border-subtle bg-surface-1 py-3 pl-4 pr-3.5"
       style={{ borderLeft: `2px solid ${ACCENT}` }}
     >
       <p className="text-sm italic leading-relaxed text-text-primary">“{quote.text}”</p>
@@ -122,7 +122,7 @@ function QuoteItem({ quote, bookId }: { quote: BookQuote; bookId: string }) {
           <button
             type="button"
             onClick={() => updateQuote.mutate({ id: quote.id, favorite: !quote.favorite })}
-            className="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-surface-2"
+            className="flex h-6 w-6 items-center justify-center rounded-control transition-colors hover:bg-surface-2"
             title={quote.favorite ? "Unfavorite" : "Favorite"}
           >
             <Star size={12} className={quote.favorite ? "fill-amber-400 text-amber-400" : "text-text-tertiary"} />
@@ -130,7 +130,7 @@ function QuoteItem({ quote, bookId }: { quote: BookQuote; bookId: string }) {
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            className="flex h-6 w-6 items-center justify-center rounded-control text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary"
             title="Edit"
           >
             <Pencil size={11} />
@@ -138,7 +138,7 @@ function QuoteItem({ quote, bookId }: { quote: BookQuote; bookId: string }) {
           <button
             type="button"
             onClick={() => deleteQuote.mutate(quote.id)}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-2 hover:text-red-400"
+            className="flex h-6 w-6 items-center justify-center rounded-control text-text-tertiary transition-colors hover:bg-surface-2 hover:text-red-400"
             title="Delete"
           >
             <Trash2 size={11} />
@@ -176,7 +176,7 @@ export function BookQuotesPanel({ bookId }: { bookId: string }) {
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors hover:bg-surface-2"
+            className="flex items-center gap-1 rounded-control px-2 py-1 text-xs font-medium transition-colors hover:bg-surface-2"
             style={{ color: ACCENT }}
           >
             <Plus size={12} /> Add
@@ -199,10 +199,10 @@ export function BookQuotesPanel({ bookId }: { bookId: string }) {
 
       {isLoading ? (
         <div className="flex flex-col gap-2.5">
-          {[1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-surface-1" />)}
+          {[1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-card bg-surface-2" />)}
         </div>
       ) : quotes.length === 0 && !adding ? (
-        <div className="rounded-xl border border-dashed border-border-subtle p-6 text-center">
+        <div className="rounded-card border border-dashed border-border-subtle p-6 text-center">
           <Quote size={20} className="mx-auto text-text-tertiary/40" />
           <p className="mt-2 text-sm text-text-secondary">No quotes yet</p>
           <p className="mt-0.5 text-xs text-text-tertiary">Capture the lines that stayed with you.</p>

@@ -92,7 +92,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent aria-describedby={undefined} className="sm:max-w-lg bg-surface-3 border-border-strong flex flex-col max-h-[80vh] gap-0 p-0">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-lg flex flex-col max-h-[80vh] gap-0 p-0">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-4 shrink-0">
           <DialogTitle className="text-sm font-semibold text-text-primary">
@@ -113,7 +113,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                   onClick={() => setSelectedStatus(status)}
                   className="px-1 text-xs font-medium transition-opacity hover:opacity-80"
                   style={{
-                    color: isActive ? "var(--color-accent-books-vivid)" : "#71717a",
+                    color: isActive ? "var(--color-accent-books-vivid)" : "var(--color-text-tertiary)",
                   }}
                 >
                   {STATUS_LABELS[status]}
@@ -137,7 +137,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by title or author…"
                   autoFocus
-                  className="pl-9 pr-9 bg-surface-overlay focus:border-border-focus"
+                  className="pl-9 pr-9 bg-surface-2 focus:border-border-focus"
                 />
                 {searchQuery && (
                   <button
@@ -181,9 +181,9 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                       type="button"
                       onClick={() => handleSelectBook(result)}
                       disabled={createBook.isPending}
-                      className="flex gap-3 p-3 bg-surface-2 hover:bg-surface-overlay rounded-lg border border-white/4 transition-colors text-left disabled:opacity-50"
+                      className="flex gap-3 p-3 bg-surface-2 hover:bg-surface-3 rounded-control border border-border-subtle transition-colors text-left disabled:opacity-50"
                     >
-                      <div className="relative w-10 h-14 shrink-0 bg-surface-overlay rounded overflow-hidden">
+                      <div className="relative aspect-2/3 w-(--cover-sm) shrink-0 bg-surface-2 rounded-[4px] overflow-hidden">
                         {result.cover_url ? (
                           <Image src={result.cover_url} alt={result.title} fill sizes="40px" loading="eager" className="object-contain" />
                         ) : (
@@ -242,7 +242,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                   placeholder="Enter book title"
                   autoFocus
                   required
-                  className="bg-surface-overlay focus:border-border-focus"
+                  className="bg-surface-2 focus:border-border-focus"
                 />
               </div>
 
@@ -253,7 +253,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                   value={manualAuthor}
                   onChange={(e) => setManualAuthor(e.target.value)}
                   placeholder="Enter author name"
-                  className="bg-surface-overlay focus:border-border-focus"
+                  className="bg-surface-2 focus:border-border-focus"
                 />
               </div>
 
@@ -266,7 +266,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                   value={manualPages}
                   onChange={(e) => setManualPages(e.target.value)}
                   placeholder="Number of pages"
-                  className="bg-surface-overlay focus:border-border-focus"
+                  className="bg-surface-2 focus:border-border-focus"
                 />
               </div>
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion } from "framer-motion";
 import { ArrowLeft, BookOpen, Heart, MoreHorizontal, Star, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as Popover from "@radix-ui/react-popover";
@@ -17,11 +16,12 @@ import { BookDetailSkeleton } from "./BookDetailSkeleton";
 import { BookQuotesPanel } from "./BookQuotesPanel";
 import { ContributingToGoals } from "./ContributingToGoals";
 import { GoalRippleToast } from "./GoalRippleToast";
+import { FadeIn } from "@/shared/components/ui/motion";
 import { toast } from "@/shared/utils/toast";
 import type { BookStatus } from "../types";
 
 const ACCENT = "var(--color-accent-books-vivid)";
-const MUTED  = "#71717a";
+const MUTED  = "var(--color-text-tertiary)";
 
 function toLocalDate(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -166,7 +166,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
           type="button"
           onClick={() => toggleFav.mutate({ id: book.id, favorite: !book.favorite })}
           title={book.favorite ? "Remove from favorites" : "Add to favorites"}
-          className="rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface-1 hover:text-text-primary"
+          className="rounded-control p-1.5 text-text-tertiary transition-colors hover:bg-surface-1 hover:text-text-primary"
         >
           <Heart className={`h-4 w-4 ${book.favorite ? "fill-red-500 text-red-500" : ""}`} />
         </button>
@@ -174,7 +174,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
           <Popover.Trigger asChild>
             <button
               type="button"
-              className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface-1 hover:text-text-primary"
+              className="shrink-0 rounded-control p-1.5 text-text-tertiary transition-colors hover:bg-surface-1 hover:text-text-primary"
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>
@@ -189,7 +189,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
                 <button
                   type="button"
                   onClick={() => setDeleteModalOpen(true)}
-                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-red-400 transition-colors hover:bg-red-500/10"
+                  className="flex w-full items-center gap-2 rounded-control px-2.5 py-2 text-xs text-red-400 transition-colors hover:bg-red-500/10"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete book
@@ -207,27 +207,21 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
       <div className="flex h-full flex-col overflow-hidden">
         {/* Back */}
         <div className="flex shrink-0 items-center px-6 pb-3 pt-4">
-          <motion.button
-            type="button"
-            onClick={() => router.back()}
-            className="flex items-center gap-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary"
-            initial={{ opacity: 0, x: -6 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Books
-          </motion.button>
+          <FadeIn>
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="flex items-center gap-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Go back
+            </button>
+          </FadeIn>
         </div>
 
         {/* Body — 3 zones */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          <motion.div
-            className="grid grid-cols-1 gap-6 lg:grid-cols-[176px_minmax(0,1fr)_340px]"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
+          <FadeIn className="grid grid-cols-1 gap-6 lg:grid-cols-[176px_minmax(0,1fr)_340px]">
             {/* ── Mobile-only title, above the cover (hidden on desktop) ── */}
             <div className="lg:hidden">{titleBlock}</div>
 
@@ -242,10 +236,10 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
                   alt={book.title}
                   loading="eager"
                   decoding="async"
-                  className="h-auto w-28 shrink-0 self-start rounded-lg lg:w-full"
+                  className="h-auto w-28 shrink-0 self-start rounded-tile lg:w-full"
                 />
               ) : (
-                <div className="relative flex aspect-2/3 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-subtle bg-surface-1 lg:w-full">
+                <div className="relative flex aspect-2/3 w-28 shrink-0 items-center justify-center overflow-hidden rounded-tile border border-border-subtle bg-surface-1 lg:w-full">
                   <BookOpen className="h-8 w-8 text-text-tertiary" />
                 </div>
               )}
@@ -261,7 +255,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
                 {book.genre.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {book.genre.map((g) => (
-                      <span key={g} className="rounded border border-border-subtle bg-surface-1 px-2 py-0.5 text-xs text-text-tertiary">{g}</span>
+                      <span key={g} className="rounded-chip border border-border-subtle bg-surface-1 px-2 py-0.5 text-xs text-text-tertiary">{g}</span>
                     ))}
                   </div>
                 )}
@@ -274,7 +268,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
               <div className="hidden lg:block">{titleBlock}</div>
 
               {/* Status */}
-              <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface-1 p-4">
+              <div className="flex flex-col gap-3 surface-card rounded-card p-4">
                 <h3 className="text-xs font-semibold text-text-secondary">Status</h3>
                 <div className="flex flex-wrap items-center gap-4">
                   {STATUS_OPTIONS.map(({ value, label }) => {
@@ -297,7 +291,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
 
               {/* Progress (reading) */}
               {book.status === "reading" && (
-                <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface-1 p-4">
+                <div className="flex flex-col gap-3 surface-card rounded-card p-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-semibold text-text-secondary">Progress</h3>
                     <span className="text-xs text-text-tertiary">{progress}%</span>
@@ -332,7 +326,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
 
               {/* Rating (read) */}
               {book.status === "read" && (
-                <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface-1 p-4">
+                <div className="flex flex-col gap-3 surface-card rounded-card p-4">
                   <h3 className="text-xs font-semibold text-text-secondary">Rating</h3>
                   <div className="flex items-center gap-1.5">
                     {Array.from({ length: 5 }).map((_, i) => {
@@ -356,7 +350,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
 
               {/* Description */}
               {book.description && (
-                <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface-1 p-4">
+                <div className="flex flex-col gap-3 surface-card rounded-card p-4">
                   <h3 className="text-xs font-semibold text-text-secondary">Description</h3>
                   <p className={`text-sm leading-snug text-text-secondary ${!descExpanded ? "line-clamp-6" : ""}`}>
                     {book.description}
@@ -375,7 +369,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
               )}
 
               {/* Notes — autosave */}
-              <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface-1 p-4">
+              <div className="flex flex-col gap-3 surface-card rounded-card p-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-semibold text-text-secondary">Notes</h3>
                   {saveNotes.isPending && <span className="text-[11px] text-text-tertiary/60">Saving…</span>}
@@ -395,7 +389,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
               <ContributingToGoals book={book} />
               <BookQuotesPanel bookId={book.id} />
             </aside>
-          </motion.div>
+          </FadeIn>
         </div>
       </div>
 

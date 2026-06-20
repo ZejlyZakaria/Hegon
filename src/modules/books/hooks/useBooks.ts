@@ -52,6 +52,15 @@ export function useBooksRightPanel() {
   });
 }
 
+// Reading-log rows for the Stats "pages read" (Σ pages, in-progress books included).
+export function useReadingLog(year: number | null) {
+  return useQuery({
+    queryKey: BOOK_KEYS.readingLog(year),
+    queryFn:  () => BooksService.getReadingLog(year),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
 // =====================================================
 // MUTATIONS
 // =====================================================
@@ -82,6 +91,7 @@ export function useUpdateBook() {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.stats() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.rightPanel() });
+      queryClient.invalidateQueries({ queryKey: [...BOOK_KEYS.all, 'reading-log'] });
       void syncBooksGoals(queryClient);
       toast.success("Book updated.");
     },
@@ -99,6 +109,8 @@ export function useUpdateProgress() {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.detail(book.id) });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.rightPanel() });
+      queryClient.invalidateQueries({ queryKey: BOOK_KEYS.stats() });
+      queryClient.invalidateQueries({ queryKey: [...BOOK_KEYS.all, 'reading-log'] });
     },
     onError: () => {
       toast.error("Failed to update progress.");

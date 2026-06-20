@@ -77,6 +77,13 @@ export interface UpdateProgressInput {
   current_page: number;
 }
 
+// One day of reading for one book (book_reading_log table).
+export interface ReadingLogRow {
+  date:       string;   // "YYYY-MM-DD" (local day)
+  pages_read: number;
+  book_id:    string;
+}
+
 // =====================================================
 // QUOTES (book_quotes table)
 // =====================================================
@@ -100,6 +107,7 @@ export interface QuoteWithBook extends BookQuote {
   book_title:  string;
   book_author: string | null;
   book_cover:  string | null;
+  book_rating: number | null;
 }
 
 export interface CreateQuoteInput {

@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Button } from "@/shared/components/ui/button";
+import { FadeIn } from "@/shared/components/ui/motion";
 
 const ACCENT_HEX = "#0ea5e9";
 
@@ -11,12 +11,7 @@ interface Props {
 
 export function BooksEmptyState({ onAddClick }: Props) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="flex flex-col items-center text-center max-w-xs mx-auto py-16"
-    >
+    <FadeIn y={12} className="flex flex-col items-center text-center max-w-xs mx-auto py-16">
       <svg width="80" height="72" viewBox="0 0 80 72" fill="none" className="mb-7">
         {/* Shelf base */}
         <line x1="4" y1="68" x2="76" y2="68" stroke={ACCENT_HEX} strokeWidth="1.5" strokeOpacity="0.2" strokeLinecap="round" />
@@ -41,11 +36,11 @@ export function BooksEmptyState({ onAddClick }: Props) {
       <Button
         type="button"
         onClick={onAddClick}
-        className="h-8 px-4 text-sm font-medium text-white hover:opacity-90"
+        className="h-9 rounded-control px-4 text-sm font-medium text-white hover:opacity-90"
         style={{ backgroundColor: "var(--color-accent-books)" }}
       >
         + Add First Book
       </Button>
-    </motion.div>
+    </FadeIn>
   );
 }

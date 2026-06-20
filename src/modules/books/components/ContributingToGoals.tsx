@@ -34,10 +34,10 @@ export function ContributingToGoals({ book }: { book: Book }) {
               key={g.id}
               type="button"
               onClick={() => router.push(`/life/goals/${g.id}`)}
-              className="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border-subtle bg-surface-1 px-3 py-2.5 text-left transition-colors hover:bg-surface-2"
+              className="group flex w-full cursor-pointer items-center gap-3 rounded-card border border-border-subtle bg-surface-1 px-3 py-2.5 text-left transition-colors hover:bg-surface-2"
             >
               <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-tile"
                 style={{ backgroundColor: `color-mix(in srgb, ${GOALS_ACCENT} 16%, transparent)`, color: GOALS_ACCENT }}
               >
                 <Target size={15} />

@@ -1,14 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useBooks } from "../hooks/useBooks";
+import { FadeIn } from "@/shared/components/ui/motion";
 import { BookCard } from "./BookCard";
 import { BookRow } from "./BookRow";
 import { BookCardSkeleton, BookRowSkeleton } from "./BooksSkeleton";
 import type { BookStatus, BookSort } from "../types";
 
-const GRID = "grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-7";
+// Browse tabs have no right panel (it's Reading-only) → full-width grid, matching
+// Watching's library density.
+const GRID = "grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10";
 const ROWS = "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3";
 
 interface BooksSectionProps {
@@ -66,21 +68,14 @@ export function BooksSection({
     );
   }
 
+  // Keyed by tab → the grid/list fades in cleanly on each tab switch, with NO exit
+  // animation (the old tab's items unmount instantly instead of "flying out", which
+  // looked busy on a dense cover grid). Search within a tab doesn't re-animate.
   return (
-    <div className={isReading ? ROWS : GRID}>
-      <AnimatePresence mode="popLayout">
-        {books.map((book, i) => (
-          <motion.div
-            key={book.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.18, delay: i * 0.04, ease: "easeOut" }}
-          >
-            {isReading ? <BookRow book={book} /> : <BookCard book={book} />}
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
+    <FadeIn key={isReading ? "reading" : (status ?? "all")} className={isReading ? ROWS : GRID}>
+      {books.map((book) =>
+        isReading ? <BookRow key={book.id} book={book} /> : <BookCard key={book.id} book={book} />,
+      )}
+    </FadeIn>
   );
 }

@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Quote, Search, Heart, BookOpen } from "lucide-react";
+import { Quote, Search, Heart, BookOpen, Star } from "lucide-react";
 import { Input } from "@/shared/components/ui/input";
+import { FadeIn } from "@/shared/components/ui/motion";
 import { useAllQuotes, useToggleQuoteFavorite } from "../../hooks/useBookQuotes";
 import type { QuoteWithBook } from "../../types";
 
@@ -35,7 +36,7 @@ export function BooksQuotesWall() {
     return (
       <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="mb-4 h-40 break-inside-avoid animate-pulse rounded-xl bg-surface-1" />
+          <div key={i} className="mb-4 h-40 break-inside-avoid animate-pulse rounded-card bg-surface-2" />
         ))}
       </div>
     );
@@ -72,7 +73,7 @@ export function BooksQuotesWall() {
           type="button"
           onClick={() => setFavOnly((v) => !v)}
           title={favOnly ? "Show all" : "Show favorites only"}
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors ${
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-control border transition-colors ${
             favOnly
               ? "border-red-500/40 bg-red-500/10 text-red-400"
               : "border-border-subtle bg-surface-1 text-text-tertiary hover:bg-surface-2 hover:text-text-secondary"
@@ -89,11 +90,11 @@ export function BooksQuotesWall() {
           {favOnly ? "No favorite quotes yet." : "No quotes match your search."}
         </p>
       ) : (
-        <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
+        <FadeIn className="columns-1 gap-4 sm:columns-2 lg:columns-3">
           {filtered.map((q) => (
             <QuoteCard key={q.id} quote={q} onOpen={() => router.push(`/life/books/${q.book_id}`)} onToggleFav={() => toggleFav.mutate({ id: q.id, favorite: !q.favorite, bookId: q.book_id })} />
           ))}
-        </div>
+        </FadeIn>
       )}
     </div>
   );
@@ -105,7 +106,7 @@ function QuoteCard({ quote, onOpen, onToggleFav }: {
   onToggleFav: () => void;
 }) {
   return (
-    <div className="group mb-4 break-inside-avoid surface-card rounded-xl p-5">
+    <div className="group mb-4 break-inside-avoid surface-card rounded-card p-5">
       <Quote size={18} style={{ color: ACCENT }} className="mb-2 opacity-60" />
 
       <p className="text-sm leading-relaxed text-text-primary">{quote.text}</p>
@@ -116,7 +117,7 @@ function QuoteCard({ quote, onOpen, onToggleFav }: {
 
       <div className="mt-4 flex items-center gap-2.5 border-t border-border-subtle pt-3">
         <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-          <div className="relative h-10 w-7 shrink-0 overflow-hidden rounded bg-surface-2">
+          <div className="relative aspect-2/3 w-(--cover-sm) shrink-0 overflow-hidden rounded-[4px] bg-surface-2">
             {quote.book_cover ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={quote.book_cover} alt={quote.book_title} loading="lazy" className="h-full w-full object-cover" />
@@ -129,6 +130,19 @@ function QuoteCard({ quote, onOpen, onToggleFav }: {
             <p className="truncate text-[11px] text-text-tertiary">
               {quote.book_author ?? "Unknown"}{quote.page != null ? ` · p.${quote.page}` : ""}
             </p>
+            {quote.book_rating != null && (
+              <div className="mt-0.5 flex items-center gap-0.5" style={{ color: ACCENT }}>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    size={9}
+                    fill={i < quote.book_rating! ? "currentColor" : "none"}
+                    stroke={i < quote.book_rating! ? "currentColor" : "var(--color-text-tertiary)"}
+                    strokeWidth={1.5}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </button>
 
@@ -136,7 +150,7 @@ function QuoteCard({ quote, onOpen, onToggleFav }: {
           type="button"
           onClick={onToggleFav}
           title={quote.favorite ? "Unfavorite" : "Favorite"}
-          className="shrink-0 rounded-md p-1.5 text-text-tertiary transition-colors hover:bg-surface-2"
+          className="shrink-0 rounded-control p-1.5 text-text-tertiary transition-colors hover:bg-surface-2"
         >
           <Heart size={13} className={quote.favorite ? "fill-red-500 text-red-500" : ""} />
         </button>

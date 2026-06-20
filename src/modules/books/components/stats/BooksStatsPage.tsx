@@ -7,10 +7,11 @@ import {
   CalendarDays, Trophy, Users, Target,
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
-import { useBooks } from "../../hooks/useBooks";
+import { useBooks, useReadingLog } from "../../hooks/useBooks";
 import { useBooksGoals } from "../../hooks/useBooksGoals";
 import { computeBookStats, computeBookAchievements } from "../../lib/compute-stats";
 import { AchievementGrid } from "@/shared/components/achievements/AchievementGrid";
+import { FadeIn } from "@/shared/components/ui/motion";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
@@ -25,9 +26,9 @@ function MetricCard({ label, value, sub, icon }: {
   label: string; value: string | number; sub?: string; icon: React.ReactNode;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-xl surface-card p-4">
+    <div className="relative overflow-hidden rounded-card surface-card p-4">
       <div className="mb-3 flex items-center gap-2">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-2">{icon}</div>
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-tile bg-surface-2">{icon}</div>
         <p className="text-sm font-medium text-text-secondary">{label}</p>
       </div>
       <div className="flex items-baseline gap-1.5">
@@ -47,7 +48,7 @@ function ActivityCard({ activity, year, bestMonth }: {
 }) {
   const max = Math.max(...activity.map((a) => a.count), 1);
   return (
-    <div className="rounded-xl surface-card p-5 h-60 flex flex-col overflow-hidden">
+    <div className="rounded-card surface-card p-5 h-60 flex flex-col overflow-hidden">
       <div className="mb-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <CalendarDays size={14} className="text-text-tertiary" />
@@ -88,7 +89,7 @@ function RatingDistributionCard({ distribution }: { distribution: { score: numbe
   const total = distribution.reduce((s, d) => s + d.count, 0);
   const max = Math.max(...distribution.map((d) => d.count), 1);
   return (
-    <div className="rounded-xl surface-card p-5 h-60 flex flex-col overflow-hidden">
+    <div className="rounded-card surface-card p-5 h-60 flex flex-col overflow-hidden">
       <div className="mb-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Star size={14} className="text-text-tertiary" />
@@ -128,7 +129,7 @@ function RatingDistributionCard({ distribution }: { distribution: { score: numbe
 function TopGenresCard({ genres }: { genres: { name: string; count: number }[] }) {
   const max = genres[0]?.count ?? 1;
   return (
-    <div className="rounded-xl surface-card p-5">
+    <div className="rounded-card surface-card p-5">
       <div className="mb-4 flex items-center gap-2">
         <BarChart2 size={14} className="text-text-tertiary" />
         <p className="text-sm font-semibold text-text-primary">Top Genres</p>
@@ -163,7 +164,7 @@ const RANK_COLORS = ["rgba(245,158,11,0.9)", "rgba(148,163,184,0.7)", "rgba(180,
 function TopRatedCard({ items }: { items: Book[] }) {
   const router = useRouter();
   return (
-    <div className="rounded-xl surface-card p-5">
+    <div className="rounded-card surface-card p-5">
       <div className="mb-4 flex items-center gap-2">
         <Trophy size={14} className="text-text-tertiary" />
         <p className="text-sm font-semibold text-text-primary">Top Picks</p>
@@ -175,13 +176,13 @@ function TopRatedCard({ items }: { items: Book[] }) {
           {items.map((b, i) => (
             <div
               key={b.id}
-              className="group flex cursor-pointer items-center gap-3 -mx-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-2"
+              className="group flex cursor-pointer items-center gap-3 -mx-2 rounded-control px-2 py-1.5 transition-colors hover:bg-surface-2"
               onClick={() => router.push(`/life/books/${b.id}`)}
             >
               <span className="w-5 shrink-0 text-center text-[11px] font-bold tabular-nums" style={{ color: RANK_COLORS[i] }}>
                 {RANK_LABELS[i]}
               </span>
-              <div className="relative h-15 w-10 shrink-0 overflow-hidden rounded-lg bg-surface-2">
+              <div className="relative h-15 w-10 shrink-0 overflow-hidden rounded-tile bg-surface-2">
                 {b.cover_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={b.cover_url} alt={b.title} loading="eager" className="h-full w-full object-cover" />
@@ -215,7 +216,7 @@ function TopRatedCard({ items }: { items: Book[] }) {
 function TopAuthorsCard({ authors }: { authors: { name: string; count: number }[] }) {
   const max = authors[0]?.count ?? 1;
   return (
-    <div className="rounded-xl surface-card p-5">
+    <div className="rounded-card surface-card p-5">
       <div className="mb-4 flex items-center gap-2">
         <Users size={14} className="text-text-tertiary" />
         <p className="text-sm font-semibold text-text-primary">Top Authors</p>
@@ -247,16 +248,16 @@ function TopAuthorsCard({ authors }: { authors: { name: string; count: number }[
 function StatsSkeleton() {
   return (
     <div className="space-y-4 animate-pulse">
-      <div className="h-9 w-64 rounded-lg bg-surface-1" />
+      <div className="h-9 w-64 rounded-control bg-surface-2" />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-28 rounded-xl bg-surface-1" />)}
+        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-28 rounded-card bg-surface-2" />)}
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        {[1, 2, 3].map((i) => <div key={i} className="h-60 rounded-xl bg-surface-1" />)}
+        {[1, 2, 3].map((i) => <div key={i} className="h-60 rounded-card bg-surface-2" />)}
       </div>
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="h-52 rounded-xl bg-surface-1" />
-        <div className="h-52 rounded-xl bg-surface-1" />
+        <div className="h-52 rounded-card bg-surface-2" />
+        <div className="h-52 rounded-card bg-surface-2" />
       </div>
     </div>
   );
@@ -269,8 +270,9 @@ export function BooksStatsPage() {
   const { data: books = [], isLoading } = useBooks();
   const { data: goals = [] } = useBooksGoals();
   const [selectedYear, setSelectedYear] = useState<number | null>(() => new Date().getFullYear());
+  const { data: logRows = [] } = useReadingLog(selectedYear);
 
-  const stats = useMemo(() => computeBookStats(books, selectedYear), [books, selectedYear]);
+  const stats = useMemo(() => computeBookStats(books, selectedYear, logRows), [books, selectedYear, logRows]);
   const achievements = useMemo(() => computeBookAchievements(books), [books]);
 
   if (isLoading) return <StatsSkeleton />;
@@ -283,7 +285,7 @@ export function BooksStatsPage() {
     .sort((a, b) => b - a);
 
   return (
-    <div className="space-y-4">
+    <FadeIn className="space-y-4">
       {/* Year filter */}
       <div className="flex items-center gap-2">
         <div className="hidden flex-1 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex">
@@ -291,7 +293,7 @@ export function BooksStatsPage() {
             type="button"
             onClick={() => setSelectedYear(null)}
             className={cn(
-              "shrink-0 rounded-lg px-4 py-1.5 text-xs font-medium transition-colors border",
+              "shrink-0 rounded-control px-4 py-1.5 text-xs font-medium transition-colors border",
               selectedYear === null
                 ? "bg-white text-black border-white"
                 : "border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong",
@@ -305,7 +307,7 @@ export function BooksStatsPage() {
               type="button"
               onClick={() => setSelectedYear(year)}
               className={cn(
-                "shrink-0 rounded-lg px-4 py-1.5 text-xs font-medium transition-colors border",
+                "shrink-0 rounded-control px-4 py-1.5 text-xs font-medium transition-colors border",
                 selectedYear === year
                   ? "bg-white text-black border-white"
                   : "border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong",
@@ -361,7 +363,7 @@ export function BooksStatsPage() {
                   key={g.id}
                   type="button"
                   onClick={() => router.push(`/life/goals/${g.id}`)}
-                  className="group cursor-pointer rounded-xl surface-card p-4 text-left transition-colors hover:border-border-default"
+                  className="group cursor-pointer rounded-card surface-card p-4 text-left transition-colors hover:border-border-default"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-medium text-text-primary">{g.title}</p>
@@ -395,6 +397,6 @@ export function BooksStatsPage() {
 
       {/* Achievements */}
       <AchievementGrid achievements={achievements} accent={BOOKS} />
-    </div>
+    </FadeIn>
   );
 }

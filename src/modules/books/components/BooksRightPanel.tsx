@@ -36,9 +36,42 @@ export function BooksRightPanel() {
 
   return (
     <div className="w-full flex flex-col gap-3">
+      {/* ── Reading Streak — branded hero (deep-accent solid surface, like Goals' Focus) ── */}
+      <div
+        className="relative overflow-hidden rounded-card p-4 flex flex-col gap-3"
+        style={{
+          background: "var(--color-accent-books)",
+          boxShadow:
+            "inset 0 1px 0 0 rgba(255,255,255,0.08), inset 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px 0 rgba(0,0,0,0.35), 0 10px 30px -12px rgba(0,0,0,0.5)",
+        }}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-white/90">Reading Streak</h3>
+          <span className="text-xs text-white/55">Best {streak.best}</span>
+        </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-3xl font-bold text-white">{streak.current}</span>
+          <span className="text-sm text-white/70">days</span>
+        </div>
+        <div className="flex items-center justify-between">
+          {weekDots.map((dot, i) => (
+            <div key={i} className="flex flex-col items-center gap-1">
+              <span className="text-[10px] text-white/45">{dot.label}</span>
+              <div
+                className="h-2 w-2 rounded-full"
+                style={{
+                  backgroundColor: dot.active ? SKY : "rgba(255,255,255,0.15)",
+                  boxShadow: dot.active ? `0 0 6px ${SKY}` : undefined,
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* ── Reading Goals (cross-module — Goals accent) ── */}
       {goals.length > 0 && (
-        <div className="surface-card rounded-xl p-4 flex flex-col gap-3">
+        <div className="surface-card rounded-card p-4 flex flex-col gap-3">
           <h3 className="text-xs font-semibold text-text-secondary">Reading Goals</h3>
           <div className="flex flex-col gap-2.5">
             {goals.map((g) => {
@@ -53,7 +86,7 @@ export function BooksRightPanel() {
                   className="group flex w-full items-center gap-2.5 text-left"
                 >
                   <div
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-tile"
                     style={{ backgroundColor: `color-mix(in srgb, ${GOALS} 16%, transparent)`, color: GOALS }}
                   >
                     <Target size={13} />
@@ -74,36 +107,13 @@ export function BooksRightPanel() {
         </div>
       )}
 
-      {/* ── Reading Streak ── */}
-      <div className="surface-card rounded-xl p-4 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold text-text-secondary">Reading Streak</h3>
-          <span className="text-xs text-text-tertiary">Best {streak.best}</span>
-        </div>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-3xl font-bold text-text-primary">{streak.current}</span>
-          <span className="text-sm" style={{ color: SKY }}>days</span>
-        </div>
-        <div className="flex items-center justify-between">
-          {weekDots.map((dot, i) => (
-            <div key={i} className="flex flex-col items-center gap-1">
-              <span className="text-[10px] text-text-tertiary">{dot.label}</span>
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: dot.active ? SKY : "#27272a" }}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ── Pages This Month ── */}
-      <div className="surface-card rounded-xl p-4 flex flex-col gap-3">
+      <div className="surface-card rounded-card p-4 flex flex-col gap-3">
         <h3 className="text-xs font-semibold text-text-secondary">Pages This Month</h3>
         <div className="flex items-center justify-center">
           <div className="relative w-28 h-28">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 128 128" style={{ color: SKY }}>
-              <circle cx="64" cy="64" r={RING_R} fill="none" stroke="#27272a" strokeWidth="8" />
+              <circle cx="64" cy="64" r={RING_R} fill="none" stroke="var(--color-surface-3)" strokeWidth="8" />
               <circle
                 cx="64" cy="64" r={RING_R}
                 fill="none"
@@ -122,7 +132,7 @@ export function BooksRightPanel() {
       </div>
 
       {/* ── Recently Finished ── */}
-      <div className="surface-card rounded-xl p-4 flex flex-col gap-3">
+      <div className="surface-card rounded-card p-4 flex flex-col gap-3">
         <h3 className="text-xs font-semibold text-text-secondary">Recently Finished</h3>
         {recently_finished.length === 0 ? (
           <p className="text-xs text-text-tertiary">No books finished yet.</p>
@@ -130,7 +140,7 @@ export function BooksRightPanel() {
           <div className="flex flex-col gap-3">
             {recently_finished.map((book) => (
               <div key={book.id} className="flex gap-3">
-                <div className="relative w-10 h-14 shrink-0 bg-surface-2 rounded overflow-hidden">
+                <div className="relative aspect-2/3 w-(--cover-sm) shrink-0 bg-surface-2 rounded-[4px] overflow-hidden">
                   {book.cover_url ? (
                     <Image src={book.cover_url} alt={book.title} fill sizes="40px" className="object-contain" />
                   ) : (
@@ -148,7 +158,7 @@ export function BooksRightPanel() {
                           key={i}
                           className="w-3 h-3"
                           fill={i < book.rating! ? "currentColor" : "none"}
-                          stroke={i < book.rating! ? "currentColor" : "#71717a"}
+                          stroke={i < book.rating! ? "currentColor" : "var(--color-text-tertiary)"}
                           strokeWidth={1.5}
                         />
                       ))}

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Book } from "../types";
 
 const ACCENT = "var(--color-accent-books-vivid)";
-const MUTED  = "#71717a";
+const MUTED  = "var(--color-text-tertiary)";
 
 // Info-rich horizontal card — used in the "Reading" view where progress matters.
 // Content card → surface-card material (rim light + soft shadow), like Watching's
@@ -30,7 +30,7 @@ export function BookRow({ book }: { book: Book }) {
     >
       <div className="flex gap-4">
         {/* Cover */}
-        <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-md bg-surface-2">
+        <div className="relative aspect-2/3 w-(--cover-md) shrink-0 overflow-hidden rounded-tile bg-surface-2">
           {book.cover_url ? (
             <Image src={book.cover_url} alt={book.title} fill sizes="80px" className="object-cover" />
           ) : (
@@ -84,7 +84,7 @@ export function BookRow({ book }: { book: Book }) {
             {book.status === "want_to_read" && book.genre.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
                 {book.genre.slice(0, 2).map((genre) => (
-                  <span key={genre} className="rounded bg-surface-2 px-2 py-0.5 text-xs text-text-tertiary">{genre}</span>
+                  <span key={genre} className="rounded-chip bg-surface-2 px-2 py-0.5 text-xs text-text-tertiary">{genre}</span>
                 ))}
               </div>
             )}

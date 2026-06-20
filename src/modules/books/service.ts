@@ -1,4 +1,5 @@
 import { createClient } from "@/infrastructure/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import { toLocalDateStr, computeStreak } from "./lib/book-utils";
 import type {
@@ -10,10 +11,21 @@ import type {
   CreateBookInput,
   UpdateBookInput,
   UpdateProgressInput,
+  ReadingLogRow,
   CreateQuoteInput,
   UpdateQuoteInput,
   QuoteWithBook,
 } from "./types";
+
+// Record pages read TODAY for a book (atomic add via RPC). Only forward progress
+// is logged — page corrections (delta ≤ 0) are ignored. Best-effort: a failed log
+// never blocks the page update itself.
+async function logReadingDelta(supabase: SupabaseClient, bookId: string, delta: number) {
+  if (delta <= 0) return;
+  await supabase
+    .rpc("log_book_reading", { p_book_id: bookId, p_date: toLocalDateStr(new Date()), p_pages: delta })
+    .then(({ error }) => { if (error) console.error("log_book_reading failed", error); });
+}
 
 // =====================================================
 // READ
@@ -109,48 +121,68 @@ export async function getRightPanelData(): Promise<BooksRightPanelData> {
   );
   const monthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
 
-  const { data, error } = await supabase
-    .from("books")
-    .select("*")
-    .eq("org_id", orgId)
-    .in("status", ["reading", "read"]);
+  // The reading log is the single source of truth for every time-based metric:
+  // distinct days = streak/dots, summed pages = pages this month. Recently-finished
+  // still comes from the books table (it's a status fact, not a daily event).
+  const [logRes, booksRes] = await Promise.all([
+    supabase
+      .from("book_reading_log")
+      .select("date, pages_read")
+      .eq("org_id", orgId)
+      .gte("date", yearAgoStr),
+    supabase
+      .from("books")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("status", "read")
+      .not("finished_at", "is", null)
+      .order("finished_at", { ascending: false })
+      .limit(3),
+  ]);
 
-  if (error) throw error;
-  const books: Book[] = data ?? [];
+  if (logRes.error) throw logRes.error;
+  if (booksRes.error) throw booksRes.error;
 
-  // Streak — distinct dates where a book was actively read (skip reading with 0 pages)
-  const dateSet = new Set<string>();
-  for (const b of books) {
-    if (b.status === "reading" && b.current_page === 0) continue;
-    const dateStr = toLocalDateStr(new Date(b.updated_at));
-    if (dateStr >= yearAgoStr) dateSet.add(dateStr);
-  }
+  const logRows = (logRes.data ?? []) as { date: string; pages_read: number }[];
+
+  // Streak + weekly dots — distinct days that have any logged reading.
+  const dateSet = new Set<string>(logRows.map((r) => r.date));
   const streak = computeStreak(dateSet);
-
-  // activityLast7 — actual per-day activity for the week dots
   const activityLast7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
     d.setDate(d.getDate() - (6 - i));
     return dateSet.has(toLocalDateStr(d));
   });
 
-  // Pages this month — books finished this month + books started this month (current_page)
-  // Reading books started before this month excluded: we can't know how much was read this month
-  const pages_this_month =
-    books
-      .filter((b) => b.status === "read" && b.finished_at && b.finished_at >= monthStart)
-      .reduce((sum, b) => sum + (b.total_pages ?? 0), 0) +
-    books
-      .filter((b) => b.status === "reading" && b.started_at && b.started_at >= monthStart)
-      .reduce((sum, b) => sum + (b.current_page ?? 0), 0);
+  // Pages this month — actual pages read this month, across ALL books (in-progress
+  // included), regardless of when the book was started.
+  const pages_this_month = logRows
+    .filter((r) => r.date >= monthStart)
+    .reduce((sum, r) => sum + (r.pages_read ?? 0), 0);
 
-  // Recently finished — last 3 books marked as read
-  const recently_finished = books
-    .filter((b) => b.status === "read" && b.finished_at)
-    .sort((a, b) => (b.finished_at! > a.finished_at! ? 1 : -1))
-    .slice(0, 3);
+  const recently_finished = (booksRes.data ?? []) as Book[];
 
   return { streak, pages_this_month, recently_finished, activityLast7 };
+}
+
+// All reading-log rows for the period — Σ pages_read powers the Stats "pages read"
+// (in-progress books included). Pass a year to scope, or null for all-time.
+export async function getReadingLog(year: number | null): Promise<ReadingLogRow[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  let query = supabase
+    .from("book_reading_log")
+    .select("date, pages_read, book_id")
+    .eq("org_id", orgId);
+
+  if (year) {
+    query = query.gte("date", `${year}-01-01`).lte("date", `${year}-12-31`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as ReadingLogRow[];
 }
 
 // =====================================================
@@ -193,6 +225,19 @@ export async function updateBook(input: UpdateBookInput): Promise<Book> {
   const orgId = await getCurrentOrgId();
   const { id, ...updates } = input;
 
+  // When this update advances current_page (e.g. marking a book "read" jumps it to
+  // total_pages), log the read pages for today — same source of truth as progress.
+  let prevPage: number | undefined;
+  if (updates.current_page !== undefined) {
+    const { data: prev } = await supabase
+      .from("books")
+      .select("current_page")
+      .eq("id", id)
+      .eq("org_id", orgId)
+      .single();
+    prevPage = prev?.current_page ?? 0;
+  }
+
   const { data, error } = await supabase
     .from("books")
     .update(updates)
@@ -202,12 +247,24 @@ export async function updateBook(input: UpdateBookInput): Promise<Book> {
     .single();
 
   if (error) throw error;
+
+  if (updates.current_page !== undefined && prevPage !== undefined) {
+    await logReadingDelta(supabase, id, updates.current_page - prevPage);
+  }
   return data;
 }
 
 export async function updateProgress(input: UpdateProgressInput): Promise<Book> {
   const supabase = createClient();
   const orgId = await getCurrentOrgId();
+
+  // Read the old page first so we can log how many pages were read today.
+  const { data: prev } = await supabase
+    .from("books")
+    .select("current_page")
+    .eq("id", input.id)
+    .eq("org_id", orgId)
+    .single();
 
   const { data, error } = await supabase
     .from("books")
@@ -218,6 +275,8 @@ export async function updateProgress(input: UpdateProgressInput): Promise<Book> 
     .single();
 
   if (error) throw error;
+
+  await logReadingDelta(supabase, input.id, input.current_page - (prev?.current_page ?? 0));
   return data;
 }
 
@@ -261,7 +320,7 @@ export async function getAllQuotes(): Promise<QuoteWithBook[]> {
 
   const { data, error } = await supabase
     .from("book_quotes")
-    .select("*, book:books(title, author, cover_url)")
+    .select("*, book:books(title, author, cover_url, rating)")
     .eq("org_id", orgId)
     .order("created_at", { ascending: false });
 
@@ -272,6 +331,7 @@ export async function getAllQuotes(): Promise<QuoteWithBook[]> {
     book_title:  q.book?.title ?? "Unknown",
     book_author: q.book?.author ?? null,
     book_cover:  q.book?.cover_url ?? null,
+    book_rating: q.book?.rating ?? null,
   }));
 }
 

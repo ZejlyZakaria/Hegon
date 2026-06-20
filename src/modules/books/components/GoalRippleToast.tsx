@@ -36,7 +36,7 @@ export function GoalRippleToast({
       initial={{ opacity: 0, y: 10, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
-      className="flex w-[330px] items-center gap-3 rounded-xl border p-3"
+      className="flex w-[330px] items-center gap-3 rounded-card border p-3"
       style={{
         background: "#1a1a1d",
         borderColor: `color-mix(in srgb, ${accent} 35%, transparent)`,
@@ -44,7 +44,7 @@ export function GoalRippleToast({
       }}
     >
       <div
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-tile"
         style={{ backgroundColor: `color-mix(in srgb, ${accent} 16%, transparent)`, color: accent }}
       >
         {reached ? <Trophy size={17} /> : <BookOpen size={17} />}

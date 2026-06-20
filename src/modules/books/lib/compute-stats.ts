@@ -1,4 +1,4 @@
-import type { Book } from "../types";
+import type { Book, ReadingLogRow } from "../types";
 import type { Achievement } from "@/shared/components/achievements/types";
 
 export interface BookComputedStats {
@@ -21,13 +21,20 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 
 const readWith = (books: Book[]) => books.filter((b) => b.status === "read" && b.finished_at);
 
-export function computeBookStats(books: Book[], year: number | null): BookComputedStats {
+export function computeBookStats(
+  books: Book[],
+  year: number | null,
+  logRows: ReadingLogRow[] = [],
+): BookComputedStats {
   const allRead = readWith(books);
   const filtered = year
     ? allRead.filter((b) => new Date(b.finished_at!).getFullYear() === year)
     : allRead;
 
-  const pagesRead = filtered.reduce((s, b) => s + (b.total_pages ?? 0), 0);
+  // Pages READ come from the reading log (actual pages turned, in-progress books
+  // included) — not Σ total_pages of finished books. logRows are already scoped to
+  // the selected year (or all-time) by the caller.
+  const pagesRead = logRows.reduce((s, r) => s + (r.pages_read ?? 0), 0);
 
   const rated = filtered.filter((b) => b.rating != null);
   const avgRating = rated.length > 0
