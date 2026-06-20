@@ -243,6 +243,11 @@
   --radius-card: 12px;    /* horizontal / content cards — carousels, Goals, Habits, Stats */
   --radius-modal: 16px;   /* modals, sheets, large panels */
 
+  /* ── Cover / poster sizes — 1 ratio (aspect-2/3) + 3 widths. Height ALWAYS
+     follows the ratio → never crop. Large = grid-fluid (w-full). ── */
+  --cover-md: 5rem;       /* 80px — info rows (Reading), medium attribution */
+  --cover-sm: 2.5rem;     /* 40px — Top Picks, Quotes attribution */
+
   --z-base: 0;
   --z-sticky: 10;
   --z-dropdown: 20;

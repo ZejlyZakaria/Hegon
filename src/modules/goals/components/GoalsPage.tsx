@@ -20,6 +20,7 @@ import { GoalRightPanel } from "./GoalFocusPanel";
 import { GoalsLoadingSkeleton } from "./GoalsSkeleton";
 import { TabNav } from "@/shared/components/ui/tab-nav";
 import { StaggerList, StaggerItem, FadeIn } from "@/shared/components/ui/motion";
+import { LifeLayout } from "@/shared/components/layout/LifeLayout";
 import { useGoals } from "../hooks/useGoals";
 import { useRealtimeGoals } from "../hooks/useRealtimeGoals";
 import type { Goal, GoalSort, GoalCategory } from "../types";
@@ -214,33 +215,29 @@ export function GoalsPage() {
             ) : view === "reviews" ? (
               <ReviewsView />
             ) : (
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-                {/* Left — list */}
-                <div className="flex-1 min-w-0">
-                  {displayed.length === 0 ? (
-                    <p className="py-16 text-center text-sm text-text-tertiary">
-                      No goals match this filter.
-                    </p>
-                  ) : (
-                    <StaggerList className="space-y-3">
-                      {displayed.map((goal, i) => (
-                        <StaggerItem key={goal.id} index={i}>
-                          <GoalCard goal={goal} />
-                        </StaggerItem>
-                      ))}
-                    </StaggerList>
-                  )}
-                </div>
-
-                {/* Right panel */}
-                <FadeIn delay={0.08} className="w-full lg:w-72 lg:shrink-0">
+              <LifeLayout
+                right={
                   <GoalRightPanel
                     goals={goals}
                     activeCategory={activeCategory}
                     onCategoryClick={handleCompassClick}
                   />
-                </FadeIn>
-              </div>
+                }
+              >
+                {displayed.length === 0 ? (
+                  <p className="py-16 text-center text-sm text-text-tertiary">
+                    No goals match this filter.
+                  </p>
+                ) : (
+                  <StaggerList className="space-y-3">
+                    {displayed.map((goal, i) => (
+                      <StaggerItem key={goal.id} index={i}>
+                        <GoalCard goal={goal} />
+                      </StaggerItem>
+                    ))}
+                  </StaggerList>
+                )}
+              </LifeLayout>
             )}
           </div>
         </>

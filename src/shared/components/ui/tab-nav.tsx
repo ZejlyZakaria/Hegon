@@ -96,14 +96,15 @@ export function TabNav({ items, activeKey, accent = "var(--color-accent-goals)",
   const activeHidden = hidden.find((i) => i.key === activeKey);
 
   return (
-    <div className={cn("flex items-center", className)}>
+    <div className={cn("flex min-w-0 items-center", className)}>
       {/* Desktop — full row */}
       <div className="hidden items-center overflow-x-auto overflow-y-hidden custom-scrollbar-hide sm:flex">
         {fullRow(groupId)}
       </div>
 
-      {/* Mobile — first 3 + More */}
-      <div className="flex items-center sm:hidden">
+      {/* Mobile — first 3 + More (scrolls if labels are long, so a sibling action
+          button stays visible instead of being pushed off-screen) */}
+      <div className="flex min-w-0 items-center overflow-x-auto overflow-y-hidden custom-scrollbar-hide sm:hidden">
         {visible.map((item) => (
           <Fragment key={item.key}>
             {item.separatorBefore && separator}
