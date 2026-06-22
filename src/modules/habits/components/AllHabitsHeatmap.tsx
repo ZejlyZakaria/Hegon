@@ -88,13 +88,7 @@ export function AllHabitsHeatmap() {
 
   if (data.length === 0) {
     return (
-      <div
-        className="rounded-lg border p-6 text-center"
-        style={{
-          backgroundColor: "var(--color-surface-1)",
-          borderColor: "var(--color-border-subtle)",
-        }}
-      >
+      <div className="rounded-card surface-card p-6 text-center">
         <p className="text-sm" style={{ color: "var(--color-text-tertiary)" }}>
           No data yet.
         </p>
@@ -103,13 +97,7 @@ export function AllHabitsHeatmap() {
   }
 
   return (
-    <div
-      className="rounded-lg border p-4"
-      style={{
-        backgroundColor: "var(--color-surface-1)",
-        borderColor: "var(--color-border-subtle)",
-      }}
-    >
+    <div className="rounded-card surface-card p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
         <p
           className="text-sm font-semibold"
@@ -120,7 +108,7 @@ export function AllHabitsHeatmap() {
 
         <div className="flex items-center gap-3">
           <div
-            className="flex rounded-md border overflow-hidden"
+            className="flex rounded-control border overflow-hidden"
             style={{ borderColor: "var(--color-border-default)" }}
           >
             {(["6M", "12M"] as const).map((item) => (
@@ -132,7 +120,7 @@ export function AllHabitsHeatmap() {
                   "px-2.5 py-1 text-[10px] font-medium transition-colors duration-100",
                   range === item
                     ? "text-white"
-                    : "text-[#71717a] hover:text-[#a0a0a8]"
+                    : "text-text-tertiary hover:text-text-secondary"
                 )}
                 style={{
                   backgroundColor: range === item ? ACCENT : "transparent",

@@ -11,6 +11,7 @@ import { useBooks, useReadingLog, useBookSettings, useSetMonthlyTarget } from ".
 import { useBooksGoals } from "../../hooks/useBooksGoals";
 import { computeBookStats, computeBookAchievements } from "../../lib/compute-stats";
 import { AchievementGrid } from "@/shared/components/achievements/AchievementGrid";
+import { MetricCard } from "@/shared/components/stats/MetricCard";
 import { FadeIn } from "@/shared/components/ui/motion";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -19,25 +20,6 @@ import type { Book } from "../../types";
 
 const BOOKS = "var(--color-accent-books-vivid)";
 const GOALS_ACCENT = "var(--color-accent-goals)";
-
-// ── Metric card (identical to the watching one) ───────────────────────────────
-
-function MetricCard({ label, value, sub, icon }: {
-  label: string; value: string | number; sub?: string; icon: React.ReactNode;
-}) {
-  return (
-    <div className="relative overflow-hidden rounded-card surface-card p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-tile bg-surface-2">{icon}</div>
-        <p className="text-sm font-medium text-text-secondary">{label}</p>
-      </div>
-      <div className="flex items-baseline gap-1.5">
-        <p className="text-2xl font-bold tabular-nums text-text-primary">{value}</p>
-        {sub && <span className="text-[11px] text-text-tertiary">{sub}</span>}
-      </div>
-    </div>
-  );
-}
 
 // ── Activity (bars) ───────────────────────────────────────────────────────────
 

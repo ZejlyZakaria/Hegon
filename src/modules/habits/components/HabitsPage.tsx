@@ -2,6 +2,7 @@
 
 import { useState, useEffect, startTransition } from "react";
 import { motion } from "framer-motion";
+import { FadeIn, StaggerList, StaggerItem } from "@/shared/components/ui/motion";
 import { useCommandCenter } from "@/modules/command-center/store";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { TabNav } from "@/shared/components/ui/tab-nav";
@@ -31,12 +32,12 @@ import { HabitsCalendarView } from "./HabitsCalendarView";
 import { HabitsStats } from "./HabitsStats";
 import { HabitsAllView } from "./HabitsAllView";
 import { HabitsShowcase } from "./HabitsShowcase";
+import { DailyProgress } from "./DailyProgress";
 import { HabitDetailPanel } from "./HabitDetailPanel";
 import { useHabitsUIStore } from "../store";
 import { HabitsLoadingSkeleton } from "./HabitsSkeleton";
 
 const ACCENT = "var(--color-accent-habits-vivid)";
-const ACCENT_DEEP = "var(--color-accent-habits)";
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
@@ -129,8 +130,8 @@ export function HabitsPage() {
                 items={[
                   { key: "today",    label: "Today",    onClick: () => setTab("today") },
                   { key: "calendar", label: "Calendar", onClick: () => setTab("calendar") },
-                  { key: "stats",    label: "Stats",    onClick: () => setTab("stats") },
                   { key: "all",      label: "All",      onClick: () => setTab("all") },
+                  { key: "stats",    label: "Stats",    onClick: () => setTab("stats") },
                 ]}
               />
 
@@ -148,7 +149,7 @@ export function HabitsPage() {
                 )}
                 <Button
                   onClick={() => setModalOpen(true)}
-                  style={{ backgroundColor: ACCENT_DEEP }}
+                  style={{ backgroundColor: ACCENT }}
                   className="h-9 shrink-0 px-3 text-sm font-medium text-white hover:opacity-90"
                 >
                   + New Habit
@@ -160,14 +161,13 @@ export function HabitsPage() {
           {/* Content — persistent showcase rail + center + right panel */}
           <div className="px-4 py-4 sm:px-6 sm:py-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-            {/* Persistent showcase rail — watch + today ring + streak + unlock */}
-            <div className="hidden lg:block w-56 shrink-0 sticky top-0 self-start">
-              <HabitsShowcase
-                habits={todayHabits}
-                completed={completedCount}
-                total={totalCount}
-              />
-            </div>
+            {/* Showcase rail — watch + face collection + unlock. Hidden on Stats
+                (Stats is its own full-width dashboard; the watch would be noise). */}
+            {tab !== "stats" && (
+              <FadeIn className="hidden lg:block w-56 shrink-0 sticky top-0 self-start">
+                <HabitsShowcase habits={todayHabits} />
+              </FadeIn>
+            )}
 
             {/* Center column */}
             <div className="flex-1 min-w-0">
@@ -175,6 +175,8 @@ export function HabitsPage() {
               <div className="space-y-3">
                 {tab === "today" && (
                   <>
+                    <DailyProgress completed={completedCount} total={totalCount} />
+
                     {filteredTodayHabits.length === 0 ? (
                       (search.trim() || filteredWeeklyHabits.length === 0) && (
                         <p className="py-6 text-center text-sm text-text-tertiary">
@@ -202,30 +204,31 @@ export function HabitsPage() {
                       <div className="mt-6">
                         <div className="mb-2 flex items-center gap-1.5 px-3">
                           <CalendarRange size={11} className="text-text-tertiary" />
-                          <p className="text-caption uppercase text-text-tertiary">
+                          <p className="text-xs font-semibold text-text-secondary">
                             This Week
                           </p>
                           <span className="text-[10px] text-text-tertiary">
                             {filteredWeeklyHabits.filter((h) => h.completed_today).length}/{filteredWeeklyHabits.length}
                           </span>
                         </div>
-                        <div className="space-y-2">
-                          {filteredWeeklyHabits.map((h) => (
-                            <HabitRow
-                              key={h.id}
-                              habit={h}
-                              isPending={pendingId === h.id}
-                              onToggle={(hb) =>
-                                hb.completed_today && hb.week_completion_date
-                                  ? uncompleteHabit({ habitId: hb.id, date: hb.week_completion_date })
-                                  : completeHabit({ habit_id: hb.id, completed_date: todayStr })
-                              }
-                              onOpen={(hb) => openPanel(hb.id)}
-                              onEdit={() => openPanel(h.id)}
-                              onDelete={() => setDeletingHabit(h)}
-                            />
+                        <StaggerList className="space-y-2">
+                          {filteredWeeklyHabits.map((h, i) => (
+                            <StaggerItem key={h.id} index={i}>
+                              <HabitRow
+                                habit={h}
+                                isPending={pendingId === h.id}
+                                onToggle={(hb) =>
+                                  hb.completed_today && hb.week_completion_date
+                                    ? uncompleteHabit({ habitId: hb.id, date: hb.week_completion_date })
+                                    : completeHabit({ habit_id: hb.id, completed_date: todayStr })
+                                }
+                                onOpen={(hb) => openPanel(hb.id)}
+                                onEdit={() => openPanel(h.id)}
+                                onDelete={() => setDeletingHabit(h)}
+                              />
+                            </StaggerItem>
                           ))}
-                        </div>
+                        </StaggerList>
                       </div>
                     )}
 
@@ -233,7 +236,7 @@ export function HabitsPage() {
                       <div className="mt-6">
                         <div className="mb-2 flex items-center gap-1.5 px-3">
                           <Pause size={11} className="text-text-tertiary" />
-                          <p className="text-caption uppercase text-text-tertiary">
+                          <p className="text-xs font-semibold text-text-secondary">
                             Paused
                           </p>
                           <span className="text-[10px] text-text-tertiary">
@@ -248,10 +251,10 @@ export function HabitsPage() {
                                 key={h.id}
                                 type="button"
                                 onClick={() => openPanel(h.id)}
-                                className="group flex h-12 w-full items-center gap-3 rounded-lg border border-border-subtle bg-surface-1/60 px-3 text-left opacity-70 transition-[background-color,opacity] duration-150 ease-out hover:bg-surface-2 hover:opacity-100"
+                                className="group flex h-12 w-full items-center gap-3 rounded-card surface-card px-3 text-left opacity-70 transition-[background-color,opacity] duration-150 ease-out hover:bg-surface-2 hover:opacity-100"
                               >
                                 <div
-                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border-subtle bg-surface-2"
+                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-tile border border-border-subtle bg-surface-2"
                                   style={{ color }}
                                 >
                                   <Icon size={14} />
@@ -275,22 +278,32 @@ export function HabitsPage() {
                   </>
                 )}
 
-                {tab === "calendar" && <HabitsCalendarView />}
-                {tab === "stats" && <HabitsStats />}
+                {tab === "calendar" && (
+                  <FadeIn key="calendar">
+                    <HabitsCalendarView />
+                  </FadeIn>
+                )}
+                {tab === "stats" && (
+                  <FadeIn key="stats">
+                    <HabitsStats />
+                  </FadeIn>
+                )}
                 {tab === "all" && (
-                  <HabitsAllView onDelete={(h) => setDeletingHabit(h)} />
+                  <FadeIn key="all">
+                    <HabitsAllView onDelete={(h) => setDeletingHabit(h)} />
+                  </FadeIn>
                 )}
               </div>
             </div>
 
             {/* Right panel — Today tab only */}
             {tab === "today" && (
-              <div className="w-full lg:w-72 lg:shrink-0">
+              <FadeIn className="w-full lg:w-72 lg:shrink-0">
                 <HabitsRightPanel
                   habits={todayHabits}
                   recentCompletions={recentCompletions}
                 />
-              </div>
+              </FadeIn>
             )}
             </div>
           </div>
@@ -300,7 +313,7 @@ export function HabitsPage() {
       <HabitModal open={modalOpen} onClose={() => setModalOpen(false)} />
 
       <Dialog open={!!deletingHabit} onOpenChange={(v) => !v && setDeletingHabit(null)}>
-        <DialogContent className="sm:max-w-sm bg-surface-2 border-border-strong">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold text-text-primary">
               {deletingHabit?.archived ? "Delete habit" : "Remove habit"}
@@ -331,7 +344,7 @@ export function HabitsPage() {
                   }
                 }}
                 disabled={archiveHabit.isPending}
-                style={{ backgroundColor: ACCENT_DEEP }}
+                style={{ backgroundColor: ACCENT }}
                 className="h-9 w-full text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
                 Archive (keep history)

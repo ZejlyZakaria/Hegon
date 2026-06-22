@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Star, Target } from "lucide-react";
+import { BookOpen, Flame, Star, Target } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useBooksRightPanel } from "../hooks/useBooks";
@@ -47,7 +47,10 @@ export function BooksRightPanel() {
       >
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold text-white/90">Reading Streak</h3>
-          <span className="text-xs text-white/55">Best {streak.best}</span>
+          <span className="inline-flex items-center gap-1 text-xs text-white/55">
+            <Flame size={11} style={{ color: "var(--color-fire)" }} />
+            Best {streak.best}
+          </span>
         </div>
         <div className="flex items-baseline gap-1.5">
           <span className="text-3xl font-bold text-white">{streak.current}</span>

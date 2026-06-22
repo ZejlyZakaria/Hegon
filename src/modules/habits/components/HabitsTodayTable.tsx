@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { StaggerList, StaggerItem } from "@/shared/components/ui/motion";
 import { HabitRow } from "./HabitRow";
 import type { HabitWithStatus } from "../types";
 
@@ -21,37 +21,20 @@ export function HabitsTodayTable({
   onEdit,
   onDelete,
 }: Props) {
-  const reduce = useReducedMotion();
-
   return (
-    <div>
-      {/* Rows */}
-      <div className="space-y-2">
-        <AnimatePresence mode="popLayout" initial={false}>
-          {habits.map((habit, i) => (
-            <motion.div
-              key={habit.id}
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
-              transition={{
-                duration: reduce ? 0.12 : 0.22,
-                delay: reduce ? 0 : i * 0.04,
-                ease: [0.23, 1, 0.32, 1],
-              }}
-            >
-              <HabitRow
-                habit={habit}
-                onToggle={onToggle}
-                onOpen={onOpen}
-                isPending={pendingId === habit.id}
-                onEdit={() => onEdit(habit)}
-                onDelete={() => onDelete(habit)}
-              />
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-    </div>
+    <StaggerList className="space-y-2">
+      {habits.map((habit, i) => (
+        <StaggerItem key={habit.id} index={i}>
+          <HabitRow
+            habit={habit}
+            onToggle={onToggle}
+            onOpen={onOpen}
+            isPending={pendingId === habit.id}
+            onEdit={() => onEdit(habit)}
+            onDelete={() => onDelete(habit)}
+          />
+        </StaggerItem>
+      ))}
+    </StaggerList>
   );
 }

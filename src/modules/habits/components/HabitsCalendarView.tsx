@@ -99,7 +99,7 @@ export function HabitsCalendarView() {
 
   if (habits.length === 0) {
     return (
-      <div className="rounded-lg border border-border-subtle bg-surface-1 p-6 text-center">
+      <div className="rounded-card surface-card p-6 text-center">
         <p className="text-sm text-text-tertiary">No habits yet.</p>
       </div>
     );
@@ -115,7 +115,7 @@ export function HabitsCalendarView() {
           <button
             type="button"
             onClick={() => setAnchor((d) => { const n = new Date(d); n.setDate(d.getDate() - 7); return n; })}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary active:scale-95"
+            className="flex h-8 w-8 items-center justify-center rounded-control text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary active:scale-95"
             aria-label="Previous week"
           >
             <ChevronLeft size={14} />
@@ -126,7 +126,7 @@ export function HabitsCalendarView() {
           <button
             type="button"
             onClick={() => setAnchor((d) => { const n = new Date(d); n.setDate(d.getDate() + 7); return n; })}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary active:scale-95"
+            className="flex h-8 w-8 items-center justify-center rounded-control text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary active:scale-95"
             aria-label="Next week"
           >
             <ChevronRight size={14} />
@@ -144,7 +144,7 @@ export function HabitsCalendarView() {
       </div>
 
       {/* Grid */}
-      <div className="overflow-x-auto rounded-lg border border-border-subtle bg-surface-1 custom-scrollbar">
+      <div className="overflow-x-auto rounded-card surface-card custom-scrollbar">
         <div className="grid" style={{ gridTemplateColumns: gridCols, minWidth: 132 + habits.length * 44 + 52 }}>
           {/* Header */}
           <div className="border-b border-border-default px-3 py-2.5" />
@@ -158,7 +158,7 @@ export function HabitsCalendarView() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div
-                      className="flex h-7 w-7 items-center justify-center rounded-md border border-border-subtle bg-surface-2"
+                      className="flex h-7 w-7 items-center justify-center rounded-tile border border-border-subtle bg-surface-2"
                       style={{ color }}
                     >
                       <Icon size={14} />
@@ -169,7 +169,7 @@ export function HabitsCalendarView() {
               </div>
             );
           })}
-          <div className="flex items-center justify-center border-b border-l border-border-subtle py-2.5 text-caption uppercase text-text-tertiary">
+          <div className="flex items-center justify-center border-b border-l border-border-subtle py-2.5 text-caption text-text-tertiary">
             %
           </div>
 
@@ -238,7 +238,7 @@ export function HabitsCalendarView() {
                               onClick={() => toggle.mutate({ habitId: h.id, date: ds, done })}
                               aria-label={`${h.title} — ${dateLabel} — ${statusLabel}`}
                               className={cn(
-                                "flex h-6 w-6 items-center justify-center rounded-md border transition-[background-color,border-color,transform] duration-150 ease-out",
+                                "flex h-6 w-6 items-center justify-center rounded-control border transition-[background-color,border-color,transform] duration-150 ease-out",
                                 done
                                   ? "border-transparent text-white active:scale-90"
                                   : future
@@ -275,7 +275,7 @@ export function HabitsCalendarView() {
           })}
 
           {/* Average row */}
-          <div className="flex items-center px-3 py-2.5 text-caption uppercase text-text-tertiary">
+          <div className="flex items-center px-3 py-2.5 text-caption text-text-tertiary">
             Average
           </div>
           {habits.map((h) => {

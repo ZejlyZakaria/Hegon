@@ -4,30 +4,36 @@ function SkeletonBlock({ className }: { className?: string }) {
 
 function RailSkeleton() {
   return (
-    <div className="flex flex-col items-center gap-4 rounded-lg border border-border-subtle bg-surface-1 p-4">
+    <div className="flex flex-col items-center gap-4 rounded-card surface-card p-4">
       <SkeletonBlock className="h-40 w-40 rounded-full" />
       <div className="flex gap-2.5">
         {Array.from({ length: 4 }).map((_, i) => (
           <SkeletonBlock key={i} className="h-6 w-6 rounded-full" />
         ))}
       </div>
+      <SkeletonBlock className="h-3 w-24" />
       <SkeletonBlock className="h-2 w-full rounded-full" />
-      <div className="flex w-full items-center gap-4 pt-2">
-        <SkeletonBlock className="h-16 w-16 shrink-0 rounded-full" />
-        <div className="flex-1 space-y-2">
-          <SkeletonBlock className="h-6 w-20" />
-          <SkeletonBlock className="h-3 w-16" />
-        </div>
+    </div>
+  );
+}
+
+function DailyProgressSkeleton() {
+  return (
+    <div className="rounded-card bg-surface-1 px-4 py-3">
+      <div className="mb-2 flex items-center justify-between">
+        <SkeletonBlock className="h-3.5 w-28" />
+        <SkeletonBlock className="h-3 w-12" />
       </div>
+      <SkeletonBlock className="h-1.5 w-full rounded-full" />
     </div>
   );
 }
 
 function HabitRowSkeleton() {
   return (
-    <div className="flex h-14 items-center gap-3 rounded-lg border border-border-subtle bg-surface-1 px-3">
+    <div className="flex h-14 items-center gap-3 rounded-card surface-card px-3">
       <SkeletonBlock className="h-5 w-5 rounded-full shrink-0" />
-      <SkeletonBlock className="h-8 w-8 rounded-lg shrink-0" />
+      <SkeletonBlock className="h-8 w-8 rounded-tile shrink-0" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <SkeletonBlock className="h-3.5 w-40" />
@@ -50,20 +56,26 @@ function TabsRowSkeleton() {
         <SkeletonBlock className="h-3.5 w-20 mx-3" />
         <SkeletonBlock className="h-3.5 w-20 mx-3" />
       </div>
-      <SkeletonBlock className="h-9 w-full rounded-md sm:w-48" />
+      <SkeletonBlock className="h-9 w-full rounded-control sm:w-48" />
     </div>
   );
 }
 
-function ThisWeekSkeleton() {
+// Streak hero — neutral placeholder (the real card is deep-accent, but a skeleton
+// is always monochrome: zero-shift comes from the shape, not the colour).
+function StreakHeroSkeleton() {
   return (
-    <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
-      <SkeletonBlock className="h-3 w-20" />
+    <div className="rounded-card bg-surface-1 p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <SkeletonBlock className="h-3 w-20" />
+        <SkeletonBlock className="h-3 w-10" />
+      </div>
+      <SkeletonBlock className="h-8 w-16" />
       <div className="flex items-center justify-between">
         {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="flex flex-col items-center gap-1.5">
-            <SkeletonBlock className="h-2 w-4" />
-            <SkeletonBlock className="h-2.5 w-2.5 rounded-full" />
+          <div key={i} className="flex flex-col items-center gap-1">
+            <SkeletonBlock className="h-2 w-2" />
+            <SkeletonBlock className="h-2 w-2 rounded-full" />
           </div>
         ))}
       </div>
@@ -73,7 +85,7 @@ function ThisWeekSkeleton() {
 
 function ThisMonthSkeleton() {
   return (
-    <div className="bg-surface-1 rounded-lg p-4 space-y-3">
+    <div className="bg-surface-1 rounded-card p-4 space-y-3">
       <SkeletonBlock className="h-3 w-20" />
       <div className="flex justify-center">
         <SkeletonBlock className="h-24 w-24 rounded-full" />
@@ -85,9 +97,9 @@ function ThisMonthSkeleton() {
 
 function CompactHeatmapSkeleton() {
   return (
-    <div className="bg-surface-1 rounded-lg p-4 space-y-3">
+    <div className="bg-surface-1 rounded-card p-4 space-y-3">
       <SkeletonBlock className="h-3 w-32" />
-      <SkeletonBlock className="h-24 w-full rounded-md" />
+      <SkeletonBlock className="h-24 w-full rounded-card" />
     </div>
   );
 }
@@ -95,7 +107,7 @@ function CompactHeatmapSkeleton() {
 export function AllHabitsHeatmapSkeleton() {
   return (
     <div
-      className="animate-pulse rounded-lg border p-4"
+      className="animate-pulse rounded-card border p-4"
       style={{
         backgroundColor: "var(--color-surface-1)",
         borderColor: "var(--color-border-subtle)",
@@ -107,18 +119,23 @@ export function AllHabitsHeatmapSkeleton() {
 
 export function StatsSkeleton() {
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.35fr_1fr]">
-        <SkeletonBlock className="h-44 w-full rounded-card" />
-        <SkeletonBlock className="h-44 w-full rounded-card" />
-      </div>
-      <SkeletonBlock className="h-56 w-full rounded-card" />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
-          <SkeletonBlock key={i} className="h-28 w-full rounded-card" />
+    <div className="space-y-4">
+      {/* Metric strip — 5 uniform cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <SkeletonBlock key={i} className="h-24 w-full rounded-card" />
         ))}
       </div>
+      {/* Charts row */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <SkeletonBlock key={i} className="h-60 w-full rounded-card" />
+        ))}
+      </div>
+      {/* Heatmap */}
       <SkeletonBlock className="h-56 w-full rounded-card" />
+      {/* Achievements */}
+      <SkeletonBlock className="h-40 w-full rounded-card" />
     </div>
   );
 }
@@ -138,8 +155,9 @@ export function HabitsLoadingSkeleton() {
             <RailSkeleton />
           </div>
 
-          {/* Center column */}
+          {/* Center column — daily progress header + rows */}
           <div className="flex-1 min-w-0 space-y-3">
+            <DailyProgressSkeleton />
             <div className="space-y-2">
               {[1, 2, 3, 4].map((i) => (
                 <HabitRowSkeleton key={i} />
@@ -147,9 +165,9 @@ export function HabitsLoadingSkeleton() {
             </div>
           </div>
 
-          {/* Right column */}
+          {/* Right column — streak hero → this month → heatmap */}
           <div className="w-full lg:w-72 lg:shrink-0 space-y-3">
-            <ThisWeekSkeleton />
+            <StreakHeroSkeleton />
             <ThisMonthSkeleton />
             <CompactHeatmapSkeleton />
           </div>

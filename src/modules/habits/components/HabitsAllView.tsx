@@ -1,6 +1,7 @@
 "use client";
 
 import { Archive, ArchiveRestore, Film, Trash2 } from "lucide-react";
+import { StaggerList, StaggerItem } from "@/shared/components/ui/motion";
 import { resolveIcon } from "@/shared/constants/icons";
 import { formatFrequency } from "../utils";
 import {
@@ -39,17 +40,18 @@ export function HabitsAllView({ onDelete }: Props) {
         {habits.length === 0 ? (
           <p className="py-8 text-center text-sm text-text-tertiary">No habits yet.</p>
         ) : (
-          <div className="space-y-2">
-            {habits.map((h) => (
-              <ManageRow
-                key={h.id}
-                habit={h}
-                onOpen={() => openPanel(h.id)}
-                onArchive={() => archive.mutate(h.id)}
-                onDelete={() => onDelete(h)}
-              />
+          <StaggerList className="space-y-2">
+            {habits.map((h, i) => (
+              <StaggerItem key={h.id} index={i}>
+                <ManageRow
+                  habit={h}
+                  onOpen={() => openPanel(h.id)}
+                  onArchive={() => archive.mutate(h.id)}
+                  onDelete={() => onDelete(h)}
+                />
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerList>
         )}
       </section>
 
@@ -57,18 +59,19 @@ export function HabitsAllView({ onDelete }: Props) {
       {archived.length > 0 && (
         <section>
           <SectionLabel label="Archived" count={archived.length} />
-          <div className="space-y-2">
-            {archived.map((h) => (
-              <ManageRow
-                key={h.id}
-                habit={h}
-                archived
-                onOpen={() => openPanel(h.id)}
-                onRestore={() => unarchive.mutate(h.id)}
-                onDelete={() => onDelete(h)}
-              />
+          <StaggerList className="space-y-2">
+            {archived.map((h, i) => (
+              <StaggerItem key={h.id} index={i}>
+                <ManageRow
+                  habit={h}
+                  archived
+                  onOpen={() => openPanel(h.id)}
+                  onRestore={() => unarchive.mutate(h.id)}
+                  onDelete={() => onDelete(h)}
+                />
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerList>
         </section>
       )}
     </div>
@@ -78,7 +81,7 @@ export function HabitsAllView({ onDelete }: Props) {
 function SectionLabel({ label, count }: { label: string; count: number }) {
   return (
     <div className="mb-2 flex items-center gap-2 px-1">
-      <p className="text-caption uppercase text-text-tertiary">{label}</p>
+      <p className="text-xs font-semibold text-text-secondary">{label}</p>
       <span className="text-[10px] text-text-tertiary">{count}</span>
     </div>
   );
@@ -103,7 +106,7 @@ function ManageRow({
 
   return (
     <div
-      className={`group flex h-14 items-center gap-3 rounded-lg border border-border-subtle bg-surface-1 px-3 transition-colors hover:bg-surface-2 ${archived ? "opacity-70" : ""}`}
+      className={`group flex h-14 items-center gap-3 rounded-card surface-card px-3 transition-colors hover:bg-surface-2 ${archived ? "opacity-70" : ""}`}
     >
       <button
         type="button"
@@ -111,7 +114,7 @@ function ManageRow({
         className="flex min-w-0 flex-1 items-center gap-3 text-left"
       >
         <div
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-surface-2"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-tile border border-border-subtle bg-surface-2"
           style={{ color }}
         >
           <Icon size={16} />
@@ -120,7 +123,7 @@ function ManageRow({
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-medium text-text-primary">{habit.title}</p>
             {habit.source_module === "watching" && (
-              <span className="hidden shrink-0 items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-text-tertiary sm:inline-flex">
+              <span className="hidden shrink-0 items-center gap-1 rounded-chip bg-surface-2 px-1.5 py-0.5 text-[10px] text-text-tertiary sm:inline-flex">
                 <Film size={10} />
                 Auto
               </span>
@@ -135,7 +138,7 @@ function ManageRow({
           <button
             type="button"
             onClick={onRestore}
-            className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-text-tertiary transition-colors hover:bg-surface-3 hover:text-text-primary"
+            className="flex h-8 items-center gap-1.5 rounded-control px-2.5 text-xs font-medium text-text-tertiary transition-colors hover:bg-surface-3 hover:text-text-primary"
           >
             <ArchiveRestore size={14} />
             Restore
@@ -146,7 +149,7 @@ function ManageRow({
             onClick={onArchive}
             aria-label="Archive habit"
             title="Archive"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-3 hover:text-text-primary"
+            className="flex h-8 w-8 items-center justify-center rounded-control text-text-tertiary transition-colors hover:bg-surface-3 hover:text-text-primary"
           >
             <Archive size={15} />
           </button>
@@ -156,7 +159,7 @@ function ManageRow({
           onClick={onDelete}
           aria-label="Delete habit"
           title="Delete"
-          className="flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-red-500/10 hover:text-red-400"
+          className="flex h-8 w-8 items-center justify-center rounded-control text-text-tertiary transition-colors hover:bg-red-500/10 hover:text-red-400"
         >
           <Trash2 size={15} />
         </button>

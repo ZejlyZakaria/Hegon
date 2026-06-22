@@ -191,8 +191,8 @@
   --color-accent-dashboard: #60a5fa;
   --color-accent-goals: #22c55e;
   --color-accent-goals-deep: #103a26;    /* deep forest green — solid branded surfaces (hero card) */
-  --color-accent-habits: #6d28d9;        /* deep violet — solid surfaces, buttons */
-  --color-accent-habits-vivid: #8b5cf6;  /* vivid violet — rings, checkbox, indicators */
+  --color-accent-habits: #2e1065;        /* deep violet — solid dark surfaces only (streak hero) */
+  --color-accent-habits-vivid: #8b5cf6;  /* vivid violet — CTAs, tabs, rings, checkbox, indicators */
   --color-accent-journal: #f97316;
   --color-accent-tasks: #71717a;
   --color-accent-watching: #0C3D4A;        /* fond solide — My Record, boutons | bordeaux cinéma : #6D0F1E */

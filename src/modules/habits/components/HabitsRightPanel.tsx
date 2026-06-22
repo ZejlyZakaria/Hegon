@@ -1,56 +1,78 @@
 "use client";
 
 import { useMemo } from "react";
+import { Flame } from "lucide-react";
 import { useHeatmapData } from "../hooks/useHabitStats";
 import { toDateStr, isExpectedOnDate, heatmapColor } from "../utils";
 import type { HabitWithStatus, HeatmapDay } from "../types";
 
 const ACCENT = "var(--color-accent-habits-vivid)";
+const FIRE = "var(--color-fire)";
+const DAYS_SINGLE = ["M", "T", "W", "T", "F", "S", "S"];
 const DAYS_SHORT = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 const RING_R = 38;
 const RING_C = 2 * Math.PI * RING_R;
 
-function getWeekDates(): string[] {
-  const today = new Date();
-  const dow = today.getDay();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return toDateStr(d);
-  });
-}
+// ─── Habit Streak — branded hero (deep-accent solid surface, like Books' Reading
+//     Streak). The numeric streak lives here now (it used to sit under the watch);
+//     the watch rail keeps the *gamified* expression, this is the data home. ─────
 
-// ─── Habit Streak ─────────────────────────────────────────────────────────────
-
-function ThisWeekCard({
+function StreakHero({
+  habits,
   recentCompletions,
 }: {
+  habits: HabitWithStatus[];
   recentCompletions: { habit_id: string; completed_date: string }[];
 }) {
-  const weekDates = useMemo(() => getWeekDates(), []);
-  const todayStr = toDateStr(new Date());
+  const { maxCurrent, maxBest } = useMemo(() => {
+    if (habits.length === 0) return { maxCurrent: 0, maxBest: 0 };
+    return {
+      maxCurrent: Math.max(...habits.map((h) => h.current_streak)),
+      maxBest: Math.max(...habits.map((h) => h.best_streak)),
+    };
+  }, [habits]);
 
   const weekDots = useMemo(() => {
-    const completionDates = new Set(recentCompletions.map((c) => c.completed_date));
-    return weekDates.map((date, i) => ({
-      label: DAYS_SHORT[i],
-      active: date <= todayStr && completionDates.has(date),
-      today: date === todayStr,
-    }));
-  }, [weekDates, recentCompletions, todayStr]);
+    const done = new Set(recentCompletions.map((c) => c.completed_date));
+    const today = new Date();
+    return Array.from({ length: 7 }).map((_, i) => {
+      const date = new Date(today);
+      date.setDate(date.getDate() - (6 - i));
+      const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
+      return { label: DAYS_SINGLE[dayIndex], active: done.has(toDateStr(date)) };
+    });
+  }, [recentCompletions]);
 
   return (
-    <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
-      <h3 className="text-xs font-semibold text-text-secondary">This Week</h3>
+    <div
+      className="relative overflow-hidden rounded-card p-4 flex flex-col gap-3"
+      style={{
+        background: "var(--color-accent-habits)",
+        boxShadow:
+          "inset 0 1px 0 0 rgba(255,255,255,0.08), inset 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px 0 rgba(0,0,0,0.35), 0 10px 30px -12px rgba(0,0,0,0.5)",
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold text-white/90">Habit Streak</h3>
+        <span className="inline-flex items-center gap-1 text-xs text-white/55">
+          <Flame size={11} style={{ color: FIRE }} />
+          Best {maxBest}
+        </span>
+      </div>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-3xl font-bold text-white">{maxCurrent}</span>
+        <span className="text-sm text-white/70">days</span>
+      </div>
       <div className="flex items-center justify-between">
         {weekDots.map((dot, i) => (
-          <div key={i} className="flex flex-col items-center gap-1.5">
-            <span className="text-[10px] text-text-tertiary">{dot.label}</span>
+          <div key={i} className="flex flex-col items-center gap-1">
+            <span className="text-[10px] text-white/45">{dot.label}</span>
             <div
-              className={`h-2.5 w-2.5 rounded-full ${dot.today && !dot.active ? "ring-1 ring-border-strong" : ""}`}
-              style={{ backgroundColor: dot.active ? ACCENT : "#27272a" }}
+              className="h-2 w-2 rounded-full"
+              style={{
+                backgroundColor: dot.active ? ACCENT : "rgba(255,255,255,0.15)",
+                boxShadow: dot.active ? `0 0 6px ${ACCENT}` : undefined,
+              }}
             />
           </div>
         ))}
@@ -91,12 +113,12 @@ function ThisMonthCard({
   const dash = Math.min(rate / 100, 1) * RING_C;
 
   return (
-    <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
+    <div className="surface-card rounded-card p-4 flex flex-col gap-3">
       <h3 className="text-xs font-semibold text-text-secondary">This Month</h3>
       <div className="flex items-center justify-center">
         <div className="relative w-24 h-24">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
-            <circle cx="48" cy="48" r={RING_R} fill="none" stroke="#27272a" strokeWidth="7" />
+            <circle cx="48" cy="48" r={RING_R} fill="none" stroke="var(--color-surface-3)" strokeWidth="7" />
             <circle
               cx="48" cy="48" r={RING_R}
               fill="none"
@@ -192,7 +214,7 @@ function CompactHeatmap() {
   if (isLoading) return null;
 
   return (
-    <div className="bg-surface-1 rounded-lg p-4">
+    <div className="surface-card rounded-card p-4">
       <p className="mb-3 text-xs font-semibold text-text-secondary">
         All Habits Heatmap
       </p>
@@ -293,7 +315,7 @@ export function HabitsRightPanel({
 
   return (
     <div className="space-y-3">
-      <ThisWeekCard recentCompletions={recentCompletions} />
+      <StreakHero habits={habits} recentCompletions={recentCompletions} />
       <ThisMonthCard habits={habits} recentCompletions={recentCompletions} />
       <CompactHeatmap />
     </div>

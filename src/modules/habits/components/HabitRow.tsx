@@ -98,7 +98,7 @@ export function HabitRow({
   return (
     <div
       onClick={() => onOpen(habit)}
-      className="group flex h-14 cursor-pointer items-center gap-3 rounded-lg border border-border-subtle bg-surface-1 px-3 transition-[background-color,opacity] duration-200 ease-out hover:bg-surface-2"
+      className="group flex h-14 cursor-pointer items-center gap-3 rounded-card surface-card px-3 transition-[background-color,opacity] duration-200 ease-out hover:bg-surface-2"
       style={{ opacity: completed_today ? 0.5 : 1 }}
     >
       {/* Complete — leading checkbox. The primary, repeated action sits first.
@@ -118,7 +118,7 @@ export function HabitRow({
       {/* Habit — icon + title + (at-risk / description) */}
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <div
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-surface-2"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-tile border border-border-subtle bg-surface-2"
           style={{ color: iconColor }}
         >
           <Icon size={16} />
@@ -142,7 +142,7 @@ export function HabitRow({
             </span>
             {habit.source_module === "watching" && (
               <span
-                className="hidden shrink-0 items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-text-tertiary sm:inline-flex"
+                className="hidden shrink-0 items-center gap-1 rounded-chip bg-surface-2 px-1.5 py-0.5 text-[10px] text-text-tertiary sm:inline-flex"
                 title="Auto-tracked from Watching"
               >
                 <Film size={10} />
@@ -217,7 +217,7 @@ export function HabitRow({
               <button
                 type="button"
                 aria-label="Habit options"
-                className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary opacity-0 transition-[opacity,background-color,color,transform] duration-150 ease-out hover:bg-surface-2 hover:text-text-secondary focus-visible:opacity-100 active:scale-95 group-hover:opacity-100"
+                className="flex h-7 w-7 items-center justify-center rounded-control text-text-tertiary opacity-0 transition-[opacity,background-color,color,transform] duration-150 ease-out hover:bg-surface-2 hover:text-text-secondary focus-visible:opacity-100 active:scale-95 group-hover:opacity-100"
               >
                 <MoreHorizontal size={15} />
               </button>

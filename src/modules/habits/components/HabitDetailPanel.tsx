@@ -55,7 +55,6 @@ import { getDaysAgoStr, getTodayStr, toDateStr, formatFrequency } from "../utils
 import type { HabitWithStatus, HabitFrequency, UpdateHabitInput } from "../types";
 
 const ACCENT = "var(--color-accent-habits-vivid)";
-const ACCENT_DEEP = "var(--color-accent-habits)";
 const FIRE = "var(--color-fire)";
 const ICE = "var(--color-ice)";
 const GOLD = "var(--color-gold)";
@@ -351,7 +350,7 @@ function PanelBody({
             type="button"
             onClick={onDelete}
             aria-label="Delete habit"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-red-500/10 hover:text-red-400"
+            className="flex h-7 w-7 items-center justify-center rounded-control text-text-tertiary transition-colors hover:bg-red-500/10 hover:text-red-400"
           >
             <Trash2 size={14} />
           </button>
@@ -359,7 +358,7 @@ function PanelBody({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-3 hover:text-text-primary"
+            className="flex h-7 w-7 items-center justify-center rounded-control text-text-tertiary transition-colors hover:bg-surface-3 hover:text-text-primary"
           >
             <X size={15} />
           </button>
@@ -375,7 +374,7 @@ function PanelBody({
               <button
                 type="button"
                 aria-label="Change icon"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-surface-3 transition-colors hover:border-border-default"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-tile border border-border-subtle bg-surface-3 transition-colors hover:border-border-default"
                 style={{ color: iconColor }}
               >
                 <Icon size={20} />
@@ -432,7 +431,7 @@ function PanelBody({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-3"
+                  className="flex items-center gap-1.5 rounded-control px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-3"
                 >
                   {formatFrequency(habit)}
                 </button>
@@ -487,7 +486,7 @@ function PanelBody({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-3"
+                  className="flex items-center gap-1.5 rounded-control px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-3"
                 >
                   <Target
                     size={13}
@@ -544,7 +543,7 @@ function PanelBody({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-3"
+                  className="flex items-center gap-1.5 rounded-control px-2 py-1 text-xs text-text-secondary transition-colors hover:bg-surface-3"
                 >
                   <Film
                     size={13}
@@ -633,7 +632,7 @@ function PanelBody({
 
         {/* Insight */}
         {favDay && (
-          <div className="mx-5 mb-4 flex items-center gap-2.5 rounded-lg border border-border-subtle bg-surface-2 px-3.5 py-3">
+          <div className="mx-5 mb-4 flex items-center gap-2.5 rounded-card border border-border-subtle bg-surface-2 px-3.5 py-3">
             <Sparkles size={15} style={{ color: ACCENT }} className="shrink-0" />
             <p className="text-xs text-text-secondary">
               You&apos;re most consistent on{" "}
@@ -646,7 +645,7 @@ function PanelBody({
           /* ── Paused — only Resume makes sense ── */
           <div className="border-t border-border-subtle px-5 py-4">
             <p className="mb-2 text-xs font-medium text-text-tertiary">Status</p>
-            <div className="rounded-lg border border-border-subtle bg-surface-2 px-3.5 py-3">
+            <div className="rounded-card border border-border-subtle bg-surface-2 px-3.5 py-3">
               <div className="flex items-center gap-2">
                 <Pause size={14} style={{ color: ACCENT }} className="shrink-0" />
                 <span className="text-sm font-medium text-text-primary">Paused</span>
@@ -666,8 +665,8 @@ function PanelBody({
               type="button"
               onClick={resumeNow}
               disabled={removePause.isPending}
-              className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 active:scale-[0.99] disabled:opacity-40"
-              style={{ backgroundColor: ACCENT_DEEP }}
+              className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 active:scale-[0.99] disabled:opacity-40"
+              style={{ backgroundColor: ACCENT }}
             >
               <Play size={14} />
               Resume habit
@@ -682,7 +681,7 @@ function PanelBody({
             <div className="border-t border-border-subtle px-5 py-4">
               <p className="mb-2 text-xs font-medium text-text-tertiary">Today</p>
               {habit.skipped_today ? (
-                <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-2 px-3.5 py-2.5">
+                <div className="flex items-center justify-between rounded-card border border-border-subtle bg-surface-2 px-3.5 py-2.5">
                   <span className="inline-flex items-center gap-2 text-sm text-text-secondary">
                     <SkipForward size={14} style={{ color: ACCENT }} />
                     Skipped today
@@ -701,7 +700,7 @@ function PanelBody({
                   type="button"
                   onClick={() => skipDay.mutate({ habitId: habit.id, date: today })}
                   disabled={skipDay.isPending || habit.completed_today}
-                  className="flex w-full items-center gap-2 rounded-lg border border-border-subtle bg-surface-2 px-3.5 py-2.5 text-sm text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex w-full items-center gap-2 rounded-card border border-border-subtle bg-surface-2 px-3.5 py-2.5 text-sm text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <SkipForward size={14} />
                   Skip today
@@ -725,7 +724,7 @@ function PanelBody({
                   {freezes.map((f) => (
                     <div
                       key={f.id}
-                      className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-2 px-3.5 py-2.5"
+                      className="flex items-center justify-between rounded-card border border-border-subtle bg-surface-2 px-3.5 py-2.5"
                     >
                       <span className="inline-flex items-center gap-2 text-xs text-text-secondary">
                         <Snowflake size={13} style={{ color: ICE }} />
@@ -780,7 +779,7 @@ function PanelBody({
                   {pauses.map((p) => (
                     <div
                       key={p.id}
-                      className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-2 px-3.5 py-2.5"
+                      className="flex items-center justify-between rounded-card border border-border-subtle bg-surface-2 px-3.5 py-2.5"
                     >
                       <span className="inline-flex items-center gap-2 text-xs text-text-secondary">
                         <CalendarOff size={13} className="text-text-tertiary" />
@@ -837,8 +836,8 @@ function PanelBody({
                 type="button"
                 onClick={submitPause}
                 disabled={!pauseStart || addPause.isPending}
-                className="mt-2.5 w-full rounded-lg px-3 py-2 text-sm font-medium text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 active:scale-[0.99] disabled:opacity-40"
-                style={{ backgroundColor: ACCENT_DEEP }}
+                className="mt-2.5 w-full rounded-control px-3 py-2 text-sm font-medium text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 active:scale-[0.99] disabled:opacity-40"
+                style={{ backgroundColor: ACCENT }}
               >
                 Pause this habit
               </button>
@@ -880,7 +879,7 @@ function Stat({
 }) {
   const tint = color ?? (accent ? ACCENT : undefined);
   return (
-    <div className="rounded-lg border border-border-subtle bg-surface-2 px-3.5 py-3">
+    <div className="rounded-card border border-border-subtle bg-surface-2 px-3.5 py-3">
       <div className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
         {icon && <span style={tint ? { color: tint } : undefined}>{icon}</span>}
         {label}
@@ -922,7 +921,7 @@ function DateField({
         <button
           type="button"
           className={cn(
-            "flex flex-1 items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-2 px-3 py-2 text-xs transition-colors hover:border-border-default",
+            "flex flex-1 items-center gap-1.5 rounded-control border border-border-subtle bg-surface-2 px-3 py-2 text-xs transition-colors hover:border-border-default",
             value ? "text-text-secondary" : "text-text-tertiary",
           )}
         >

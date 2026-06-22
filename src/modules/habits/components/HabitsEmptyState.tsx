@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { FadeIn } from "@/shared/components/ui/motion";
 import { Button } from "@/shared/components/ui/button";
 
 const ACCENT_HEX = "var(--color-accent-habits-vivid)";
@@ -14,7 +14,7 @@ function MiniRing({ pct }: { pct: number }) {
 
   return (
     <svg width="34" height="34" viewBox="0 0 34 34">
-      <circle cx="17" cy="17" r={r} fill="none" stroke="#27272a" strokeWidth="3" />
+      <circle cx="17" cy="17" r={r} fill="none" stroke="var(--color-surface-3)" strokeWidth="3" />
       {pct > 0 && (
         <circle
           cx="17" cy="17" r={r}
@@ -37,10 +37,8 @@ interface Props {
 
 export function HabitsEmptyState({ onCreateClick }: Props) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+    <FadeIn
+      y={12}
       className="flex flex-col items-center text-center max-w-xs mx-auto py-16"
     >
       <div className="flex items-center gap-2 mb-7">
@@ -62,11 +60,11 @@ export function HabitsEmptyState({ onCreateClick }: Props) {
       <Button
         type="button"
         onClick={onCreateClick}
-        className="h-8 px-4 text-sm font-medium text-white hover:opacity-90"
-        style={{ backgroundColor: "var(--color-accent-habits)" }}
+        className="h-9 rounded-control px-4 text-sm font-medium text-white hover:opacity-90"
+        style={{ backgroundColor: "var(--color-accent-habits-vivid)" }}
       >
         + Add New Habit
       </Button>
-    </motion.div>
+    </FadeIn>
   );
 }

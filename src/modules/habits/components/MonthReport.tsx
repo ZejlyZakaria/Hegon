@@ -222,8 +222,8 @@ export function MonthReport({ month }: Props) {
       {/* Calendar + Champion */}
       <div className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_320px]">
         {/* Calendar */}
-        <div className="rounded-xl border border-border-subtle bg-surface-1 p-5">
-          <p className="mb-3 text-caption uppercase text-text-tertiary">
+        <div className="rounded-card surface-card p-5">
+          <p className="mb-3 text-xs font-semibold text-text-secondary">
             {monthName} at a glance
           </p>
           <div className="mb-1.5 grid grid-cols-7 gap-1">
@@ -241,7 +241,7 @@ export function MonthReport({ month }: Props) {
                 <div
                   key={i}
                   className={cn(
-                    "flex aspect-square items-center justify-center rounded-md text-[10px] font-medium",
+                    "flex aspect-square items-center justify-center rounded-chip text-[10px] font-medium",
                     c.date === todayStr && "ring-1 ring-border-strong",
                   )}
                   style={{
@@ -271,8 +271,8 @@ export function MonthReport({ month }: Props) {
         </div>
 
         {/* Champion */}
-        <div className="rounded-xl border border-border-subtle bg-surface-1 p-5">
-          <p className="mb-3 text-caption uppercase text-text-tertiary">
+        <div className="rounded-card surface-card p-5">
+          <p className="mb-3 text-xs font-semibold text-text-secondary">
             Standout habit
           </p>
           {champion ? (
@@ -282,7 +282,7 @@ export function MonthReport({ month }: Props) {
                 <div>
                   <div className="flex items-center gap-3">
                     <div
-                      className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-surface-2"
+                      className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-tile border border-border-subtle bg-surface-2"
                       style={{ color }}
                     >
                       <Icon size={22} />
@@ -319,8 +319,8 @@ export function MonthReport({ month }: Props) {
 
       {/* Habits breakdown */}
       {habitRows.length > 0 && (
-        <div className="mt-6 rounded-xl border border-border-subtle bg-surface-1 p-5">
-          <p className="mb-4 text-caption uppercase text-text-tertiary">
+        <div className="mt-6 rounded-card surface-card p-5">
+          <p className="mb-4 text-xs font-semibold text-text-secondary">
             Every habit this month
           </p>
           <div className="space-y-3">
@@ -330,7 +330,7 @@ export function MonthReport({ month }: Props) {
               return (
                 <div key={r.habit.id} className="flex items-center gap-3">
                   <div
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-surface-2"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-tile border border-border-subtle bg-surface-2"
                     style={{ color }}
                   >
                     <Icon size={15} />
@@ -364,8 +364,8 @@ export function MonthReport({ month }: Props) {
 
       {/* Goals fueled */}
       {linkedGoals.length > 0 && (
-        <div className="mt-6 rounded-xl border border-border-subtle bg-surface-1 p-5">
-          <p className="mb-4 text-caption uppercase text-text-tertiary">
+        <div className="mt-6 rounded-card surface-card p-5">
+          <p className="mb-4 text-xs font-semibold text-text-secondary">
             Goals you fueled
           </p>
           <div className="space-y-3">
@@ -373,7 +373,7 @@ export function MonthReport({ month }: Props) {
               <Link
                 key={goal.id}
                 href={`/life/goals/${goal.id}`}
-                className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-1 p-3 transition-colors hover:bg-surface-2"
+                className="flex items-center gap-3 rounded-card surface-card p-3 transition-colors hover:bg-surface-2"
               >
                 <Target size={16} className="shrink-0" style={{ color: "var(--color-accent-goals)" }} />
                 <div className="min-w-0 flex-1">
@@ -411,7 +411,7 @@ function StatTile({
 }) {
   const tint = color ?? (accent ? ACCENT : undefined);
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-1 px-4 py-3.5">
+    <div className="rounded-card surface-card px-4 py-3.5">
       <div className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
         {icon && <span style={tint ? { color: tint } : undefined}>{icon}</span>}
         {label}

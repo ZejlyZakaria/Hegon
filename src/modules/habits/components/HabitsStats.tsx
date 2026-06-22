@@ -4,16 +4,18 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   Flame,
-  CalendarCheck,
-  Star,
+  Trophy,
   Sparkles,
-  TrendingUp,
-  TrendingDown,
-  Minus,
+  Gauge,
+  Target,
+  CalendarDays,
+  CalendarRange,
+  BarChart2,
   ChevronRight,
 } from "lucide-react";
 import { resolveIcon } from "@/shared/constants/icons";
 import { cn } from "@/shared/utils/utils";
+import { MetricCard } from "@/shared/components/stats/MetricCard";
 import { useHabitsToday } from "../hooks/useHabitsToday";
 import { useHabitsUIStore } from "../store";
 import { HABIT_KEYS } from "../hooks/query-keys";
@@ -27,13 +29,9 @@ import { StatsSkeleton } from "./HabitsSkeleton";
 const ACCENT = "var(--color-accent-habits-vivid)";
 const FIRE = "var(--color-fire)";
 const GOLD = "var(--color-gold)";
-const UP = "#22c55e";
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const MONTHS_LONG = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
+const WEEKDAYS_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -72,217 +70,36 @@ function windowStats(
   return { done: hit, expected };
 }
 
-// ─── Score hero ─────────────────────────────────────────────────────────────
+// ─── Chart card shell ─────────────────────────────────────────────────────────
 
-function ScoreHero({
-  score,
-  trend,
-  consistency,
-  currentStreak,
-  habitCount,
-}: {
-  score: number;
-  trend: number | null;
-  consistency: number;
-  currentStreak: number;
-  habitCount: number;
-}) {
-  const R = 52;
-  const C = 2 * Math.PI * R;
-  const dash = (score / 100) * C;
-  const label = scoreLabel(score);
-
-  const TrendIcon = trend === null ? Minus : trend > 0 ? TrendingUp : trend < 0 ? TrendingDown : Minus;
-  const trendColor = trend === null || trend === 0 ? "var(--color-text-tertiary)" : trend > 0 ? UP : "#f87171";
-
-  return (
-    <div className="rounded-card bg-surface-1 p-5">
-      <div className="flex items-center gap-6">
-        {/* Ring */}
-        <div className="relative h-32 w-32 shrink-0">
-          <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r={R} fill="none" stroke="var(--color-surface-3)" strokeWidth="9" />
-            <circle
-              cx="60"
-              cy="60"
-              r={R}
-              fill="none"
-              stroke={ACCENT}
-              strokeWidth="9"
-              strokeLinecap="round"
-              strokeDasharray={`${dash} ${C}`}
-              className="transition-[stroke-dasharray] duration-700 ease-out"
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-            <span className="text-4xl font-bold tabular-nums tracking-tight text-text-primary">{score}</span>
-            <span className="mt-1 text-[10px] font-medium uppercase tracking-wider text-text-tertiary">/ 100</span>
-          </div>
-        </div>
-
-        {/* Meaning */}
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-text-tertiary">Habit Score</p>
-          <div className="mt-1 flex items-center gap-2.5">
-            <h3 className="text-2xl font-bold tracking-tight" style={{ color: ACCENT }}>{label}</h3>
-            {trend !== null && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
-                style={{
-                  color: trendColor,
-                  backgroundColor: `color-mix(in srgb, ${trendColor} 16%, transparent)`,
-                }}
-              >
-                <TrendIcon size={12} />
-                {trend > 0 ? `+${trend}` : trend}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-text-tertiary">
-            {trend === null ? "Your momentum across every habit" : "vs your previous 30 days"}
-          </p>
-
-          {/* Transparent breakdown — the three ingredients that make the score */}
-          <div className="mt-4 grid grid-cols-3 gap-2 pt-1">
-            <Breakdown value={`${Math.round(consistency * 100)}%`} label="Consistency" />
-            <Breakdown value={`${currentStreak}d`} label="Streak" color={currentStreak > 0 ? FIRE : undefined} />
-            <Breakdown value={String(habitCount)} label={habitCount === 1 ? "Habit" : "Habits"} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Breakdown({ value, label, color }: { value: string; label: string; color?: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-base font-bold tabular-nums text-text-primary" style={color ? { color } : undefined}>
-        {value}
-      </p>
-      <p className="mt-0.5 truncate text-[10px] uppercase tracking-wider text-text-tertiary">{label}</p>
-    </div>
-  );
-}
-
-// ─── Top habits ─────────────────────────────────────────────────────────────
-
-function TopHabits({
-  rows,
-  onOpen,
-}: {
-  rows: { habit: HabitWithStatus; rate: number | null }[];
-  onOpen: (id: string) => void;
-}) {
-  const setActiveTab = useHabitsUIStore((s) => s.setActiveTab);
-  return (
-    <div className="flex flex-col rounded-card border border-border-subtle bg-surface-1 p-5">
-      <div className="mb-3 flex items-baseline justify-between">
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-sm font-semibold text-text-primary">Top Habits</h3>
-          <span className="text-[11px] text-text-tertiary">by streak</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setActiveTab("all")}
-          className="text-[11px] font-medium text-text-tertiary transition-colors hover:text-text-primary"
-        >
-          View all
-        </button>
-      </div>
-
-      {rows.length === 0 ? (
-        <p className="flex flex-1 items-center justify-center py-6 text-center text-sm text-text-tertiary">
-          No active habits.
-        </p>
-      ) : (
-        <div className="flex flex-1 flex-col gap-1">
-          {rows.map(({ habit, rate }) => {
-            const { icon: Icon, color } = resolveIcon(habit.icon);
-            return (
-              <button
-                key={habit.id}
-                type="button"
-                onClick={() => onOpen(habit.id)}
-                className="group flex items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors duration-150 ease-out hover:bg-surface-2"
-              >
-                <div
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
-                >
-                  <Icon size={15} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-text-primary">{habit.title}</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-2">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${(rate ?? 0) * 100}%`, backgroundColor: ACCENT }}
-                      />
-                    </div>
-                    <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-text-tertiary">
-                      {rate === null ? "—" : `${Math.round(rate * 100)}%`}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex w-10 shrink-0 items-center justify-end gap-1">
-                  <Flame size={13} style={{ color: habit.current_streak > 0 ? FIRE : "var(--color-text-tertiary)" }} />
-                  <span
-                    className="text-sm font-bold tabular-nums"
-                    style={{ color: habit.current_streak > 0 ? FIRE : "var(--color-text-secondary)" }}
-                  >
-                    {habit.current_streak}
-                  </span>
-                </div>
-
-                <ChevronRight
-                  size={14}
-                  className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100"
-                />
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Metric tiles ───────────────────────────────────────────────────────────
-
-function MetricTile({
+function ChartCard({
   icon,
-  color,
-  value,
-  label,
+  title,
+  meta,
+  children,
 }: {
   icon: React.ReactNode;
-  color: string;
-  value: string;
-  label: string;
+  title: string;
+  meta?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col justify-between rounded-card border border-border-subtle bg-surface-1 p-4">
-      <div
-        className="flex h-8 w-8 items-center justify-center rounded-lg"
-        style={{ backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
-      >
-        {icon}
+    <div className="flex h-60 flex-col overflow-hidden rounded-card surface-card p-5">
+      <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-text-tertiary">{icon}</span>
+          <p className="text-sm font-semibold text-text-primary">{title}</p>
+        </div>
+        {meta && <span className="text-[11px] text-text-tertiary">{meta}</span>}
       </div>
-      <div className="mt-4 min-w-0">
-        <p className="truncate text-xl font-bold tabular-nums text-text-primary">{value}</p>
-        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-text-tertiary">{label}</p>
-      </div>
+      {children}
     </div>
   );
 }
 
-// ─── Monthly bar chart ──────────────────────────────────────────────────────
+// ─── Monthly rhythm (12 bars, click → month report) ───────────────────────────
 
-function MonthlyBarChart({
+function MonthlyChart({
   year,
   monthTotals,
   bestMonth,
@@ -298,13 +115,8 @@ function MonthlyBarChart({
   const router = useRouter();
 
   return (
-    <div className="flex h-full flex-col rounded-card border border-border-subtle bg-surface-1 p-5">
-      <div className="mb-5 flex items-baseline justify-between">
-        <h3 className="text-sm font-semibold text-text-primary">Monthly rhythm</h3>
-        <span className="text-[11px] text-text-tertiary">{year}</span>
-      </div>
-
-      <div className="flex min-h-44 flex-1 items-stretch gap-1.5">
+    <ChartCard icon={<CalendarDays size={14} />} title="Monthly rhythm" meta={String(year)}>
+      <div className="flex min-h-0 flex-1 items-stretch gap-1.5">
         {monthTotals.map((total, m) => {
           const isFuture = m > currentMonth;
           const isBest = m === bestMonth && total > 0;
@@ -317,22 +129,15 @@ function MonthlyBarChart({
               type="button"
               disabled={isFuture}
               onClick={() => router.push(`/life/habits/${year}-${pad(m + 1)}`)}
-              className={cn(
-                "group relative flex flex-1 flex-col",
-                isFuture ? "cursor-default" : "cursor-pointer",
-              )}
+              className={cn("group relative flex flex-1 flex-col", isFuture ? "cursor-default" : "cursor-pointer")}
             >
-              {/* faint full-height track — every month is a designed slot, so
-                  empty months read as zero, not as a hole in the chart */}
               <div
-                className="relative flex w-full flex-1 items-end overflow-hidden rounded-md"
-                style={{
-                  backgroundColor: `color-mix(in srgb, var(--color-surface-2) ${isFuture ? 28 : 55}%, transparent)`,
-                }}
+                className="relative flex w-full flex-1 items-end overflow-hidden rounded-chip"
+                style={{ backgroundColor: `color-mix(in srgb, var(--color-surface-2) ${isFuture ? 28 : 55}%, transparent)` }}
               >
                 {hasData && (
                   <div
-                    className="w-full rounded-md transition-[height] duration-500 ease-out group-hover:brightness-110"
+                    className="w-full rounded-chip transition-[height] duration-500 ease-out group-hover:brightness-110"
                     style={{
                       height: `${heightPct}%`,
                       backgroundColor: isBest
@@ -341,15 +146,12 @@ function MonthlyBarChart({
                     }}
                   />
                 )}
-
-                {/* value on hover */}
                 {hasData && (
                   <span className="absolute inset-x-0 top-1 text-center text-[10px] font-semibold tabular-nums text-text-primary opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                     {total}
                   </span>
                 )}
               </div>
-
               <span
                 className={cn(
                   "mt-2 text-center text-[10px] font-medium tabular-nums",
@@ -364,11 +166,122 @@ function MonthlyBarChart({
           );
         })}
       </div>
+    </ChartCard>
+  );
+}
 
-      <p className="mt-4 text-[11px] text-text-tertiary">
-        {maxMonthTotal > 0 ? "Tap any month for the full report." : "Log habits to see your monthly rhythm."}
-      </p>
-    </div>
+// ─── Weekly pattern (completions per weekday) ─────────────────────────────────
+
+function WeekdayChart({ data }: { data: number[] }) {
+  const max = Math.max(...data, 1);
+  const total = data.reduce((s, n) => s + n, 0);
+  const bestIdx = data.reduce((b, n, i) => (n > data[b] ? i : b), 0);
+
+  return (
+    <ChartCard
+      icon={<CalendarRange size={14} />}
+      title="Weekly pattern"
+      meta={total > 0 ? WEEKDAYS_SHORT[bestIdx] : undefined}
+    >
+      {total === 0 ? (
+        <p className="text-sm text-text-tertiary/50">No completions yet</p>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex flex-1 items-end gap-2">
+            {data.map((n, i) => {
+              const isBest = i === bestIdx && n > 0;
+              return (
+                <div key={i} className="group flex flex-1 flex-col items-center justify-end">
+                  <span className="mb-1 text-[10px] tabular-nums text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100">
+                    {n}
+                  </span>
+                  <div
+                    className="w-full rounded-chip transition-[height] duration-500"
+                    style={{
+                      height: n > 0 ? `${Math.max((n / max) * 100, 6)}%` : 2,
+                      backgroundColor: isBest ? ACCENT : `color-mix(in srgb, ${ACCENT} 45%, var(--color-surface-2))`,
+                      opacity: n > 0 ? 1 : 0.4,
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex gap-2">
+            {WEEKDAYS_SHORT.map((d, i) => (
+              <span
+                key={d}
+                className="flex-1 text-center text-[10px] font-medium tabular-nums"
+                style={i === bestIdx ? { color: ACCENT } : { color: "var(--color-text-tertiary)" }}
+              >
+                {d[0]}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </ChartCard>
+  );
+}
+
+// ─── Top habits (horizontal bars by 30-day rate) ──────────────────────────────
+
+function TopHabitsChart({
+  rows,
+  onOpen,
+}: {
+  rows: { habit: HabitWithStatus; rate: number | null }[];
+  onOpen: (id: string) => void;
+}) {
+  const setActiveTab = useHabitsUIStore((s) => s.setActiveTab);
+
+  return (
+    <ChartCard icon={<BarChart2 size={14} />} title="Top Habits" meta="by streak">
+      {rows.length === 0 ? (
+        <p className="text-sm text-text-tertiary/50">No active habits</p>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col justify-center gap-2.5 overflow-hidden">
+          {rows.map(({ habit, rate }) => {
+            const { icon: Icon, color } = resolveIcon(habit.icon);
+            return (
+              <button
+                key={habit.id}
+                type="button"
+                onClick={() => onOpen(habit.id)}
+                className="group flex items-center gap-2.5 text-left"
+              >
+                <div
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-tile"
+                  style={{ backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
+                >
+                  <Icon size={12} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="truncate text-xs font-medium text-text-primary">{habit.title}</span>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-[11px] tabular-nums text-text-tertiary">
+                      <Flame size={11} style={{ color: habit.current_streak > 0 ? FIRE : "var(--color-text-tertiary)" }} />
+                      {habit.current_streak}
+                    </span>
+                  </div>
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-surface-2">
+                    <div className="h-full rounded-full" style={{ width: `${(rate ?? 0) * 100}%`, backgroundColor: ACCENT }} />
+                  </div>
+                </div>
+                <ChevronRight size={13} className="shrink-0 text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setActiveTab("all")}
+            className="mt-0.5 self-start text-[11px] font-medium text-text-tertiary transition-colors hover:text-text-primary"
+          >
+            View all
+          </button>
+        </div>
+      )}
+    </ChartCard>
   );
 }
 
@@ -445,8 +358,7 @@ export function HabitsStats() {
   const breadth = Math.min(activeCount / 5, 1);
   const score = Math.round(100 * (0.7 * consistency + 0.2 * momentum + 0.1 * breadth));
   // Trend isolates recent behaviour change (consistency); momentum & breadth held
-  // constant. Shown only when last month has a real sample (≥10 scheduled days),
-  // so the number is always a genuine stat, never a divide-by-empty artefact.
+  // constant. Shown only when last month has a real sample (≥10 scheduled days).
   const prevScore = Math.round(100 * (0.7 * prevConsistency + 0.2 * momentum + 0.1 * breadth));
   const trend = expPrev >= 10 ? score - prevScore : null;
 
@@ -457,15 +369,17 @@ export function HabitsStats() {
     }
     return (b.rate ?? 0) - (a.rate ?? 0);
   });
-  const top = topRows.slice(0, 3);
+  const top = topRows.slice(0, 5);
 
-  // ── Year aggregates for tiles + bar chart ──
+  // ── Year aggregates for the monthly + weekday charts ──
   const countMap = new Map(yearData.map((d) => [d.date, d.count]));
   const monthTotals = new Array(12).fill(0);
+  const weekdayTotals = new Array(7).fill(0); // index 0 = Monday … 6 = Sunday
   for (const [date, count] of countMap) {
-    monthTotals[new Date(date + "T12:00:00").getMonth()] += count;
+    const d = new Date(date + "T12:00:00");
+    monthTotals[d.getMonth()] += count;
+    weekdayTotals[(d.getDay() + 6) % 7] += count;
   }
-  const yearTotal = monthTotals.reduce((s, t) => s + t, 0);
   const maxMonthTotal = Math.max(...monthTotals, 1);
   let bestMonth = -1;
   let bestTotal = 0;
@@ -499,42 +413,59 @@ export function HabitsStats() {
     cursor.setDate(cursor.getDate() + 1);
   }
 
+  const trendSub = trend !== null ? ` · ${trend > 0 ? "+" : ""}${trend}` : "";
+
   return (
-    <div className="space-y-8">
-      {/* Row 1 — Score hero + Top Habits */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.35fr_1fr]">
-        <ScoreHero
-          score={score}
-          trend={trend}
-          consistency={consistency}
-          currentStreak={maxCurrent}
-          habitCount={activeCount}
+    <div className="space-y-4">
+      {/* Metric strip — uniform cards (Watching/Books grammar) */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <MetricCard
+          label="Habit Score"
+          value={score}
+          sub={`${scoreLabel(score)}${trendSub}`}
+          icon={<Gauge size={14} style={{ color: ACCENT }} />}
         />
-        <TopHabits rows={top} onOpen={openPanel} />
+        <MetricCard
+          label="Consistency"
+          value={`${Math.round(consistency * 100)}%`}
+          sub="30 days"
+          icon={<Target size={14} style={{ color: ACCENT }} />}
+        />
+        <MetricCard
+          label="Current streak"
+          value={`${maxCurrent}d`}
+          icon={<Flame size={14} style={{ color: FIRE }} />}
+        />
+        <MetricCard
+          label="Longest streak"
+          value={`${maxBest}d`}
+          icon={<Trophy size={14} style={{ color: GOLD }} />}
+        />
+        <MetricCard
+          label="Perfect days"
+          value={perfectDays}
+          sub={`in ${year}`}
+          icon={<Sparkles size={14} style={{ color: ACCENT }} />}
+        />
       </div>
 
-      {/* Row 2 — full-width heatmap */}
-      <AllHabitsHeatmap />
-
-      {/* Row 3 — monthly bar chart (½) + metric tiles 2×2 (½) */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <MonthlyBarChart
+      {/* Charts row — monthly rhythm · weekly pattern · top habits */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <MonthlyChart
           year={year}
           monthTotals={monthTotals}
           bestMonth={bestMonth}
           maxMonthTotal={maxMonthTotal}
           currentMonth={currentMonth}
         />
-
-        <div className="grid grid-cols-2 gap-3">
-          <MetricTile icon={<Flame size={16} />} color={FIRE} value={`${maxBest}d`} label="Longest streak" />
-          <MetricTile icon={<Sparkles size={16} />} color={ACCENT} value={String(perfectDays)} label="Perfect days" />
-          <MetricTile icon={<CalendarCheck size={16} />} color={ACCENT} value={yearTotal.toLocaleString()} label="This year" />
-          <MetricTile icon={<Star size={16} />} color={GOLD} value={bestMonth >= 0 ? MONTHS_LONG[bestMonth] : "—"} label="Best month" />
-        </div>
+        <WeekdayChart data={weekdayTotals} />
+        <TopHabitsChart rows={top} onOpen={openPanel} />
       </div>
 
-      {/* Row 4 — achievements */}
+      {/* Full-width heatmap — the Habits signature */}
+      <AllHabitsHeatmap />
+
+      {/* Achievements */}
       <HabitsAchievements />
     </div>
   );

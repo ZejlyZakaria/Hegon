@@ -39,7 +39,6 @@ import { useGoals } from "@/modules/goals/hooks/useGoals";
 import type { Habit } from "../types";
 
 const ACCENT = "var(--color-accent-habits-vivid)";
-const ACCENT_DEEP = "var(--color-accent-habits)";
 
 const DAYS = [
   { label: "Su", value: 0 },
@@ -186,7 +185,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[87dvh] overflow-y-auto bg-surface-2 border-border-strong">
+      <DialogContent className="sm:max-w-md max-h-[87dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-sm font-semibold text-text-primary">
             {isEdit ? "Edit Habit" : "New Habit"}
@@ -209,7 +208,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       variant="tasks"
                       placeholder="e.g. Morning run"
                       autoFocus
-                      className="bg-surface-overlay focus:border-border-focus"
+                      className="bg-surface-2 focus:border-border-focus"
                     />
                   </FormControl>
                   <FormMessage />
@@ -231,7 +230,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       variant="tasks"
                       placeholder="Why does this habit matter?"
                       rows={2}
-                      className="bg-surface-overlay focus:border-border-focus"
+                      className="bg-surface-2 focus:border-border-focus"
                     />
                   </FormControl>
                   <FormMessage />
@@ -252,7 +251,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       <FormControl>
                         <SelectTrigger
                           variant="tasks"
-                          className="w-full bg-surface-overlay focus:border-border-focus"
+                          className="w-full bg-surface-2 focus:border-border-focus"
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -285,7 +284,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       <FormControl>
                         <SelectTrigger
                           variant="tasks"
-                          className="w-full min-w-0 bg-surface-overlay focus:border-border-focus **:data-[slot=select-value]:min-w-0"
+                          className="w-full min-w-0 bg-surface-2 focus:border-border-focus **:data-[slot=select-value]:min-w-0"
                         >
                           <SelectValue placeholder="None" />
                         </SelectTrigger>
@@ -342,10 +341,10 @@ export function HabitModal({ open, onClose, habit }: Props) {
                               type="button"
                               onClick={() => toggle(d.value)}
                               className={cn(
-                                "flex-1 h-8 rounded-lg text-xs font-semibold transition-[background-color,color]",
+                                "flex-1 h-8 rounded-control text-xs font-semibold transition-[background-color,color]",
                                 isSelected
                                   ? "text-white"
-                                  : "bg-surface-2 text-text-tertiary hover:text-text-primary hover:bg-surface-overlay",
+                                  : "bg-surface-2 text-text-tertiary hover:text-text-primary hover:bg-surface-3",
                               )}
                               style={
                                 isSelected
@@ -394,7 +393,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       <FormControl>
                         <SelectTrigger
                           variant="tasks"
-                          className="w-full bg-surface-overlay focus:border-border-focus"
+                          className="w-full bg-surface-2 focus:border-border-focus"
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -425,7 +424,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                         <FormControl>
                           <SelectTrigger
                             variant="tasks"
-                            className="w-full bg-surface-overlay focus:border-border-focus"
+                            className="w-full bg-surface-2 focus:border-border-focus"
                           >
                             <SelectValue />
                           </SelectTrigger>
@@ -484,7 +483,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
                 type="submit"
                 disabled={isPending}
                 className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"
-                style={{ backgroundColor: ACCENT_DEEP }}
+                style={{ backgroundColor: ACCENT }}
               >
                 {isPending ? "Saving…" : isEdit ? "Save" : "Create"}
               </Button>
