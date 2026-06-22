@@ -31,10 +31,12 @@ export function computeBookStats(
     ? allRead.filter((b) => new Date(b.finished_at!).getFullYear() === year)
     : allRead;
 
-  // Pages READ come from the reading log (actual pages turned, in-progress books
-  // included) — not Σ total_pages of finished books. logRows are already scoped to
-  // the selected year (or all-time) by the caller.
-  const pagesRead = logRows.reduce((s, r) => s + (r.pages_read ?? 0), 0);
+  // The reading log is passed ALL-TIME; scope it to the selected year here (or keep
+  // all). Pages read + activity come from the log — actual pages turned, in-progress
+  // books included — not finished-book counts. (date is "YYYY-MM-DD" → string slice
+  // avoids any timezone drift.)
+  const scopedLog = year ? logRows.filter((r) => Number(r.date.slice(0, 4)) === year) : logRows;
+  const pagesRead = scopedLog.reduce((s, r) => s + (r.pages_read ?? 0), 0);
 
   const rated = filtered.filter((b) => b.rating != null);
   const avgRating = rated.length > 0
@@ -79,37 +81,39 @@ export function computeBookStats(
     })
     .slice(0, 3);
 
-  // Activity — monthly within a year, else per-year (all-time)
+  // Activity — pages read per month (within a year) or per year (all-time), from the
+  // log → it reflects active reading, not just finished books.
   let activity: { label: string; count: number }[];
   if (year) {
     const counts12 = new Array(12).fill(0);
-    for (const b of allRead) {
-      const d = new Date(b.finished_at!);
-      if (d.getFullYear() === year) counts12[d.getMonth()]++;
-    }
+    for (const r of scopedLog) counts12[Number(r.date.slice(5, 7)) - 1] += r.pages_read ?? 0;
     activity = MONTHS.map((label, i) => ({ label, count: counts12[i] }));
   } else {
     const yearCounts: Record<number, number> = {};
-    for (const b of allRead) {
-      const y = new Date(b.finished_at!).getFullYear();
-      yearCounts[y] = (yearCounts[y] ?? 0) + 1;
+    for (const r of scopedLog) {
+      const y = Number(r.date.slice(0, 4));
+      yearCounts[y] = (yearCounts[y] ?? 0) + (r.pages_read ?? 0);
     }
     activity = Object.keys(yearCounts).map(Number).sort((a, b) => a - b)
       .map((y) => ({ label: String(y), count: yearCounts[y] }));
   }
 
-  // Best month (all-time)
+  // Best month — by pages read (within the current scope).
   const monthCounts: Record<string, number> = {};
-  for (const b of allRead) {
-    const d = new Date(b.finished_at!);
-    const key = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-    monthCounts[key] = (monthCounts[key] ?? 0) + 1;
+  for (const r of scopedLog) {
+    const key = `${MONTHS[Number(r.date.slice(5, 7)) - 1]} ${r.date.slice(0, 4)}`;
+    monthCounts[key] = (monthCounts[key] ?? 0) + (r.pages_read ?? 0);
   }
   const monthEntries = Object.entries(monthCounts).sort(([, a], [, b]) => b - a);
   const bestMonth = monthEntries[0] ? { label: monthEntries[0][0], count: monthEntries[0][1] } : null;
 
+  // Years that have either a finished book OR logged reading (so a year you read in
+  // but haven't finished a book still gets a pill).
   const availableYears = [
-    ...new Set(allRead.map((b) => new Date(b.finished_at!).getFullYear())),
+    ...new Set([
+      ...allRead.map((b) => new Date(b.finished_at!).getFullYear()),
+      ...logRows.map((r) => Number(r.date.slice(0, 4))),
+    ]),
   ].sort((a, b) => b - a);
 
   return {
@@ -130,10 +134,12 @@ export function computeBookStats(
 }
 
 // Achievements — all-time (ignore the year filter), mirror of the watching set.
-export function computeBookAchievements(books: Book[]): Achievement[] {
+export function computeBookAchievements(books: Book[], logRows: ReadingLogRow[] = []): Achievement[] {
   const read       = books.filter((b) => b.status === "read");
   const readCount  = read.length;
-  const pagesTotal = read.reduce((s, b) => s + (b.total_pages ?? 0), 0);
+  // Pages turned come from the reading log (in-progress books count too), not Σ
+  // total_pages of finished books — so "Page Turner" tracks actual reading.
+  const pagesTotal = logRows.reduce((s, r) => s + (r.pages_read ?? 0), 0);
   const ratedCount = read.filter((b) => b.rating != null).length;
   const hasFive    = read.some((b) => (b.rating ?? 0) >= 5);
   const longest    = Math.max(0, ...read.map((b) => b.total_pages ?? 0));

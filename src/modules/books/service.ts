@@ -186,6 +186,31 @@ export async function getReadingLog(year: number | null): Promise<ReadingLogRow[
 }
 
 // =====================================================
+// SETTINGS (book_user_settings)
+// =====================================================
+
+export async function getBookSettings(): Promise<{ monthly_pages_target: number | null }> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { data, error } = await supabase
+    .from("book_user_settings")
+    .select("monthly_pages_target")
+    .eq("org_id", orgId)
+    .maybeSingle();
+  if (error) throw error;
+  return { monthly_pages_target: data?.monthly_pages_target ?? null };
+}
+
+export async function setMonthlyPagesTarget(target: number | null): Promise<void> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { error } = await supabase
+    .from("book_user_settings")
+    .upsert({ org_id: orgId, monthly_pages_target: target }, { onConflict: "org_id" });
+  if (error) throw error;
+}
+
+// =====================================================
 // WRITE
 // =====================================================
 

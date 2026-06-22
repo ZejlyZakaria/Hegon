@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Quote, Plus, Star, Trash2, Check, Pencil } from "lucide-react";
+import { Quote, Plus, Star, Trash2, Pencil } from "lucide-react";
 import {
   useBookQuotes,
   useCreateQuote,
   useUpdateQuote,
   useDeleteQuote,
 } from "../hooks/useBookQuotes";
+import { InlineFormActions } from "@/shared/components/ui/inline-form-actions";
 import type { BookQuote } from "../types";
 
-const ACCENT = "var(--color-accent-books-vivid)";
+const ACCENT = "var(--color-accent-books-vivid)"; // vivid #0ea5e9
+const DEEP   = "var(--color-accent-books)";       // deep #082f49
 
 // ── Add / edit form ─────────────────────────────────────────────────────────
 
@@ -56,23 +58,14 @@ function QuoteForm({
           placeholder="Page"
           className="w-20 rounded-control bg-surface-2 px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-white/15"
         />
-        <div className="ml-auto flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-control px-2 py-1 text-xs text-text-tertiary transition-colors hover:text-text-primary"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={!text.trim() || pending}
-            className="flex items-center gap-1 rounded-control px-2.5 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-            style={{ backgroundColor: ACCENT }}
-          >
-            <Check size={11} /> Save
-          </button>
+        <div className="ml-auto">
+          <InlineFormActions
+            onCancel={onCancel}
+            onSave={submit}
+            saving={pending}
+            disabled={!text.trim()}
+            accent={ACCENT}
+          />
         </div>
       </div>
     </div>
@@ -105,9 +98,13 @@ function QuoteItem({ quote, bookId }: { quote: BookQuote; bookId: string }) {
 
   return (
     <div
-      className="group relative rounded-card border border-border-subtle bg-surface-1 py-3 pl-4 pr-3.5"
-      style={{ borderLeft: `2px solid ${ACCENT}` }}
+      className="group relative overflow-hidden rounded-card py-3 pl-4 pr-3.5"
+      style={{
+        backgroundColor: `color-mix(in srgb, ${DEEP} 22%, var(--color-surface-1))`,
+        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${ACCENT} 18%, transparent)`,
+      }}
     >
+      <Quote size={13} style={{ color: ACCENT }} className="mb-1 opacity-70" />
       <p className="text-sm italic leading-relaxed text-text-primary">“{quote.text}”</p>
 
       <div className="mt-2 flex min-h-5 items-center gap-2">

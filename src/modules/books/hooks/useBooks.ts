@@ -61,6 +61,23 @@ export function useReadingLog(year: number | null) {
   });
 }
 
+// Per-org books settings (monthly pages target for the Activity chart).
+export function useBookSettings() {
+  return useQuery({
+    queryKey: BOOK_KEYS.settings(),
+    queryFn:  () => BooksService.getBookSettings(),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useSetMonthlyTarget() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (target: number | null) => BooksService.setMonthlyPagesTarget(target),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: BOOK_KEYS.settings() }),
+  });
+}
+
 // =====================================================
 // MUTATIONS
 // =====================================================

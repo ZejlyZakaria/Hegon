@@ -7,7 +7,7 @@ import {
   CalendarDays, Trophy, Users, Target,
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
-import { useBooks, useReadingLog } from "../../hooks/useBooks";
+import { useBooks, useReadingLog, useBookSettings, useSetMonthlyTarget } from "../../hooks/useBooks";
 import { useBooksGoals } from "../../hooks/useBooksGoals";
 import { computeBookStats, computeBookAchievements } from "../../lib/compute-stats";
 import { AchievementGrid } from "@/shared/components/achievements/AchievementGrid";
@@ -41,42 +41,100 @@ function MetricCard({ label, value, sub, icon }: {
 
 // ── Activity (bars) ───────────────────────────────────────────────────────────
 
-function ActivityCard({ activity, year, bestMonth }: {
+function ActivityCard({ activity, year, bestMonth, monthlyTarget, onSetTarget }: {
   activity: { label: string; count: number }[];
   year: number | null;
   bestMonth: { label: string; count: number } | null;
+  monthlyTarget: number | null;
+  onSetTarget: (target: number | null) => void;
 }) {
-  const max = Math.max(...activity.map((a) => a.count), 1);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  // The reference line — the monthly target as-is on the year view, annualised (×12)
+  // on the all-time (yearly) view. The editor always edits the monthly value.
+  const lineTarget = monthlyTarget && monthlyTarget > 0 ? (year ? monthlyTarget : monthlyTarget * 12) : null;
+  const maxBar = Math.max(...activity.map((a) => a.count), 1);
+  const chartMax = Math.max(maxBar, lineTarget ?? 0);
+  const H = 128; // px — bar/line reference height from the baseline
+
+  const commit = () => {
+    const n = parseInt(draft, 10);
+    onSetTarget(Number.isFinite(n) && n > 0 ? n : null);
+    setEditing(false);
+  };
+
   return (
     <div className="rounded-card surface-card p-5 h-60 flex flex-col overflow-hidden">
-      <div className="mb-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <CalendarDays size={14} className="text-text-tertiary" />
-          <p className="text-sm font-semibold text-text-primary">{year ? "Monthly Activity" : "Yearly Activity"}</p>
+      <div className="mb-3 flex items-start justify-between gap-2 shrink-0">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <CalendarDays size={14} className="text-text-tertiary" />
+            <p className="text-sm font-semibold text-text-primary">{year ? "Monthly Activity" : "Yearly Activity"}</p>
+          </div>
+          {bestMonth && bestMonth.count > 0 && (
+            <p className="mt-0.5 text-[10px] tabular-nums text-text-tertiary/60">Best: {bestMonth.label} ({bestMonth.count})</p>
+          )}
         </div>
-        {bestMonth && (
-          <p className="text-[10px] text-text-tertiary/50 tabular-nums">
-            Best: <span className="text-text-tertiary">{bestMonth.label}</span> ({bestMonth.count})
-          </p>
+
+        {/* Inline target editor (always the monthly value) */}
+        {editing ? (
+          <input
+            autoFocus
+            type="number"
+            min={1}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
+            placeholder="pages"
+            className="h-7 w-20 shrink-0 rounded-control bg-surface-2 px-2 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-border-focus"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => { setDraft(monthlyTarget ? String(monthlyTarget) : ""); setEditing(true); }}
+            className="flex shrink-0 items-center gap-1 rounded-control bg-surface-2 px-2 py-1 text-[11px] text-text-secondary transition-colors hover:bg-surface-3"
+            title="Monthly pages target"
+          >
+            <Target size={11} className="text-text-tertiary" />
+            {monthlyTarget ? `${monthlyTarget}/mo` : "Set target"}
+          </button>
         )}
       </div>
+
       {activity.length === 0 ? (
         <p className="text-sm text-text-tertiary/50">No reading activity yet</p>
       ) : (
-        <div className="flex flex-1 items-end gap-1 min-h-0">
-          {activity.map((a) => (
-            <div key={a.label} className="flex flex-1 flex-col items-center gap-1">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="relative flex flex-1 items-end gap-1">
+            {lineTarget != null && (
               <div
-                className="w-full rounded-t-sm transition-[height] duration-500"
+                className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-text-tertiary/40"
+                style={{ bottom: `${(lineTarget / chartMax) * H}px` }}
+              >
+                <span className="absolute -top-3.5 right-0 text-[9px] tabular-nums text-text-tertiary/60">
+                  {lineTarget.toLocaleString()}
+                </span>
+              </div>
+            )}
+            {activity.map((a) => (
+              <div
+                key={a.label}
+                className="flex-1 rounded-t-sm transition-[height] duration-500"
                 style={{
-                  height: a.count > 0 ? `${Math.max(4, (a.count / max) * 150)}px` : 0,
+                  height: a.count > 0 ? `${Math.max(4, (a.count / chartMax) * H)}px` : 0,
                   backgroundColor: BOOKS,
-                  opacity: a.count > 0 ? Math.max(0.25, a.count / max) : 0,
+                  opacity: a.count > 0 ? Math.max(0.3, a.count / chartMax) : 0,
                 }}
               />
-              <span className="text-[9px] tabular-nums text-text-tertiary/70 leading-none">{a.label}</span>
-            </div>
-          ))}
+            ))}
+          </div>
+          <div className="mt-1 flex gap-1">
+            {activity.map((a) => (
+              <span key={a.label} className="flex-1 text-center text-[9px] tabular-nums leading-none text-text-tertiary/70">{a.label}</span>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -270,10 +328,14 @@ export function BooksStatsPage() {
   const { data: books = [], isLoading } = useBooks();
   const { data: goals = [] } = useBooksGoals();
   const [selectedYear, setSelectedYear] = useState<number | null>(() => new Date().getFullYear());
-  const { data: logRows = [] } = useReadingLog(selectedYear);
+  // Fetch the ALL-TIME log once; computeBookStats scopes it to the selected year,
+  // and achievements (all-time) use the full set.
+  const { data: logRows = [] } = useReadingLog(null);
+  const { data: settings } = useBookSettings();
+  const setTarget = useSetMonthlyTarget();
 
   const stats = useMemo(() => computeBookStats(books, selectedYear, logRows), [books, selectedYear, logRows]);
-  const achievements = useMemo(() => computeBookAchievements(books), [books]);
+  const achievements = useMemo(() => computeBookAchievements(books, logRows), [books, logRows]);
 
   if (isLoading) return <StatsSkeleton />;
 
@@ -283,24 +345,29 @@ export function BooksStatsPage() {
   const years = [...new Set([currentYear, ...stats.availableYears])]
     .filter((y) => y <= currentYear)
     .sort((a, b) => b - a);
+  // "All time" only makes sense once there's more than one year to aggregate —
+  // with a single year it's identical to that year's view.
+  const showAllTime = years.length >= 2;
 
   return (
     <FadeIn className="space-y-4">
       {/* Year filter */}
       <div className="flex items-center gap-2">
         <div className="hidden flex-1 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex">
-          <button
-            type="button"
-            onClick={() => setSelectedYear(null)}
-            className={cn(
-              "shrink-0 rounded-control px-4 py-1.5 text-xs font-medium transition-colors border",
-              selectedYear === null
-                ? "bg-white text-black border-white"
-                : "border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong",
-            )}
-          >
-            All time
-          </button>
+          {showAllTime && (
+            <button
+              type="button"
+              onClick={() => setSelectedYear(null)}
+              className={cn(
+                "shrink-0 rounded-control px-4 py-1.5 text-xs font-medium transition-colors border",
+                selectedYear === null
+                  ? "bg-white text-black border-white"
+                  : "border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong",
+              )}
+            >
+              All time
+            </button>
+          )}
           {years.map((year) => (
             <button
               key={year}
@@ -326,7 +393,9 @@ export function BooksStatsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
-              <SelectItem value="all" className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">All time</SelectItem>
+              {showAllTime && (
+                <SelectItem value="all" className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">All time</SelectItem>
+              )}
               {years.map((year) => (
                 <SelectItem key={year} value={String(year)} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
                   {year}
@@ -384,7 +453,13 @@ export function BooksStatsPage() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <ActivityCard activity={stats.activity} year={selectedYear} bestMonth={stats.bestMonth} />
+        <ActivityCard
+          activity={stats.activity}
+          year={selectedYear}
+          bestMonth={stats.bestMonth}
+          monthlyTarget={settings?.monthly_pages_target ?? null}
+          onSetTarget={(t) => setTarget.mutate(t)}
+        />
         <RatingDistributionCard distribution={stats.ratingDistribution} />
         <TopGenresCard genres={stats.topGenres} />
       </div>

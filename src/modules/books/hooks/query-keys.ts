@@ -8,6 +8,7 @@ export const BOOK_KEYS = {
   stats:      () => [...BOOK_KEYS.all, 'stats'] as const,
   rightPanel: () => [...BOOK_KEYS.all, 'right-panel'] as const,
   readingLog: (year: number | null) => [...BOOK_KEYS.all, 'reading-log', year] as const,
+  settings:   () => [...BOOK_KEYS.all, 'settings'] as const,
   search:     (query: string) => [...BOOK_KEYS.all, 'search', query] as const,
   quotes:     (bookId: string) => [...BOOK_KEYS.all, 'quotes', bookId] as const,
   allQuotes:  () => [...BOOK_KEYS.all, 'all-quotes'] as const,
