@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Plus, X, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "@/shared/utils/toast";
+import { InlineFormActions } from "@/shared/components/ui/inline-form-actions";
 import {
   useEpisodeHighlights,
   useAddEpisodeHighlight,
@@ -170,22 +171,14 @@ export function EpisodeHighlights({ mediaItemId, tmdbId, userId, orgId, seasons,
                 className="w-14 rounded-lg border border-border-subtle bg-surface-2 px-2 py-1.5 text-center text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
               />
             </div>
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={addHighlight.isPending || !season || !episode}
-              className="flex items-center gap-1.5 rounded-lg bg-accent-watching px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-50"
-            >
-              {addHighlight.isPending && <Loader2 size={12} className="animate-spin" />}
-              Add
-            </button>
-            <button
-              type="button"
-              onClick={() => { setIsAdding(false); setSeason(""); setEpisode(""); }}
-              className="rounded-lg px-2 py-1.5 text-xs text-text-tertiary transition-colors hover:text-text-primary"
-            >
-              Cancel
-            </button>
+            <InlineFormActions
+              onCancel={() => { setIsAdding(false); setSeason(""); setEpisode(""); }}
+              onSave={handleAdd}
+              saving={addHighlight.isPending}
+              disabled={!season || !episode}
+              accent="var(--color-accent-watching-vivid)"
+              saveLabel="Add"
+            />
           </div>
         </div>
       )}
