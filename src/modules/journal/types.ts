@@ -4,6 +4,13 @@
 
 export type JournalMood = 'calm' | 'good' | 'neutral' | 'tired' | 'rough';
 
+// Snapshot of cross-module activity attached to an entry ("what I did that day").
+export type JournalContextType = 'habits' | 'watching' | 'books';
+export interface JournalContextItem {
+  type:  JournalContextType;
+  label: string;
+}
+
 export interface JournalEntry {
   id:         string;
   org_id:     string;
@@ -13,6 +20,8 @@ export interface JournalEntry {
   content:    string;
   mood:       JournalMood | null;
   tags:       string[];
+  goal_id:    string | null;
+  context:    JournalContextItem[] | null;
   word_count: number;
   created_at: string;
   updated_at: string;
@@ -28,6 +37,8 @@ export interface CreateJournalEntryInput {
   title?:     string | null;
   mood?:      JournalMood | null;
   tags?:      string[];
+  goal_id?:   string | null;
+  context?:   JournalContextItem[] | null;
 }
 
 export interface UpdateJournalEntryInput {
@@ -36,6 +47,8 @@ export interface UpdateJournalEntryInput {
   title?:   string | null;
   mood?:    JournalMood | null;
   tags?:    string[];
+  goal_id?: string | null;
+  context?: JournalContextItem[] | null;
 }
 
 // =====================================================
@@ -63,6 +76,31 @@ export interface JournalEntryPreview {
   preview:    string;       // first line of content
   word_count: number;
   tags:       string[];
+}
+
+// =====================================================
+// EVENTS — important dates / reminders pinned to a date
+// =====================================================
+
+export type JournalEventType = 'reminder' | 'birthday' | 'anniversary' | 'deadline' | 'milestone';
+
+export interface JournalEvent {
+  id:         string;
+  org_id:     string;
+  user_id:    string;
+  event_date: string;       // 'YYYY-MM-DD'
+  title:      string;
+  note:       string | null;
+  type:       string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateJournalEventInput {
+  event_date: string;       // 'YYYY-MM-DD'
+  title:      string;
+  note?:      string | null;
+  type?:      string;
 }
 
 // Mood display config

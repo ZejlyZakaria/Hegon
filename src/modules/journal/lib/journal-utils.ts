@@ -15,12 +15,23 @@ export function formatEntryDate(dateStr: string): string {
   }).format(date);
 }
 
-/** Return the first line of content, truncated to maxLength chars */
+/** Preview = first meaningful line, markdown syntax stripped, truncated. */
 export function getPreview(content: string, maxLength = 100): string {
-  const firstLine = content.split('\n')[0];
-  return firstLine.length > maxLength
-    ? firstLine.slice(0, maxLength) + '...'
-    : firstLine;
+  const firstLine =
+    content
+      .split('\n')
+      .map((l) => l.trim())
+      .find((l) => l.length > 0) ?? '';
+
+  const stripped = firstLine
+    .replace(/^#{1,6}\s+/, '')   // headings  ## Title
+    .replace(/^>\s+/, '')        // blockquote
+    .replace(/^[-*+]\s+/, '')    // unordered list
+    .replace(/^\d+\.\s+/, '')    // ordered list
+    .replace(/[*_`~]/g, '')      // inline emphasis / code / strike
+    .trim();
+
+  return stripped.length > maxLength ? stripped.slice(0, maxLength) + '…' : stripped;
 }
 
 /** Return the 7 Date objects for Mon→Sun of the week containing `today` */

@@ -10,7 +10,7 @@ import {
   Trophy,
   Tv,
   Library,
-  BookOpen,
+  NotebookPen,
   Plane,
   CheckSquare,
   Target,
@@ -38,7 +38,7 @@ export const NAV_GROUPS: NavItem[][] = [
   [
     { key: "goals",   label: "Goals",   href: "/life/goals",   icon: <Target size={18} />,    accent: "#22c55e" },
     { key: "habits",  label: "Habits",  href: "/life/habits",  icon: <Repeat2 size={18} />,   accent: "#8b5cf6" },
-    { key: "journal", label: "Journal", href: "/life/journal", icon: <BookOpen size={18} />,  accent: "#f97316" },
+    { key: "journal", label: "Journal", href: "/life/journal", icon: <NotebookPen size={18} />,  accent: "#f97316" },
     { key: "books",   label: "Books",   href: "/life/books",   icon: <Library size={18} />,   accent: "#0ea5e9" },
   ],
   [

@@ -1,15 +1,13 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { FadeIn } from "@/shared/components/ui/motion";
 
-const ACCENT_HEX = "#f97316";
+const ACCENT_HEX = "var(--color-accent-journal-vivid)";
 
 export function JournalEmptyState() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+    <FadeIn
+      y={12}
       className="flex flex-col items-center text-center max-w-xs mx-auto py-16"
     >
       <svg width="64" height="80" viewBox="0 0 64 80" fill="none" className="mb-7">
@@ -32,6 +30,6 @@ export function JournalEmptyState() {
         Your past entries will appear here.
         Start writing from the Today tab.
       </p>
-    </motion.div>
+    </FadeIn>
   );
 }

@@ -17,3 +17,25 @@ export function useJournalStreak() {
     staleTime: 1000 * 60 * 5,
   });
 }
+
+// Cross-module "Today's context" — what you did today across HEGON. Kept fresh:
+// re-reads on every mount + window focus so returning to Journal reflects habits
+// /films/pages logged elsewhere (staleTime 0 = no stale cache window).
+export function useTodayContext() {
+  return useQuery({
+    queryKey: JOURNAL_KEYS.todayContext(),
+    queryFn:  () => JournalService.getTodayContext(),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+}
+
+// "On this day" — entries from the same date in previous years.
+export function useOnThisDay() {
+  return useQuery({
+    queryKey: JOURNAL_KEYS.onThisDay(),
+    queryFn:  () => JournalService.getOnThisDay(),
+    staleTime: 1000 * 60 * 30,
+  });
+}

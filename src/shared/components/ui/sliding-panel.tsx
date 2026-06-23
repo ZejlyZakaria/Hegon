@@ -18,12 +18,14 @@ interface SlidingPanelProps {
   icon?:     ReactNode;
   /** "default" = sm:w-108 (432px), "wide" = sm:w-120 (480px, for dense forms). */
   width?:    "default" | "wide";
+  /** Optional action(s) rendered in the header, just before the close button. */
+  headerAction?: ReactNode;
   footer?:   ReactNode;
   children:  ReactNode;
 }
 
 export function SlidingPanel({
-  open, onClose, title, icon, width = "default", footer, children,
+  open, onClose, title, icon, width = "default", headerAction, footer, children,
 }: SlidingPanelProps) {
   // Close on Escape — matches the existing panels.
   useEffect(() => {
@@ -67,14 +69,17 @@ export function SlidingPanel({
                   title
                 )}
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-3 hover:text-text-primary"
-                aria-label="Close panel"
-              >
-                <X size={16} />
-              </button>
+              <div className="flex shrink-0 items-center gap-1">
+                {headerAction}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-3 hover:text-text-primary"
+                  aria-label="Close panel"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             {/* Body — scrolls */}

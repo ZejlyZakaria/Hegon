@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, X } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Search, X, Target } from "lucide-react";
 import { Input } from "@/shared/components/ui/input";
+import { StaggerList, StaggerItem } from "@/shared/components/ui/motion";
+import { useGoals } from "@/modules/goals/hooks/useGoals";
 import { useJournalEntries } from "../hooks/useJournalEntry";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { formatEntryDate, getPreview } from "../lib/journal-utils";
@@ -11,6 +12,9 @@ import { MOOD_CONFIG } from "../types";
 import { JournalEmptyState } from "./JournalEmptyState";
 import { JournalEntryListSkeleton } from "./JournalSkeleton";
 import type { JournalMood, JournalEntry } from "../types";
+
+const ACCENT = "var(--color-accent-journal-vivid)";
+const GOALS = "var(--color-accent-goals)";
 
 interface JournalEntryListProps {
   onSelectEntry: (entry: JournalEntry) => void;
@@ -35,6 +39,9 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
     mood: moodFilter !== 'all' ? moodFilter : undefined,
   });
 
+  const { data: goals = [] } = useGoals();
+  const goalMap = useMemo(() => new Map(goals.map((g) => [g.id, g.title])), [goals]);
+
   return (
     <div className="flex flex-col h-full gap-4">
       {/* Filters + search on same row */}
@@ -46,7 +53,7 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
               key={filter.value}
               type="button"
               onClick={() => setMoodFilter(filter.value)}
-              className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+              className={`px-3 py-1.5 rounded-control text-sm transition-colors ${
                 isActive
                   ? 'bg-surface-2 text-text-primary border border-border-default'
                   : 'bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-surface-2'
@@ -93,31 +100,24 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
                 type="button"
                 onClick={() => { setSearch(""); setMoodFilter('all'); }}
                 className="text-sm transition-colors"
-                style={{ color: '#f97316' }}
+                style={{ color: ACCENT }}
               >
                 Clear filters
               </button>
             </div>
           )
         ) : (
-          <div className="flex flex-col gap-2">
-            <AnimatePresence mode="popLayout">
-              {entries?.map((entry, i) => {
+          <StaggerList className="flex flex-col gap-2">
+            {entries?.map((entry, i) => {
                 const preview = getPreview(entry.content);
-                const moodColor = entry.mood ? MOOD_CONFIG[entry.mood].color : '#27272a';
+                const moodColor = entry.mood ? MOOD_CONFIG[entry.mood].color : 'var(--color-surface-3)';
 
                 return (
-                  <motion.div
-                    key={entry.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.18, delay: i * 0.04, ease: "easeOut" }}
-                  >
+                  <StaggerItem key={entry.id} index={i}>
                     <button
                       type="button"
                       onClick={() => onSelectEntry(entry)}
-                      className="w-full text-left p-4 rounded-lg border border-border-subtle bg-surface-1 hover:bg-surface-2 transition-colors duration-100"
+                      className="w-full text-left p-4 rounded-card surface-card hover:bg-surface-2 transition-colors duration-100"
                     >
                       <div className="flex items-start gap-3">
                         <div
@@ -150,15 +150,23 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
                                 </div>
                               </>
                             )}
+                            {entry.goal_id && goalMap.get(entry.goal_id) && (
+                              <>
+                                <span>•</span>
+                                <span className="inline-flex items-center gap-1" style={{ color: GOALS }}>
+                                  <Target className="w-3 h-3" />
+                                  <span className="max-w-32 truncate">{goalMap.get(entry.goal_id)}</span>
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
                     </button>
-                  </motion.div>
+                  </StaggerItem>
                 );
               })}
-            </AnimatePresence>
-          </div>
+          </StaggerList>
         )}
       </div>
     </div>

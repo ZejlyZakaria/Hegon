@@ -6,4 +6,8 @@ export const JOURNAL_KEYS = {
     [...JOURNAL_KEYS.all, 'list', opts ?? {}] as const,
   calendar: (year: number, month: number) => [...JOURNAL_KEYS.all, 'calendar', year, month] as const,
   streak:   () => [...JOURNAL_KEYS.all, 'streak'] as const,
+  todayContext: () => [...JOURNAL_KEYS.all, 'today-context'] as const,
+  onThisDay:    () => [...JOURNAL_KEYS.all, 'on-this-day'] as const,
+  events:       (year: number, month: number) => [...JOURNAL_KEYS.all, 'events', year, month] as const,
+  upcomingEvents: () => [...JOURNAL_KEYS.all, 'events', 'upcoming'] as const,
 } as const;

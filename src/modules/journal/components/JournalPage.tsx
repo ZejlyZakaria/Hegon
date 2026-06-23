@@ -1,50 +1,38 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
-import { useJournalToday, useUpdateEntry } from "../hooks/useJournalToday";
+import { useJournalToday } from "../hooks/useJournalToday";
 import { useJournalEntry } from "../hooks/useJournalEntry";
 import { JournalTodayView } from "./JournalTodayView";
 import { JournalEntryList } from "./JournalEntryList";
-import { JournalEditor } from "./JournalEditor";
+import { JournalEntryPanel } from "./JournalEntryPanel";
 import { JournalRightPanel } from "./JournalRightPanel";
+import { JournalStatsView } from "./JournalStatsView";
 import { JournalLoadingSkeleton } from "./JournalSkeleton";
 import { TabNav } from "@/shared/components/ui/tab-nav";
 import type { JournalEntry } from "../types";
 
-const ACCENT = "#f97316";
+const ACCENT = "var(--color-accent-journal-vivid)";
 
-type Tab = "today" | "all";
+type Tab = "today" | "all" | "stats";
 
 export function JournalPage() {
   const [tab, setTab] = useState<Tab>("today");
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
-  const updateEntry = useUpdateEntry();
 
   // Hoisted here so we can gate the full page skeleton
   const { isLoading: todayLoading } = useJournalToday();
 
-  const { data: liveEntry } = useJournalEntry(
-    selectedEntry?.entry_date ?? ""
-  );
+  // Live copy of the open entry so edits/links reflect in the panel.
+  const { data: liveEntry } = useJournalEntry(selectedEntry?.entry_date ?? "");
 
   const handleSelectEntry = useCallback((entry: JournalEntry) => {
     setSelectedEntry(entry);
   }, []);
 
-  const handleBack = useCallback(() => {
+  const handleClosePanel = useCallback(() => {
     setSelectedEntry(null);
   }, []);
-
-  const handleSavePastEntry = useCallback(
-    (data: { content: string; tags: string[] }) => {
-      const entry = liveEntry ?? selectedEntry;
-      if (!entry) return;
-      updateEntry.mutate({ id: entry.id, content: data.content, tags: data.tags });
-    },
-    [liveEntry, selectedEntry, updateEntry]
-  );
 
   if (todayLoading) return <JournalLoadingSkeleton />;
 
@@ -59,38 +47,24 @@ export function JournalPage() {
           items={[
             { key: "today", label: "Today",       onClick: () => { setTab("today"); setSelectedEntry(null); } },
             { key: "all",   label: "All Entries", onClick: () => { setTab("all");   setSelectedEntry(null); } },
+            { key: "stats", label: "Stats",       onClick: () => { setTab("stats"); setSelectedEntry(null); } },
           ]}
         />
       </div>
 
-      {/* Content row — centre + right panel */}
+      {/* Stats — full width, no right panel */}
+      {tab === "stats" ? (
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-5 sm:px-6">
+          <JournalStatsView />
+        </div>
+      ) : (
+      /* Content row — centre + right panel */
       <div className="flex flex-1 min-h-0 overflow-hidden gap-6 pr-6">
         {/* ── Centre ──────────────────────────────── */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <div className="flex-1 min-h-0 overflow-hidden pl-6 pt-4 pb-5">
             {tab === "today" ? (
               <JournalTodayView />
-            ) : selectedEntry ? (
-              <div className="flex flex-col h-full gap-4">
-                <motion.button
-                  type="button"
-                  onClick={handleBack}
-                  className="flex items-center gap-1.5 text-sm text-text-tertiary hover:text-text-secondary transition-colors self-start"
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  All Entries
-                </motion.button>
-                <div className="flex-1 min-h-0">
-                  <JournalEditor
-                    key={(liveEntry ?? selectedEntry).id}
-                    entry={liveEntry ?? selectedEntry}
-                    onSave={handleSavePastEntry}
-                  />
-                </div>
-              </div>
             ) : (
               <JournalEntryList onSelectEntry={handleSelectEntry} />
             )}
@@ -102,6 +76,10 @@ export function JournalPage() {
           <JournalRightPanel />
         </div>
       </div>
+      )}
+
+      {/* Past-entry detail — sliding panel over the list */}
+      <JournalEntryPanel entry={liveEntry ?? selectedEntry} onClose={handleClosePanel} />
     </div>
   );
 }

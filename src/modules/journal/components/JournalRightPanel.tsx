@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useJournalStreak, useJournalCalendar } from "../hooks/useJournalCalendar";
-import { toDateStr, getCurrentWeekDays, getMonthGrid } from "../lib/journal-utils";
+import { ChevronLeft, ChevronRight, Flame, History } from "lucide-react";
+import { useJournalStreak, useJournalCalendar, useOnThisDay } from "../hooks/useJournalCalendar";
+import { useEventsForMonth } from "../hooks/useJournalEvents";
+import { toDateStr, getCurrentWeekDays, getMonthGrid, getPreview } from "../lib/journal-utils";
 import { MOOD_CONFIG } from "../types";
 import type { JournalMood } from "../types";
+import { JournalEvents } from "./JournalEvents";
 
+const ACCENT = "var(--color-accent-journal-vivid)";
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -20,7 +23,13 @@ export function JournalRightPanel() {
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
 
   const { data: streak } = useJournalStreak();
+  const { data: onThisDay = [] } = useOnThisDay();
   const { data: calendarData } = useJournalCalendar(currentYear, currentMonth);
+  const { data: monthEvents = [] } = useEventsForMonth(currentYear, currentMonth);
+  const eventDates = useMemo(
+    () => new Set(monthEvents.map((e) => e.event_date)),
+    [monthEvents],
+  );
   // Separate query for streak week — always today's real month
   const { data: streakCalendarData } = useJournalCalendar(
     today.getFullYear(),
@@ -56,44 +65,76 @@ export function JournalRightPanel() {
 
   return (
     <div className="w-full flex flex-col gap-3">
-      {/* ── Streak ── */}
-      <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
-        {/* Title row */}
+      {/* ── Streak — branded hero (deep-accent solid surface, like Habits/Books) ── */}
+      <div
+        className="relative overflow-hidden rounded-card p-4 flex flex-col gap-3"
+        style={{
+          background: "var(--color-accent-journal)",
+          boxShadow:
+            "inset 0 1px 0 0 rgba(255,255,255,0.08), inset 0 0 0 1px rgba(255,255,255,0.06), 0 1px 2px 0 rgba(0,0,0,0.35), 0 10px 30px -12px rgba(0,0,0,0.5)",
+        }}
+      >
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold text-text-secondary">Streak</h3>
-          <span className="text-xs text-text-tertiary">Best {streak?.best ?? 0}</span>
+          <h3 className="text-xs font-semibold text-white/90">Streak</h3>
+          <span className="inline-flex items-center gap-1 text-xs text-white/55">
+            <Flame size={11} style={{ color: "var(--color-fire)" }} />
+            Best {streak?.best ?? 0}
+          </span>
         </div>
 
-        {/* Count */}
         <div className="flex items-baseline gap-1.5">
-          <span className="text-3xl font-bold text-text-primary">{streak?.current ?? 0}</span>
-          <span className="text-sm" style={{ color: '#f97316' }}>days</span>
+          <span className="text-3xl font-bold text-white">{streak?.current ?? 0}</span>
+          <span className="text-sm text-white/70">days</span>
         </div>
 
-        {/* Week dots */}
         <div className="flex items-center justify-between">
           {DAYS.map((day, i) => {
             const d = weekDays[i];
             const dateStr = toDateStr(d);
             const isFuture = dateStr > todayStr;
-            const mood = streakMoodMap.get(dateStr);
-            const hasEntry = mood !== undefined;
-
-            let dotColor = '#27272a';
-            if (!isFuture && hasEntry) dotColor = '#f97316';
+            const hasEntry = streakMoodMap.get(dateStr) !== undefined;
+            const active = !isFuture && hasEntry;
 
             return (
               <div key={i} className="flex flex-col items-center gap-1">
-                <span className="text-[10px] text-text-tertiary">{day}</span>
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: dotColor }} />
+                <span className="text-[10px] text-white/45">{day}</span>
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    backgroundColor: active ? ACCENT : "rgba(255,255,255,0.15)",
+                    boxShadow: active ? `0 0 6px ${ACCENT}` : undefined,
+                  }}
+                />
               </div>
             );
           })}
         </div>
       </div>
 
+      {/* ── On this day — memories from past years ── */}
+      {onThisDay.length > 0 && (
+        <div className="surface-card rounded-card p-4 flex flex-col gap-3">
+          <div className="flex items-center gap-1.5">
+            <History size={13} className="text-text-tertiary" />
+            <h3 className="text-xs font-semibold text-text-secondary">On this day</h3>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {onThisDay.map((e) => (
+              <div key={e.id} className="flex flex-col gap-0.5">
+                <span className="text-[11px] font-medium" style={{ color: ACCENT }}>
+                  {e.entry_date.slice(0, 4)}
+                </span>
+                <p className="line-clamp-2 text-xs text-text-secondary">
+                  {getPreview(e.content) || "—"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Calendar ── */}
-      <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-3">
+      <div className="surface-card rounded-card p-4 flex flex-col gap-3">
         {/* Month header — title left, chevrons right */}
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold text-text-secondary">
@@ -103,14 +144,14 @@ export function JournalRightPanel() {
             <button
               type="button"
               onClick={goToPrevMonth}
-              className="p-1 hover:bg-surface-2 rounded transition-colors"
+              className="p-1 hover:bg-surface-2 rounded-control transition-colors"
             >
               <ChevronLeft className="w-4 h-4 text-text-secondary" />
             </button>
             <button
               type="button"
               onClick={goToNextMonth}
-              className="p-1 hover:bg-surface-2 rounded transition-colors"
+              className="p-1 hover:bg-surface-2 rounded-control transition-colors"
             >
               <ChevronRight className="w-4 h-4 text-text-secondary" />
             </button>
@@ -137,13 +178,20 @@ export function JournalRightPanel() {
             const mood = moodMap.get(dateStr);
             const hasEntry = mood !== undefined;
 
-            let dotColor = '#27272a';
+            let dotColor = 'var(--color-surface-3)';
             if (hasEntry && mood) dotColor = MOOD_CONFIG[mood].color;
-            else if (hasEntry) dotColor = '#52525b';
+            else if (hasEntry) dotColor = 'var(--color-text-tertiary)';
+
+            const hasEvent = eventDates.has(dateStr);
 
             return (
               <div key={day} className="h-8 flex flex-col items-center justify-center gap-0.5">
-                <span className="text-[10px] text-text-tertiary leading-none">{day}</span>
+                <span
+                  className="text-[10px] leading-none"
+                  style={{ color: hasEvent ? ACCENT : 'var(--color-text-tertiary)', fontWeight: hasEvent ? 600 : 400 }}
+                >
+                  {day}
+                </span>
                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: dotColor }} />
               </div>
             );
@@ -151,18 +199,8 @@ export function JournalRightPanel() {
         </div>
       </div>
 
-      {/* ── Mood legend ── */}
-      <div className="bg-surface-1 rounded-lg p-4 flex flex-col gap-2">
-        <h3 className="text-xs font-semibold text-text-secondary mb-0">Mood</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {Object.entries(MOOD_CONFIG).map(([mood, config]) => (
-            <div key={mood} className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: config.color }} />
-              <span className="text-xs text-text-secondary">{config.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ── Events — important dates / reminders ── */}
+      <JournalEvents />
     </div>
   );
 }

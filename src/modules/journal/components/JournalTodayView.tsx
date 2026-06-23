@@ -1,84 +1,129 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useJournalToday, useCreateEntry, useUpdateEntry } from "../hooks/useJournalToday";
-import { MoodPicker } from "./MoodPicker";
+import { Plus, Check } from "lucide-react";
+import { FadeIn } from "@/shared/components/ui/motion";
+import { useJournalToday } from "../hooks/useJournalToday";
+import { useTodayContext } from "../hooks/useJournalCalendar";
+import { useEntryDraft } from "../hooks/useEntryDraft";
+import { buildContextItems } from "../lib/context";
+import { MoodOrbs } from "./MoodOrbs";
 import { JournalEditor } from "./JournalEditor";
+import { JournalPrompts, JOURNAL_SEEDS } from "./JournalPrompts";
+import { JournalContextChips } from "./JournalContextChips";
 import { JournalTodayViewSkeleton } from "./JournalSkeleton";
-import type { JournalMood } from "../types";
+import type { JournalContextItem } from "../types";
 
 // Timezone-safe: use local date, not UTC
 function getTodayLocal(): string {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function JournalTodayView() {
   const { data: entry, isLoading } = useJournalToday();
-  const createEntry = useCreateEntry();
-  const updateEntry = useUpdateEntry();
-
-  // Create or update based on whether an entry exists yet
-  const handleMoodChange = (mood: JournalMood) => {
-    if (entry) {
-      updateEntry.mutate({ id: entry.id, mood });
-    } else {
-      createEntry.mutate({ entry_date: getTodayLocal(), content: "", mood, tags: [] });
-    }
-  };
-
-  const handleSave = (data: { content: string; tags: string[] }) => {
-    if (entry) {
-      updateEntry.mutate({ id: entry.id, content: data.content, tags: data.tags });
-    } else if (data.content.trim()) {
-      // Only create if there's actual content — avoid empty ghost entries
-      createEntry.mutate({ entry_date: getTodayLocal(), content: data.content, mood: null, tags: data.tags });
-    }
-  };
+  const draft = useEntryDraft(entry ?? null, getTodayLocal());
 
   if (isLoading) return <JournalTodayViewSkeleton />;
 
+  // Prompts/templates stay available while the entry is unsaved AND the draft is
+  // still empty or an untouched seed — so you can freely re-pick before writing.
+  const showSeeds = !entry && (draft.content.trim() === "" || JOURNAL_SEEDS.has(draft.content));
+
   return (
-    <motion.div
-      className="flex flex-col h-full gap-6"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-    >
-      {/* Mood picker */}
-      <div>
-        <MoodPicker
-          value={entry?.mood ?? null}
-          onChange={handleMoodChange}
-        />
-      </div>
+    <FadeIn className="flex flex-col h-full gap-5">
+      {/* Mood */}
+      <MoodOrbs value={draft.mood} onChange={draft.setMood} />
+
+      {/* Prompts + templates — fill the draft (no save), re-pickable */}
+      {showSeeds && <JournalPrompts onPick={draft.setContent} />}
 
       {/* Editor */}
       <div className="flex-1 min-h-0">
         <JournalEditor
-          key={entry?.id ?? "new"}
-          entry={entry ?? null}
-          onSave={handleSave}
+          content={draft.content}
+          tags={draft.tags}
+          onContentChange={draft.setContent}
+          onTagsChange={draft.setTags}
+          onSave={draft.save}
+          dirty={draft.dirty}
+          saving={draft.saving}
+          goalId={draft.goalId}
+          onGoalChange={draft.setGoalId}
+          context={draft.context}
+          onContextChange={draft.setContext}
           placeholder="What's on your mind?"
         />
       </div>
 
-      {/* Today's context pills */}
+      {/* Today's context — the cross-module narrative layer (attachable to the entry) */}
       <div className="pb-2">
-        <TodayContext />
+        <TodayContext attachedItems={draft.context} onAttach={draft.setContext} />
       </div>
-    </motion.div>
+    </FadeIn>
   );
 }
 
-// Placeholder until Phase 3 wires real cross-module data
-function TodayContext() {
+const ctxKey = (items: JournalContextItem[]) => items.map((i) => `${i.type}|${i.label}`).join("~");
+
+function TodayContext({
+  attachedItems,
+  onAttach,
+}: {
+  attachedItems: JournalContextItem[];
+  onAttach: (items: JournalContextItem[]) => void;
+}) {
+  const { data } = useTodayContext();
+  const items = data ? buildContextItems(data) : [];
+
+  const attached = attachedItems.length > 0;
+  // Attached snapshot is stale if the live context has changed since attaching.
+  const stale = attached && ctxKey(attachedItems) !== ctxKey(items);
+
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-text-tertiary">Today&apos;s context</p>
-      <p className="text-xs text-text-tertiary italic">
-        Habits, tasks &amp; reading progress — coming in Phase 3.
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-text-tertiary">Today&apos;s context</p>
+        {items.length > 0 &&
+          (!attached ? (
+            <button
+              type="button"
+              onClick={() => onAttach(items)}
+              title="Add today's context to this entry"
+              className="flex items-center gap-1 rounded-control px-1.5 py-0.5 text-[11px] font-medium text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-secondary"
+            >
+              <Plus size={12} />
+              Add to entry
+            </button>
+          ) : stale ? (
+            <button
+              type="button"
+              onClick={() => onAttach(items)}
+              title="Update the attached context to match now"
+              className="flex items-center gap-1 rounded-control px-1.5 py-0.5 text-[11px] font-medium text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-secondary"
+            >
+              <Plus size={12} />
+              Update
+            </button>
+          ) : (
+            <span
+              className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium"
+              style={{ color: "var(--color-accent-journal-vivid)" }}
+            >
+              <Check size={12} />
+              Added
+            </span>
+          ))}
+      </div>
+
+      {items.length === 0 ? (
+        <p className="text-xs italic text-text-tertiary/70">
+          Nothing logged across HEGON yet today.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <JournalContextChips items={items} />
+        </div>
+      )}
     </div>
   );
 }

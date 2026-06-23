@@ -4,14 +4,19 @@ function SkeletonBlock({ className }: { className?: string }) {
 
 export function JournalTodayViewSkeleton() {
   return (
-    <div className="flex flex-col h-full gap-6">
-      {/* Mood picker */}
-      <div>
-        <SkeletonBlock className="h-9 w-64 rounded-lg" />
+    <div className="flex flex-col h-full gap-5">
+      {/* Mood orbs */}
+      <div className="flex items-center gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex flex-col items-center gap-1.5">
+            <SkeletonBlock className="h-8 w-8 rounded-full" />
+            <SkeletonBlock className="h-2 w-8" />
+          </div>
+        ))}
       </div>
 
       {/* Editor — bg-surface-1 card with textarea area + bottom bar */}
-      <div className="flex-1 min-h-0 bg-surface-1 rounded-lg flex flex-col">
+      <div className="flex-1 min-h-0 surface-card rounded-card flex flex-col">
         <div className="flex-1 px-8 py-6 space-y-3">
           <SkeletonBlock className="h-4 w-3/4" />
           <SkeletonBlock className="h-4 w-1/2" />
@@ -39,7 +44,7 @@ export function JournalEntryListSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
-          className="h-24 bg-surface-1 rounded-lg border border-border-subtle animate-pulse"
+          className="h-24 surface-card rounded-card animate-pulse"
         />
       ))}
     </div>
@@ -50,7 +55,7 @@ function JournalRightPanelSkeleton() {
   return (
     <div className="w-full flex flex-col gap-3">
       {/* Streak */}
-      <div className="bg-surface-1 rounded-lg p-4 space-y-3">
+      <div className="surface-card rounded-card p-4 space-y-3">
         <div className="flex items-center justify-between">
           <SkeletonBlock className="h-3 w-12" />
           <SkeletonBlock className="h-3 w-12" />
@@ -67,10 +72,10 @@ function JournalRightPanelSkeleton() {
       </div>
 
       {/* Calendar */}
-      <div className="bg-surface-1 rounded-lg p-4 space-y-3">
+      <div className="surface-card rounded-card p-4 space-y-3">
         <div className="flex items-center justify-between">
           <SkeletonBlock className="h-3 w-24" />
-          <SkeletonBlock className="h-6 w-12 rounded-md" />
+          <SkeletonBlock className="h-6 w-12 rounded-control" />
         </div>
         <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: 7 }).map((_, i) => (
@@ -79,13 +84,13 @@ function JournalRightPanelSkeleton() {
         </div>
         <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: 35 }).map((_, i) => (
-            <SkeletonBlock key={i} className="h-8 rounded-md" />
+            <SkeletonBlock key={i} className="h-8 rounded-control" />
           ))}
         </div>
       </div>
 
       {/* Mood legend */}
-      <div className="bg-surface-1 rounded-lg p-4 space-y-2">
+      <div className="surface-card rounded-card p-4 space-y-2">
         <SkeletonBlock className="h-3 w-10 mb-1" />
         <div className="grid grid-cols-2 gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
