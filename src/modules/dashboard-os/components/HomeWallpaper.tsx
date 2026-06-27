@@ -4,14 +4,20 @@ import { getWallpaper } from "../config";
 // user-supplied image URL plugs in later (Settings). Sits at the very back so
 // the glass dock + widgets refract it.
 
-export function HomeWallpaper({ id, imageUrl }: { id?: string; imageUrl?: string }) {
+export function HomeWallpaper({ id, imageUrl, blur }: { id?: string; imageUrl?: string; blur?: boolean }) {
   const wp = getWallpaper(id);
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-0">
+    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+        <img
+          src={imageUrl}
+          alt=""
+          className="h-full w-full object-cover"
+          // blur bleeds past the edges → scale up a touch so no transparent rim shows
+          style={blur ? { filter: "blur(22px)", transform: "scale(1.08)" } : undefined}
+        />
       ) : (
         <div className="h-full w-full" style={{ background: wp.css }} />
       )}

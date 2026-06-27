@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Minus, Plus, Check, LayoutGrid } from "lucide-react";
+import { Minus, Plus, Check, LayoutGrid, Image as ImageIcon } from "lucide-react";
 import {
   AnimatePresence, motion, useMotionValue, useMotionTemplate, useSpring, useTransform,
   useReducedMotion, type MotionValue,
@@ -17,6 +17,7 @@ import { OS_APPS } from "../config";
 import { DEFAULT_LAYOUT, WIDGET_REGISTRY, type WidgetKey, type ItemSize, type LayoutItem } from "../layout";
 import { useDashboardLayout } from "../store";
 import { computeGridLayout, placedToBox, layoutHeight, type Box, type EngineItem } from "../layout-engine";
+import { WallpaperPanel } from "./WallpaperPanel";
 
 const PARIS_TZ = "Europe/Paris";
 const GAP = 16;
@@ -218,6 +219,7 @@ export default function DashboardHome() {
   const available = DEFAULT_LAYOUT.filter((i) => !present.has(i.id));
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [wallpaperOpen, setWallpaperOpen] = useState(false);
 
   // velocity tilt of the lifted tile — springs back to flat when the cursor stops
   const tilt = useSpring(0, { stiffness: 300, damping: 26 });
@@ -488,20 +490,33 @@ export default function DashboardHome() {
         )}
       </AnimatePresence>
 
-      {/* Customize toggle — floating pill */}
-      <button
-        type="button"
-        onClick={toggleEditing}
-        className={cn(
-          "fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold shadow-xl backdrop-blur-xl transition-colors",
-          isEditing
-            ? "bg-white text-zinc-900 ring-1 ring-black/10"
-            : "bg-white/10 text-white ring-1 ring-white/20 hover:bg-white/15",
+      {/* Customize controls — floating pills (Wallpaper appears in edit mode) */}
+      <div className="fixed bottom-6 right-6 z-30 flex items-center gap-2">
+        {isEditing && (
+          <button
+            type="button"
+            onClick={() => setWallpaperOpen(true)}
+            className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white shadow-xl ring-1 ring-white/20 backdrop-blur-xl transition-colors hover:bg-white/15"
+          >
+            <ImageIcon size={15} /> Wallpaper
+          </button>
         )}
-      >
-        {isEditing ? <Check size={15} strokeWidth={3} /> : <LayoutGrid size={15} />}
-        {isEditing ? "Done" : "Customize"}
-      </button>
+        <button
+          type="button"
+          onClick={toggleEditing}
+          className={cn(
+            "flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold shadow-xl backdrop-blur-xl transition-colors",
+            isEditing
+              ? "bg-white text-zinc-900 ring-1 ring-black/10"
+              : "bg-white/10 text-white ring-1 ring-white/20 hover:bg-white/15",
+          )}
+        >
+          {isEditing ? <Check size={15} strokeWidth={3} /> : <LayoutGrid size={15} />}
+          {isEditing ? "Done" : "Customize"}
+        </button>
+      </div>
+
+      <WallpaperPanel open={wallpaperOpen} onClose={() => setWallpaperOpen(false)} />
     </div>
   );
 }

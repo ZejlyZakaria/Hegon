@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DEFAULT_LAYOUT, type LayoutItem } from "./layout";
+import { DEFAULT_WALLPAPER_ID } from "./config";
 
 // ─── Dashboard layout store ───────────────────────────────────────────────────
 // Source of truth for what's on the home grid and in what order. A phone (2-col)
@@ -11,12 +12,22 @@ import { DEFAULT_LAYOUT, type LayoutItem } from "./layout";
 
 export type Breakpoint = "dense" | "airy";
 
+// Home wallpaper preference. `id` = a CSS preset; `imageUrl` = a custom upload
+// (Pass 2) which, when present, overrides the preset; `blur` softens that image.
+export interface WallpaperPref {
+  id: string;
+  imageUrl?: string;
+  blur?: boolean;
+}
+
 interface DashboardLayoutState {
   layouts: Record<Breakpoint, LayoutItem[]>;
+  wallpaper: WallpaperPref;
   isEditing: boolean;
 
   setEditing: (v: boolean) => void;
   toggleEditing: () => void;
+  setWallpaper: (w: Partial<WallpaperPref>) => void;
 
   // All mutations target one breakpoint bucket explicitly (the caller knows it).
   setLayout: (bp: Breakpoint, layout: LayoutItem[]) => void;
@@ -37,10 +48,12 @@ export const useDashboardLayout = create<DashboardLayoutState>()(
   persist(
     (set) => ({
       layouts: { dense: DEFAULT_LAYOUT, airy: DEFAULT_LAYOUT },
+      wallpaper: { id: DEFAULT_WALLPAPER_ID },
       isEditing: false,
 
       setEditing: (isEditing) => set({ isEditing }),
       toggleEditing: () => set((s) => ({ isEditing: !s.isEditing })),
+      setWallpaper: (w) => set((s) => ({ wallpaper: { ...s.wallpaper, ...w } })),
 
       setLayout: (bp, layout) => set((s) => setBucket(s, bp, layout)),
 
@@ -61,8 +74,8 @@ export const useDashboardLayout = create<DashboardLayoutState>()(
     {
       name: "hegon-dashboard-layout",
       version: 2,
-      // only the arrangements are persisted; isEditing is always a fresh session
-      partialize: (s) => ({ layouts: s.layouts }),
+      // arrangements + wallpaper persist; isEditing is always a fresh session
+      partialize: (s) => ({ layouts: s.layouts, wallpaper: s.wallpaper }),
       // v1 stored a single `layout` → seed both buckets from it.
       migrate: (persisted, version): { layouts: Record<Breakpoint, LayoutItem[]> } => {
         if (version < 2 && persisted && typeof persisted === "object" && "layout" in persisted) {
