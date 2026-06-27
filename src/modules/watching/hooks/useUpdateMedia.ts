@@ -19,19 +19,35 @@ const STATS_FIELDS = [
   "current_season", "current_episode",
 ] as const;
 
+// "Recently Watched" must follow the watch DATE, not a sticky flag. Whenever an
+// update sets `watched_at` (e.g. back-dating from the detail page), recompute
+// `recently_watched` from it — same 30-day window as the add flow's recency. This
+// also makes it a status change → the Recently Watched query re-fetches, so a
+// back-dated item correctly leaves the section. (Skip if the caller set the flag
+// explicitly.)
+const RECENT_MS = 30 * 24 * 60 * 60 * 1000;
+
+function withRecency(input: UpdateMediaInput): UpdateMediaInput {
+  if (!("watched_at" in input) || "recently_watched" in input) return input;
+  const wa = input.watched_at;
+  const recent = !!wa && new Date(wa).getTime() >= Date.now() - RECENT_MS;
+  return { ...input, recently_watched: recent };
+}
+
 export function useUpdateMedia() {
   const queryClient = useQueryClient();
   const isDemo = useIsDemo();
 
   return useMutation({
-    mutationFn: (input: UpdateMediaInput) => {
+    mutationFn: (rawInput: UpdateMediaInput) => {
       if (isDemo) throw new DemoReadOnlyError();
-      const { id, ...updates } = input;
+      const { id, ...updates } = withRecency(rawInput);
       return updateMediaItem(id, updates);
     },
 
-    onMutate: async (input) => {
+    onMutate: async (rawInput) => {
       if (isDemo) return; // read-only demo: skip the optimistic update
+      const input = withRecency(rawInput);
       const { id, ...updates } = input;
 
       // Cancel only the detail query + list-items — avoid disrupting sections/ForYou
@@ -65,7 +81,8 @@ export function useUpdateMedia() {
       toast.error("Update failed. Please try again.");
     },
 
-    onSuccess: (_, input) => {
+    onSuccess: (_, rawInput) => {
+      const input = withRecency(rawInput);
       const { id } = input;
       const isStatusChange = STATUS_FIELDS.some((f) => input[f] != null);
 

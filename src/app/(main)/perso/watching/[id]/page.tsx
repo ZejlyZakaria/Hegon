@@ -228,9 +228,17 @@ export default function MediaDetailPage() {
     if (!media) return;
     try {
       if (media.type === "film") {
+        // watched_at moves → useUpdateMedia recomputes `recently_watched` from it
         await updateMedia.mutateAsync({ id: media.id, watched_at: `${yr}-12-31T12:00:00Z` });
       } else {
-        await updateMedia.mutateAsync({ id: media.id, season_years: { ...(media.season_years ?? {}), "1": yr } });
+        // series/anime keep their year in season_years (Stats reads that, not
+        // watched_at) — so recompute `recently_watched` here from the year, else a
+        // back-dated show would stay stuck in "Recently Watched".
+        await updateMedia.mutateAsync({
+          id: media.id,
+          season_years: { ...(media.season_years ?? {}), "1": yr },
+          recently_watched: yr >= new Date().getFullYear(),
+        });
       }
       toast("Year updated.");
     } catch {
