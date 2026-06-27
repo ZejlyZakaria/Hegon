@@ -131,8 +131,8 @@ function GridCell({
   const y = useSpring(yT, config);
 
   // lift: 0 at rest → 1 when picked up. Under-damped so the scale OVERSHOOTS
-  // slightly (a little "pop" on pick-up) then settles — the macOS grab cue.
-  const lift = useSpring(0, { stiffness: 520, damping: 22 });
+  // slightly (a refined "pop" on pick-up) then settles — the macOS grab cue.
+  const lift = useSpring(0, { stiffness: 480, damping: 26 });
   useEffect(() => { lift.set(active ? 1 : 0); }, [active, lift]);
   const liftScale = useTransform(lift, [0, 1], [1, 1.06]);
   const shadowY = useTransform(lift, [0, 1], [0, 24]);
@@ -220,7 +220,7 @@ export default function DashboardHome() {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   // velocity tilt of the lifted tile — springs back to flat when the cursor stops
-  const tilt = useSpring(0, { stiffness: 260, damping: 18 });
+  const tilt = useSpring(0, { stiffness: 300, damping: 26 });
   const velRef = useRef({ x: 0, y: 0 });
 
   // container height — sprung so the page grows/shrinks smoothly on reflow
@@ -236,6 +236,7 @@ export default function DashboardHome() {
 
   const pointer = useRef({ x: 0, y: 0 });
   const rafRef = useRef(0);
+  const staggerTimers = useRef<number[]>([]); // pending make-room ripple timers
   const dragRef = useRef<null | {
     id: string; grabDX: number; grabDY: number; w: number; h: number;
     order: LayoutItem[]; cols: number; started: boolean; startX: number; startY: number;
@@ -320,7 +321,7 @@ export default function DashboardHome() {
     // horizontal velocity → a tiny tilt (clamped), springs back to 0 when still
     const vx = pointer.current.x - velRef.current.x;
     velRef.current = { x: pointer.current.x, y: pointer.current.y };
-    tilt.set(Math.max(-8, Math.min(8, vx * 0.5)));
+    tilt.set(Math.max(-6, Math.min(6, vx * 0.4)));
 
     // Re-pack only when the tile's centre has actually moved (skip redundant work
     // when the cursor is still). The dragged tile's box CENTRE drives insertion.
@@ -333,15 +334,40 @@ export default function DashboardHome() {
       if (!sameOrder(next, d.order)) {
         d.order = next;
         const res = computeGridLayout(toEngineItems(next), d.cols);
+
+        // RIPPLE: only the tiles that actually move, released in a wave from the
+        // dragged tile outward (closest first). A reorder mid-wave clears pending
+        // timers and re-schedules from the latest order.
+        for (const t of staggerTimers.current) clearTimeout(t);
+        staggerTimers.current = [];
+
+        const movers: { mv: { xT: MotionValue<number>; yT: MotionValue<number> }; bx: number; by: number; dist: number }[] = [];
         for (const item of next) {
           if (item.id === d.id) continue;
           const p = res.byId[item.id];
           if (!p) continue;
-          const b = placedToBox(p, metrics);
           const mv = registry.current.get(item.id);
-          mv?.xT.set(b.x);
-          mv?.yT.set(b.y);
+          if (!mv) continue;
+          const b = placedToBox(p, metrics);
+          // skip tiles already at their target (most tiles don't move on a reorder)
+          if (Math.abs(mv.xT.get() - b.x) + Math.abs(mv.yT.get() - b.y) < 1) continue;
+          const dist = Math.hypot(b.x + b.w / 2 - cx, b.y + b.h / 2 - cy);
+          movers.push({ mv, bx: b.x, by: b.y, dist });
         }
+        movers.sort((a, b) => a.dist - b.dist);
+
+        const STEP = 12; // ms between successive tiles in the wave
+        const MAX_DELAY = 120;
+        movers.forEach((m, i) => {
+          const delay = Math.min(MAX_DELAY, i * STEP);
+          if (delay === 0) {
+            m.mv.xT.set(m.bx);
+            m.mv.yT.set(m.by);
+          } else {
+            const t = window.setTimeout(() => { m.mv.xT.set(m.bx); m.mv.yT.set(m.by); }, delay);
+            staggerTimers.current.push(t);
+          }
+        });
         heightMV.set(layoutHeight(res, metrics));
       }
     }
@@ -366,6 +392,8 @@ export default function DashboardHome() {
   const onPointerUp = () => {
     window.removeEventListener("pointermove", onPointerMove);
     cancelAnimationFrame(rafRef.current);
+    for (const t of staggerTimers.current) clearTimeout(t);
+    staggerTimers.current = [];
     const d = dragRef.current;
     if (d?.started) setLayout(bp, d.order);
     dragRef.current = null;
@@ -395,7 +423,10 @@ export default function DashboardHome() {
     window.addEventListener("pointerup", onPointerUp, { once: true });
   };
 
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+  useEffect(() => () => {
+    cancelAnimationFrame(rafRef.current);
+    for (const t of staggerTimers.current) clearTimeout(t);
+  }, []);
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6">

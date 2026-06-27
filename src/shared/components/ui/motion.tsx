@@ -74,8 +74,8 @@ export function StaggerItem({
 export type SpringConfig = { stiffness: number; damping: number; mass: number };
 
 export const Spring = {
-  Launchpad: { stiffness: 700, damping: 36, mass: 0.6 }, // app icons: light, quick, a hair of overshoot
-  Widget:    { stiffness: 460, damping: 30, mass: 0.9 }, // widgets: more inertia, settles with a soft overshoot
+  Launchpad: { stiffness: 680, damping: 34, mass: 0.6 }, // app icons: light, quick, a hair of overshoot
+  Widget:    { stiffness: 410, damping: 27, mass: 1.0 }, // widgets: more body, flows in with a soft overshoot
 } satisfies Record<string, SpringConfig>;
 
 // ── FadeIn — a single element (panel, card, section) entering on mount. Optional
