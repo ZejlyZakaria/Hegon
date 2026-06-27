@@ -108,7 +108,7 @@ function RemoveButton({ onRemove }: { onRemove: () => void }) {
 }
 
 function GridCell({
-  id, box, kind, active, dragging, editing, idx, spring, tilt, onLift, onRemove, register, children,
+  id, box, kind, active, dragging, editing, jiggle, idx, spring, tilt, onLift, onRemove, register, children,
 }: {
   id: string;
   box: Box;
@@ -116,6 +116,7 @@ function GridCell({
   active: boolean;
   dragging: boolean;
   editing: boolean;
+  jiggle: boolean;
   idx: number;
   spring: SpringConfig;
   tilt: MotionValue<number>;
@@ -171,8 +172,8 @@ function GridCell({
       >
         {/* jiggle layer — CSS rotate, off for the lifted tile */}
         <div
-          className={cn("relative h-full w-full", editing && !active && "dos-jiggle")}
-          style={{ animationDelay: editing ? `${(idx % 6) * -0.05}s` : undefined }}
+          className={cn("relative h-full w-full", jiggle && !active && "dos-jiggle")}
+          style={{ animationDelay: jiggle ? `${(idx % 6) * -0.05}s` : undefined }}
         >
           {kind === "app" ? (
             // app icon is centred in a larger cell → anchor the badge to the ICON
@@ -446,6 +447,7 @@ export default function DashboardHome() {
                 active={item.id === activeId}
                 dragging={activeId !== null}
                 editing={isEditing}
+                jiggle={isEditing && !wallpaperOpen}
                 idx={idx}
                 spring={item.kind === "app" ? Spring.Launchpad : Spring.Widget}
                 tilt={tilt}
