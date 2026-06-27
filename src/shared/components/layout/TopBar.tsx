@@ -75,6 +75,32 @@ function Breadcrumb({ crumbs, hideLastOnMobile }: { crumbs: string[] | null; hid
   );
 }
 
+// ─── dashboard date (shown in the global top bar on the OS home) ──────────────
+
+const PARIS_TZ = "Europe/Paris";
+
+function greeting(hour: number): string {
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 18) return "Good afternoon";
+  if (hour >= 18 && hour < 22) return "Good evening";
+  return "Good night";
+}
+
+function DashboardDate({ userName }: { userName: string | null }) {
+  const now = new Date();
+  const hour = parseInt(now.toLocaleTimeString("en-US", { hour: "numeric", hour12: false, timeZone: PARIS_TZ }), 10);
+  const date = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: PARIS_TZ });
+
+  return (
+    <div className="min-w-0 leading-tight">
+      <p className="truncate text-sm font-semibold text-text-primary" suppressHydrationWarning>{date}</p>
+      <p className="truncate text-[11px] text-text-tertiary" suppressHydrationWarning>
+        {greeting(hour)}, {userName ?? "there"}.
+      </p>
+    </div>
+  );
+}
+
 // ─── profile menu ─────────────────────────────────────────────────────────────
 
 function ProfileMenu({
@@ -264,8 +290,13 @@ export default function TopBar() {
   }, []);
 
   const initial = userName?.[0]?.toUpperCase() ?? "Z";
+  const isDashboard = pathname.startsWith("/dashboard");
   const watchingPageLabel = useWatchingUIStore((s) => s.pageLabel);
-  const crumbs = watchingPageLabel
+  // On the dashboard OS home the big date header replaces the breadcrumb, and
+  // the bar floats transparently over the wallpaper (iPad status-bar feel).
+  const crumbs = isDashboard
+    ? null
+    : watchingPageLabel
     ? ["Watching", watchingPageLabel.section, watchingPageLabel.title]
     : getBreadcrumb(pathname);
 
@@ -279,11 +310,15 @@ export default function TopBar() {
         avatarUrl={avatarUrl}
       />
 
-      <header className="shrink-0 bg-surface-0">
+      <header className={cn("shrink-0", isDashboard ? "bg-transparent" : "bg-surface-0")}>
         <div className="max-w-400 mx-auto px-4 sm:px-6 h-14 flex items-center justify-between w-full">
           <div className="flex min-w-0 items-center gap-1.5">
             <MobileNav />
-            <Breadcrumb crumbs={crumbs} hideLastOnMobile={!!watchingPageLabel} />
+            {isDashboard ? (
+              <DashboardDate userName={userName} />
+            ) : (
+              <Breadcrumb crumbs={crumbs} hideLastOnMobile={!!watchingPageLabel} />
+            )}
           </div>
 
           {/* Right: ⌘K + notifications + avatar */}

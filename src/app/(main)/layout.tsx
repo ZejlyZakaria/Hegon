@@ -8,6 +8,7 @@ import Dock from "@/shared/components/navigation/Dock";
 import TopBar from "@/shared/components/layout/TopBar";
 import { DemoBanner } from "@/shared/components/layout/DemoBanner";
 import { CommandCenterProvider } from "@/modules/command-center/components/CommandCenterProvider";
+import { DashboardWallpaper } from "@/modules/dashboard-os/components/DashboardWallpaper";
 
 // Demo curation — server-side, so a demo visitor on a non-exposed module gets
 // the 404 decided BEFORE render (no flash). Also reports `isDemo` so we can drop
@@ -39,9 +40,12 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   const { isDemo } = await resolveDemoContext(pathname);
 
   return (
-    <div className="flex h-dvh bg-surface-0 overflow-hidden custom-scrollbar">
+    <div className="relative flex h-dvh bg-surface-0 overflow-hidden custom-scrollbar">
+      {/* Dashboard OS — full-bleed wallpaper behind the glass dock + home.
+          Client-gated on pathname so it never bleeds into other modules. */}
+      <DashboardWallpaper />
       <Dock />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
         <DemoBanner />
         <TopBar />
         <main

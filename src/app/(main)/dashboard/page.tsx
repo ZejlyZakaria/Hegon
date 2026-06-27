@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/infrastructure/supabase/client";
-import DashboardContent from "@/modules/dashboard/components/DashboardContent";
+import DashboardHome from "@/modules/dashboard-os/components/DashboardHome";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -34,9 +34,5 @@ export default function DashboardPage() {
     return () => subscription.unsubscribe();
   }, [router]);
 
-  return (
-    <div className="min-h-screen bg-surface-0 overflow-y-auto">
-      <DashboardContent />
-    </div>
-  );
+  return <DashboardHome />;
 }

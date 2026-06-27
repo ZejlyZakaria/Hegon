@@ -394,6 +394,35 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   GLASS — frosted floating surfaces (Dashboard OS: dock, widgets, panels)
+   Reserved for surfaces that FLOAT over a wallpaper. Refracts what's behind
+   it (backdrop-blur), catches light on its rim. Never for dense content
+   surfaces inside modules — those stay on the solid surface scale.
+   ════════════════════════════════════════════════════════════════════════ */
+
+@utility glass {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.14),   /* top rim light */
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),   /* hairline edge */
+    0 8px 30px -8px rgba(0, 0, 0, 0.55);         /* soft lift */
+}
+
+/* Denser variant — for widgets carrying text, where legibility needs more
+   backing than the dock's lighter frost. */
+@utility glass-panel {
+  background: rgba(20, 20, 26, 0.55);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 10px 34px -10px rgba(0, 0, 0, 0.6);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    JOURNAL PROSE — rendered markdown (no typography plugin)
    ════════════════════════════════════════════════════════════════════════ */
 
@@ -578,4 +607,21 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   DASHBOARD-OS — Customize (edit mode) jiggle
+   Tiny rotate wobble on every grid tile while arranging, iOS home-screen
+   style. A per-tile negative delay (set inline) desyncs them so the grid
+   doesn't pulse in unison.
+   ════════════════════════════════════════════════════════════════════════ */
+
+@keyframes dos-jiggle {
+  0%   { transform: rotate(-0.7deg); }
+  50%  { transform: rotate(0.7deg); }
+  100% { transform: rotate(-0.7deg); }
+}
+
+.dos-jiggle {
+  animation: dos-jiggle 0.34s ease-in-out infinite;
 }

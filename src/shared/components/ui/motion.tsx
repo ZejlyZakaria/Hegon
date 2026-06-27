@@ -65,6 +65,19 @@ export function StaggerItem({
   );
 }
 
+// ── Movement language (springs) ──────────────────────────────────────────────
+// The entrance helpers above use EASING. INTERACTIVE movement — drag, reflow,
+// resize — uses SPRINGS instead, so it feels physical (macOS), never a flat
+// "200ms ease". One family, tuned per surface nature; consume via `useSpring`
+// (motion values) or spread into a `transition`. This is HEGON's motion DS — add
+// a token here when you build a new kind of moving surface, never inline configs.
+export type SpringConfig = { stiffness: number; damping: number; mass: number };
+
+export const Spring = {
+  Launchpad: { stiffness: 700, damping: 36, mass: 0.6 }, // app icons: light, quick, a hair of overshoot
+  Widget:    { stiffness: 460, damping: 30, mass: 0.9 }, // widgets: more inertia, settles with a soft overshoot
+} satisfies Record<string, SpringConfig>;
+
 // ── FadeIn — a single element (panel, card, section) entering on mount. Optional
 // `delay` to chain a few, `y` to tune the rise (use y={-6} for top bars/toolbars).
 export function FadeIn({

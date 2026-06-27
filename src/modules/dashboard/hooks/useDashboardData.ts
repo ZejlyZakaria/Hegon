@@ -11,5 +11,9 @@ export function useDashboardData() {
     queryKey: DASHBOARD_KEYS.data(),
     queryFn: () => getDashboardData(),
     staleTime: 1000 * 60 * 2,
+    // The dashboard is a "home" you return to after acting elsewhere (watching an
+    // episode, completing a task…). Always revalidate on arrival so it's never
+    // stale — the cached data still shows instantly, then updates (SWR).
+    refetchOnMount: "always",
   });
 }

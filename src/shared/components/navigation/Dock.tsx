@@ -6,7 +6,6 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard,
   Trophy,
   Tv,
   Library,
@@ -18,9 +17,10 @@ import {
   Code2,
   Repeat2,
 } from "lucide-react";
-import { cn } from "@/shared/utils/utils";
 import { useInitOrg } from "@/shared/hooks/useInitOrg";
 import { useUserSettings, useDemoStatus } from "@/modules/settings/hooks/useSettings";
+import { TileFace } from "@/modules/dashboard-os/components/AppTile";
+import { OS_APPS } from "@/modules/dashboard-os/config";
 
 // ─── nav config ───────────────────────────────────────────────────────────────
 
@@ -53,8 +53,7 @@ export const NAV_GROUPS: NavItem[][] = [
   ],
 ];
 
-// ─── section ambient colors ───────────────────────────────────────────────────
-
+// section ambient colors — kept exported for Sidebar/other consumers
 const SECTION_COLORS: Record<string, { from: string; glow: string }> = {
   "/dashboard":      { from: "rgba(96,165,250,0.08)",   glow: "#60a5fa" },
   "/life/goals":     { from: "rgba(34,197,94,0.08)",    glow: "#22c55e" },
@@ -69,14 +68,9 @@ const SECTION_COLORS: Record<string, { from: string; glow: string }> = {
   "/pro/tech":       { from: "rgba(6,182,212,0.08)",    glow: "#06b6d4" },
 };
 
-const getSectionColor = (p: string) => {
-  for (const [path, colors] of Object.entries(SECTION_COLORS)) {
-    if (p.startsWith(path)) return colors;
-  }
-  return { from: "rgba(99,102,241,0.04)", glow: "#6366f1" };
-};
+export { SECTION_COLORS };
 
-const DOCK_W = 56;
+const DOCK_W = 76;
 
 // ─── tooltip ──────────────────────────────────────────────────────────────────
 
@@ -101,7 +95,7 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
   };
 
   return (
-    <div ref={ref} className="relative w-full" onMouseEnter={onEnter} onMouseLeave={onLeave}>
+    <div ref={ref} className="relative" onMouseEnter={onEnter} onMouseLeave={onLeave}>
       {children}
       <AnimatePresence>
         {armed && visible && (
@@ -110,8 +104,8 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.1 }}
-            className="fixed z-20 pointer-events-none"
-            style={{ left: DOCK_W + 8, top: y, transform: "translateY(-50%)" }}
+            className="fixed z-30 pointer-events-none"
+            style={{ left: DOCK_W + 2, top: y, transform: "translateY(-50%)" }}
           >
             <div className="bg-surface-3 border border-border-default text-text-primary text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
               {label}
@@ -126,54 +120,41 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
 // ─── dock item ────────────────────────────────────────────────────────────────
 
 function DockItem({
+  itemKey,
   href,
-  icon,
   label,
   active,
-  accent,
   comingSoon,
 }: {
+  itemKey: string;
   href: string;
-  icon: React.ReactNode;
   label: string;
   active: boolean;
-  accent: string;
   comingSoon?: boolean;
 }) {
-  const inner = (
-    <div className="relative px-2 py-0.5">
-      {active && !comingSoon && (
-        <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-r-full"
-          style={{ backgroundColor: accent }}
-        />
-      )}
-      <div
-        className={cn(
-          "w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-100",
-          comingSoon
-            ? "text-text-tertiary opacity-25 cursor-not-allowed"
-            : active
-              ? "bg-white/[0.07]"
-              : "text-text-tertiary hover:text-text-primary hover:bg-white/5 cursor-pointer",
-        )}
-        style={active && !comingSoon ? { color: accent } : undefined}
-      >
-        {icon}
-      </div>
+  const app = OS_APPS[itemKey];
+  if (!app) return null;
+
+  const face = (
+    <div className="group">
+      <TileFace app={app} size="dock" active={active && !comingSoon} />
     </div>
   );
 
   const tooltipLabel = comingSoon ? `${label} — coming soon` : label;
 
   if (comingSoon) {
-    return <Tooltip label={tooltipLabel}>{inner}</Tooltip>;
+    return (
+      <Tooltip label={tooltipLabel}>
+        <div className="cursor-default">{face}</div>
+      </Tooltip>
+    );
   }
 
   return (
     <Tooltip label={tooltipLabel}>
-      <Link href={href} className="block">
-        {inner}
+      <Link href={href} className="block focus:outline-none">
+        {face}
       </Link>
     </Tooltip>
   );
@@ -183,7 +164,6 @@ function DockItem({
 
 export default function Dock() {
   const pathname = usePathname();
-  const { from } = getSectionColor(pathname);
   const { data: userSettings } = useUserSettings();
   const { isDemo, isReady: demoReady } = useDemoStatus();
   const hiddenModules = new Set(userSettings?.hidden_modules ?? []);
@@ -194,81 +174,56 @@ export default function Dock() {
 
   return (
     <aside
-      className="relative hidden lg:flex flex-col h-screen shrink-0 overflow-hidden border-r border-white/5"
-      style={{ width: DOCK_W, background: "#0e0e10" }}
+      className="relative z-20 hidden lg:flex shrink-0 items-center justify-center"
+      style={{ width: DOCK_W }}
     >
-      {/* ambient glow — top radial */}
-      <div
-        className="absolute inset-0 pointer-events-none transition-all duration-700"
-        style={{
-          background: `radial-gradient(ellipse 220% 30% at 50% 0%, ${from.replace("0.08", "0.30")}, transparent 55%)`,
-        }}
-      />
-      {/* ambient glow — bottom fade */}
-      <div
-        className="absolute bottom-0 inset-x-0 h-24 pointer-events-none transition-all duration-700"
-        style={{
-          background: `linear-gradient(to top, ${from.replace("0.08", "0.12")}, transparent)`,
-        }}
-      />
+      <nav className="glass flex max-h-[calc(100dvh-20px)] flex-col items-center gap-2.5 overflow-y-auto rounded-[26px] px-2.5 py-3.5 custom-scrollbar-hide">
+        {/* logo */}
+        <Link href="/dashboard" className="relative h-7 w-7 shrink-0 opacity-90 transition-opacity hover:opacity-100">
+          <Image src="/logo/Hegon_white_logo.png" alt="HEGON" fill sizes="28px" priority className="object-contain" />
+        </Link>
 
-      {/* ── logo ── */}
-      <div className="pt-3 pb-1 flex items-center justify-center shrink-0">
-        <div className="w-8 h-8 rounded-lg overflow-hidden relative">
-          <Image
-            src="/logo/Hegon_black_logo2.png"
-            alt="HEGON"
-            fill
-            sizes="32px"
-            priority
-            className="object-contain"
-          />
-        </div>
-      </div>
-
-      {/* ── nav ── */}
-      <div className="relative flex-1 overflow-y-auto overflow-x-hidden flex flex-col justify-center py-3 custom-scrollbar-hide">
-        <div>
-          {navReady && (
-            <>
-              {/* Dashboard is hidden for the read-only demo (curated to exposed modules only). */}
-              {!isDemo && (
+        {navReady && (
+          <>
+            {/* Dashboard — hidden for the read-only demo (curated to exposed modules) */}
+            {!isDemo && (
+              <>
+                <div className="h-px w-7 bg-white/12" />
                 <DockItem
+                  itemKey="dashboard"
                   href="/dashboard"
-                  icon={<LayoutDashboard size={18} />}
-                  label="Dashboard"
+                  label="Home"
                   active={pathname === "/dashboard"}
-                  accent="#60a5fa"
                 />
-              )}
+              </>
+            )}
 
-              {NAV_GROUPS.map((group, gi) => {
-                // Hidden modules off for everyone; the demo also drops coming-soon items.
-                const items = group.filter(
-                  (item) => !hiddenModules.has(item.key) && !(isDemo && item.comingSoon),
-                );
-                if (items.length === 0) return null;
-                return (
-                  <div key={gi}>
-                    <div className="h-px bg-white/6 mx-3 my-2" />
-                    {items.map((item) => (
-                      <DockItem
-                        key={item.key}
-                        href={item.href}
-                        icon={item.icon}
-                        label={item.label}
-                        active={pathname.startsWith(item.activePrefix ?? item.href)}
-                        accent={item.accent}
-                        comingSoon={item.comingSoon}
-                      />
-                    ))}
-                  </div>
-                );
-              })}
-            </>
-          )}
-        </div>
-      </div>
+            {NAV_GROUPS.map((group, gi) => {
+              // Hidden modules off for everyone; coming-soon modules never show in
+              // the dock (they stay on the dashboard grid, dimmed).
+              const items = group.filter(
+                (item) => !hiddenModules.has(item.key) && !item.comingSoon,
+              );
+              if (items.length === 0) return null;
+              return (
+                <div key={gi} className="flex flex-col items-center gap-2.5">
+                  <div className="h-px w-7 bg-white/12" />
+                  {items.map((item) => (
+                    <DockItem
+                      key={item.key}
+                      itemKey={item.key}
+                      href={item.href}
+                      label={item.label}
+                      active={pathname.startsWith(item.activePrefix ?? item.href)}
+                      comingSoon={item.comingSoon}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </>
+        )}
+      </nav>
     </aside>
   );
 }
