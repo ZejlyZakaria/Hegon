@@ -139,6 +139,10 @@ export interface GoogleBooksVolume {
     publishedDate?: string;
     pageCount?:     number;
     categories?:    string[];
+    publisher?:     string;
+    language?:      string;
+    printType?:     string;
+    industryIdentifiers?: { type: string; identifier: string }[];
     imageLinks?: {
       thumbnail?:      string;
       smallThumbnail?: string;
@@ -151,7 +155,8 @@ export interface BookSearchResult {
   external_id:  string;
   title:        string;
   author:       string | null;
-  cover_url:    string | null;
+  cover_url:    string | null;     // best candidate (first that loads)
+  cover_candidates: string[];      // ordered: Open Library (hi-res) → Google
   year:         number | null;
   genre:        string[];
   total_pages:  number | null;

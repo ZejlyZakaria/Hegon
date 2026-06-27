@@ -42,31 +42,51 @@ export function computeStreak(dateSet: Set<string>): { current: number; best: nu
   return { current, best };
 }
 
+// Prefer ISBN-13, then ISBN-10 — the key to a high-res Open Library cover.
+function pickIsbn(ids?: { type: string; identifier: string }[]): string | null {
+  if (!ids?.length) return null;
+  return (
+    ids.find((i) => i.type === "ISBN_13")?.identifier ??
+    ids.find((i) => i.type === "ISBN_10")?.identifier ??
+    null
+  );
+}
+
+// Google's thumbnail upscaled looks blurry — keep it as a FALLBACK only, and
+// don't over-zoom (zoom=1 = the real thumbnail, not a stretched zoom=5).
+function googleCover(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const url = new URL(raw.replace("http:", "https:"));
+    url.searchParams.delete("edge");
+    url.searchParams.set("zoom", "1");
+    url.searchParams.set("fife", "w400");
+    return url.toString();
+  } catch {
+    return raw.replace("http:", "https:");
+  }
+}
+
 export function normalizeVolume(volume: GoogleBooksVolume): BookSearchResult {
   const info = volume.volumeInfo;
   const rawYear = info.publishedDate ? parseInt(info.publishedDate.slice(0, 4)) : null;
 
+  // Cover candidates, best first: Open Library hi-res (by ISBN, ?default=false
+  // → 404 if none so the UI falls through) → cleaned Google thumbnail.
+  const isbn = pickIsbn(info.industryIdentifiers);
+  const ol = isbn ? `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false` : null;
+  const google = googleCover(info.imageLinks?.thumbnail ?? info.imageLinks?.smallThumbnail);
+  const cover_candidates = [ol, google].filter((x): x is string => !!x);
+
   return {
-    external_id:  volume.id,
-    title:        info.title,
-    author:       info.authors?.[0] ?? null,
-    cover_url: (() => {
-      const img = info.imageLinks;
-      const raw = img?.thumbnail ?? img?.smallThumbnail ?? null;
-      if (!raw) return null;
-      try {
-        const url = new URL(raw.replace("http:", "https:"));
-        url.searchParams.set("zoom", "5");
-        url.searchParams.delete("edge");
-        url.searchParams.set("fife", "w400");
-        return url.toString();
-      } catch {
-        return raw.replace("http:", "https:");
-      }
-    })(),
-    year:        rawYear && !isNaN(rawYear) ? rawYear : null,
-    genre:       info.categories ?? [],
-    total_pages: info.pageCount ?? null,
-    description: info.description ?? null,
+    external_id:      volume.id,
+    title:            info.title,
+    author:           info.authors?.[0] ?? null,
+    cover_url:        cover_candidates[0] ?? null,
+    cover_candidates,
+    year:             rawYear && !isNaN(rawYear) ? rawYear : null,
+    genre:            info.categories ?? [],
+    total_pages:      info.pageCount ?? null,
+    description:      info.description ?? null,
   };
 }

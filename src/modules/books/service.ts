@@ -27,6 +27,20 @@ async function logReadingDelta(supabase: SupabaseClient, bookId: string, delta: 
     .then(({ error }) => { if (error) console.error("log_book_reading failed", error); });
 }
 
+// Upload a custom book cover to the public `posters` bucket → returns its URL.
+// Mirrors Watching's custom-poster flow (same bucket, book-covers subfolder).
+export async function uploadBookCover(file: File): Promise<string | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const ext = file.name.split(".").pop() ?? "jpg";
+  const filePath = `${user.id}/book-covers/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("posters").upload(filePath, file);
+  if (error) return null;
+  const { data } = supabase.storage.from("posters").getPublicUrl(filePath);
+  return data.publicUrl;
+}
+
 // =====================================================
 // READ
 // =====================================================

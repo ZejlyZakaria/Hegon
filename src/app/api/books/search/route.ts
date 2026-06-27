@@ -6,6 +6,10 @@ import type { BookSearchResult } from "@/modules/books/types";
 const GOOGLE_BOOKS_BASE = "https://www.googleapis.com/books/v1/volumes";
 const API_KEY = process.env.GOOGLE_BOOKS_API_KEY;
 
+// Titles of the "summary industry" — kept precise so real books aren't dropped
+// (e.g. NOT a bare "analysis", which would kill "Real Analysis").
+const JUNK_TITLE = /\b(study guide|sparknotes|cliffs?\s?notes|key takeaways|conversation starters|summary (of|and|&|:)|workbook|trivia quiz|reading group guide|quicklet)\b/i;
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient();
@@ -43,7 +47,9 @@ export async function GET(request: NextRequest) {
     // A bare numeric query like "1984" matches years / volume numbers in thousands
     // of scanned periodicals, burying the real book → bias it to the title.
     const searchQ = /^[\d\s]+$/.test(normalizedQ) ? `intitle:${normalizedQ}` : normalizedQ;
-    const url = `${GOOGLE_BOOKS_BASE}?q=${encodeURIComponent(searchQ)}&maxResults=20&key=${API_KEY}`;
+    // printType=books → excludes magazines/periodicals (a big source of junk + the
+    // "1984 buried in periodicals" problem).
+    const url = `${GOOGLE_BOOKS_BASE}?q=${encodeURIComponent(searchQ)}&printType=books&maxResults=20&key=${API_KEY}`;
 
     const res = await fetch(url);
     if (!res.ok) {
@@ -51,7 +57,11 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await res.json();
-    const results: BookSearchResult[] = (data.items ?? []).map(normalizeVolume);
+    // Drop the "books that talk about the book" — summaries, study guides, etc. —
+    // so we keep the real, original works.
+    const results: BookSearchResult[] = (data.items ?? [])
+      .map(normalizeVolume)
+      .filter((r: BookSearchResult) => !JUNK_TITLE.test(r.title));
     return NextResponse.json(results);
   } catch (err) {
     console.error("[books/search]", err);
