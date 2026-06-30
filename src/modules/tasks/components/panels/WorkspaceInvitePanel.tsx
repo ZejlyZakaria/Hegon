@@ -96,9 +96,13 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
       return;
     }
     setEmailError(null);
-    const inv = await createInvitation.mutateAsync(trimmed);
-    setGeneratedLink(`${window.location.origin}/invite/${inv.token}`);
-    setEmail("");
+    try {
+      const inv = await createInvitation.mutateAsync(trimmed);
+      setGeneratedLink(`${window.location.origin}/invite/${inv.token}`);
+      setEmail("");
+    } catch {
+      /* the mutation's onError shows the toast (read-only demo notice or failure) */
+    }
   }
 
   function handleCopy(link: string) {
@@ -110,9 +114,13 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
   async function handleCreateTag() {
     const trimmed = newTagName.trim();
     if (!trimmed) return;
-    await createTag.mutateAsync({ name: trimmed, color: newTagColor });
-    setNewTagName("");
-    setNewTagColor(HEGON_COLORS[3]);
+    try {
+      await createTag.mutateAsync({ name: trimmed, color: newTagColor });
+      setNewTagName("");
+      setNewTagColor(HEGON_COLORS[3]);
+    } catch {
+      /* createTag's onError shows the toast (read-only demo notice or failure) */
+    }
   }
 
   return (

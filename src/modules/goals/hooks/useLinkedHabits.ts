@@ -6,6 +6,8 @@ import {
   AVAILABLE_TASK_KEYS,
 } from "./query-keys";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 
 export function useLinkedHabits(goalId: string) {
   return useQuery({
@@ -18,13 +20,18 @@ export function useLinkedHabits(goalId: string) {
 
 export function useLinkHabit(goalId: string) {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (habitId: string) => GoalService.linkHabitToGoal(habitId, goalId),
+    mutationFn: (habitId: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return GoalService.linkHabitToGoal(habitId, goalId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LINKED_HABIT_KEYS.byGoal(goalId) });
       queryClient.invalidateQueries({ queryKey: AVAILABLE_HABIT_KEYS.all });
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to link habit.");
     },
   });
@@ -32,13 +39,18 @@ export function useLinkHabit(goalId: string) {
 
 export function useUnlinkHabit(goalId: string) {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (habitId: string) => GoalService.unlinkHabitFromGoal(habitId),
+    mutationFn: (habitId: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return GoalService.unlinkHabitFromGoal(habitId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LINKED_HABIT_KEYS.byGoal(goalId) });
       queryClient.invalidateQueries({ queryKey: AVAILABLE_HABIT_KEYS.all });
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to unlink habit.");
     },
   });

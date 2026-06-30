@@ -335,7 +335,7 @@ export default function SettingsPage() {
             </p>
           ) : (
             <div className="space-y-0.5">
-              {LIVE_MODULES.map((m) => {
+              {[DASHBOARD_MODULE, ...LIVE_MODULES].map((m) => {
                 const shared = demoVisible.includes(m.key);
                 return (
                   <div key={m.key} className="flex items-center gap-3 rounded-lg px-2 py-2">

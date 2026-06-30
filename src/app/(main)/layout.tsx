@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/infrastructure/supabase/server";
-import { LIVE_MODULES, modulePrefix } from "@/shared/constants/modules";
+import { DASHBOARD_MODULE, LIVE_MODULES, modulePrefix } from "@/shared/constants/modules";
 import Dock from "@/shared/components/navigation/Dock";
 import TopBar from "@/shared/components/layout/TopBar";
 import { DemoBanner } from "@/shared/components/layout/DemoBanner";
@@ -29,7 +29,7 @@ async function resolveDemoContext(pathname: string): Promise<{ isDemo: boolean }
   const { data: settings } = await supabase
     .from("user_settings").select("hidden_modules").eq("user_id", userId).maybeSingle();
   const hidden = new Set<string>(settings?.hidden_modules ?? []);
-  const allowed = LIVE_MODULES.filter((m) => !hidden.has(m.key)).map(modulePrefix);
+  const allowed = [DASHBOARD_MODULE, ...LIVE_MODULES].filter((m) => !hidden.has(m.key)).map(modulePrefix);
 
   if (pathname && !allowed.some((prefix) => pathname.startsWith(prefix))) notFound();
   return { isDemo: true };

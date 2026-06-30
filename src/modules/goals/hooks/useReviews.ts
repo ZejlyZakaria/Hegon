@@ -3,6 +3,8 @@ import * as GoalService from "../service";
 import { REVIEW_KEYS, GOAL_KEYS } from "./query-keys";
 import { JOURNAL_KEYS } from "@/modules/journal/hooks/query-keys";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import type { CreateReviewInput } from "../types";
 
 export function useReviews() {
@@ -33,8 +35,12 @@ export function useReviewDraft(enabled: boolean) {
 
 export function useCreateReview() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (input: CreateReviewInput) => GoalService.createReview(input),
+    mutationFn: (input: CreateReviewInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return GoalService.createReview(input);
+    },
     onSuccess: (review) => {
       queryClient.invalidateQueries({ queryKey: REVIEW_KEYS.all });
       // The mirror copy may have created/updated today's journal entry — refetch
@@ -46,7 +52,8 @@ export function useCreateReview() {
       queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
       toast.success("Review saved.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to save review.");
     },
   });

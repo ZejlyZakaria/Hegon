@@ -4,9 +4,11 @@ import * as GoalService from "@/modules/goals/service";
 import { TASK_KEYS, STATUS_KEYS } from "./query-keys";
 import { PROJECT_ASSIGNEE_KEYS } from "./useOrgMembers";
 import { GOAL_KEYS, LINKED_TASK_KEYS } from "@/modules/goals/hooks/query-keys";
-import type { MoveTaskInput, Status, Assignee } from "../types";
+import type { MoveTaskInput, Status, Assignee, CreateTaskInput, UpdateTaskInput } from "../types";
 import type { Task } from "../types";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { markOptimistic, clearOptimistic } from "./optimistic-tracker";
 
 // =====================================================
@@ -49,15 +51,20 @@ export function useTasks(projectId: string | null) {
 
 export function useCreateTask() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
 
   return useMutation({
-    mutationFn: TaskService.createTask,
+    mutationFn: (input: CreateTaskInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return TaskService.createTask(input);
+    },
     onSuccess: (newTask) => {
       queryClient.invalidateQueries({ queryKey: TASK_KEYS.byProject(newTask.project_id) });
       TaskService.logActivity({ task_id: newTask.id, action: "created" }).catch(() => {});
       toast.success("Task created successfully");
     },
     onError: (error: Error) => {
+      if (handledDemoError(error)) return;
       console.error("[useCreateTask]", error);
       toast.error("Couldn't create task. Try again.");
     },
@@ -70,10 +77,15 @@ export function useCreateTask() {
 
 export function useUpdateTask() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
 
   return useMutation({
-    mutationFn: TaskService.updateTask,
+    mutationFn: (input: UpdateTaskInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return TaskService.updateTask(input);
+    },
     onMutate: async (updatedTask) => {
+      if (isDemo) return;  // read-only demo — skip the optimistic patch (no flash)
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: TASK_KEYS.byProject(updatedTask.project_id) });
 
@@ -109,6 +121,7 @@ export function useUpdateTask() {
       return { previousTasks };
     },
     onError: (error: Error, updatedTask, context) => {
+      if (handledDemoError(error)) return;
       // Rollback on error
       if (context?.previousTasks) {
         queryClient.setQueryData(TASK_KEYS.byProject(updatedTask.project_id), context.previousTasks);
@@ -164,13 +177,18 @@ export function useUpdateTask() {
 
 export function useMoveTask() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
 
   return useMutation({
-    mutationFn: TaskService.moveTask,
+    mutationFn: (input: MoveTaskInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return TaskService.moveTask(input);
+    },
     // Synchrone (pas d'async/await) — s'exécute dans le même tick que mutate()
     // React batchera setActiveTask(null) + setQueryData dans le même render
     // → zéro flash de la carte à son ancienne position
     onMutate: ({ taskId, newStatusId, newPosition, projectId }: MoveTaskInput) => {
+      if (isDemo) return;  // read-only demo — skip the optimistic move (no flash)
       // Marque la task comme in-flight pour que useRealtimeTasks
       // n'invalide pas en réaction au self-echo postgres_changes.
       markOptimistic(taskId);
@@ -194,6 +212,7 @@ export function useMoveTask() {
       return { previousTasks };
     },
     onError: (error: Error, variables, context) => {
+      if (handledDemoError(error)) return;
       // Rollback
       if (context?.previousTasks) {
         queryClient.setQueryData(TASK_KEYS.byProject(variables.projectId), context.previousTasks);
@@ -237,9 +256,13 @@ export function useMoveTask() {
 
 export function useDeleteTask() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
 
   return useMutation({
-    mutationFn: ({ taskId }: { taskId: string; projectId: string }) => TaskService.deleteTask(taskId),
+    mutationFn: ({ taskId }: { taskId: string; projectId: string }) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return TaskService.deleteTask(taskId);
+    },
     onSuccess: async (_, variables) => {
       const tasks = queryClient.getQueryData<Task[]>(TASK_KEYS.byProject(variables.projectId));
       const task  = tasks?.find((t) => t.id === variables.taskId);
@@ -250,6 +273,7 @@ export function useDeleteTask() {
       }
     },
     onError: (error: Error) => {
+      if (handledDemoError(error)) return;
       console.error("[useDeleteTask]", error);
       toast.error("Couldn't delete task. Try again.");
     },
@@ -262,9 +286,13 @@ export function useDeleteTask() {
 
 export function useArchiveTask() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
 
   return useMutation({
-    mutationFn: ({ taskId }: { taskId: string; projectId: string }) => TaskService.archiveTask(taskId),
+    mutationFn: ({ taskId }: { taskId: string; projectId: string }) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return TaskService.archiveTask(taskId);
+    },
     onSuccess: async (_, variables) => {
       const tasks = queryClient.getQueryData<Task[]>(TASK_KEYS.byProject(variables.projectId));
       const task  = tasks?.find((t) => t.id === variables.taskId);
@@ -275,6 +303,7 @@ export function useArchiveTask() {
       }
     },
     onError: (error: Error) => {
+      if (handledDemoError(error)) return;
       console.error("[useArchiveTask]", error);
       toast.error("Couldn't archive task. Try again.");
     },

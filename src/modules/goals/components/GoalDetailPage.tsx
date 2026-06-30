@@ -304,32 +304,48 @@ export function GoalDetailPage({ id }: Props) {
   async function handleProgressSave(value: number) {
     const clamped = Math.min(100, Math.max(0, value));
     setLocalProgress(clamped);
-    await updateGoal.mutateAsync({ id, progress: clamped });
+    try {
+      await updateGoal.mutateAsync({ id, progress: clamped });
+    } catch {
+      /* updateGoal's onError shows the toast (read-only demo notice or failure) */
+    }
   }
 
   async function handleToggleProgressMode() {
     if (!goal) return;
     const newMode = goal.progress_mode === "manual" ? "auto" : "manual";
     setLocalMode(newMode);
-    await updateGoal.mutateAsync({ id, progress_mode: newMode });
-    if (newMode === "auto") {
-      GoalService.recalculateProgress(id).then(() => {
-        queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(id) });
-        queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
-      });
+    try {
+      await updateGoal.mutateAsync({ id, progress_mode: newMode });
+      if (newMode === "auto") {
+        GoalService.recalculateProgress(id).then(() => {
+          queryClient.invalidateQueries({ queryKey: GOAL_KEYS.detail(id) });
+          queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
+        });
+      }
+    } catch {
+      /* updateGoal's onError shows the toast */
     }
   }
 
   async function handleStatusChange(status: GoalStatus) {
-    await updateGoal.mutateAsync({
-      id,
-      status,
-      completed_at: status === "completed" ? new Date().toISOString() : null,
-    });
+    try {
+      await updateGoal.mutateAsync({
+        id,
+        status,
+        completed_at: status === "completed" ? new Date().toISOString() : null,
+      });
+    } catch {
+      /* updateGoal's onError shows the toast */
+    }
   }
 
   async function handleParentChange(value: string) {
-    await updateGoal.mutateAsync({ id, parent_goal_id: value === "none" ? null : value });
+    try {
+      await updateGoal.mutateAsync({ id, parent_goal_id: value === "none" ? null : value });
+    } catch {
+      /* updateGoal's onError shows the toast */
+    }
   }
 
 
@@ -551,7 +567,7 @@ export function GoalDetailPage({ id }: Props) {
                       <div className="relative group/unlink shrink-0">
                         <button
                           type="button"
-                          onClick={() => unlinkTask.mutateAsync(task.id)}
+                          onClick={() => unlinkTask.mutate(task.id)}
                           className="flex h-5 w-5 items-center justify-center rounded opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-all"
                         >
                           <Unlink size={11} />
@@ -651,7 +667,7 @@ export function GoalDetailPage({ id }: Props) {
                         <div className="relative group/unlink shrink-0">
                           <button
                             type="button"
-                            onClick={() => unlinkHabit.mutateAsync(habit.id)}
+                            onClick={() => unlinkHabit.mutate(habit.id)}
                             className="flex h-5 w-5 items-center justify-center rounded opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-red-400 hover:bg-red-500/10 transition-all"
                           >
                             <Unlink size={11} />

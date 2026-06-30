@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import {
   addEpisodeHighlight,
   getEpisodeHighlights,
@@ -21,6 +23,7 @@ export function useEpisodeHighlights(mediaItemId: string) {
 
 export function useAddEpisodeHighlight(mediaItemId: string) {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
     mutationFn: async ({
       tmdbId,
@@ -35,6 +38,7 @@ export function useAddEpisodeHighlight(mediaItemId: string) {
       season: number;
       episode: number;
     }) => {
+      if (isDemo) throw new DemoReadOnlyError();
       let ep: { name: string; still_path: string | null };
       try {
         ep = await getTmdbEpisode(tmdbId, season, episode);
@@ -58,17 +62,23 @@ export function useAddEpisodeHighlight(mediaItemId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.byMedia(mediaItemId) });
     },
+    onError: handledDemoError,
   });
 }
 
 export function useRemoveEpisodeHighlight(mediaItemId: string) {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: removeEpisodeHighlight,
+    mutationFn: (highlightId: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return removeEpisodeHighlight(highlightId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.byMedia(mediaItemId) });
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       queryClient.invalidateQueries({ queryKey: KEYS.byMedia(mediaItemId) });
       toast.error("Failed to remove episode.");
     },

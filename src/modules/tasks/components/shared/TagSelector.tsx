@@ -82,10 +82,14 @@ export function TagSelector({
 
   const handleCreate = async () => {
     if (!canCreate) return;
-    const tag = await createTag.mutateAsync({ name: trimmedSearch, color: pickColor(trimmedSearch) });
-    if (onAdd) onAdd(tag.id);
-    else if (onChange) onChange([...currentIds, tag.id]);
-    setSearch("");
+    try {
+      const tag = await createTag.mutateAsync({ name: trimmedSearch, color: pickColor(trimmedSearch) });
+      if (onAdd) onAdd(tag.id);
+      else if (onChange) onChange([...currentIds, tag.id]);
+      setSearch("");
+    } catch {
+      /* createTag's onError shows the toast (read-only demo notice or failure) */
+    }
   };
 
   const selectedTagObjects = allTags?.filter((t) => currentIds.includes(t.id)) ?? [];

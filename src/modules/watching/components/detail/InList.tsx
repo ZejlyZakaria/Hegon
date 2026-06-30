@@ -12,6 +12,7 @@ import {
   useRemoveFromList,
 } from "../../hooks/useMediaLists";
 import { toast } from "@/shared/utils/toast";
+import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 
 interface Props {
   mediaItemId: string;
@@ -38,13 +39,15 @@ export function InList({ mediaItemId, userId }: Props) {
     if (mediaListIds.has(listId)) {
       try {
         await removeFromList.mutateAsync(listId);
-      } catch {
+      } catch (err) {
+        if (isDemoReadOnlyError(err)) return;
         toast.error("Failed to remove from list.");
       }
     } else {
       try {
         await addToList.mutateAsync(listId);
-      } catch {
+      } catch (err) {
+        if (isDemoReadOnlyError(err)) return;
         toast.error("Failed to add to list.");
       }
     }
@@ -59,7 +62,8 @@ export function InList({ mediaItemId, userId }: Props) {
       setNewName("");
       setIsCreating(false);
       toast("List created.");
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to create list.");
     }
   };

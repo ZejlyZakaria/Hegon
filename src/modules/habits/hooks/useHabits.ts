@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as HabitService from "../service";
 import { HABIT_KEYS } from "./query-keys";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import type { CreateHabitInput, UpdateHabitInput } from "../types";
 
 export function useHabits() {
@@ -14,13 +16,18 @@ export function useHabits() {
 
 export function useCreateHabit() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (input: CreateHabitInput) => HabitService.createHabit(input),
+    mutationFn: (input: CreateHabitInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return HabitService.createHabit(input);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.lists() });
       toast.success("Habit created.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to create habit.");
     },
   });
@@ -28,13 +35,18 @@ export function useCreateHabit() {
 
 export function useUpdateHabit() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (input: UpdateHabitInput) => HabitService.updateHabit(input),
+    mutationFn: (input: UpdateHabitInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return HabitService.updateHabit(input);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.lists() });
       toast.success("Habit updated.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to update habit.");
     },
   });
@@ -42,13 +54,18 @@ export function useUpdateHabit() {
 
 export function useArchiveHabit() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (id: string) => HabitService.archiveHabit(id),
+    mutationFn: (id: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return HabitService.archiveHabit(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.all });
       toast.success("Habit archived.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to archive habit.");
     },
   });
@@ -56,13 +73,18 @@ export function useArchiveHabit() {
 
 export function useDeleteHabit() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (id: string) => HabitService.deleteHabit(id),
+    mutationFn: (id: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return HabitService.deleteHabit(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.all });
       toast.success("Habit deleted.");
     },
     onError: (error: Error) => {
+      if (handledDemoError(error)) return;
       toast.error(error.message ?? "Failed to delete habit.");
     },
   });
@@ -78,13 +100,18 @@ export function useArchivedHabits() {
 
 export function useUnarchiveHabit() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (id: string) => HabitService.unarchiveHabit(id),
+    mutationFn: (id: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return HabitService.unarchiveHabit(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.all });
       toast.success("Habit restored.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to restore habit.");
     },
   });
@@ -92,13 +119,18 @@ export function useUnarchiveHabit() {
 
 export function useDeleteHabitPermanently() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (id: string) => HabitService.deleteHabitPermanently(id),
+    mutationFn: (id: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return HabitService.deleteHabitPermanently(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: HABIT_KEYS.all });
       toast.success("Habit deleted.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to delete habit.");
     },
   });

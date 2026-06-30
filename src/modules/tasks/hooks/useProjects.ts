@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as TaskService from "../service";
 import { PROJECT_KEYS, WORKSPACE_KEYS } from "./query-keys";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import type { StatusType } from "../types";
 
 // =====================================================
@@ -19,14 +21,18 @@ export function useProjects(workspaceId: string | null) {
 
 export function useCreateProject() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (input: { workspace_id: string; name: string; workflow?: { type: StatusType; name: string; color: string }[] }) =>
-      TaskService.createProject(input),
+    mutationFn: (input: { workspace_id: string; name: string; workflow?: { type: StatusType; name: string; color: string }[] }) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return TaskService.createProject(input);
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: PROJECT_KEYS.byWorkspace(variables.workspace_id) });
       toast.success("Project created.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to create project.");
     },
   });
@@ -34,14 +40,18 @@ export function useCreateProject() {
 
 export function useUpdateProject() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: ({ projectId, updates }: { projectId: string; workspaceId: string; updates: { name?: string } }) =>
-      TaskService.updateProject(projectId, updates),
+    mutationFn: ({ projectId, updates }: { projectId: string; workspaceId: string; updates: { name?: string } }) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return TaskService.updateProject(projectId, updates);
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: PROJECT_KEYS.byWorkspace(variables.workspaceId) });
       toast("Project renamed.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to rename project.");
     },
   });
@@ -49,15 +59,19 @@ export function useUpdateProject() {
 
 export function useDeleteProject() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: ({ projectId }: { projectId: string; workspaceId: string }) =>
-      TaskService.deleteProject(projectId),
+    mutationFn: ({ projectId }: { projectId: string; workspaceId: string }) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return TaskService.deleteProject(projectId);
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: PROJECT_KEYS.byWorkspace(variables.workspaceId) });
       queryClient.invalidateQueries({ queryKey: WORKSPACE_KEYS.lists() });
       toast("Project deleted.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to delete project.");
     },
   });

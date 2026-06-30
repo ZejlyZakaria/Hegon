@@ -10,6 +10,7 @@ import {
   useDeleteMediaList,
 } from "../../hooks/useMediaLists";
 import { useWatchingUIStore } from "../../hooks/useWatchingUIStore";
+import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { ListDetail } from "./ListDetail";
 import type { MediaListWithThumbnails } from "../../service";
 
@@ -193,7 +194,8 @@ export function ListsClient({ userId }: Props) {
       await createList.mutateAsync(name);
       setIsCreating(false);
       toast("List created.");
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to create list.");
     }
   };
@@ -203,7 +205,8 @@ export function ListsClient({ userId }: Props) {
     try {
       await deleteList.mutateAsync(listId);
       toast("List deleted.");
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to delete list.");
     }
   };

@@ -15,6 +15,7 @@ import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { useWatchingGoals } from "@/modules/watching/hooks/useWatchingGoals";
 import { goalWouldCount } from "@/modules/watching/lib/goal-contribution";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import { ContributingToGoals } from "@/modules/watching/components/detail/ContributingToGoals";
 import { GoalRippleToast } from "@/modules/watching/components/detail/GoalRippleToast";
@@ -102,7 +103,8 @@ export default function MediaDetailPage() {
       savedRef.current = { notes, starRating };
       setIsDirty(false);
       toast("Saved.");
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to save.");
     }
   };
@@ -144,7 +146,8 @@ export default function MediaDetailPage() {
       } else {
         toast("Marked as watched.");
       }
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
     }
   };
@@ -160,7 +163,8 @@ export default function MediaDetailPage() {
         is_reference: false,
       });
       toast("Started watching.");
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
     }
   };
@@ -172,8 +176,9 @@ export default function MediaDetailPage() {
     try {
       await updateMedia.mutateAsync({ id: media.id, favorite: next });
       toast(next ? "Added to favorites." : "Removed from favorites.");
-    } catch {
+    } catch (err) {
       setFavorite(!next);
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed.");
     }
   };
@@ -197,7 +202,8 @@ export default function MediaDetailPage() {
           current_episode: episode,
           ...(seasonYears ? { season_years: seasonYears } : {}),
         });
-      } catch {
+      } catch (err) {
+        if (isDemoReadOnlyError(err)) return;
         toast.error("Failed to update progress.");
       }
     }, 500);
@@ -207,7 +213,8 @@ export default function MediaDetailPage() {
     if (!media) return;
     try {
       await updateMedia.mutateAsync({ id: media.id, season_years: next });
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
     }
   };
@@ -216,7 +223,8 @@ export default function MediaDetailPage() {
     if (!media) return;
     try {
       await updateMedia.mutateAsync({ id: media.id, season_ratings: next });
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
     }
   };
@@ -241,7 +249,8 @@ export default function MediaDetailPage() {
         });
       }
       toast("Year updated.");
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
     }
   };

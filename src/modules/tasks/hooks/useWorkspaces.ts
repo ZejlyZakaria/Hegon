@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as TaskService from "../service";
 import { WORKSPACE_KEYS } from "./query-keys";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 
 // =====================================================
 // HOOK: useWorkspaces
@@ -18,13 +20,18 @@ export function useWorkspaces(userId?: string) {
 
 export function useCreateWorkspace() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (name: string) => TaskService.createWorkspace(name),
+    mutationFn: (name: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return TaskService.createWorkspace(name);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WORKSPACE_KEYS.lists() });
       toast.success("Workspace created.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to create workspace.");
     },
   });
@@ -32,14 +39,18 @@ export function useCreateWorkspace() {
 
 export function useUpdateWorkspace() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: ({ workspaceId, updates }: { workspaceId: string; updates: { name?: string } }) =>
-      TaskService.updateWorkspace(workspaceId, updates),
+    mutationFn: ({ workspaceId, updates }: { workspaceId: string; updates: { name?: string } }) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return TaskService.updateWorkspace(workspaceId, updates);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WORKSPACE_KEYS.lists() });
       toast("Workspace renamed.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to rename workspace.");
     },
   });
@@ -47,8 +58,12 @@ export function useUpdateWorkspace() {
 
 export function useDeleteWorkspace() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (workspaceId: string) => TaskService.deleteWorkspace(workspaceId),
+    mutationFn: (workspaceId: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return TaskService.deleteWorkspace(workspaceId);
+    },
     onSuccess: () => {
       // Garde-fou 5: if this was the last workspace, clear cookie before redirect
       // so middleware re-checks and routes to /onboarding instead of trusting stale cache
@@ -59,7 +74,8 @@ export function useDeleteWorkspace() {
       queryClient.invalidateQueries({ queryKey: WORKSPACE_KEYS.lists() });
       toast("Workspace deleted.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to delete workspace.");
     },
   });

@@ -31,6 +31,8 @@ import {
   PopoverTrigger,
 } from "@/shared/components/ui/popover";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 
 import * as HabitService from "../service";
 import { HABIT_KEYS } from "../hooks/query-keys";
@@ -194,6 +196,7 @@ function PanelBody({
 }) {
   const today = getTodayStr();
   const qc = useQueryClient();
+  const isDemo = useIsDemo();
 
   const { stats } = useHabitStats(habit);
   const { data: pauses = [] } = useHabitPauses(habit.id);
@@ -212,9 +215,12 @@ function PanelBody({
 
   // Silent inline patch (no per-keystroke toast).
   const patchMut = useMutation({
-    mutationFn: (input: UpdateHabitInput) => HabitService.updateHabit(input),
+    mutationFn: (input: UpdateHabitInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return HabitService.updateHabit(input);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: HABIT_KEYS.all }),
-    onError: () => toast.error("Failed to update habit."),
+    onError: (error) => { if (handledDemoError(error)) return; toast.error("Failed to update habit."); },
   });
   const patch = (fields: Omit<UpdateHabitInput, "id">) =>
     patchMut.mutate({ id: habit.id, ...fields });

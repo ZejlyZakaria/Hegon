@@ -16,6 +16,7 @@ import { useWatchingGoals } from "../../hooks/useWatchingGoals";
 import { goalWouldCount } from "../../lib/goal-contribution";
 import { GoalRippleToast } from "../detail/GoalRippleToast";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 import type { WatchingMedia } from "../../types";
 import { toast } from "@/shared/utils/toast";
@@ -112,7 +113,8 @@ export function MediaActionMenu({
     setOpen(false);
     try {
       await action();
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
     }
   };

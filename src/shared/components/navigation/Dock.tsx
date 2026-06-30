@@ -165,7 +165,7 @@ function DockItem({
 export default function Dock() {
   const pathname = usePathname();
   const { data: userSettings } = useUserSettings();
-  const { isDemo, isReady: demoReady } = useDemoStatus();
+  const { isReady: demoReady } = useDemoStatus();
   const hiddenModules = new Set(userSettings?.hidden_modules ?? []);
   // Wait for both prefs + demo status before rendering nav → no icon flash.
   const navReady = userSettings !== undefined && demoReady;
@@ -185,8 +185,9 @@ export default function Dock() {
 
         {navReady && (
           <>
-            {/* Dashboard — hidden for the read-only demo (curated to exposed modules) */}
-            {!isDemo && (
+            {/* Dashboard — always on for the owner (it's the home); for the demo it
+                follows hidden_modules, so the owner controls it from Demo & Sharing. */}
+            {!hiddenModules.has("dashboard") && (
               <>
                 <div className="h-px w-7 bg-white/12" />
                 <DockItem

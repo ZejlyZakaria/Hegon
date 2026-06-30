@@ -168,21 +168,29 @@ export function MilestoneList({ goalId }: Props) {
 
   async function handleAdd() {
     if (!newTitle.trim()) return;
-    await createMilestone.mutateAsync({
-      goal_id:     goalId,
-      title:       newTitle.trim(),
-      order_index: ordered.length,
-    });
-    setNewTitle("");
-    setAdding(false);
+    try {
+      await createMilestone.mutateAsync({
+        goal_id:     goalId,
+        title:       newTitle.trim(),
+        order_index: ordered.length,
+      });
+      setNewTitle("");
+      setAdding(false);
+    } catch {
+      /* createMilestone's onError shows the toast (read-only demo notice or failure) */
+    }
   }
 
   async function toggleComplete(id: string, current: "pending" | "completed") {
-    await updateMilestone.mutateAsync({
-      id,
-      status:       current === "completed" ? "pending" : "completed",
-      completed_at: current === "completed" ? null : new Date().toISOString(),
-    });
+    try {
+      await updateMilestone.mutateAsync({
+        id,
+        status:       current === "completed" ? "pending" : "completed",
+        completed_at: current === "completed" ? null : new Date().toISOString(),
+      });
+    } catch {
+      /* updateMilestone's onError shows the toast */
+    }
   }
 
   function handleDragEnd({ active, over }: DragEndEvent) {
@@ -232,7 +240,7 @@ export function MilestoneList({ goalId }: Props) {
                   idx={idx}
                   completedCount={completedCount}
                   onToggle={toggleComplete}
-                  onDelete={(id) => deleteMilestone.mutateAsync(id)}
+                  onDelete={(id) => deleteMilestone.mutate(id)}
                 />
               ))}
 

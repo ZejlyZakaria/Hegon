@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "@/shared/utils/toast";
+import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
 import { CarouselSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
@@ -32,7 +33,8 @@ export default function RecentlyWatchedSectionClient({ userId, config }: Props) 
     try {
       await deleteMediaMutation.mutateAsync(itemId);
       toast.success("Deleted.");
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Error occurred while deleting.");
     }
   };

@@ -163,12 +163,16 @@ export function GoalPanel({ open, onClose, goal }: Props) {
       metric_target: isActivity && data.metric_target ? Number(data.metric_target) : null,
     };
 
-    if (isEdit && goal) {
-      await updateGoal.mutateAsync({ id: goal.id, ...input });
-    } else {
-      await createGoal.mutateAsync(input);
+    try {
+      if (isEdit && goal) {
+        await updateGoal.mutateAsync({ id: goal.id, ...input });
+      } else {
+        await createGoal.mutateAsync(input);
+      }
+      handleClose();
+    } catch {
+      /* create/updateGoal onError shows the toast (read-only demo notice or failure) */
     }
-    handleClose();
   };
 
   const isPending = createGoal.isPending || updateGoal.isPending;

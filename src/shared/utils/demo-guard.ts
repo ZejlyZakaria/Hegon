@@ -1,8 +1,10 @@
 import { toast } from "@/shared/utils/toast";
 
-// Read-only demo guard for Watching mutations. The DB blocks demo writes via
-// RESTRICTIVE RLS; this is the matching client-side layer so a demo visitor
-// gets a friendly notice instead of a failed-write error.
+// Read-only demo guard, shared across modules. The DB blocks demo writes via
+// RESTRICTIVE RLS; this is the matching client-side layer so a demo visitor gets
+// a friendly notice instead of a failed-write error. Pair it with `useIsDemo()`:
+// throw `DemoReadOnlyError` at the top of a mutationFn, and call
+// `handledDemoError` first in onError to swallow the generic error toast.
 
 /** Thrown by a mutation when the read-only demo account attempts a write. */
 export class DemoReadOnlyError extends Error {

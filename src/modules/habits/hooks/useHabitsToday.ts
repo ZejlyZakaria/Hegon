@@ -3,6 +3,8 @@ import * as HabitService from "../service";
 import { HABIT_KEYS } from "./query-keys";
 import { GOAL_KEYS, LINKED_HABIT_KEYS } from "@/modules/goals/hooks/query-keys";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import {
   getTodayStr,
   getYesterdayStr,
@@ -219,11 +221,16 @@ function refreshLinkedGoal(queryClient: QueryClient, habitId: string) {
 export function useCompleteHabit() {
   const queryClient = useQueryClient();
   const today  = getTodayStr();
+  const isDemo = useIsDemo();
 
   return useMutation({
-    mutationFn: (input: CompleteHabitInput) => HabitService.completeHabit(input),
+    mutationFn: (input: CompleteHabitInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return HabitService.completeHabit(input);
+    },
     // Optimistic: tick the checkbox and bump the streak instantly; roll back on error.
     onMutate: async (input) => {
+      if (isDemo) return;  // demo is read-only — skip the optimistic flash
       const dayKey   = HABIT_KEYS.today(input.completed_date);
       const rangeKey = HABIT_KEYS.completionsRange('all', STREAK_FROM, today);
       await Promise.all([
@@ -252,7 +259,8 @@ export function useCompleteHabit() {
 
       return { prevDay, prevRange, dayKey, rangeKey };
     },
-    onError: (_err, _input, ctx) => {
+    onError: (err, _input, ctx) => {
+      if (handledDemoError(err)) return;
       if (ctx) {
         queryClient.setQueryData(ctx.dayKey, ctx.prevDay);
         queryClient.setQueryData(ctx.rangeKey, ctx.prevRange);
@@ -271,12 +279,16 @@ export function useCompleteHabit() {
 export function useUncompleteHabit() {
   const queryClient = useQueryClient();
   const today  = getTodayStr();
+  const isDemo = useIsDemo();
 
   return useMutation({
-    mutationFn: ({ habitId, date }: { habitId: string; date: string }) =>
-      HabitService.uncompleteHabit(habitId, date),
+    mutationFn: ({ habitId, date }: { habitId: string; date: string }) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return HabitService.uncompleteHabit(habitId, date);
+    },
     // Optimistic: untick + drop the streak day instantly; roll back on error.
     onMutate: async ({ habitId, date }) => {
+      if (isDemo) return;  // demo is read-only — skip the optimistic flash
       const dayKey   = HABIT_KEYS.today(date);
       const rangeKey = HABIT_KEYS.completionsRange('all', STREAK_FROM, today);
       await Promise.all([
@@ -295,7 +307,8 @@ export function useUncompleteHabit() {
 
       return { prevDay, prevRange, dayKey, rangeKey };
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (err, _vars, ctx) => {
+      if (handledDemoError(err)) return;
       if (ctx) {
         queryClient.setQueryData(ctx.dayKey, ctx.prevDay);
         queryClient.setQueryData(ctx.rangeKey, ctx.prevRange);

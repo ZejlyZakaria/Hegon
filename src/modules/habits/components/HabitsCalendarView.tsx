@@ -14,6 +14,8 @@ import {
 } from "@/shared/components/ui/tooltip";
 import { cn } from "@/shared/utils/utils";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { toDateStr, isExpectedOnDate, getTodayStr } from "../utils";
 
 const ACCENT = "var(--color-accent-habits-vivid)";
@@ -30,6 +32,7 @@ function weekStartMonday(d: Date): Date {
 export function HabitsCalendarView() {
   const { data: habits = [] } = useHabits();
   const qc = useQueryClient();
+  const isDemo = useIsDemo();
   const [anchor, setAnchor] = useState(() => weekStartMonday(new Date()));
 
   const weekDates = useMemo(
@@ -61,11 +64,12 @@ export function HabitsCalendarView() {
 
   const toggle = useMutation({
     mutationFn: async ({ habitId, date, done }: { habitId: string; date: string; done: boolean }) => {
+      if (isDemo) throw new DemoReadOnlyError();
       if (done) await HabitService.uncompleteHabit(habitId, date);
       else await HabitService.completeHabit({ habit_id: habitId, completed_date: date });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: HABIT_KEYS.all }),
-    onError: () => toast.error("Failed to update completion."),
+    onError: (error) => { if (handledDemoError(error)) return; toast.error("Failed to update completion."); },
   });
 
   // Per-day completion rate (over habits expected that day, past + today only).

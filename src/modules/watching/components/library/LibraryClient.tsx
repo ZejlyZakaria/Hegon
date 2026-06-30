@@ -12,6 +12,7 @@ import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfirmModal";
 import { toast } from "@/shared/utils/toast";
+import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { Button } from "@/shared/components/ui/button";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
@@ -123,7 +124,8 @@ export default function LibraryClient({ initialItems, userId }: Props) {
       await deleteMediaMutation.mutateAsync(itemId);
       // The mutation invalidates WATCHING_KEYS.all → the library query refetches.
       toast.success("Removed from library.");
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to delete item.");
     }
   }, [deleteMediaMutation]);

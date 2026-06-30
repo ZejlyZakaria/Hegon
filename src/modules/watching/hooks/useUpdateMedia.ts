@@ -4,7 +4,7 @@ import { updateMediaItem } from "../service";
 import { syncWatchingGoals } from "../lib/sync-goals";
 import { syncWatchingHabits } from "../lib/sync-habits";
 import { toast } from "@/shared/utils/toast";
-import { DemoReadOnlyError, handledDemoError } from "../lib/demo-guard";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import type { UpdateMediaInput } from "../schemas/media.schema";
 

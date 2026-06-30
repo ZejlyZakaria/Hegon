@@ -31,6 +31,7 @@ import {
   useAddTmdbItemToList,
 } from "../../hooks/useMediaLists";
 import { useUpdateMedia } from "../../hooks/useUpdateMedia";
+import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import type { MediaListWithThumbnails } from "../../service";
 import type { MediaListItemWithMedia, TmdbListResult } from "../../types";
 import { displayTitle } from "../../utils";
@@ -184,7 +185,8 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
     try {
       await addItem.mutateAsync(mediaItemId);
       toast("Added to list.");
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed — already in list?");
     }
   };
@@ -194,7 +196,8 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
     try {
       await addTmdbItem.mutateAsync(item);
       toast("Added to list.");
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to add.");
     } finally {
       setAddingTmdbId(null);
@@ -423,7 +426,8 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
         });
       }
       toast("Updated.");
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
     }
   };
@@ -617,8 +621,13 @@ function TableRow({
             <button
               type="button"
               onClick={async () => {
-                await updateNote.mutateAsync({ listItemId: item.list_item_id, note: noteVal.trim() || null });
-                setNoteOpen(false);
+                try {
+                  await updateNote.mutateAsync({ listItemId: item.list_item_id, note: noteVal.trim() || null });
+                  setNoteOpen(false);
+                } catch (err) {
+                  if (isDemoReadOnlyError(err)) return;
+                  toast.error("Failed to save note.");
+                }
               }}
               disabled={updateNote.isPending}
               className="flex items-center gap-1.5 rounded-lg bg-accent-watching px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
@@ -654,8 +663,13 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
   const [noteVal, setNoteVal] = useState(item.note ?? "");
 
   const handleSaveNote = async () => {
-    await updateNote.mutateAsync({ listItemId: item.list_item_id, note: noteVal.trim() || null });
-    setNoteOpen(false);
+    try {
+      await updateNote.mutateAsync({ listItemId: item.list_item_id, note: noteVal.trim() || null });
+      setNoteOpen(false);
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
+      toast.error("Failed to save note.");
+    }
   };
 
   return (
@@ -798,7 +812,8 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
     ) return;
     try {
       await updateList.mutateAsync({ id: list.id, data: { name, emoji, description: desc, is_ranked: ranked } });
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update list.");
     }
   };
@@ -811,8 +826,9 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
         id: list.id,
         data: { name: editName.trim() || list.name, emoji: editEmoji || null, description: editDesc.trim() || null, is_ranked: next },
       });
-    } catch {
+    } catch (err) {
       setEditRanked(!next);
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update list.");
     }
   };
@@ -822,7 +838,8 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
       await deleteList.mutateAsync(list.id);
       toast("List deleted.");
       onBack();
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to delete list.");
     }
   };
@@ -830,7 +847,8 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
   const handleRemove = async (mediaItemId: string) => {
     try {
       await removeItem.mutateAsync({ mediaItemId });
-    } catch {
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to remove.");
     }
   };

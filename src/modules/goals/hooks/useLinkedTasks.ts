@@ -3,6 +3,8 @@ import * as GoalService from "../service";
 import { LINKED_TASK_KEYS, GOAL_KEYS } from "./query-keys";
 import { TASK_KEYS } from "@/modules/tasks/hooks/query-keys";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 
 export function useLinkedTasks(goalId: string) {
   return useQuery({
@@ -15,8 +17,12 @@ export function useLinkedTasks(goalId: string) {
 
 export function useLinkTask(goalId: string) {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (taskId: string) => GoalService.linkTaskToGoal(taskId, goalId),
+    mutationFn: (taskId: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return GoalService.linkTaskToGoal(taskId, goalId);
+    },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: LINKED_TASK_KEYS.byGoal(goalId) });
       // Invalidate tasks cache so /pro/tasks sees the new goal_id (otherwise
@@ -31,7 +37,8 @@ export function useLinkTask(goalId: string) {
         queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
       }
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to link task.");
     },
   });
@@ -39,8 +46,12 @@ export function useLinkTask(goalId: string) {
 
 export function useUnlinkTask(goalId: string) {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (taskId: string) => GoalService.unlinkTaskFromGoal(taskId),
+    mutationFn: (taskId: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return GoalService.unlinkTaskFromGoal(taskId);
+    },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: LINKED_TASK_KEYS.byGoal(goalId) });
       queryClient.invalidateQueries({ queryKey: TASK_KEYS.all });
@@ -51,7 +62,8 @@ export function useUnlinkTask(goalId: string) {
         queryClient.invalidateQueries({ queryKey: GOAL_KEYS.lists() });
       }
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to unlink task.");
     },
   });

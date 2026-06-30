@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "@/shared/utils/toast";
+import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { InlineFormActions } from "@/shared/components/ui/inline-form-actions";
 import {
   useEpisodeHighlights,
@@ -49,6 +50,7 @@ export function EpisodeHighlights({ mediaItemId, tmdbId, userId, orgId, seasons,
       setIsAdding(false);
       toast("Episode added.");
     } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
       toast.error(err instanceof Error ? err.message : "Failed to add episode.");
     }
   };

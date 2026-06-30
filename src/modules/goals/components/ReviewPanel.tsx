@@ -62,8 +62,12 @@ export function ReviewPanel({ open, onClose }: Props) {
   const moved = (draft?.movements ?? []).filter((m) => (m.delta ?? 0) > 0).length;
 
   async function handleSave() {
-    await createReview.mutateAsync({ wins, blockers, focus, saveToJournal: toJournal });
-    handleClose();
+    try {
+      await createReview.mutateAsync({ wins, blockers, focus, saveToJournal: toJournal });
+      handleClose();
+    } catch {
+      /* createReview's onError shows the toast (read-only demo notice or failure) */
+    }
   }
 
   return (

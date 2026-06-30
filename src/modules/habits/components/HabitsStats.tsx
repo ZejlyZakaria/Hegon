@@ -369,7 +369,7 @@ export function HabitsStats() {
     }
     return (b.rate ?? 0) - (a.rate ?? 0);
   });
-  const top = topRows.slice(0, 5);
+  const top = topRows.slice(0, 4);
 
   // ── Year aggregates for the monthly + weekday charts ──
   const countMap = new Map(yearData.map((d) => [d.date, d.count]));

@@ -3,6 +3,8 @@ import * as BooksService from "../service";
 import { BOOK_KEYS } from "./query-keys";
 import { syncBooksGoals } from "../lib/sync-goals";
 import { toast } from "@/shared/utils/toast";
+import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import type {
   BookStatus,
   BookSort,
@@ -72,9 +74,14 @@ export function useBookSettings() {
 
 export function useSetMonthlyTarget() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (target: number | null) => BooksService.setMonthlyPagesTarget(target),
+    mutationFn: (target: number | null) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return BooksService.setMonthlyPagesTarget(target);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: BOOK_KEYS.settings() }),
+    onError: handledDemoError,
   });
 }
 
@@ -84,8 +91,12 @@ export function useSetMonthlyTarget() {
 
 export function useCreateBook() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (input: CreateBookInput) => BooksService.createBook(input),
+    mutationFn: (input: CreateBookInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return BooksService.createBook(input);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.stats() });
@@ -93,7 +104,8 @@ export function useCreateBook() {
       void syncBooksGoals(queryClient);
       toast.success("Book added.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to add book.");
     },
   });
@@ -101,8 +113,12 @@ export function useCreateBook() {
 
 export function useUpdateBook() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (input: UpdateBookInput) => BooksService.updateBook(input),
+    mutationFn: (input: UpdateBookInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return BooksService.updateBook(input);
+    },
     onSuccess: (book) => {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.detail(book.id) });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
@@ -112,7 +128,8 @@ export function useUpdateBook() {
       void syncBooksGoals(queryClient);
       toast.success("Book updated.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to update book.");
     },
   });
@@ -120,8 +137,12 @@ export function useUpdateBook() {
 
 export function useUpdateProgress() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (input: UpdateProgressInput) => BooksService.updateProgress(input),
+    mutationFn: (input: UpdateProgressInput) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return BooksService.updateProgress(input);
+    },
     onSuccess: (book) => {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.detail(book.id) });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
@@ -129,7 +150,8 @@ export function useUpdateProgress() {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.stats() });
       queryClient.invalidateQueries({ queryKey: [...BOOK_KEYS.all, 'reading-log'] });
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to update progress.");
     },
   });
@@ -138,11 +160,16 @@ export function useUpdateProgress() {
 // Silent autosave for the review/notes field — no toast, just refresh the detail.
 export function useUpdateBookNotes(id: string) {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (notes: string | null) => BooksService.updateBook({ id, notes }),
+    mutationFn: (notes: string | null) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return BooksService.updateBook({ id, notes });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.detail(id) });
     },
+    onError: handledDemoError,
   });
 }
 
@@ -150,15 +177,19 @@ export function useUpdateBookNotes(id: string) {
 // that show it (card, detail, Favorites stat).
 export function useToggleFavorite() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) =>
-      BooksService.updateBook({ id, favorite }),
+    mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return BooksService.updateBook({ id, favorite });
+    },
     onSuccess: (book) => {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.detail(book.id) });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.stats() });
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to update favorite.");
     },
   });
@@ -166,8 +197,12 @@ export function useToggleFavorite() {
 
 export function useDeleteBook() {
   const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
   return useMutation({
-    mutationFn: (id: string) => BooksService.deleteBook(id),
+    mutationFn: (id: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return BooksService.deleteBook(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.stats() });
@@ -175,7 +210,8 @@ export function useDeleteBook() {
       void syncBooksGoals(queryClient);
       toast.success("Book removed.");
     },
-    onError: () => {
+    onError: (error) => {
+      if (handledDemoError(error)) return;
       toast.error("Failed to remove book.");
     },
   });
