@@ -12,6 +12,7 @@ import { useMounted } from "@/shared/hooks/useMounted";
 import { useDashboardData } from "@/modules/dashboard/hooks/useDashboardData";
 import { useHabitsToday } from "@/modules/habits/hooks/useHabitsToday";
 import { useJournalToday } from "@/modules/journal/hooks/useJournalToday";
+import { useUserSettings } from "@/modules/settings/hooks/useSettings";
 import { AppTile, type AppTileBadge } from "./AppTile";
 import { OS_APPS } from "../config";
 import { DEFAULT_LAYOUT, WIDGET_REGISTRY, type WidgetKey, type ItemSize, type LayoutItem } from "../layout";
@@ -246,6 +247,12 @@ export default function DashboardHome() {
     lastCx: number; lastCy: number;
   }>(null);
 
+  // Apps the viewer hasn't unlocked (owner's hidden modules, or the demo's curated
+  // set) render as "Soon" tiles on the grid — a teaser, never clickable. Reuses
+  // the existing comingSoon visual; the static comingSoon flag stays the baseline.
+  const { data: userSettings } = useUserSettings();
+  const hiddenModules = new Set(userSettings?.hidden_modules ?? []);
+
   const today = new Date().toLocaleDateString("en-CA", { timeZone: PARIS_TZ });
   const habitsRemaining = Math.max(0, totalCount - completedCount);
   const tasksDue = (dash?.tasks ?? []).filter((t) => t.due_date && t.due_date.slice(0, 10) <= today).length;
@@ -259,7 +266,9 @@ export default function DashboardHome() {
     if (item.kind === "app") {
       const app = OS_APPS[item.ref];
       if (!app) return null;
-      return <AppTile app={app} badge={badges[app.key]} />;
+      // Not-yet-unlocked module → show it as a "Soon" tile (teaser), not live.
+      const soon = app.comingSoon || hiddenModules.has(app.key);
+      return <AppTile app={soon ? { ...app, comingSoon: true } : app} badge={badges[app.key]} />;
     }
     const Widget = WIDGET_REGISTRY[item.ref as WidgetKey];
     return Widget ? <Widget /> : null;
