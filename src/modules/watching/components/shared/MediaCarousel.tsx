@@ -15,7 +15,6 @@ import {
 import type { WatchingMedia } from "@/modules/watching/types";
 import { cn } from "@/shared/utils/utils";
 import { displayTitle } from "@/modules/watching/utils";
-import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { MediaActionMenu } from "./MediaActionMenu";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -205,8 +204,9 @@ export function MediaCarousel({
   showRankBadge = false,
 }: MediaCarouselProps) {
   const router = useRouter();
-  const isDemo = useIsDemo();
-  const canAdd = !!onAddClick && !isDemo; // read-only demo never shows Add
+  // Add IS shown in the read-only demo — clicking it runs the full add flow, then
+  // the guarded mutation shows the friendly read-only toast.
+  const canAdd = !!onAddClick;
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(5);

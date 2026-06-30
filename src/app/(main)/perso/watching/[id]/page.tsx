@@ -14,7 +14,6 @@ import { useMediaCredits } from "@/modules/watching/hooks/useMediaCredits";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { useWatchingGoals } from "@/modules/watching/hooks/useWatchingGoals";
 import { goalWouldCount } from "@/modules/watching/lib/goal-contribution";
-import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import { ContributingToGoals } from "@/modules/watching/components/detail/ContributingToGoals";
@@ -57,7 +56,6 @@ export default function MediaDetailPage() {
   const { data: credits } = useMediaCredits(media?.tmdb_id ?? 0, media?.type ?? "film", !!media && !hasStoredCast);
   const { data: ownedIds = [] } = useOwnedTmdbIds(media?.user_id ?? "", media?.type ?? "film", !!media);
   const { data: watchingGoals = [] } = useWatchingGoals();
-  const isDemo = useIsDemo();
   const [addItem, setAddItem] = useState<any | null>(null);
 
   // "More Like This" — drop titles already in the library (like For You), then
@@ -354,7 +352,7 @@ export default function MediaDetailPage() {
           )}
 
           {recommendations.length > 0 && (
-            <MoreLikeThis items={recommendations} onAddClick={isDemo ? undefined : handleAddSimilar} />
+            <MoreLikeThis items={recommendations} onAddClick={handleAddSimilar} />
           )}
 
           {/* Connections — goals this title contributes to (kept open: can render null) */}
@@ -378,7 +376,7 @@ export default function MediaDetailPage() {
 
             <InList mediaItemId={media.id} userId={media.user_id} />
 
-            <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} onWatchedYearChange={isDemo ? undefined : handleWatchedYearChange} />
+            <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} onWatchedYearChange={handleWatchedYearChange} />
 
           </div>
         </div>

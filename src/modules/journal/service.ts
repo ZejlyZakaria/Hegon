@@ -304,13 +304,6 @@ export async function deleteEvent(id: string): Promise<void> {
 // WRITE
 // =====================================================
 
-// Source of truth for word_count — kept in sync on every write, so editing an
-// entry never leaves a stale count (independent of any DB trigger).
-function countWords(content: string): number {
-  const t = content.trim();
-  return t === "" ? 0 : t.split(/\s+/).length;
-}
-
 export async function createEntry(
   input: CreateJournalEntryInput
 ): Promise<JournalEntry> {
@@ -329,7 +322,6 @@ export async function createEntry(
     content:    input.content ?? "",
     mood:       input.mood ?? null,
     tags:       input.tags ?? [],
-    word_count: countWords(input.content ?? ""),
   };
   // Only send goal_id / context when actually set — a fresh DB without those
   // columns still creates plain entries fine.
@@ -353,9 +345,8 @@ export async function updateEntry(
   const orgId = await getCurrentOrgId();
   const { id, ...updates } = input;
 
-  // Keep word_count in sync whenever content is edited.
+  // word_count is a GENERATED column — the DB recomputes it from content.
   const patch: Record<string, unknown> = { ...updates };
-  if (typeof updates.content === "string") patch.word_count = countWords(updates.content);
 
   const { data, error } = await supabase
     .from("journal_entries")

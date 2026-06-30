@@ -15,7 +15,6 @@ import { useUpdateMedia } from "../../hooks/useUpdateMedia";
 import { useWatchingGoals } from "../../hooks/useWatchingGoals";
 import { goalWouldCount } from "../../lib/goal-contribution";
 import { GoalRippleToast } from "../detail/GoalRippleToast";
-import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 import type { WatchingMedia } from "../../types";
@@ -72,7 +71,6 @@ export function MediaActionMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const updateMedia = useUpdateMedia();
   const { data: watchingGoals = [] } = useWatchingGoals();
-  const isDemo = useIsDemo();
 
   // Close on outside click
   useEffect(() => {
@@ -94,9 +92,8 @@ export function MediaActionMenu({
     return () => window.removeEventListener("scroll", close, { capture: true });
   }, [open]);
 
-  // Read-only demo: no write affordances (card click still opens the detail).
-  if (isDemo) return null;
-
+  // The "…" menu IS shown in the read-only demo — its actions fire the friendly
+  // read-only toast (via the guarded hooks), so visitors see how it works.
   const handleOpen = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (btnRef.current) {
