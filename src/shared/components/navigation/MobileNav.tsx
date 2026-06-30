@@ -8,19 +8,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, LayoutDashboard } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { NAV_GROUPS } from "./Dock";
-import { useUserSettings, useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { useUserSettings } from "@/modules/settings/hooks/useSettings";
 
 // Mobile navigation: a hamburger in the TopBar that opens a slide-in drawer.
-// Replaces the 56px Dock rail on small screens. Hidden for the demo (it's
-// locked to a single module and navigates via the section tabs).
+// Replaces the 56px Dock rail on small screens. For the demo it follows
+// hidden_modules, so the owner curates which modules friends can browse.
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { data: settings } = useUserSettings();
-  const isDemo = useIsDemo();
   const hidden = new Set(settings?.hidden_modules ?? []);
-
-  if (isDemo) return null;
 
   const close = () => setOpen(false);
   const isActive = (href: string, prefix?: string) =>
@@ -82,14 +79,16 @@ export function MobileNav() {
 
               {/* nav */}
               <nav className="relative flex-1 overflow-y-auto px-2 py-3 custom-scrollbar-hide">
-                <DrawerItem
-                  href="/dashboard"
-                  label="Dashboard"
-                  accent="#60a5fa"
-                  icon={<LayoutDashboard size={17} />}
-                  active={isActive("/dashboard")}
-                  onClick={close}
-                />
+                {!hidden.has("dashboard") && (
+                  <DrawerItem
+                    href="/dashboard"
+                    label="Dashboard"
+                    accent="#60a5fa"
+                    icon={<LayoutDashboard size={17} />}
+                    active={isActive("/dashboard")}
+                    onClick={close}
+                  />
+                )}
 
                 {NAV_GROUPS.map((group, gi) => {
                   const items = group.filter((item) => !hidden.has(item.key));
