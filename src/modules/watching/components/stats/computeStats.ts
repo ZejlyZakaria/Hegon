@@ -268,7 +268,14 @@ export function computeStats(items: StatsRawItem[], year: number | null): Comput
       if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
       return (effectiveRating(b, year) ?? 0) - (effectiveRating(a, year) ?? 0);
     })
-    .slice(0, 3);
+    .slice(0, 3)
+    // Use the season's own poster for the year when it resolves to a single
+    // season (e.g. MHA S8), matching Top Picks — else fall back to the show poster.
+    // season_posters store raw TMDB paths, so build the full URL like Top Picks.
+    .map((i) => {
+      const seasonPoster = seasonPosterFor(i, year);
+      return { ...i, poster_url: seasonPoster ? `https://image.tmdb.org/t/p/w780${seasonPoster}` : i.poster_url };
+    });
 
   const availableYears = [
     ...new Set([
