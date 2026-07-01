@@ -104,10 +104,11 @@ export function JournalEditor({
   const [mode, setMode] = useState<Mode>("write");
   const taRef = useRef<HTMLTextAreaElement>(null);
 
-  // Bare mode flows in a scrolling panel → auto-grow the textarea to fit content.
+  // The page scrolls as a whole (like habits/books/goals) → auto-grow the textarea
+  // to fit its content instead of trapping it in a fixed-height inner scroller.
   useEffect(() => {
     const el = taRef.current;
-    if (!bare || !el || mode !== "write") return;
+    if (!el || mode !== "write") return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [content, bare, mode]);
@@ -140,7 +141,7 @@ export function JournalEditor({
   };
 
   return (
-    <div className={cn("flex flex-col", bare ? "" : "h-full rounded-card surface-card")}>
+    <div className={cn("flex flex-col", bare ? "" : "rounded-card surface-card")}>
       {/* Toolbar — goal link (left) + Write / Preview (right) */}
       <div className={cn("flex items-start justify-between gap-2", bare ? "" : "px-5 pt-4")}>
         <div className="flex flex-1 flex-wrap items-center gap-1.5">
@@ -170,13 +171,13 @@ export function JournalEditor({
       </div>
 
       {/* Editor / preview area */}
-      <div className={cn(bare ? "py-3" : "min-h-0 flex-1 px-8 py-4")}>
+      <div className={cn(bare ? "py-3" : "px-8 py-4")}>
         {mode === "write" ? (
           <div
             className={cn(
               bare
                 ? "rounded-control border border-border-default bg-surface-2 px-3 py-2.5 transition-colors hover:bg-surface-3 focus-within:border-border-focus focus-within:bg-surface-3"
-                : "h-full",
+                : "",
             )}
           >
             <textarea
@@ -186,8 +187,8 @@ export function JournalEditor({
               onKeyDown={onTextKeyDown}
               placeholder={placeholder}
               className={cn(
-                "w-full resize-none bg-transparent text-[15px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary",
-                bare ? "min-h-[42vh] overflow-hidden" : "h-full",
+                "w-full resize-none overflow-hidden bg-transparent text-[15px] leading-relaxed text-text-primary outline-none placeholder:text-text-tertiary",
+                bare ? "min-h-[42vh]" : "min-h-[25vh]",
               )}
               style={{ caretColor: ACCENT }}
             />
@@ -198,7 +199,7 @@ export function JournalEditor({
               "journal-prose",
               bare
                 ? "min-h-[42vh] rounded-control bg-surface-2 px-3 py-2.5"
-                : "h-full overflow-y-auto custom-scrollbar",
+                : "min-h-[25vh]",
             )}
           >
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>

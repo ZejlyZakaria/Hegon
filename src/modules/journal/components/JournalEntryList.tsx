@@ -43,9 +43,9 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
   const goalMap = useMemo(() => new Map(goals.map((g) => [g.id, g.title])), [goals]);
 
   return (
-    <div className="flex flex-col h-full gap-4">
+    <div className="flex flex-col gap-4">
       {/* Filters + search on same row */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {MOOD_FILTERS.map((filter) => {
           const isActive = moodFilter === filter.value;
           return (
@@ -87,7 +87,7 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
       </div>
 
       {/* Entries list */}
-      <div className="flex-1 overflow-y-auto">
+      <div>
         {isLoading ? (
           <JournalEntryListSkeleton />
         ) : entries?.length === 0 ? (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCreateEntry, useUpdateEntry } from "./useJournalToday";
 import type { JournalEntry, JournalMood, JournalContextItem } from "../types";
 
@@ -50,6 +50,11 @@ export function useEntryDraft(entry: JournalEntry | null, entryDate: string) {
   const [goalId, setGoalId] = useState<string | null>(entry?.goal_id ?? null);
   const [context, setContext] = useState<JournalContextItem[]>(entry?.context ?? []);
 
+  // Skips the mirror pass that immediately follows a restore, so re-seeding the
+  // draft from localStorage can't be mistaken for the user clearing it (which
+  // would wipe the just-restored draft).
+  const skipMirror = useRef(false);
+
   // On mount / entry change: restore an autosaved draft if one exists, else seed
   // from the saved entry. (localStorage read in an effect — SSR/hydration safe.)
   useEffect(() => {
@@ -59,6 +64,7 @@ export function useEntryDraft(entry: JournalEntry | null, entryDate: string) {
     setTags(saved?.tags ?? entry?.tags ?? []);
     setGoalId(saved?.goalId ?? entry?.goal_id ?? null);
     setContext(saved?.context ?? entry?.context ?? []);
+    skipMirror.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entry?.id]);
 
@@ -69,10 +75,20 @@ export function useEntryDraft(entry: JournalEntry | null, entryDate: string) {
     JSON.stringify(tags) !== JSON.stringify(entry?.tags ?? []) ||
     ctxKey(context) !== ctxKey(entry?.context);
 
-  // Mirror a dirty draft to localStorage (debounced). Never removes here — that's
-  // done explicitly on save — so the mount render (before restore) can't wipe it.
+  // Mirror the draft to localStorage (debounced) so work survives leaving the
+  // page. When the draft no longer differs from the saved entry (e.g. the user
+  // cleared everything back to empty), drop the stale autosave so it can't be
+  // restored on return. The pass right after a restore is skipped so re-seeding
+  // isn't mistaken for a clear.
   useEffect(() => {
-    if (!dirty) return;
+    if (skipMirror.current) {
+      skipMirror.current = false;
+      return;
+    }
+    if (!dirty) {
+      clearDraft(entryDate);
+      return;
+    }
     const t = setTimeout(() => {
       try {
         localStorage.setItem(draftKey(entryDate), JSON.stringify({ content, tags, mood, goalId, context }));

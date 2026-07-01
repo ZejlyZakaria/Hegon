@@ -37,10 +37,10 @@ export function JournalPage() {
   if (todayLoading) return <JournalLoadingSkeleton />;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex min-h-full flex-col">
       {/* Full-width tab rail — flush under the TopBar, identical placement to every
           module (the page title was redundant with the "Life / Journal" breadcrumb). */}
-      <div className="border-b border-border-subtle px-4 shrink-0 sm:px-6">
+      <div className="border-b border-border-subtle px-4 sm:px-6">
         <TabNav
           accent={ACCENT}
           activeKey={tab}
@@ -54,25 +54,23 @@ export function JournalPage() {
 
       {/* Stats — full width, no right panel */}
       {tab === "stats" ? (
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-5 sm:px-6">
+        <div className="px-4 py-4 sm:px-6 sm:py-6">
           <JournalStatsView />
         </div>
       ) : (
-      /* Content row — centre + right panel */
-      <div className="flex flex-1 min-h-0 overflow-hidden gap-6 pr-6">
+      /* Content row — stacks on mobile, centre + right panel on lg (like habits/goals) */
+      <div className="flex flex-col gap-6 px-4 py-4 sm:px-6 sm:py-6 lg:flex-row lg:items-start">
         {/* ── Centre ──────────────────────────────── */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-hidden pl-6 pt-4 pb-5">
-            {tab === "today" ? (
-              <JournalTodayView />
-            ) : (
-              <JournalEntryList onSelectEntry={handleSelectEntry} />
-            )}
-          </div>
+        <div className="min-w-0 flex-1">
+          {tab === "today" ? (
+            <JournalTodayView />
+          ) : (
+            <JournalEntryList onSelectEntry={handleSelectEntry} />
+          )}
         </div>
 
-        {/* ── Right Panel ─────────────────────────── */}
-        <div className="w-72 shrink-0 overflow-y-auto pt-4 pb-5">
+        {/* ── Right Panel — under the content on mobile, sidebar on lg ── */}
+        <div className="w-full lg:w-72 lg:shrink-0">
           <JournalRightPanel />
         </div>
       </div>

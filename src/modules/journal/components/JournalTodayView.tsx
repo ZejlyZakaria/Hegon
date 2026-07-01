@@ -30,7 +30,7 @@ export function JournalTodayView() {
   const showSeeds = !entry && (draft.content.trim() === "" || JOURNAL_SEEDS.has(draft.content));
 
   return (
-    <FadeIn className="flex flex-col h-full gap-5">
+    <FadeIn className="flex flex-col gap-5">
       {/* Mood */}
       <MoodOrbs value={draft.mood} onChange={draft.setMood} />
 
@@ -38,7 +38,7 @@ export function JournalTodayView() {
       {showSeeds && <JournalPrompts onPick={draft.setContent} />}
 
       {/* Editor */}
-      <div className="flex-1 min-h-0">
+      <div>
         <JournalEditor
           content={draft.content}
           tags={draft.tags}
