@@ -20,7 +20,7 @@ function PersonCard({ name, src, subtitle, size = 60 }: {
   return (
     <div className="flex shrink-0 flex-col items-center text-center" style={{ width: size }}>
       <div
-        className="relative overflow-hidden rounded-full bg-surface-2 ring-2 ring-white/10"
+        className="relative overflow-hidden rounded-full bg-surface-2 ring-2 ring-inset ring-white/10"
         style={{ width: size, height: size }}
       >
         {src ? (
