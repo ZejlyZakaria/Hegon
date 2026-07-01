@@ -16,7 +16,10 @@ export function useDeleteMedia() {
       return deleteMediaItem(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all });
+      // refetchType "all" so sections refetch even while inactive — a delete from
+      // the detail route must leave the main-page carousels fresh on Back (Next's
+      // Router Cache would otherwise restore them stale). Mirrors useUpdateMedia.
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all, refetchType: "all" });
       void syncWatchingGoals(queryClient);
     },
     onError: (error) => {

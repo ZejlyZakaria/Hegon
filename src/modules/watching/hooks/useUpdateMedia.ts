@@ -90,14 +90,18 @@ export function useUpdateMedia() {
       queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "list-items"] });
 
       if (isStatusChange) {
-        queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.movies() });
-        queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.series() });
-        queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.animes() });
+        // refetchType "all" so the main-page section carousels refetch even while
+        // INACTIVE (e.g. you marked watched from the detail route → the movies page
+        // is unmounted). Without it they'd only refetch on remount, but Next's Router
+        // Cache (staleTimes) restores the page from cache on Back → stale sections.
+        queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.movies(), refetchType: "all" });
+        queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.series(), refetchType: "all" });
+        queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.animes(), refetchType: "all" });
         for (const type of ["film", "serie", "anime"] as const) {
-          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.inProgress(type) });
-          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.recentlyWatched(type) });
-          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.wantToWatch(type) });
-          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.topRated(type) });
+          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.inProgress(type), refetchType: "all" });
+          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.recentlyWatched(type), refetchType: "all" });
+          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.wantToWatch(type), refetchType: "all" });
+          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.topRated(type), refetchType: "all" });
         }
         // Cross-module: a watched-status change can move a Goal's progress and
         // auto-tick a Watching-linked habit.

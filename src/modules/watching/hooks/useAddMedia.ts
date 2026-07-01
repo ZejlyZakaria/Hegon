@@ -232,7 +232,10 @@ export function useAddMedia() {
       }
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all });
+      // refetchType "all" so sections refetch even while inactive — adding from the
+      // detail route (e.g. "More Like This") must leave the main-page carousels fresh
+      // on Back (Next's Router Cache would otherwise restore them stale).
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all, refetchType: "all" });
 
       // Remove only the added item from For You cache — refetch only when running low
       const forYouKey = TMDB_KEYS.forYou(variables.defaultType);
