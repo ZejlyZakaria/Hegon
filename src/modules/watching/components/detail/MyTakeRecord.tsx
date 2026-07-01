@@ -137,6 +137,7 @@ export function MyTakeRecord({
           <textarea
             value={notes}
             onChange={(e) => onNotesChange(e.target.value)}
+            spellCheck={false}
             placeholder={isUnwatched ? "Why do you want to watch this? Any notes…" : "What did you think? Was it worth your time?"}
             className="min-h-32 flex-1 resize-none bg-transparent p-4 text-sm leading-relaxed text-text-primary placeholder:text-text-tertiary/60 focus:outline-none"
           />
