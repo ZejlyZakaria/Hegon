@@ -148,6 +148,8 @@ export async function getAllWatchedMedia(userId: string): Promise<WatchingMedia[
 // tmdb_ids the user already owns for a given type — used to hide already-owned
 // recommendations from "More Like This" (mirrors the For You exclusion).
 export async function getOwnedTmdbIds(userId: string, type: MediaType): Promise<number[]> {
+  // Guard: an empty user_id builds an invalid PostgREST filter (`user_id=eq.`) → 400.
+  if (!userId) return [];
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("watching")
@@ -763,6 +765,11 @@ export async function getTmdbEpisode(tmdbId: number, season: number, episode: nu
   return tmdbFetch<{ name: string; still_path: string | null; episode_number: number; season_number: number }>(
     `tv/${tmdbId}/season/${season}/episode/${episode}`
   );
+}
+
+// Movie or tv videos (trailers / teasers) — powers the trailer lightbox.
+export async function getMediaVideos(id: number, type: "movie" | "tv") {
+  return tmdbFetch<any>(`${type}/${id}/videos`);
 }
 
 // Movie or tv details with credits. TV/anime cast is sparse/empty in `credits`

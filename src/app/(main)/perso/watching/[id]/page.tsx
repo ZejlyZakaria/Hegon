@@ -11,6 +11,7 @@ import { useSeasonRefresh } from "@/modules/watching/hooks/useSeasonRefresh";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import { useSimilarTitles } from "@/modules/watching/hooks/useSimilarTitles";
 import { useMediaCredits } from "@/modules/watching/hooks/useMediaCredits";
+import { useMediaTrailer } from "@/modules/watching/hooks/useMediaTrailer";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { useWatchingGoals } from "@/modules/watching/hooks/useWatchingGoals";
 import { goalWouldCount } from "@/modules/watching/lib/goal-contribution";
@@ -19,6 +20,7 @@ import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import { ContributingToGoals } from "@/modules/watching/components/detail/ContributingToGoals";
 import { GoalRippleToast } from "@/modules/watching/components/detail/GoalRippleToast";
 import { MediaHero } from "@/modules/watching/components/detail/MediaHero";
+import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal";
 import { MyTakeRecord } from "@/modules/watching/components/detail/MyTakeRecord";
 import { EpisodeHighlights } from "@/modules/watching/components/detail/EpisodeHighlights";
 import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis";
@@ -55,8 +57,10 @@ export default function MediaDetailPage() {
   const hasStoredCast = (media?.cast_members?.length ?? 0) > 0;
   const { data: credits } = useMediaCredits(media?.tmdb_id ?? 0, media?.type ?? "film", !!media && !hasStoredCast);
   const { data: ownedIds = [] } = useOwnedTmdbIds(media?.user_id ?? "", media?.type ?? "film", !!media);
+  const { data: trailer } = useMediaTrailer(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
   const { data: watchingGoals = [] } = useWatchingGoals();
   const [addItem, setAddItem] = useState<any | null>(null);
+  const [trailerOpen, setTrailerOpen] = useState(false);
 
   // "More Like This" — drop titles already in the library (like For You), then
   // keep 6. Over-fetched upstream so this still yields 6 addable recommendations.
@@ -304,7 +308,14 @@ export default function MediaDetailPage() {
   return (
     <div className="min-h-screen bg-surface-0">
 
-      <MediaHero media={media} typeLabel={typeLabel} isSeries={isSeries} onBack={() => router.back()} />
+      <MediaHero
+        media={media}
+        typeLabel={typeLabel}
+        isSeries={isSeries}
+        onBack={() => router.back()}
+        hasTrailer={!!trailer?.key}
+        onPlayTrailer={() => setTrailerOpen(true)}
+      />
 
       {/* Content rises slightly into the hero's lower gradient — magazine overlap. */}
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
@@ -382,6 +393,13 @@ export default function MediaDetailPage() {
         </div>
 
       </div>
+
+      <TrailerModal
+        open={trailerOpen}
+        onClose={() => setTrailerOpen(false)}
+        youtubeKey={trailer?.key}
+        title={media.title}
+      />
 
       <AddMediaModal
         isOpen={!!addItem}

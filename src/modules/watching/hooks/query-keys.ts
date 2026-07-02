@@ -73,6 +73,8 @@ export const TMDB_KEYS = {
     ['tmdb', 'similar', type, tmdbId] as const,
   credits: (type: MediaType, tmdbId: number) =>
     ['tmdb', 'credits', type, tmdbId] as const,
+  trailer: (type: MediaType, tmdbId: number) =>
+    ['tmdb', 'trailer', type, tmdbId] as const,
   forYou: (type: MediaType) =>
     ['tmdb', 'for-you', type] as const,
 } as const;

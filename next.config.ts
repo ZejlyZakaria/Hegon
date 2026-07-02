@@ -12,6 +12,8 @@ const CSP = [
   "font-src 'self'",
   "connect-src 'self' https://femvhonlpafdajyamvcu.supabase.co wss://femvhonlpafdajyamvcu.supabase.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://www.thesportsdb.com",
   "worker-src 'self' blob:",
+  // Trailer lightbox embeds YouTube (no-cookie) — without this the iframe is blocked.
+  "frame-src https://www.youtube-nocookie.com https://www.youtube.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

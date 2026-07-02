@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowLeft, Star } from "lucide-react";
+import { ArrowLeft, Play, Star } from "lucide-react";
 import type { WatchingMedia } from "../../types";
 import { displayTitle } from "../../utils";
 
@@ -10,9 +10,11 @@ interface Props {
   typeLabel: string;
   isSeries: boolean;
   onBack: () => void;
+  hasTrailer?: boolean;
+  onPlayTrailer?: () => void;
 }
 
-export function MediaHero({ media, typeLabel, isSeries, onBack }: Props) {
+export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPlayTrailer }: Props) {
   const tmdbRating = media.rating ?? 0;
   const mainTitle = displayTitle(media);
   const altTitle = mainTitle === media.title ? media.original_title : media.title;
@@ -68,6 +70,16 @@ export function MediaHero({ media, typeLabel, isSeries, onBack }: Props) {
             <ArrowLeft size={14} />
             Back
           </button>
+          {hasTrailer && onPlayTrailer && (
+            <button
+              type="button"
+              onClick={onPlayTrailer}
+              className="absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[13px] font-medium text-white/80 backdrop-blur-sm"
+            >
+              <Play size={12} className="fill-current" />
+              Trailer
+            </button>
+          )}
         </div>
 
         <div className="relative -mt-16 px-4 pb-2">
@@ -149,6 +161,17 @@ export function MediaHero({ media, typeLabel, isSeries, onBack }: Props) {
           <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
           Back
         </button>
+
+        {hasTrailer && onPlayTrailer && (
+          <button
+            type="button"
+            onClick={onPlayTrailer}
+            className="group absolute right-10 top-5 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3.5 py-2 text-[13px] font-medium text-white/70 backdrop-blur-sm transition-colors hover:border-white/20 hover:bg-black/50 hover:text-white"
+          >
+            <Play size={13} className="fill-current transition-transform group-hover:scale-110" />
+            Trailer
+          </button>
+        )}
 
         <div className="absolute bottom-0 left-0 right-0 z-10 px-10 pb-8">
           <div className="flex items-end gap-8">
