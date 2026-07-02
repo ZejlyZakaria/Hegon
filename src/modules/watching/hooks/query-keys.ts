@@ -81,6 +81,8 @@ export const TMDB_KEYS = {
     ['tmdb', 'external-ids', type, tmdbId] as const,
   ageRating: (type: MediaType, tmdbId: number) =>
     ['tmdb', 'age-rating', type, tmdbId] as const,
+  omdb: (imdbId: string) =>
+    ['omdb', imdbId] as const,
   forYou: (type: MediaType) =>
     ['tmdb', 'for-you', type] as const,
 } as const;

@@ -32,6 +32,7 @@ import { stampSeasons, seasonRange } from "@/modules/watching/lib/season-years";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { InList } from "@/modules/watching/components/detail/InList";
 import { WatchProviders } from "@/modules/watching/components/detail/WatchProviders";
+import { ExternalRatings } from "@/modules/watching/components/detail/ExternalRatings";
 import { FloatingSaveBar } from "@/modules/watching/components/detail/FloatingSaveBar";
 import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { toast } from "@/shared/utils/toast";
@@ -389,6 +390,8 @@ export default function MediaDetailPage() {
             )}
 
             <WatchProviders info={providers} />
+
+            <ExternalRatings media={media} />
 
             <InList mediaItemId={media.id} userId={media.user_id} />
 

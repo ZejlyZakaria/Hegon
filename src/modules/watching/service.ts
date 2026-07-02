@@ -783,6 +783,16 @@ export async function getExternalIds(id: number, type: "movie" | "tv") {
   return tmdbFetch<any>(`${type}/${id}/external_ids`);
 }
 
+// OMDb data (IMDb/RT/Metacritic ratings, awards, box office) by imdb id — via the
+// /api/omdb proxy so the key stays server-side. Pass `season` for the heatmap.
+export async function getOmdbData(imdbId: string, season?: number) {
+  const params = new URLSearchParams({ i: imdbId });
+  if (season != null) params.set("Season", String(season));
+  const res = await fetch(`/api/omdb?${params.toString()}`);
+  if (!res.ok) throw new Error(`OMDb fetch failed: ${res.status}`);
+  return res.json();
+}
+
 // Age certification. Movies → release_dates (MPAA per country); tv → content_ratings.
 export async function getReleaseDates(id: number) {
   return tmdbFetch<any>(`movie/${id}/release_dates`);
