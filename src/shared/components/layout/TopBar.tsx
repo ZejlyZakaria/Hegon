@@ -210,34 +210,36 @@ function ProfileMenu({
               </div>
             )}
 
-            <div
-              className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer group"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            >
-              <div className="flex items-center gap-2.5">
-                {theme === "dark" ? (
-                  <Sun size={14} className="text-text-tertiary group-hover:text-text-secondary" />
-                ) : (
-                  <Moon size={14} className="text-text-tertiary group-hover:text-text-secondary" />
-                )}
-                <span className="text-[13px] text-text-secondary group-hover:text-text-primary">
-                  {theme === "dark" ? "Light mode" : "Dark mode"}
-                </span>
-              </div>
+            {!isDemo && (
               <div
-                className={cn(
-                  "w-8 h-4 rounded-full relative transition-colors duration-200",
-                  theme === "dark" ? "bg-violet-600" : "bg-surface-3",
-                )}
+                className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-surface-2 transition-colors cursor-pointer group"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               >
+                <div className="flex items-center gap-2.5">
+                  {theme === "dark" ? (
+                    <Sun size={14} className="text-text-tertiary group-hover:text-text-secondary" />
+                  ) : (
+                    <Moon size={14} className="text-text-tertiary group-hover:text-text-secondary" />
+                  )}
+                  <span className="text-[13px] text-text-secondary group-hover:text-text-primary">
+                    {theme === "dark" ? "Light mode" : "Dark mode"}
+                  </span>
+                </div>
                 <div
                   className={cn(
-                    "absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all duration-200",
-                    theme === "dark" ? "left-4" : "left-0.5",
+                    "w-8 h-4 rounded-full relative transition-colors duration-200",
+                    theme === "dark" ? "bg-violet-600" : "bg-surface-3",
                   )}
-                />
+                >
+                  <div
+                    className={cn(
+                      "absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all duration-200",
+                      theme === "dark" ? "left-4" : "left-0.5",
+                    )}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <form action={signOut}>
               <button
