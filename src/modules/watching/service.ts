@@ -783,6 +783,14 @@ export async function getExternalIds(id: number, type: "movie" | "tv") {
   return tmdbFetch<any>(`${type}/${id}/external_ids`);
 }
 
+// Age certification. Movies → release_dates (MPAA per country); tv → content_ratings.
+export async function getReleaseDates(id: number) {
+  return tmdbFetch<any>(`movie/${id}/release_dates`);
+}
+export async function getContentRatings(id: number) {
+  return tmdbFetch<any>(`tv/${id}/content_ratings`);
+}
+
 // Movie or tv details with credits. TV/anime cast is sparse/empty in `credits`
 // (the recurring voice cast lives in `aggregate_credits`), so append both for tv.
 export async function getMediaDetails(id: number, type: "movie" | "tv") {

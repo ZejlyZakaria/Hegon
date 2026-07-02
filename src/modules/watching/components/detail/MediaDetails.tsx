@@ -8,6 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
 import { useImdbId } from "../../hooks/useImdbId";
+import { useAgeRating } from "../../hooks/useAgeRating";
 import type { WatchingMedia } from "../../types";
 
 // "Watched" label: a year range for series/anime (from the per-season years you
@@ -104,6 +105,7 @@ interface Props {
 export function MediaDetails({ media, typeLabel, isSeries, onWatchedYearChange }: Props) {
   const label = watchedLabel(media);
   const { data: imdbId } = useImdbId(media.tmdb_id ?? 0, media.type, !!media.tmdb_id);
+  const { data: ageRating } = useAgeRating(media.tmdb_id ?? 0, media.type, !!media.tmdb_id);
 
   // The "Watched" row is editable only where there's no Watch History strip:
   // films (once watched) and single-season series/anime (watched or in progress).
@@ -135,6 +137,16 @@ export function MediaDetails({ media, typeLabel, isSeries, onWatchedYearChange }
       <div className="surface-quiet overflow-hidden rounded-2xl">
         <div className="divide-y divide-border-subtle px-4">
           <DetailRow label="Type" value={typeLabel} />
+          {ageRating ? (
+            <DetailRow
+              label="Age rating"
+              value={
+                <span className="inline-flex items-center rounded border border-border-default px-1.5 py-0.5 text-[11px] font-semibold text-text-primary">
+                  {ageRating}
+                </span>
+              }
+            />
+          ) : null}
           {media.year ? <DetailRow label="Year" value={media.year} /> : null}
           {media.runtime ? (
             <DetailRow
