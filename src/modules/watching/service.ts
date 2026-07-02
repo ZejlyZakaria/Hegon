@@ -772,6 +772,11 @@ export async function getMediaVideos(id: number, type: "movie" | "tv") {
   return tmdbFetch<any>(`${type}/${id}/videos`);
 }
 
+// Where-to-watch providers by region (JustWatch data via TMDB).
+export async function getWatchProviders(id: number, type: "movie" | "tv") {
+  return tmdbFetch<any>(`${type}/${id}/watch/providers`);
+}
+
 // Movie or tv details with credits. TV/anime cast is sparse/empty in `credits`
 // (the recurring voice cast lives in `aggregate_credits`), so append both for tv.
 export async function getMediaDetails(id: number, type: "movie" | "tv") {

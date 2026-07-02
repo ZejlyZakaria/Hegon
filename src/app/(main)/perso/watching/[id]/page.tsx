@@ -12,6 +12,7 @@ import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore"
 import { useSimilarTitles } from "@/modules/watching/hooks/useSimilarTitles";
 import { useMediaCredits } from "@/modules/watching/hooks/useMediaCredits";
 import { useMediaTrailer } from "@/modules/watching/hooks/useMediaTrailer";
+import { useWatchProviders } from "@/modules/watching/hooks/useWatchProviders";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { useWatchingGoals } from "@/modules/watching/hooks/useWatchingGoals";
 import { goalWouldCount } from "@/modules/watching/lib/goal-contribution";
@@ -30,6 +31,7 @@ import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonH
 import { stampSeasons, seasonRange } from "@/modules/watching/lib/season-years";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { InList } from "@/modules/watching/components/detail/InList";
+import { WatchProviders } from "@/modules/watching/components/detail/WatchProviders";
 import { FloatingSaveBar } from "@/modules/watching/components/detail/FloatingSaveBar";
 import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { toast } from "@/shared/utils/toast";
@@ -58,6 +60,7 @@ export default function MediaDetailPage() {
   const { data: credits } = useMediaCredits(media?.tmdb_id ?? 0, media?.type ?? "film", !!media && !hasStoredCast);
   const { data: ownedIds = [] } = useOwnedTmdbIds(media?.user_id ?? "", media?.type ?? "film", !!media);
   const { data: trailer } = useMediaTrailer(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
+  const { data: providers } = useWatchProviders(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
   const { data: watchingGoals = [] } = useWatchingGoals();
   const [addItem, setAddItem] = useState<any | null>(null);
   const [trailerOpen, setTrailerOpen] = useState(false);
@@ -384,6 +387,8 @@ export default function MediaDetailPage() {
                 onMarkCompleted={handleMarkWatched}
               />
             )}
+
+            <WatchProviders info={providers} />
 
             <InList mediaItemId={media.id} userId={media.user_id} />
 
