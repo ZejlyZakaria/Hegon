@@ -783,6 +783,11 @@ export async function getExternalIds(id: number, type: "movie" | "tv") {
   return tmdbFetch<any>(`${type}/${id}/external_ids`);
 }
 
+// Full season with episodes (stills, titles, overviews, tmdb ratings).
+export async function getSeasonEpisodes(id: number, season: number) {
+  return tmdbFetch<any>(`tv/${id}/season/${season}`);
+}
+
 // OMDb data (IMDb/RT/Metacritic ratings, awards, box office) by imdb id — via the
 // /api/omdb proxy so the key stays server-side. Pass `season` for the heatmap.
 export async function getOmdbData(imdbId: string, season?: number) {

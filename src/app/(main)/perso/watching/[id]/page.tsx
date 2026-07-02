@@ -23,11 +23,11 @@ import { GoalRippleToast } from "@/modules/watching/components/detail/GoalRipple
 import { MediaHero } from "@/modules/watching/components/detail/MediaHero";
 import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal";
 import { MyTakeRecord } from "@/modules/watching/components/detail/MyTakeRecord";
-import { EpisodeHighlights } from "@/modules/watching/components/detail/EpisodeHighlights";
 import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis";
 import { CastCrew } from "@/modules/watching/components/detail/CastCrew";
 import { CurrentlyWatching } from "@/modules/watching/components/detail/CurrentlyWatching";
 import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
+import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import { stampSeasons, seasonRange } from "@/modules/watching/lib/season-years";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { InList } from "@/modules/watching/components/detail/InList";
@@ -362,8 +362,8 @@ export default function MediaDetailPage() {
             />
           )}
 
-          {isSeries && (media.in_progress || media.watched) && (
-            <EpisodeHighlights mediaItemId={media.id} tmdbId={media.tmdb_id} userId={media.user_id} orgId={media.org_id} seasons={media.seasons ?? null} episodes={media.episodes ?? null} />
+          {isSeries && media.tmdb_id && (
+            <Episodes media={media} currentSeason={currentSeason} />
           )}
 
           {recommendations.length > 0 && (

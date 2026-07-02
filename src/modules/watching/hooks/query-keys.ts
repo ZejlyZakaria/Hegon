@@ -83,6 +83,10 @@ export const TMDB_KEYS = {
     ['tmdb', 'age-rating', type, tmdbId] as const,
   omdb: (imdbId: string) =>
     ['omdb', imdbId] as const,
+  seasonEpisodes: (tmdbId: number, season: number) =>
+    ['tmdb', 'season-episodes', tmdbId, season] as const,
+  episodeRatings: (imdbId: string, seasonCount: number) =>
+    ['omdb', 'episodes', imdbId, seasonCount] as const,
   forYou: (type: MediaType) =>
     ['tmdb', 'for-you', type] as const,
 } as const;
