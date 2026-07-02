@@ -372,6 +372,26 @@ export async function removeMediaFromList(listId: string, mediaItemId: string): 
     .from("media_lists")
     .update({ updated_at: new Date().toISOString() })
     .eq("id", listId);
+
+  // Clean up an orphaned reference stub: a media_item that only ever existed to sit
+  // in a list (is_reference, never tracked) and is now in no other list. Left behind,
+  // it lingers and reappears as "already in your library" when you try to re-add it.
+  const { data: media } = await supabase
+    .schema("watching")
+    .from("media_items")
+    .select("id, is_reference")
+    .eq("id", mediaItemId)
+    .maybeSingle();
+  if (media && (media as any).is_reference) {
+    const { count } = await supabase
+      .schema("watching")
+      .from("media_list_items")
+      .select("id", { count: "exact", head: true })
+      .eq("media_item_id", mediaItemId);
+    if ((count ?? 0) === 0) {
+      await supabase.schema("watching").from("media_items").delete().eq("id", mediaItemId);
+    }
+  }
 }
 
 export async function deleteMediaList(listId: string): Promise<void> {
@@ -457,6 +477,10 @@ export async function searchMediaForList(userId: string, query: string): Promise
     .from("media_items")
     .select("*")
     .eq("user_id", userId)
+    // Reference stubs aren't really "in your library" — exclude them so a title left
+    // over from a removed list routes through the enriching TMDB add path instead of
+    // masquerading as an owned item.
+    .neq("is_reference", true)
     .or(`title.ilike.%${query}%,original_title.ilike.%${query}%`)
     .order("updated_at", { ascending: false })
     .limit(20);
@@ -504,18 +528,68 @@ export async function addTmdbItemToList(
     : tmdbItem.genre_ids.includes(16) && tmdbItem.origin_country.some((c) => ASIAN_ANIMATION.includes(c)) ? "anime"
     : "serie";
 
-  // Check if already in DB (any type, match by tmdb_id)
+  // Match by tmdb_id. A REAL tracked item links as-is; a bare `is_reference` stub
+  // (e.g. left over from a previous list add) gets re-enriched in place so it's never
+  // reused with missing data.
   const { data: existing } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("id")
+    .select("id, is_reference")
     .eq("user_id", userId)
     .eq("tmdb_id", tmdbItem.id)
     .maybeSingle();
 
+  const existingId = (existing as any)?.id as string | undefined;
+  const existingIsReference = (existing as any)?.is_reference === true;
+
+  if (existingId && !existingIsReference) {
+    return addMediaToList(listId, existingId, userId);
+  }
+
+  // New title OR a reference stub → enrich from the full TMDB detail (like the Add
+  // modal): runtime, per-season episodes/posters/air-dates, status, genres. Without
+  // this a list-added media stayed a stub (wrong hours/seasons/history once watched).
+  // Best-effort: on failure we still create/link from the search-result fields.
+  const isFilm = type === "film";
+  let details: any = null;
+  try {
+    const dres = await fetch(`/api/tmdb?endpoint=${isFilm ? "movie" : "tv"}/${tmdbItem.id}&language=en-US`);
+    if (dres.ok) details = await dres.json();
+  } catch { /* best-effort — fall back to search-result data */ }
+
+  type SeasonLite = { season_number: number; episode_count?: number; poster_path?: string | null; air_date?: string | null };
+  const realSeasons: SeasonLite[] = !isFilm && Array.isArray(details?.seasons)
+    ? (details.seasons as SeasonLite[]).filter((s) => s.season_number > 0)
+    : [];
+  const rawStatus = details?.status?.toLowerCase() ?? null;
+  // Films keep the raw TMDB status ("released"…); TV/anime normalize to
+  // "ongoing"/"ended" (drives useSeasonRefresh). Matches the Add modal exactly.
+  const status: string | null = isFilm ? rawStatus : (rawStatus === "ended" ? "ended" : "ongoing");
+  const studio: string | null = isFilm
+    ? (details?.production_companies?.[0]?.name ?? null)
+    : (details?.networks?.[0]?.name ?? null);
+  const genres: string[] = Array.isArray(details?.genres) ? details.genres.map((g: { name: string }) => g.name) : [];
+  const runtime: number | null = isFilm ? (details?.runtime ?? null) : (details?.episode_run_time?.[0] ?? null);
+
+  // Season/metadata fields shared by insert (new) and heal (existing stub).
+  const meta = {
+    runtime,
+    tags: genres,
+    status,
+    studio,
+    seasons: isFilm ? null : (details?.number_of_seasons ?? realSeasons.length ?? null),
+    episodes: isFilm ? null : (details?.number_of_episodes ?? null),
+    // [] (not null) for non-series — these columns are NOT NULL DEFAULT '[]'.
+    season_episodes: isFilm ? null : realSeasons.map((s) => (s.episode_count ?? 0) as number),
+    season_posters: isFilm ? [] : realSeasons.map((s) => (s.poster_path ?? null) as string | null),
+    season_air_dates: isFilm ? [] : realSeasons.map((s) => (s.air_date ?? null) as string | null),
+  };
+
   let mediaItemId: string;
-  if (existing && (existing as any).id) {
-    mediaItemId = (existing as any).id;
+  if (existingId) {
+    // Heal the leftover reference stub in place, then re-add it to the list.
+    await updateMediaItem(existingId, meta);
+    mediaItemId = existingId;
   } else {
     const year = parseInt((tmdbItem.release_date ?? tmdbItem.first_air_date ?? "").slice(0, 4)) || null;
     const newItem = await insertMediaItem({
@@ -535,8 +609,8 @@ export async function addTmdbItemToList(
       want_to_watch: false,
       recently_watched: false,
       favorite: false,
-      tags: [],
       notes: null,
+      ...meta,
     });
     mediaItemId = newItem.id;
   }
