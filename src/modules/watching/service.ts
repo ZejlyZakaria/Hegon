@@ -777,6 +777,12 @@ export async function getWatchProviders(id: number, type: "movie" | "tv") {
   return tmdbFetch<any>(`${type}/${id}/watch/providers`);
 }
 
+// External ids (imdb_id, etc.) — shared by the IMDb link, OMDb ratings and the
+// episode heatmap. Works for both movie and tv.
+export async function getExternalIds(id: number, type: "movie" | "tv") {
+  return tmdbFetch<any>(`${type}/${id}/external_ids`);
+}
+
 // Movie or tv details with credits. TV/anime cast is sparse/empty in `credits`
 // (the recurring voice cast lives in `aggregate_credits`), so append both for tv.
 export async function getMediaDetails(id: number, type: "movie" | "tv") {

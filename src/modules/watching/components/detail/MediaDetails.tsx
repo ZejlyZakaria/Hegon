@@ -1,19 +1,14 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { ExternalLink, Pencil } from "lucide-react";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/shared/components/ui/popover";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
+import { useImdbId } from "../../hooks/useImdbId";
 import type { WatchingMedia } from "../../types";
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="mb-3 text-title text-text-primary">{children}</h2>
-  );
-}
 
 // "Watched" label: a year range for series/anime (from the per-season years you
 // filled in Watch History), a single year for films, and "Since {year}" while a
@@ -108,6 +103,7 @@ interface Props {
 
 export function MediaDetails({ media, typeLabel, isSeries, onWatchedYearChange }: Props) {
   const label = watchedLabel(media);
+  const { data: imdbId } = useImdbId(media.tmdb_id ?? 0, media.type, !!media.tmdb_id);
 
   // The "Watched" row is editable only where there's no Watch History strip:
   // films (once watched) and single-season series/anime (watched or in progress).
@@ -121,7 +117,21 @@ export function MediaDetails({ media, typeLabel, isSeries, onWatchedYearChange }
 
   return (
     <section>
-      <SectionLabel>Details</SectionLabel>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-title text-text-primary">Details</h2>
+        {imdbId && (
+          <a
+            href={`https://www.imdb.com/title/${imdbId}/`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="View on IMDb"
+            className="inline-flex items-center gap-1 rounded-md bg-[#F5C518] px-2 py-1 text-[11px] font-bold text-black transition-transform duration-150 ease-out hover:scale-105"
+          >
+            IMDb
+            <ExternalLink size={10} strokeWidth={2.5} />
+          </a>
+        )}
+      </div>
       <div className="surface-quiet overflow-hidden rounded-2xl">
         <div className="divide-y divide-border-subtle px-4">
           <DetailRow label="Type" value={typeLabel} />
