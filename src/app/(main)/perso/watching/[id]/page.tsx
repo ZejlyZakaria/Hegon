@@ -375,8 +375,8 @@ export default function MediaDetailPage() {
 
         </div>
 
-        {/* ── RIGHT — quiet utility rail ────────────────────────────── */}
-        <div className="scrollbar-hide lg:sticky lg:top-0 lg:max-h-screen lg:self-start lg:overflow-y-auto">
+        {/* ── RIGHT — quiet utility rail (flows with the page, one natural scroll) ── */}
+        <div>
           <div className="space-y-6 px-4 py-6 lg:py-8 lg:pl-2 lg:pr-8">
 
             {isSeries && media.in_progress && (
