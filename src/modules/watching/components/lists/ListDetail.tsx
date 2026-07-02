@@ -32,13 +32,10 @@ import {
 } from "../../hooks/useMediaLists";
 import { useUpdateMedia } from "../../hooks/useUpdateMedia";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
+import { ListGlyph, LIST_ICON_KEYS } from "./list-glyph";
 import type { MediaListWithThumbnails } from "../../service";
 import type { MediaListItemWithMedia, TmdbListResult } from "../../types";
 import { displayTitle } from "../../utils";
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const EMOJIS = ["🏆", "👑", "🧠", "🔥", "⚔️", "🚀", "🎭", "🕵️", "🏅", "💀", "❤️", "⭐", "💎", "🎬", "🌙", "🃏"];
 
 type SortKey = "position" | "title" | "year" | "rating";
 type ViewMode = "table" | "grid";
@@ -112,7 +109,7 @@ function PosterHero({ thumbnails, emoji }: { thumbnails: { backdrop_url: string 
   if (count === 0) {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 text-4xl opacity-20">
-        {emoji ?? "📋"}
+        <ListGlyph value={emoji} size={40} fallback />
       </div>
     );
   }
@@ -813,7 +810,14 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
     try {
       await updateList.mutateAsync({ id: list.id, data: { name, emoji, description: desc, is_ranked: ranked } });
     } catch (err) {
-      if (isDemoReadOnlyError(err)) return;
+      if (isDemoReadOnlyError(err)) {
+        // Read-only demo: undo the optimistic local edits so nothing appears to change.
+        setEditName(list.name);
+        setEditEmoji(list.emoji ?? "");
+        setEditDesc(list.description ?? "");
+        setEditRanked(list.is_ranked);
+        return;
+      }
       toast.error("Failed to update list.");
     }
   };
@@ -900,8 +904,8 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
             <div className="flex items-center gap-2">
               <Popover.Root>
                 <Popover.Trigger asChild>
-                  <button type="button" className="shrink-0 text-xl leading-none transition-opacity hover:opacity-70">
-                    {editEmoji || <span className="text-text-tertiary/30 text-base">＋</span>}
+                  <button type="button" className="shrink-0 leading-none transition-opacity hover:opacity-70">
+                    {editEmoji ? <ListGlyph value={editEmoji} size={18} /> : <span className="text-text-tertiary/30 text-base">＋</span>}
                   </button>
                 </Popover.Trigger>
                 <Popover.Portal>
@@ -910,7 +914,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
                     sideOffset={8}
                     className="z-50 flex flex-wrap gap-1 p-2 w-56 rounded-xl border border-border-strong bg-surface-3 shadow-md"
                   >
-                    {EMOJIS.map((e) => (
+                    {LIST_ICON_KEYS.map((e) => (
                       <button
                         key={e}
                         type="button"
@@ -919,11 +923,11 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
                           handleAutoSave({ emoji: e });
                         }}
                         className={cn(
-                          "rounded-md px-1.5 py-1 text-lg transition-colors hover:bg-surface-2",
+                          "rounded-md px-2 py-2 transition-colors hover:bg-surface-2",
                           editEmoji === e && "bg-accent-watching/20",
                         )}
                       >
-                        {e}
+                        <ListGlyph value={e} size={18} />
                       </button>
                     ))}
                   </Popover.Content>

@@ -12,6 +12,7 @@ import {
 import { useWatchingUIStore } from "../../hooks/useWatchingUIStore";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { ListDetail } from "./ListDetail";
+import { ListGlyph } from "./list-glyph";
 import type { MediaListWithThumbnails } from "../../service";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ function ListCard({ list, onClick, onDelete }: {
       <div className="relative flex h-42 gap-0.5 overflow-hidden bg-black">
         {list.thumbnails.length === 0 ? (
           <div className="flex h-full w-full items-center justify-center text-4xl opacity-15">
-            {list.emoji ?? "📋"}
+            <ListGlyph value={list.emoji} size={40} fallback />
           </div>
         ) : (
           posters.map((t, i) => (
@@ -149,9 +150,9 @@ function ListCard({ list, onClick, onDelete }: {
       </div>
 
       <div className="p-3">
-        <p className="truncate text-sm font-semibold text-text-primary">
-          {list.emoji && <span className="mr-1.5">{list.emoji}</span>}
-          {list.name}
+        <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-text-primary">
+          {list.emoji && <ListGlyph value={list.emoji} size={13} className="shrink-0" />}
+          <span className="truncate">{list.name}</span>
         </p>
         <div className="mt-1 flex items-center justify-between">
           <span className="text-xs text-text-tertiary">
