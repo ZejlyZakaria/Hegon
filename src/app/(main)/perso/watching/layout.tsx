@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import SectionHeader from "@/shared/components/layout/SectionHeader";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
+import { ThemePlayer } from "@/modules/watching/components/ThemePlayer";
 
 // Primary = content types (always inline); More = views (dropdown on mobile).
 const TABS = [
@@ -48,6 +49,9 @@ export default function WatchingLayout({ children }: { children: React.ReactNode
       >
         {children}
       </motion.div>
+
+      {/* Global OP/ED player — persists across Watching pages (Watching-only). */}
+      <ThemePlayer />
     </div>
   );
 }

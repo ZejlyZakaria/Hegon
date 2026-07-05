@@ -783,6 +783,62 @@ export async function getExternalIds(id: number, type: "movie" | "tv") {
   return tmdbFetch<any>(`${type}/${id}/external_ids`);
 }
 
+// ── AnimeThemes (OP/ED) ─────────────────────────────────────────────────────
+// Public API, no key. We search by title (no MAL mapping needed) and take the best
+// match, then flatten its themes to song + artist + audio/video CDN links.
+export interface AnimeThemeTrack {
+  id: number;
+  label: string;   // "OP1", "ED2"…
+  type: string;    // "OP" | "ED"
+  title: string;   // song title
+  artist: string;  // joined artist names
+  audioUrl: string | null;
+  videoUrl: string | null;
+}
+
+// A franchise is split across many AnimeThemes entries (S1, S2, movies, OVAs…),
+// each with its own OP/ED. We group by entry name so the whole soundtrack shows.
+export interface AnimeThemeGroup {
+  name: string;
+  year: number | null;
+  tracks: AnimeThemeTrack[];
+}
+
+function mapThemes(anime: any): AnimeThemeTrack[] {
+  return (anime.animethemes ?? [])
+    .map((t: any) => {
+      const video = t.animethemeentries?.[0]?.videos?.[0];
+      return {
+        id: t.id,
+        label: t.slug,
+        type: t.type,
+        title: t.song?.title ?? t.slug,
+        artist: (t.song?.artists ?? []).map((a: any) => a.name).join(", "),
+        audioUrl: video?.audio?.link ?? null,
+        videoUrl: video?.link ?? null,
+      } as AnimeThemeTrack;
+    })
+    .filter((t: AnimeThemeTrack) => t.audioUrl || t.videoUrl);
+}
+
+export async function searchAnimeThemes(title: string): Promise<AnimeThemeGroup[]> {
+  const url =
+    `https://api.animethemes.moe/search?q=${encodeURIComponent(title)}` +
+    `&fields[search]=anime&include[anime]=animethemes.song.artists,animethemes.animethemeentries.videos.audio`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  const animeList: any[] = data?.search?.anime ?? [];
+  return animeList
+    .map((anime) => ({
+      name: anime.name as string,
+      year: (anime.year as number) ?? null,
+      tracks: mapThemes(anime),
+    }))
+    .filter((g) => g.tracks.length > 0)
+    .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999));
+}
+
 // Full season with episodes (stills, titles, overviews, tmdb ratings).
 export async function getSeasonEpisodes(id: number, season: number) {
   return tmdbFetch<any>(`tv/${id}/season/${season}`);

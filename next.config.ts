@@ -10,7 +10,9 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://image.tmdb.org https://crests.football-data.org https://cdn.thesportsdb.com https://r2.thesportsdb.com https://femvhonlpafdajyamvcu.supabase.co https://books.google.com https://lh3.googleusercontent.com https://covers.openlibrary.org",
   "font-src 'self'",
-  "connect-src 'self' https://femvhonlpafdajyamvcu.supabase.co wss://femvhonlpafdajyamvcu.supabase.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://www.thesportsdb.com",
+  "connect-src 'self' https://femvhonlpafdajyamvcu.supabase.co wss://femvhonlpafdajyamvcu.supabase.co https://vitals.vercel-insights.com https://va.vercel-scripts.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://www.thesportsdb.com https://api.animethemes.moe",
+  // Anime OP/ED playback streams from the AnimeThemes CDN (video + audio).
+  "media-src 'self' blob: https://v.animethemes.moe https://a.animethemes.moe",
   "worker-src 'self' blob:",
   // Trailer lightbox embeds YouTube (no-cookie) — without this the iframe is blocked.
   "frame-src https://www.youtube-nocookie.com https://www.youtube.com",
