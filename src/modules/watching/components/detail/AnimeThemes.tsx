@@ -8,7 +8,7 @@ import type { WatchingMedia } from "../../types";
 
 export function AnimeThemes({ media }: { media: WatchingMedia }) {
   const isAnime = media.type === "anime";
-  const { data: groups = [], isLoading } = useAnimeThemes(media.title, isAnime, !!media.title);
+  const { data: groups = [], isLoading } = useAnimeThemes(media.title, media.year ?? null, isAnime, !!media.title);
   const { queue, index, isPlaying, play, toggle } = useThemePlayer();
   const currentId = queue[index]?.id ?? null;
 
@@ -17,9 +17,10 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
 
   // Flat queue across every season/entry, so next/prev flows through the whole
   // franchise. Each track keeps a stable id for the "now playing" highlight.
-  const flat: PlayerTrack[] = groups.flatMap((g) =>
+  const flat: PlayerTrack[] = groups.flatMap((g, gi) =>
     g.tracks.map((t) => ({
-      id: `${media.tmdb_id}-${g.name}-${t.label}`,
+      // gi disambiguates same-named entries (e.g. Hunter x Hunter 1999 vs 2011).
+      id: `${media.tmdb_id}-${gi}-${t.label}`,
       label: t.label,
       title: t.title,
       artist: t.artist,
@@ -41,15 +42,15 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
         </div>
       ) : (
         <div className="space-y-3">
-          {groups.map((g) => (
-            <div key={g.name}>
+          {groups.map((g, gi) => (
+            <div key={`${gi}-${g.name}`}>
               <p className="mb-1.5 truncate text-[11px] font-medium text-text-tertiary">
                 {g.name}
                 {g.year ? <span className="text-text-tertiary/50"> · {g.year}</span> : null}
               </p>
               <div className="surface-quiet overflow-hidden rounded-2xl">
                 {g.tracks.map((t) => {
-                  const id = `${media.tmdb_id}-${g.name}-${t.label}`;
+                  const id = `${media.tmdb_id}-${gi}-${t.label}`;
                   const active = currentId === id;
                   const playingThis = active && isPlaying;
                   return (

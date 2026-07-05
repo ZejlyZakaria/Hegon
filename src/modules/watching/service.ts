@@ -821,7 +821,21 @@ function mapThemes(anime: any): AnimeThemeTrack[] {
     .filter((t: AnimeThemeTrack) => t.audioUrl || t.videoUrl);
 }
 
-export async function searchAnimeThemes(title: string): Promise<AnimeThemeGroup[]> {
+const normName = (s: string) => s.toLowerCase().trim();
+
+// Base franchise name — the anchor's name cut at the first season/part/movie/colon
+// marker, so "Shingeki no Kyojin Season 2" and "…: The Final Season" both reduce to
+// "shingeki no kyojin" and match every official TV season.
+function franchiseBase(name: string): string {
+  const n = normName(name);
+  const cut = n.search(/(:|\s+season|\s+part|\s+movie|\s+ova|\s+the final|\s+\d)/);
+  return (cut > 0 ? n.slice(0, cut) : n).trim();
+}
+
+// Only the official TV seasons' OP/ED. Search is fuzzy ("hunter" matches City
+// Hunter…), so we anchor on the TV entry whose year matches the title, take its
+// base name, and keep only TV entries under that franchise. `year` = media.year.
+export async function searchAnimeThemes(title: string, year?: number | null): Promise<AnimeThemeGroup[]> {
   const url =
     `https://api.animethemes.moe/search?q=${encodeURIComponent(title)}` +
     `&fields[search]=anime&include[anime]=animethemes.song.artists,animethemes.animethemeentries.videos.audio`;
@@ -829,7 +843,20 @@ export async function searchAnimeThemes(title: string): Promise<AnimeThemeGroup[
   if (!res.ok) return [];
   const data = await res.json();
   const animeList: any[] = data?.search?.anime ?? [];
-  return animeList
+
+  const tv = animeList.filter((a) => a.media_format === "TV");
+  if (tv.length === 0) return [];
+
+  // Anchor = the TV entry closest to the media's year (the season being viewed).
+  const anchor =
+    year != null
+      ? [...tv].sort((a, b) => Math.abs((a.year ?? 9999) - year) - Math.abs((b.year ?? 9999) - year))[0]
+      : tv[0];
+  const base = franchiseBase(anchor.name);
+  const floor = anchor.year ?? 0; // the adaptation you're viewing — exclude older remakes
+
+  return tv
+    .filter((a) => normName(a.name).startsWith(base) && (a.year ?? 9999) >= floor)
     .map((anime) => ({
       name: anime.name as string,
       year: (anime.year as number) ?? null,
