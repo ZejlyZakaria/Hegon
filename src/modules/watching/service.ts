@@ -794,6 +794,7 @@ export interface AnimeThemeTrack {
   artist: string;  // joined artist names
   audioUrl: string | null;
   videoUrl: string | null;
+  cover: string | null;  // resolved iTunes single art (UI falls back to anime poster)
 }
 
 // A franchise is split across many AnimeThemes entries (S1, S2, movies, OVAs…),
@@ -816,6 +817,7 @@ function mapThemes(anime: any): AnimeThemeTrack[] {
         artist: (t.song?.artists ?? []).map((a: any) => a.name).join(", "),
         audioUrl: video?.audio?.link ?? null,
         videoUrl: video?.link ?? null,
+        cover: null,
       } as AnimeThemeTrack;
     })
     .filter((t: AnimeThemeTrack) => t.audioUrl || t.videoUrl);
@@ -855,7 +857,7 @@ export async function searchAnimeThemes(title: string, year?: number | null): Pr
   const base = franchiseBase(anchor.name);
   const floor = anchor.year ?? 0; // the adaptation you're viewing — exclude older remakes
 
-  return tv
+  const groups = tv
     .filter((a) => normName(a.name).startsWith(base) && (a.year ?? 9999) >= floor)
     .map((anime) => ({
       name: anime.name as string,
@@ -864,20 +866,74 @@ export async function searchAnimeThemes(title: string, year?: number | null): Pr
     }))
     .filter((g) => g.tracks.length > 0)
     .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999));
+
+  // Resolve every track's cover up-front (parallel) so the UI never shows a poster
+  // placeholder then swaps to the real art. Deduped + cached, so this is near-free
+  // after the first lookup of each song.
+  await Promise.all(
+    groups.flatMap((g) => g.tracks).map(async (t) => {
+      t.cover = await searchItunesArtwork(t.title, t.artist);
+    }),
+  );
+
+  return groups;
+}
+
+// Persistent cache for iTunes lookups — art never changes, so once resolved a
+// song's cover is instant on every later visit (and dedupes repeats in a session).
+// Hydrated once into an in-memory Map (fast, sync reads); writes to localStorage are
+// debounced into a single blob so we never parse/serialize the whole cache per call.
+const ART_CACHE_KEY = "hegon-itunes-art";
+let artCache: Map<string, string | null> | null = null;
+let artFlush: ReturnType<typeof setTimeout> | null = null;
+
+function artStore(): Map<string, string | null> {
+  if (artCache) return artCache;
+  artCache = new Map();
+  if (typeof window !== "undefined") {
+    try {
+      const raw = JSON.parse(localStorage.getItem(ART_CACHE_KEY) || "{}");
+      for (const [k, v] of Object.entries(raw)) artCache.set(k, v as string | null);
+    } catch { /* corrupt / unavailable — start empty */ }
+  }
+  return artCache;
+}
+
+function artPersistSoon() {
+  if (typeof window === "undefined" || artFlush) return;
+  artFlush = setTimeout(() => {
+    artFlush = null;
+    try {
+      localStorage.setItem(ART_CACHE_KEY, JSON.stringify(Object.fromEntries(artStore())));
+    } catch { /* quota / private mode — ignore */ }
+  }, 500);
 }
 
 // Per-song artwork via the iTunes Search API (free, no key) — AnimeThemes has no
 // song art, so we look each theme up by title+artist and use the single's cover
 // (square). Light cleaning of the title (~…ver.~ suffixes) improves matching.
 export async function searchItunesArtwork(title: string, artist: string): Promise<string | null> {
+  const store = artStore();
+  const key = `${title}|${artist}`;
+  if (store.has(key)) return store.get(key) ?? null;
+
   const cleanTitle = title.replace(/~[^~]*~/g, "").replace(/\(.*?\)/g, "").trim();
   const term = `${cleanTitle} ${artist}`.trim();
   if (!term) return null;
-  const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=song&limit=1`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  const art: string | undefined = data?.results?.[0]?.artworkUrl100;
-  return art ? art.replace("100x100bb", "400x400bb") : null; // upscale
+  let art: string | null = null;
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=song&limit=1`);
+    if (res.ok) {
+      const data = await res.json();
+      const raw: string | undefined = data?.results?.[0]?.artworkUrl100;
+      art = raw ? raw.replace("100x100bb", "400x400bb") : null; // upscale
+    }
+  } catch { /* network — leave null, don't poison cache with a transient failure */
+    return null;
+  }
+  store.set(key, art);
+  artPersistSoon();
+  return art;
 }
 
 // Full season with episodes (stills, titles, overviews, tmdb ratings).

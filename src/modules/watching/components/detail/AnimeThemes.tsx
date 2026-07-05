@@ -9,7 +9,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
 import { useAnimeThemes } from "../../hooks/useAnimeThemes";
-import { useItunesArtwork } from "../../hooks/useItunesArtwork";
 import { useThemePlayer, type PlayerTrack } from "../../store/theme-player";
 import { useThemeFavorites } from "../../store/theme-favorites";
 import type { WatchingMedia } from "../../types";
@@ -41,8 +40,7 @@ function ThemeRow({
   playing: boolean;
   onPlay: () => void;
 }) {
-  const { data: art } = useItunesArtwork(track.title, track.artist);
-  const cover = art ?? track.cover;
+  const cover = track.cover;
   const faved = useThemeFavorites((s) => !!s.favorites[track.id]);
   const toggleFav = useThemeFavorites((s) => s.toggle);
 
@@ -118,7 +116,7 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
           audioUrl: t.audioUrl,
           videoUrl: t.videoUrl,
           animeName: g.name,
-          cover: media.poster_url,
+          cover: t.cover ?? media.poster_url,
         })),
       ),
     [groups, media.tmdb_id, media.poster_url],
@@ -141,7 +139,15 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
   if (!isLoading && groups.length === 0) return null;
 
   const group = groups[activePart];
-  const shuffle = () => play([...flat].sort(() => 0.5 - Math.random()), 0);
+  const shuffle = () => {
+    // Fisher-Yates — an unbiased shuffle (unlike sort(() => 0.5 - Math.random())).
+    const q = [...flat];
+    for (let i = q.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [q[i], q[j]] = [q[j], q[i]];
+    }
+    play(q, 0);
+  };
   const partOf = (label: string) => flat.find((t) => t.id === `${media.tmdb_id}-${activePart}-${label}`);
 
   return (
