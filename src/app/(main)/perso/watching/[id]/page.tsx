@@ -377,7 +377,7 @@ export default function MediaDetailPage() {
         </div>
 
         {/* ── RIGHT — quiet utility rail (flows with the page, one natural scroll) ── */}
-        <div>
+        <div className="min-w-0">
           <div className="space-y-6 px-4 py-6 lg:py-8 lg:pl-2 lg:pr-8">
 
             {isSeries && media.in_progress && (

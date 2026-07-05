@@ -866,6 +866,20 @@ export async function searchAnimeThemes(title: string, year?: number | null): Pr
     .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999));
 }
 
+// Per-song artwork via the iTunes Search API (free, no key) — AnimeThemes has no
+// song art, so we look each theme up by title+artist and use the single's cover
+// (square). Light cleaning of the title (~…ver.~ suffixes) improves matching.
+export async function searchItunesArtwork(title: string, artist: string): Promise<string | null> {
+  const cleanTitle = title.replace(/~[^~]*~/g, "").replace(/\(.*?\)/g, "").trim();
+  const term = `${cleanTitle} ${artist}`.trim();
+  if (!term) return null;
+  const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=song&limit=1`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  const art: string | undefined = data?.results?.[0]?.artworkUrl100;
+  return art ? art.replace("100x100bb", "400x400bb") : null; // upscale
+}
+
 // Full season with episodes (stills, titles, overviews, tmdb ratings).
 export async function getSeasonEpisodes(id: number, season: number) {
   return tmdbFetch<any>(`tv/${id}/season/${season}`);
