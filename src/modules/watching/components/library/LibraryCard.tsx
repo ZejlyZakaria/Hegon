@@ -10,8 +10,9 @@ import { cn } from "@/shared/utils/utils";
 
 // Status badge shown on the poster: "Watching" (with S·E position for series) or
 // "Dropped". Completed titles carry no badge — they're the library's default state.
-function statusBadge(item: WatchingMedia): { label: string; tone: "watching" | "dropped" } | null {
+function statusBadge(item: WatchingMedia): { label: string; tone: "watching" | "paused" | "dropped" } | null {
   if (item.dropped) return { label: "Dropped", tone: "dropped" };
+  if (item.paused) return { label: "Paused", tone: "paused" };
   if (item.in_progress) {
     const isSeries = item.type === "serie" || item.type === "anime";
     const label = isSeries && item.current_season
@@ -89,8 +90,10 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
         {badge && (
           <div className="absolute bottom-2 left-2 right-2 z-10">
             <span className={cn(
-              "inline-block max-w-full truncate rounded-md px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-sm ring-1 ring-white/10",
-              badge.tone === "watching" ? "bg-black/70 text-accent-watching-vivid" : "bg-black/70 text-amber-300",
+              "inline-block max-w-full truncate rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-sm ring-1 ring-white/10",
+              badge.tone === "watching" ? "text-accent-watching-vivid"
+                : badge.tone === "paused" ? "text-sky-300"
+                : "text-amber-300",
             )}>
               {badge.label}
             </span>

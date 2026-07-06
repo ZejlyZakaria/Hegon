@@ -8,6 +8,7 @@ import {
   Check,
   Play,
   Heart,
+  PauseCircle,
   CircleSlash,
   Trash2,
 } from "lucide-react";
@@ -163,9 +164,15 @@ export function MediaActionMenu({
       toast(item.favorite ? "Removed from favorites." : "Added to favorites.");
     });
 
+  const handlePause = () =>
+    run(async () => {
+      await updateMedia.mutateAsync({ id: item.id, paused: true, dropped: false, drop_reason: null, in_progress: false });
+      toast("Paused.");
+    });
+
   const handleDrop = (reason: string | null) =>
     run(async () => {
-      await updateMedia.mutateAsync({ id: item.id, dropped: true, drop_reason: reason, in_progress: false });
+      await updateMedia.mutateAsync({ id: item.id, dropped: true, drop_reason: reason, paused: false, in_progress: false });
       toast("Marked as dropped.");
     });
 
@@ -245,6 +252,18 @@ export function MediaActionMenu({
                 }
               >
                 Start watching
+              </MenuItem>
+            )}
+
+            {isSeries && item.in_progress && !item.watched && (
+              <MenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePause();
+                }}
+                icon={<PauseCircle size={13} className="text-sky-400" />}
+              >
+                Pause series
               </MenuItem>
             )}
 

@@ -26,7 +26,7 @@ import {
 const ITEMS_PER_PAGE = 40;
 
 type MediaType = "all" | "film" | "serie" | "anime";
-type StatusKey = "all" | "watching" | "completed" | "dropped";
+type StatusKey = "all" | "watching" | "paused" | "completed" | "dropped";
 type SortKey   = "added" | "rating" | "title" | "year" | "favorite";
 
 const MEDIA_TYPES: { value: MediaType; label: string }[] = [
@@ -39,6 +39,7 @@ const MEDIA_TYPES: { value: MediaType; label: string }[] = [
 const STATUS_OPTIONS: { value: StatusKey; label: string }[] = [
   { value: "all",       label: "All statuses" },
   { value: "watching",  label: "Watching" },
+  { value: "paused",    label: "Paused" },
   { value: "completed", label: "Completed" },
   { value: "dropped",   label: "Dropped" },
 ];
@@ -103,6 +104,7 @@ export default function LibraryClient({ initialItems, userId }: Props) {
     if (status !== "all") {
       result = result.filter(item =>
         status === "watching"  ? item.in_progress
+        : status === "paused"    ? item.paused
         : status === "completed" ? item.watched
         : status === "dropped"   ? item.dropped
         : true,
@@ -280,6 +282,7 @@ export default function LibraryClient({ initialItems, userId }: Props) {
               (mediaType === "all" || i.type === mediaType) &&
               (status === "all"
                 || (status === "watching" ? i.in_progress
+                  : status === "paused" ? i.paused
                   : status === "completed" ? i.watched
                   : i.dropped)),
             );

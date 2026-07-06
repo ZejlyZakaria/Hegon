@@ -8,7 +8,7 @@ import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import type { UpdateMediaInput } from "../schemas/media.schema";
 
-const STATUS_FIELDS = ["watched", "in_progress", "want_to_watch", "is_reference", "recently_watched", "dropped"] as const;
+const STATUS_FIELDS = ["watched", "in_progress", "want_to_watch", "is_reference", "recently_watched", "dropped", "paused"] as const;
 
 // Any field whose change can move a number on the Stats page (counts, hours,
 // ratings, genres, top picks, activity). Notes are the only common edit that does

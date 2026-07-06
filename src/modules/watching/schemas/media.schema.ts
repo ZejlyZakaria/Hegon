@@ -23,6 +23,7 @@ export const updateMediaSchema = z.object({
   recently_watched: z.boolean().optional(),
   dropped: z.boolean().optional(),
   drop_reason: z.string().nullable().optional(),
+  paused: z.boolean().optional(),
 });
 
 export type UpdateMediaInput = z.infer<typeof updateMediaSchema>;

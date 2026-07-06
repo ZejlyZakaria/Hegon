@@ -27,6 +27,7 @@ import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis"
 import { CastCrew } from "@/modules/watching/components/detail/CastCrew";
 import { CurrentlyWatching } from "@/modules/watching/components/detail/CurrentlyWatching";
 import { DroppedNotice } from "@/modules/watching/components/detail/DroppedNotice";
+import { PausedNotice } from "@/modules/watching/components/detail/PausedNotice";
 import { CaptureSheet } from "@/modules/watching/components/shared/CaptureSheet";
 import { DROP_REASONS } from "@/modules/watching/lib/drop-reasons";
 import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
@@ -183,8 +184,19 @@ export default function MediaDetailPage() {
   const handleDrop = async (reason: string | null) => {
     if (!media) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, dropped: true, drop_reason: reason, in_progress: false });
+      await updateMedia.mutateAsync({ id: media.id, dropped: true, drop_reason: reason, paused: false, in_progress: false });
       toast("Marked as dropped.");
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
+      toast.error("Failed to update.");
+    }
+  };
+
+  const handlePause = async () => {
+    if (!media) return;
+    try {
+      await updateMedia.mutateAsync({ id: media.id, paused: true, dropped: false, drop_reason: null, in_progress: false });
+      toast("Paused.");
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
@@ -194,7 +206,7 @@ export default function MediaDetailPage() {
   const handleResume = async () => {
     if (!media) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, dropped: false, drop_reason: null, in_progress: true });
+      await updateMedia.mutateAsync({ id: media.id, dropped: false, drop_reason: null, paused: false, in_progress: true });
       toast("Back to watching.");
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
@@ -413,8 +425,13 @@ export default function MediaDetailPage() {
                 onUpdate={updateProgress}
                 media={media}
                 onMarkCompleted={handleMarkWatched}
+                onPause={handlePause}
                 onDrop={() => setDropSheetOpen(true)}
               />
+            )}
+
+            {isSeries && media.paused && (
+              <PausedNotice onResume={handleResume} />
             )}
 
             {isSeries && media.dropped && (
