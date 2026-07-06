@@ -6,7 +6,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Heart, Loader2, Maximize2, Music, Pause, Play, SkipBack, SkipForward, Video, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/shared/components/ui/dialog";
 import { useThemePlayer } from "../store/theme-player";
-import { useThemeFavorites } from "../store/theme-favorites";
+import { useThemeFavorites, useToggleThemeFavorite } from "../hooks/useThemeFavorites";
+import { themeTrackKey } from "../service";
 
 function fmt(t: number) {
   if (!Number.isFinite(t)) return "0:00";
@@ -19,8 +20,9 @@ export function ThemePlayer() {
   const { queue, index, isPlaying, showVideo, toggle, setPlaying, next, prev, openVideo, closeVideo, close } =
     useThemePlayer();
   const current = queue[index] ?? null;
-  const faved = useThemeFavorites((s) => (current ? !!s.favorites[current.id] : false));
-  const toggleFav = useThemeFavorites((s) => s.toggle);
+  const { data: favorites = [] } = useThemeFavorites();
+  const toggleFavMutation = useToggleThemeFavorite();
+  const faved = current ? favorites.some((f) => f.track_key === themeTrackKey(current)) : false;
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const [time, setTime] = useState(0);
@@ -191,7 +193,7 @@ export function ThemePlayer() {
                         <span className="text-accent-watching-vivid">{current.label}</span> · {current.artist || current.animeName}
                       </p>
                     </div>
-                    <button type="button" onClick={() => toggleFav(current)} className="mt-1 shrink-0 text-white/60 transition-colors hover:text-white">
+                    <button type="button" onClick={() => toggleFavMutation.mutate({ track: current, faved })} className="mt-1 shrink-0 text-white/60 transition-colors hover:text-white">
                       <Heart size={22} className={faved ? "fill-accent-watching-vivid text-accent-watching-vivid" : ""} />
                     </button>
                   </div>

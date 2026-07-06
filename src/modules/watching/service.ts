@@ -2,7 +2,7 @@
 
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
-import type { WatchingMedia, MediaType, WatchStatus, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult } from "./types";
+import type { WatchingMedia, MediaType, WatchStatus, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, ThemeFavorite, ThemeFavoriteInput } from "./types";
 
 // =====================================================
 // WATCHING SERVICE (SUPABASE)
@@ -879,41 +879,41 @@ export async function searchAnimeThemes(title: string, year?: number | null): Pr
   return groups;
 }
 
-// Persistent cache for iTunes lookups — art never changes, so once resolved a
-// song's cover is instant on every later visit (and dedupes repeats in a session).
+// Persistent cache for immutable derived URLs (art, banners) — never change, so once
+// resolved they're instant on every later visit (and dedupe repeats in a session).
 // Hydrated once into an in-memory Map (fast, sync reads); writes to localStorage are
 // debounced into a single blob so we never parse/serialize the whole cache per call.
-const ART_CACHE_KEY = "hegon-itunes-art";
-let artCache: Map<string, string | null> | null = null;
-let artFlush: ReturnType<typeof setTimeout> | null = null;
-
-function artStore(): Map<string, string | null> {
-  if (artCache) return artCache;
-  artCache = new Map();
-  if (typeof window !== "undefined") {
-    try {
-      const raw = JSON.parse(localStorage.getItem(ART_CACHE_KEY) || "{}");
-      for (const [k, v] of Object.entries(raw)) artCache.set(k, v as string | null);
-    } catch { /* corrupt / unavailable — start empty */ }
-  }
-  return artCache;
+function createUrlCache(storageKey: string) {
+  let mem: Map<string, string | null> | null = null;
+  let flush: ReturnType<typeof setTimeout> | null = null;
+  const store = (): Map<string, string | null> => {
+    if (mem) return mem;
+    mem = new Map();
+    if (typeof window !== "undefined") {
+      try {
+        const raw = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        for (const [k, v] of Object.entries(raw)) mem.set(k, v as string | null);
+      } catch { /* corrupt / unavailable — start empty */ }
+    }
+    return mem;
+  };
+  const persistSoon = () => {
+    if (typeof window === "undefined" || flush) return;
+    flush = setTimeout(() => {
+      flush = null;
+      try { localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(store()))); } catch { /* quota */ }
+    }, 500);
+  };
+  return { store, persistSoon };
 }
 
-function artPersistSoon() {
-  if (typeof window === "undefined" || artFlush) return;
-  artFlush = setTimeout(() => {
-    artFlush = null;
-    try {
-      localStorage.setItem(ART_CACHE_KEY, JSON.stringify(Object.fromEntries(artStore())));
-    } catch { /* quota / private mode — ignore */ }
-  }, 500);
-}
+const itunesCache = createUrlCache("hegon-itunes-art");
 
 // Per-song artwork via the iTunes Search API (free, no key) — AnimeThemes has no
 // song art, so we look each theme up by title+artist and use the single's cover
 // (square). Light cleaning of the title (~…ver.~ suffixes) improves matching.
 export async function searchItunesArtwork(title: string, artist: string): Promise<string | null> {
-  const store = artStore();
+  const store = itunesCache.store();
   const key = `${title}|${artist}`;
   if (store.has(key)) return store.get(key) ?? null;
 
@@ -932,8 +932,57 @@ export async function searchItunesArtwork(title: string, artist: string): Promis
     return null;
   }
   store.set(key, art);
-  artPersistSoon();
+  itunesCache.persistSoon();
   return art;
+}
+
+// ── Theme favorites ("My Themes") ────────────────────────────────────────────
+// Stable natural key for a theme — independent of the in-app track id (which
+// embeds a season index). One favorite per (anime, label, song) per org.
+export function themeTrackKey(t: { animeName: string; label: string; title: string }): string {
+  return `${t.animeName}|${t.label}|${t.title}`.toLowerCase().trim();
+}
+
+export async function getThemeFavorites(): Promise<ThemeFavorite[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("theme_favorites")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ThemeFavorite[];
+}
+
+export async function addThemeFavorite(track: ThemeFavoriteInput): Promise<void> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  const orgId = await getCurrentOrgId();
+  const { error } = await supabase
+    .schema("watching").from("theme_favorites")
+    .upsert({
+      org_id: orgId,
+      user_id: user.id,
+      track_key: themeTrackKey(track),
+      anime_name: track.animeName,
+      label: track.label,
+      title: track.title,
+      artist: track.artist,
+      audio_url: track.audioUrl,
+      video_url: track.videoUrl,
+      cover: track.cover,
+      anime_poster: track.animePoster,
+    }, { onConflict: "org_id,track_key" });
+  if (error) throw error;
+}
+
+export async function removeThemeFavorite(trackKey: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("watching").from("theme_favorites")
+    .delete()
+    .eq("track_key", trackKey);
+  if (error) throw error;
 }
 
 // Full season with episodes (stills, titles, overviews, tmdb ratings).

@@ -56,6 +56,10 @@ export const WATCHING_KEYS = {
     [...WATCHING_KEYS.all, 'lists-for-media', mediaItemId] as const,
   listItems: (listId: string) =>
     [...WATCHING_KEYS.all, 'list-items', listId] as const,
+
+  // Theme favorites ("My Themes")
+  themeFavorites: () =>
+    [...WATCHING_KEYS.all, 'theme-favorites'] as const,
 } as const;
 
 // =====================================================

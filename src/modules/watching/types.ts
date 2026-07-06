@@ -223,3 +223,31 @@ export interface TMDBMediaDetails {
   production_companies?: { name: string }[];
   status?: string;
 }
+
+// ── Theme favorites ("My Themes") ──
+export interface ThemeFavorite {
+  id: string;
+  track_key: string;
+  anime_name: string;
+  label: string;
+  title: string;
+  artist: string;
+  audio_url: string | null;
+  video_url: string | null;
+  cover: string | null;
+  anime_poster: string | null;
+  media_tmdb_id: number | null;
+  created_at: string;
+}
+
+// Structural input for hearting a track (a PlayerTrack satisfies this).
+export interface ThemeFavoriteInput {
+  animeName: string;
+  label: string;
+  title: string;
+  artist: string;
+  audioUrl: string | null;
+  videoUrl: string | null;
+  cover: string | null;
+  animePoster: string | null;
+}

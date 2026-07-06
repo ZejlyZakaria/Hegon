@@ -8,7 +8,8 @@ export interface PlayerTrack {
   audioUrl: string | null;
   videoUrl: string | null;
   animeName: string;
-  cover: string | null;   // anime poster
+  cover: string | null;        // display artwork (iTunes single art in the detail panel)
+  animePoster: string | null;  // the anime's own poster (used by "My Themes")
 }
 
 interface ThemePlayerState {

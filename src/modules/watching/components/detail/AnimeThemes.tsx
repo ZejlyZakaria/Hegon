@@ -9,8 +9,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
 import { useAnimeThemes } from "../../hooks/useAnimeThemes";
+import { useThemeFavorites, useToggleThemeFavorite } from "../../hooks/useThemeFavorites";
 import { useThemePlayer, type PlayerTrack } from "../../store/theme-player";
-import { useThemeFavorites } from "../../store/theme-favorites";
+import { themeTrackKey } from "../../service";
 import type { WatchingMedia } from "../../types";
 
 // Now-playing equalizer — three bars breathing, Apple Music style.
@@ -33,16 +34,16 @@ function Equalizer() {
 // row is tinted by the cover's colours), a crisp square thumbnail with a play /
 // equalizer overlay, title/artist, and a ♥ favorite toggle.
 function ThemeRow({
-  track, active, playing, onPlay,
+  track, active, playing, faved, onPlay, onToggleFav,
 }: {
   track: PlayerTrack;
   active: boolean;
   playing: boolean;
+  faved: boolean;
   onPlay: () => void;
+  onToggleFav: () => void;
 }) {
   const cover = track.cover;
-  const faved = useThemeFavorites((s) => !!s.favorites[track.id]);
-  const toggleFav = useThemeFavorites((s) => s.toggle);
 
   return (
     <div className="group relative overflow-hidden rounded-xl">
@@ -88,7 +89,7 @@ function ThemeRow({
         {/* Favorite */}
         <button
           type="button"
-          onClick={() => toggleFav(track)}
+          onClick={onToggleFav}
           title={faved ? "Remove from My Themes" : "Add to My Themes"}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/55 transition-colors hover:text-white"
         >
@@ -105,6 +106,10 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
   const { queue, index, isPlaying, play, toggle } = useThemePlayer();
   const currentId = queue[index]?.id ?? null;
 
+  const { data: favorites = [] } = useThemeFavorites();
+  const toggleFav = useToggleThemeFavorite();
+  const favKeys = useMemo(() => new Set(favorites.map((f) => f.track_key)), [favorites]);
+
   const flat: PlayerTrack[] = useMemo(
     () =>
       groups.flatMap((g, gi) =>
@@ -117,6 +122,7 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
           videoUrl: t.videoUrl,
           animeName: g.name,
           cover: t.cover ?? media.poster_url,
+          animePoster: media.poster_url,
         })),
       ),
     [groups, media.tmdb_id, media.poster_url],
@@ -195,13 +201,16 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
               const track = partOf(t.label);
               if (!track) return null;
               const active = currentId === track.id;
+              const faved = favKeys.has(themeTrackKey(track));
               return (
                 <ThemeRow
                   key={track.id}
                   track={track}
                   active={active}
                   playing={active && isPlaying}
+                  faved={faved}
                   onPlay={() => (active ? toggle() : play(flat, indexOf.get(track.id) ?? 0))}
+                  onToggleFav={() => toggleFav.mutate({ track, faved })}
                 />
               );
             })}
