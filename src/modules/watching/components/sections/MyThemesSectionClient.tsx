@@ -1,15 +1,16 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useMemo, useRef, useState, useEffect } from "react";
-import Link from "next/link";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Music, Play, Shuffle } from "lucide-react";
+import { Music, Play, Shuffle } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
+import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { useThemeFavorites } from "@/modules/watching/hooks/useThemeFavorites";
 import { useThemeCovers } from "@/modules/watching/hooks/useThemeCovers";
 import { themeTrackKey } from "@/modules/watching/service";
 import { useThemePlayer, type PlayerTrack } from "@/modules/watching/store/theme-player";
+import MyThemesView from "@/modules/watching/components/MyThemesView";
 
 // Playing indicator — three bars breathing, Apple Music style.
 function Equalizer() {
@@ -107,35 +108,7 @@ export default function MyThemesSectionClient() {
   const current = queue[index] ?? null;
   const activeKey = current ? themeTrackKey(current) : null;
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canPrev, setCanPrev] = useState(false);
-  const [canNext, setCanNext] = useState(false);
-
-  const refreshArrows = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanPrev(el.scrollLeft > 4);
-    setCanNext(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
-  };
-  useEffect(() => {
-    refreshArrows();
-    const el = scrollRef.current;
-    if (!el) return;
-    el.addEventListener("scroll", refreshArrows, { passive: true });
-    window.addEventListener("resize", refreshArrows);
-    return () => {
-      el.removeEventListener("scroll", refreshArrows);
-      window.removeEventListener("resize", refreshArrows);
-    };
-  }, [tracks.length]);
-
-  if (isLoading || tracks.length === 0) return null;
-
-  const scroll = (dir: "prev" | "next") => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir === "next" ? el.clientWidth * 0.8 : -el.clientWidth * 0.8, behavior: "smooth" });
-  };
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const shuffle = () => {
     const q = [...tracks];
@@ -146,43 +119,18 @@ export default function MyThemesSectionClient() {
     play(q, 0);
   };
 
+  if (isLoading || tracks.length === 0) return null;
+
   return (
     <section>
-      <div className="mb-1.5 flex items-center justify-between">
-        <div>
-          <Link href="/perso/watching/themes" className="group/title inline-flex items-center gap-1 text-title text-text-primary transition-colors hover:text-accent-watching-vivid">
-            My Themes
-            <ChevronRight size={18} className="translate-y-px text-text-tertiary transition-[color,transform] group-hover/title:translate-x-0.5 group-hover/title:text-accent-watching-vivid" />
-          </Link>
+      <div className="mb-1.5 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-title text-text-primary">My Themes</h3>
           <p className="mt-1 text-xs text-text-tertiary">
             {tracks.length} favorite {tracks.length === 1 ? "opening or ending" : "openings & endings"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => scroll("prev")}
-            disabled={!canPrev}
-            className={cn(
-              "hidden rounded-full border border-white/10 p-2 transition-[background-color,opacity,transform] duration-150 ease-out active:scale-[0.97] lg:block",
-              canPrev ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary" : "cursor-not-allowed border-white/5 text-text-tertiary/20 opacity-50",
-            )}
-            aria-label="Previous"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => scroll("next")}
-            disabled={!canNext}
-            className={cn(
-              "hidden rounded-full border border-white/10 p-2 transition-[background-color,opacity,transform] duration-150 ease-out active:scale-[0.97] lg:block",
-              canNext ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary" : "cursor-not-allowed border-white/5 text-text-tertiary/20 opacity-50",
-            )}
-            aria-label="Next"
-          >
-            <ChevronRight size={16} />
-          </button>
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={shuffle}
@@ -195,17 +143,23 @@ export default function MyThemesSectionClient() {
           <button
             type="button"
             onClick={() => play(tracks, 0)}
-            className="flex items-center gap-1.5 rounded-control px-3.5 py-1.5 text-xs font-medium text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 active:scale-[0.97]"
-            style={{ backgroundColor: "var(--color-accent-watching)" }}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-text-tertiary transition-colors hover:bg-white/10 hover:text-text-primary"
+            aria-label="Play in order"
+            title="Play in order"
           >
-            <Play size={12} className="fill-current" />
-            Play
+            <Play size={14} className="translate-x-px fill-current" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setPanelOpen(true)}
+            className="flex items-center gap-1 rounded-full border border-border-subtle bg-surface-2 px-3.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary"
+          >
+            View all
           </button>
         </div>
       </div>
 
       <div
-        ref={scrollRef}
         className="flex gap-4 overflow-x-auto scroll-smooth py-1.5 snap-x -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
@@ -222,6 +176,15 @@ export default function MyThemesSectionClient() {
           );
         })}
       </div>
+
+      <SlidingPanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        title="My Themes"
+        icon={<Music size={16} className="text-accent-watching-vivid" />}
+      >
+        <MyThemesView />
+      </SlidingPanel>
     </section>
   );
 }

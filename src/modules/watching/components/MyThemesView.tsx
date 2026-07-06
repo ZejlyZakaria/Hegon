@@ -2,9 +2,8 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Heart, Music, Pause, Play, Shuffle } from "lucide-react";
+import { Heart, Music, Pause, Play, Shuffle } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { useThemeFavorites, useToggleThemeFavorite } from "@/modules/watching/hooks/useThemeFavorites";
 import { useThemeCovers } from "@/modules/watching/hooks/useThemeCovers";
@@ -36,6 +35,8 @@ function Cover({ src, size }: { src: string | null; size: number }) {
   );
 }
 
+// Body of the "My Themes" sliding panel: a vertical playlist hero (mosaic artwork +
+// Play/Shuffle) followed by the full track list. Reuses the shared player + favorites.
 export default function MyThemesView() {
   const { data: favorites = [], isLoading } = useThemeFavorites();
   const { queue, index, isPlaying, play, toggle } = useThemePlayer();
@@ -75,26 +76,16 @@ export default function MyThemesView() {
     play(q, 0);
   };
 
-  const backLink = (
-    <Link href="/perso/watching/animes" className="mb-6 inline-flex items-center gap-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary">
-      <ArrowLeft size={15} />
-      Animes
-    </Link>
-  );
-
   if (!isLoading && tracks.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-        {backLink}
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-border-subtle bg-surface-1 px-6 py-20 text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-surface-2">
-            <Heart size={24} className="text-text-tertiary" />
-          </div>
-          <h2 className="text-title text-text-primary">No favorite themes yet</h2>
-          <p className="mt-1.5 max-w-sm text-sm text-text-tertiary">
-            Open an anime and tap the ♥ on any opening or ending — it lands here, ready to play.
-          </p>
+      <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-surface-2">
+          <Heart size={24} className="text-text-tertiary" />
         </div>
+        <h2 className="text-title text-text-primary">No favorite themes yet</h2>
+        <p className="mt-1.5 max-w-xs text-sm text-text-tertiary">
+          Open an anime and tap the ♥ on any opening or ending — it lands here, ready to play.
+        </p>
       </div>
     );
   }
@@ -102,56 +93,50 @@ export default function MyThemesView() {
   const mosaic = tracks.slice(0, 4).map((t) => t.cover);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      {backLink}
-
-      {/* Hero */}
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end">
-        {/* Playlist artwork — 2×2 mosaic (or a single cover if fewer than 4) */}
-        <div className="aspect-square w-44 shrink-0 overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10 sm:w-52">
+    <div className="px-4 py-6">
+      {/* Hero — vertical (fits the panel width) */}
+      <div className="flex flex-col items-center text-center">
+        <div className="aspect-square w-40 overflow-hidden rounded-2xl shadow-xl ring-1 ring-white/10">
           {mosaic.length >= 4 ? (
             <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-0.5">
               {mosaic.map((src, i) => (
-                <div key={i} className="overflow-hidden"><Cover src={src} size={20} /></div>
+                <div key={i} className="overflow-hidden"><Cover src={src} size={18} /></div>
               ))}
             </div>
           ) : (
-            <Cover src={mosaic[0] ?? null} size={44} />
+            <Cover src={mosaic[0] ?? null} size={40} />
           )}
         </div>
 
-        {/* Meta + actions */}
-        <div className="min-w-0 flex-1 text-center sm:text-left">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-accent-watching-vivid">Playlist</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-text-primary sm:text-4xl">My Themes</h1>
-          <p className="mt-2 text-sm text-text-tertiary">
-            {tracks.length} favorite {tracks.length === 1 ? "opening or ending" : "openings & endings"}
-          </p>
+        <p className="mt-4 text-[11px] font-semibold uppercase tracking-widest text-accent-watching-vivid">Playlist</p>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">My Themes</h2>
+        <p className="mt-1 text-sm text-text-tertiary">
+          {tracks.length} favorite {tracks.length === 1 ? "opening or ending" : "openings & endings"}
+        </p>
 
-          <div className="mt-5 flex items-center justify-center gap-2.5 sm:justify-start">
-            <button
-              type="button"
-              onClick={() => play(tracks, 0)}
-              className="flex items-center gap-2 rounded-control px-5 py-2.5 text-sm font-semibold text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 active:scale-[0.98]"
-              style={{ backgroundColor: "var(--color-accent-watching)" }}
-            >
-              <Play size={15} className="fill-current" />
-              Play
-            </button>
-            <button
-              type="button"
-              onClick={shuffle}
-              className="flex items-center gap-2 rounded-control border border-border-subtle bg-surface-2 px-5 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
-            >
-              <Shuffle size={15} />
-              Shuffle
-            </button>
-          </div>
+        <div className="mt-4 flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => play(tracks, 0)}
+            className="flex items-center gap-2 rounded-control px-5 py-2.5 text-sm font-semibold text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 active:scale-[0.98]"
+            style={{ backgroundColor: "var(--color-accent-watching)" }}
+          >
+            <Play size={15} className="fill-current" />
+            Play
+          </button>
+          <button
+            type="button"
+            onClick={shuffle}
+            className="flex items-center gap-2 rounded-control border border-border-subtle bg-surface-2 px-5 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+          >
+            <Shuffle size={15} />
+            Shuffle
+          </button>
         </div>
       </div>
 
       {/* Track list */}
-      <div className="mt-8 space-y-0.5">
+      <div className="mt-7 space-y-0.5">
         {tracks.map((track, i) => {
           const active = activeKey === track.id;
           const playing = active && isPlaying;
@@ -168,7 +153,6 @@ export default function MyThemesView() {
                 onClick={() => (active ? toggle() : play(tracks, i))}
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
               >
-                {/* Index / play / equalizer */}
                 <div className="flex w-5 shrink-0 items-center justify-center text-xs tabular-nums text-text-tertiary">
                   {playing ? (
                     <Equalizer />
@@ -182,12 +166,10 @@ export default function MyThemesView() {
                   )}
                 </div>
 
-                {/* Cover */}
                 <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10">
                   <Cover src={track.cover} size={16} />
                 </div>
 
-                {/* Title + anime */}
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-center gap-1.5">
                     <span className="shrink-0 rounded bg-accent-watching-vivid/20 px-1.5 py-0.5 text-[10px] font-bold text-accent-watching-vivid">{track.label}</span>
@@ -197,7 +179,6 @@ export default function MyThemesView() {
                 </div>
               </button>
 
-              {/* Remove from favorites */}
               <button
                 type="button"
                 onClick={() => toggleFav.mutate({ track, faved: true })}

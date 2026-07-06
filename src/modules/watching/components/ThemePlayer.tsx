@@ -105,7 +105,9 @@ export function ThemePlayer() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{ type: "spring", stiffness: 380, damping: 32 }}
-            className="fixed bottom-4 right-4 z-40 w-85 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-white/10 bg-black/70 shadow-2xl backdrop-blur-xl"
+            // Mobile: solid bg (no backdrop-blur) — animating a backdrop-blur is a
+            // per-frame GPU cost that stutters the entrance. Glass kept on desktop.
+            className="fixed bottom-4 right-4 z-40 w-85 max-w-[calc(100vw-2rem)] transform-gpu overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-2xl md:bg-black/70 md:backdrop-blur-xl"
           >
             <div className="flex items-center gap-3 p-3 pb-2">
               <button type="button" onClick={() => setExpanded(true)} className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10" title="Expand player">
@@ -160,10 +162,11 @@ export function ThemePlayer() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 16 }}
             transition={{ type: "spring", stiffness: 320, damping: 34 }}
-            className="fixed inset-0 z-50 overflow-hidden md:inset-auto md:bottom-4 md:right-4 md:w-85 md:max-w-[calc(100vw-2rem)] md:rounded-2xl md:border md:border-white/10 md:shadow-2xl"
+            className="fixed inset-0 z-50 transform-gpu overflow-hidden md:inset-auto md:bottom-4 md:right-4 md:w-85 md:max-w-[calc(100vw-2rem)] md:rounded-2xl md:border md:border-white/10 md:shadow-2xl"
           >
-            {/* Background = the cover, blurred + darkened */}
-            {cover && <div className="absolute inset-0" style={{ backgroundImage: `url(${cover})`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(60px) saturate(1.8)", transform: "scale(1.4)" }} />}
+            {/* Background = the cover, blurred + darkened. Lighter blur + its own GPU
+                layer so it rasterizes once instead of every animation frame. */}
+            {cover && <div className="absolute inset-0" style={{ backgroundImage: `url(${cover})`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(36px) saturate(1.5)", transform: "scale(1.3) translateZ(0)", willChange: "transform" }} />}
             <div className="absolute inset-0 bg-black/55 md:bg-black/60 md:backdrop-blur-xl" />
             <div className="absolute inset-0 bg-linear-to-b from-black/40 via-transparent to-black/80" />
 
