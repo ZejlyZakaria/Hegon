@@ -10,15 +10,15 @@ import { cn } from "@/shared/utils/utils";
 
 // Status badge shown on the poster: "Watching" (with S·E position for series) or
 // "Dropped". Completed titles carry no badge — they're the library's default state.
-function statusBadge(item: WatchingMedia): { label: string; tone: "watching" | "paused" | "dropped" } | null {
+function statusBadge(item: WatchingMedia): { label: string; tone: "watching" | "paused" | "dropped"; position?: string } | null {
   if (item.dropped) return { label: "Dropped", tone: "dropped" };
   if (item.paused) return { label: "Paused", tone: "paused" };
   if (item.in_progress) {
     const isSeries = item.type === "serie" || item.type === "anime";
-    const label = isSeries && item.current_season
+    const position = isSeries && item.current_season
       ? `S${item.current_season} · E${item.current_episode ?? 0}`
-      : "Watching";
-    return { label, tone: "watching" };
+      : undefined;
+    return { label: "Watching", tone: "watching", position };
   }
   return null;
 }
@@ -86,17 +86,27 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
           </div>
         )}
 
-        {/* status badge — Watching (with position) / Dropped */}
+        {/* dark scrim behind the status badge, so it stays legible over bright posters */}
         {badge && (
-          <div className="absolute bottom-2 left-2 right-2 z-10">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-linear-to-t from-black/95 via-black/50 to-transparent" />
+        )}
+
+        {/* status badge — Watching + S·E position / Paused / Dropped */}
+        {badge && (
+          <div className="absolute inset-x-2 bottom-2 z-10 flex items-end justify-between gap-1.5">
             <span className={cn(
-              "inline-block max-w-full truncate rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-sm ring-1 ring-white/10",
+              "shrink-0 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-sm ring-1 ring-white/10",
               badge.tone === "watching" ? "text-accent-watching-vivid"
                 : badge.tone === "paused" ? "text-sky-300"
                 : "text-amber-300",
             )}>
               {badge.label}
             </span>
+            {badge.position && (
+              <span className="min-w-0 truncate rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 backdrop-blur-sm ring-1 ring-white/10">
+                {badge.position}
+              </span>
+            )}
           </div>
         )}
 

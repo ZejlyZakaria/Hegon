@@ -91,10 +91,17 @@ function contributionYears(i: StatsRawItem): number[] {
     .map((c) => c.year as number);
 }
 
+// An item contributes real watch time if it's completed OR has partial progress —
+// including paused and dropped shows: the episodes you actually watched are real
+// hours regardless of the current status. `want_to_watch`/reference have no progress.
+function hasWatchTime(i: StatsRawItem): boolean {
+  return !!(i.watched || i.in_progress || i.paused || i.dropped);
+}
+
 // Does a title count toward a type/year total?
 //  • Films: watched (in that year for a year filter).
-//  • Series/anime ALL-TIME: your library — anything started (watched OR in progress),
-//    so a show on season 1 still counts (matches the In Progress carousel).
+//  • Series/anime ALL-TIME: your library — anything you spent time on (watched, in
+//    progress, paused, or dropped), so a show on season 1 still counts.
 //  • Series/anime PER-YEAR: it watched episodes that year (same as the hours).
 function countsTitle(i: StatsRawItem, year: number | null): boolean {
   if (i.type === "film") {
@@ -102,8 +109,8 @@ function countsTitle(i: StatsRawItem, year: number | null): boolean {
     if (!year) return true;
     return !!i.watched_at && new Date(i.watched_at).getFullYear() === year;
   }
-  if (!year) return i.watched || i.in_progress;
-  if (!i.watched && !i.in_progress) return false;
+  if (!year) return hasWatchTime(i);
+  if (!hasWatchTime(i)) return false;
   return contributionYears(i).includes(year);
 }
 
@@ -197,7 +204,7 @@ export function computeStats(items: StatsRawItem[], year: number | null): Comput
   // ones matching the filter. This is why the year total is now accurate per show.
   const tvMinutes = (type: string) =>
     items
-      .filter((i) => i.type === type && (i.watched || i.in_progress))
+      .filter((i) => i.type === type && hasWatchTime(i))
       .reduce((sum, i) => {
         const rt = i.runtime ?? 0;
         return sum + seasonContributions(i)

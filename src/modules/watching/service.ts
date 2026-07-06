@@ -180,8 +180,11 @@ export interface StatsRawItem {
   watched_at: string | null;
   tags: string[] | null;  // genre names (stored from TMDB at add time)
   // In-progress support — Hours Watched counts partially-watched series/anime too.
+  // Paused/dropped shows keep their watched episodes → they still count real time.
   watched: boolean;
   in_progress: boolean;
+  paused: boolean;
+  dropped: boolean;
   current_season: number | null;
   current_episode: number | null;
   updated_at: string | null;     // attribution date for in-progress hours
@@ -195,9 +198,11 @@ export async function getWatchingStatsData(userId: string): Promise<StatsRawItem
   const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("id, type, title, original_title, poster_url, backdrop_url, year, runtime, season_episodes, episodes, user_rating, favorite, watched_at, tags, watched, in_progress, current_season, current_episode, updated_at, season_years, season_ratings, season_posters")
+    .select("id, type, title, original_title, poster_url, backdrop_url, year, runtime, season_episodes, episodes, user_rating, favorite, watched_at, tags, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters")
     .eq("user_id", userId)
-    .or("watched.eq.true,in_progress.eq.true")
+    // Anything you spent time on — completed, watching, paused, or dropped. The
+    // episodes you actually watched are real hours regardless of current status.
+    .or("watched.eq.true,in_progress.eq.true,paused.eq.true,dropped.eq.true")
     .neq("is_reference", true);
   if (error) throw error;
   return (data ?? []) as StatsRawItem[];
