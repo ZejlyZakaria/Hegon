@@ -26,6 +26,9 @@ import { MyTakeRecord } from "@/modules/watching/components/detail/MyTakeRecord"
 import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis";
 import { CastCrew } from "@/modules/watching/components/detail/CastCrew";
 import { CurrentlyWatching } from "@/modules/watching/components/detail/CurrentlyWatching";
+import { DroppedNotice } from "@/modules/watching/components/detail/DroppedNotice";
+import { CaptureSheet } from "@/modules/watching/components/shared/CaptureSheet";
+import { DROP_REASONS } from "@/modules/watching/lib/drop-reasons";
 import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
 import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import { stampSeasons, seasonRange } from "@/modules/watching/lib/season-years";
@@ -66,6 +69,7 @@ export default function MediaDetailPage() {
   const { data: watchingGoals = [] } = useWatchingGoals();
   const [addItem, setAddItem] = useState<any | null>(null);
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const [dropSheetOpen, setDropSheetOpen] = useState(false);
 
   // "More Like This" — drop titles already in the library (like For You), then
   // keep 6. Over-fetched upstream so this still yields 6 addable recommendations.
@@ -170,6 +174,28 @@ export default function MediaDetailPage() {
         is_reference: false,
       });
       toast("Started watching.");
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
+      toast.error("Failed to update.");
+    }
+  };
+
+  const handleDrop = async (reason: string | null) => {
+    if (!media) return;
+    try {
+      await updateMedia.mutateAsync({ id: media.id, dropped: true, drop_reason: reason, in_progress: false });
+      toast("Marked as dropped.");
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
+      toast.error("Failed to update.");
+    }
+  };
+
+  const handleResume = async () => {
+    if (!media) return;
+    try {
+      await updateMedia.mutateAsync({ id: media.id, dropped: false, drop_reason: null, in_progress: true });
+      toast("Back to watching.");
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
@@ -387,7 +413,12 @@ export default function MediaDetailPage() {
                 onUpdate={updateProgress}
                 media={media}
                 onMarkCompleted={handleMarkWatched}
+                onDrop={() => setDropSheetOpen(true)}
               />
+            )}
+
+            {isSeries && media.dropped && (
+              <DroppedNotice reason={media.drop_reason} onResume={handleResume} />
             )}
 
             <WatchProviders info={providers} />
@@ -426,6 +457,17 @@ export default function MediaDetailPage() {
         isPending={updateMedia.isPending}
         onSave={handleSave}
         onDiscard={handleDiscard}
+      />
+
+      <CaptureSheet
+        open={dropSheetOpen}
+        onOpenChange={setDropSheetOpen}
+        title="Why did you drop it?"
+        subtitle="Optional — helps you remember later."
+        options={DROP_REASONS}
+        onPick={(reason) => handleDrop(reason)}
+        onSkip={() => handleDrop(null)}
+        skipLabel="Drop without a reason"
       />
     </div>
   );

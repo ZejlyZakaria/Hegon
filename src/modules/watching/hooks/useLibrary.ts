@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
-import { getAllWatchedMedia } from "../service";
+import { getLibraryMedia } from "../service";
 import type { WatchingMedia } from "../types";
 
 // Live Library query. Seeded with the server-fetched list (initialData) and keyed
@@ -10,7 +10,7 @@ import type { WatchingMedia } from "../types";
 export function useLibrary(userId: string, initialData?: WatchingMedia[]) {
   return useQuery({
     queryKey: WATCHING_KEYS.library(userId),
-    queryFn: () => getAllWatchedMedia(userId),
+    queryFn: () => getLibraryMedia(userId),
     initialData,
     staleTime: 30 * 1000,
   });

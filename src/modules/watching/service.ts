@@ -126,21 +126,24 @@ export async function getMediaItems(
 // All watched media (any type) for the Library, newest first. Backs a live client
 // query so the Library reflects cross-surface adds/deletes (independent of the
 // Next.js RSC router cache).
-// Only the columns the Library actually renders/sorts/searches on — NOT select("*").
-// At a few hundred watched titles, dropping description/notes/backdrop/season arrays
-// cuts the payload several-fold. Keep in sync with the server seed in library/page.tsx.
+// Only the columns the Library actually renders/sorts/searches/badges on — NOT
+// select("*"). At a few hundred titles, dropping description/notes/backdrop/season
+// arrays cuts the payload several-fold. Keep in sync with the server seed in
+// library/page.tsx. (Status flags + current S/E power the Watching/Dropped badges.)
 const LIBRARY_COLUMNS =
-  "id, type, title, original_title, poster_url, favorite, year, user_rating, watched_at, tags";
+  "id, type, title, original_title, poster_url, favorite, year, user_rating, watched_at, updated_at, tags, watched, in_progress, dropped, drop_reason, current_season, current_episode";
 
-export async function getAllWatchedMedia(userId: string): Promise<WatchingMedia[]> {
+export async function getLibraryMedia(userId: string): Promise<WatchingMedia[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
     .select(LIBRARY_COLUMNS)
     .eq("user_id", userId)
-    .eq("watched", true)
-    .order("watched_at", { ascending: false });
+    // Everything you've engaged with — seen, seeing, or abandoned. Reference stubs
+    // have all three flags false, so they're excluded automatically.
+    .or("watched.eq.true,in_progress.eq.true,dropped.eq.true")
+    .order("updated_at", { ascending: false });
   if (error) throw error;
   return (data as unknown as WatchingMedia[]) ?? [];
 }
@@ -446,6 +449,7 @@ export async function getForYouRecommendations(
 
 function deriveWatchStatus(item: any): WatchStatus {
   if (item.is_reference) return "reference";
+  if (item.dropped) return "dropped";
   if (item.watched) return "completed";
   if (item.in_progress) return "watching";
   if (item.want_to_watch) return "plan_to_watch";

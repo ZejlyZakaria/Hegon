@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 interface PageLabel { section: string; title: string }
 
-interface LibraryFilter { type: string; sort: string; page: number }
+interface LibraryFilter { type: string; status: string; sort: string; page: number }
 
 interface WatchingUIState {
   isDetailOpen: boolean;
@@ -31,7 +31,7 @@ export const useWatchingUIStore = create<WatchingUIState>((set) => ({
   setDetailOpen: (isDetailOpen) => set({ isDetailOpen }),
   pageLabel: null,
   setPageLabel: (pageLabel) => set({ pageLabel }),
-  libraryFilter: { type: "all", sort: "added", page: 1 },
+  libraryFilter: { type: "all", status: "all", sort: "added", page: 1 },
   setLibraryFilter: (libraryFilter) => set({ libraryFilter }),
   selectedListId: null,
   setSelectedListId: (selectedListId) => set({ selectedListId }),

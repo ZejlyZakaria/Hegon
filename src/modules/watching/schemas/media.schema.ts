@@ -21,6 +21,8 @@ export const updateMediaSchema = z.object({
   want_to_watch: z.boolean().optional(),
   is_reference: z.boolean().optional(),
   recently_watched: z.boolean().optional(),
+  dropped: z.boolean().optional(),
+  drop_reason: z.string().nullable().optional(),
 });
 
 export type UpdateMediaInput = z.infer<typeof updateMediaSchema>;

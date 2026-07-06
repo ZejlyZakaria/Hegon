@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Minus, Plus, X } from "lucide-react";
+import { Check, CircleSlash, Minus, Plus, X } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 
 function StepControl({
@@ -61,6 +61,7 @@ interface Props {
     season_episodes?: number[] | null;
   };
   onMarkCompleted: () => void;
+  onDrop: () => void;
 }
 
 export function CurrentlyWatching({
@@ -69,6 +70,7 @@ export function CurrentlyWatching({
   onUpdate,
   media,
   onMarkCompleted,
+  onDrop,
 }: Props) {
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
@@ -149,6 +151,17 @@ export function CurrentlyWatching({
             </div>
           </div>
         )}
+
+        <div className="border-t border-border-subtle pt-2.5">
+          <button
+            type="button"
+            onClick={onDrop}
+            className="flex items-center gap-1.5 text-xs text-text-tertiary transition-colors hover:text-text-primary"
+          >
+            <CircleSlash size={12} />
+            Drop this series
+          </button>
+        </div>
 
       </div>
     </section>

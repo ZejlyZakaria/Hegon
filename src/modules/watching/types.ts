@@ -57,6 +57,8 @@ export interface WatchingMedia {
   in_progress: boolean;
   want_to_watch: boolean;
   recently_watched: boolean;
+  dropped: boolean;
+  drop_reason?: string | null;
   is_reference?: boolean;
   
   created_at: string;

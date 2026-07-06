@@ -8,6 +8,7 @@ import {
   Check,
   Play,
   Heart,
+  CircleSlash,
   Trash2,
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
@@ -17,6 +18,8 @@ import { goalWouldCount } from "../../lib/goal-contribution";
 import { GoalRippleToast } from "../detail/GoalRippleToast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
+import { CaptureSheet } from "./CaptureSheet";
+import { DROP_REASONS } from "../../lib/drop-reasons";
 import type { WatchingMedia } from "../../types";
 import { toast } from "@/shared/utils/toast";
 
@@ -65,6 +68,7 @@ export function MediaActionMenu({
 }: MediaActionMenuProps) {
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [dropSheetOpen, setDropSheetOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -159,6 +163,12 @@ export function MediaActionMenu({
       toast(item.favorite ? "Removed from favorites." : "Added to favorites.");
     });
 
+  const handleDrop = (reason: string | null) =>
+    run(async () => {
+      await updateMedia.mutateAsync({ id: item.id, dropped: true, drop_reason: reason, in_progress: false });
+      toast("Marked as dropped.");
+    });
+
   const handleConfirmDelete = async () => {
     if (!onDelete) return;
     setIsDeleting(true);
@@ -238,6 +248,19 @@ export function MediaActionMenu({
               </MenuItem>
             )}
 
+            {isSeries && item.in_progress && !item.watched && !item.dropped && (
+              <MenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpen(false);
+                  setDropSheetOpen(true);
+                }}
+                icon={<CircleSlash size={13} className="text-amber-400" />}
+              >
+                Drop series
+              </MenuItem>
+            )}
+
             {!item.want_to_watch && (
               <MenuItem
                 onClick={(e) => {
@@ -282,6 +305,17 @@ export function MediaActionMenu({
         title={`Delete "${item.title}"?`}
         description="This will permanently remove it from your collection."
         isDeleting={isDeleting}
+      />
+
+      <CaptureSheet
+        open={dropSheetOpen}
+        onOpenChange={setDropSheetOpen}
+        title="Why did you drop it?"
+        subtitle="Optional — helps you remember later."
+        options={DROP_REASONS}
+        onPick={(reason) => handleDrop(reason)}
+        onSkip={() => handleDrop(null)}
+        skipLabel="Drop without a reason"
       />
     </>
   );

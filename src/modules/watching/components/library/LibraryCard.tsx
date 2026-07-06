@@ -6,6 +6,21 @@ import Image from "next/image";
 import { Star, Heart, MoreVertical, Trash2, ExternalLink } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { displayTitle } from "@/modules/watching/utils";
+import { cn } from "@/shared/utils/utils";
+
+// Status badge shown on the poster: "Watching" (with S·E position for series) or
+// "Dropped". Completed titles carry no badge — they're the library's default state.
+function statusBadge(item: WatchingMedia): { label: string; tone: "watching" | "dropped" } | null {
+  if (item.dropped) return { label: "Dropped", tone: "dropped" };
+  if (item.in_progress) {
+    const isSeries = item.type === "serie" || item.type === "anime";
+    const label = isSeries && item.current_season
+      ? `S${item.current_season} · E${item.current_episode ?? 0}`
+      : "Watching";
+    return { label, tone: "watching" };
+  }
+  return null;
+}
 
 interface Props {
   item: WatchingMedia;
@@ -15,6 +30,7 @@ interface Props {
 }
 
 export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Props) {
+  const badge = statusBadge(item);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
@@ -66,6 +82,18 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
         {item.favorite && (
           <div className="absolute top-2 left-2 z-10">
             <Heart size={13} className="fill-red-500 text-red-500 drop-shadow" />
+          </div>
+        )}
+
+        {/* status badge — Watching (with position) / Dropped */}
+        {badge && (
+          <div className="absolute bottom-2 left-2 right-2 z-10">
+            <span className={cn(
+              "inline-block max-w-full truncate rounded-md px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-sm ring-1 ring-white/10",
+              badge.tone === "watching" ? "bg-black/70 text-accent-watching-vivid" : "bg-black/70 text-amber-300",
+            )}>
+              {badge.label}
+            </span>
           </div>
         )}
 

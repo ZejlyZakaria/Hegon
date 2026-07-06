@@ -26,6 +26,7 @@ import {
 const ITEMS_PER_PAGE = 40;
 
 type MediaType = "all" | "film" | "serie" | "anime";
+type StatusKey = "all" | "watching" | "completed" | "dropped";
 type SortKey   = "added" | "rating" | "title" | "year" | "favorite";
 
 const MEDIA_TYPES: { value: MediaType; label: string }[] = [
@@ -33,6 +34,13 @@ const MEDIA_TYPES: { value: MediaType; label: string }[] = [
   { value: "film",  label: "Films" },
   { value: "serie", label: "Series" },
   { value: "anime", label: "Animes" },
+];
+
+const STATUS_OPTIONS: { value: StatusKey; label: string }[] = [
+  { value: "all",       label: "All statuses" },
+  { value: "watching",  label: "Watching" },
+  { value: "completed", label: "Completed" },
+  { value: "dropped",   label: "Dropped" },
 ];
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -60,6 +68,10 @@ export default function LibraryClient({ initialItems, userId }: Props) {
     const t = useWatchingUIStore.getState().libraryFilter.type;
     return t === "film" || t === "serie" || t === "anime" ? t : "all";
   });
+  const [status, setStatus]           = useState<StatusKey>(() => {
+    const s = useWatchingUIStore.getState().libraryFilter.status;
+    return STATUS_OPTIONS.some(o => o.value === s) ? (s as StatusKey) : "all";
+  });
   const [sortBy, setSortBy]           = useState<SortKey>(() => {
     const s = useWatchingUIStore.getState().libraryFilter.sort;
     return SORT_OPTIONS.some(o => o.value === s) ? (s as SortKey) : "added";
@@ -78,14 +90,23 @@ export default function LibraryClient({ initialItems, userId }: Props) {
   // Persist filter/sort/page to the in-memory store on every change, so the next
   // mount (e.g. returning from a detail page) restores exactly where the user was.
   useEffect(() => {
-    setLibraryFilter({ type: mediaType, sort: sortBy, page: currentPage });
-  }, [mediaType, sortBy, currentPage, setLibraryFilter]);
+    setLibraryFilter({ type: mediaType, status, sort: sortBy, page: currentPage });
+  }, [mediaType, status, sortBy, currentPage, setLibraryFilter]);
 
   const { paginatedItems, totalPages } = useMemo(() => {
     let result = [...allItems];
 
     if (mediaType !== "all") {
       result = result.filter(item => item.type === mediaType);
+    }
+
+    if (status !== "all") {
+      result = result.filter(item =>
+        status === "watching"  ? item.in_progress
+        : status === "completed" ? item.watched
+        : status === "dropped"   ? item.dropped
+        : true,
+      );
     }
 
     if (sortBy === "favorite") {
@@ -106,7 +127,8 @@ export default function LibraryClient({ initialItems, userId }: Props) {
         case "rating": return (b.user_rating || 0) - (a.user_rating || 0);
         case "title":  return a.title.localeCompare(b.title);
         case "year":   return (b.year || 0) - (a.year || 0);
-        default:       return new Date(b.watched_at || 0).getTime() - new Date(a.watched_at || 0).getTime();
+        // In-progress / dropped items have no watched_at → fall back to updated_at.
+        default:       return new Date(b.watched_at || b.updated_at || 0).getTime() - new Date(a.watched_at || a.updated_at || 0).getTime();
       }
     });
 
@@ -117,7 +139,7 @@ export default function LibraryClient({ initialItems, userId }: Props) {
     const paginated  = result.slice(start, start + ITEMS_PER_PAGE);
 
     return { paginatedItems: paginated, totalPages, totalCount };
-  }, [allItems, mediaType, sortBy, debouncedSearch, currentPage]);
+  }, [allItems, mediaType, status, sortBy, debouncedSearch, currentPage]);
 
   const handleDelete = useCallback(async (itemId: string) => {
     try {
@@ -154,6 +176,18 @@ export default function LibraryClient({ initialItems, userId }: Props) {
               onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
               onClear={() => { setSearch(""); setCurrentPage(1); }}
             />
+            <Select value={status} onValueChange={v => { setStatus(v as StatusKey); setCurrentPage(1); }}>
+              <SelectTrigger className="w-36 h-9 bg-surface-1 border-border-subtle text-text-secondary text-xs hover:border-border-default focus:ring-0 focus:ring-offset-0 transition-colors">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
+                {STATUS_OPTIONS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={sortBy} onValueChange={v => { setSortBy(v as SortKey); setCurrentPage(1); }}>
               <SelectTrigger className="w-36 h-9 bg-surface-1 border-border-subtle text-text-secondary text-xs hover:border-border-default focus:ring-0 focus:ring-offset-0 transition-colors">
                 <SelectValue placeholder="Sort by..." />
@@ -194,6 +228,18 @@ export default function LibraryClient({ initialItems, userId }: Props) {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={status} onValueChange={(v) => { setStatus(v as StatusKey); setCurrentPage(1); }}>
+              <SelectTrigger className="h-9 w-32 bg-surface-1 border-border-subtle text-text-secondary text-sm focus:ring-0 focus:ring-offset-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
+                {STATUS_OPTIONS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               type="button"
               onClick={() => setModalOpen(true)}
@@ -227,15 +273,22 @@ export default function LibraryClient({ initialItems, userId }: Props) {
           </div>
         </div>
 
-        {/* count — adapts to active filter */}
+        {/* count — adapts to active type + status filter */}
         <p className="text-xs text-text-tertiary">
-          {mediaType === "all"
-            ? `${allItems.length} titles`
-            : mediaType === "film"
-            ? `${allItems.filter(i => i.type === "film").length} films`
-            : mediaType === "serie"
-            ? `${allItems.filter(i => i.type === "serie").length} series`
-            : `${allItems.filter(i => i.type === "anime").length} animes`}
+          {(() => {
+            const base = allItems.filter(i =>
+              (mediaType === "all" || i.type === mediaType) &&
+              (status === "all"
+                || (status === "watching" ? i.in_progress
+                  : status === "completed" ? i.watched
+                  : i.dropped)),
+            );
+            const noun = mediaType === "film" ? "films"
+              : mediaType === "serie" ? "series"
+              : mediaType === "anime" ? "animes"
+              : "titles";
+            return `${base.length} ${noun}`;
+          })()}
         </p>
       </div>
 
