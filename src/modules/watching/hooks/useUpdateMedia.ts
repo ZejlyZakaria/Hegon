@@ -97,6 +97,11 @@ export function useUpdateMedia() {
         queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.movies(), refetchType: "all" });
         queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.series(), refetchType: "all" });
         queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.animes(), refetchType: "all" });
+        // Library shows watched/in-progress/paused/dropped with a status badge, so a
+        // status change must refresh it live too (it can be unmounted → refetch "all",
+        // and Next's Router Cache restores it stale on Back without this). Prefix-match
+        // hits library(userId).
+        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "library"], refetchType: "all" });
         for (const type of ["film", "serie", "anime"] as const) {
           queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.inProgress(type), refetchType: "all" });
           queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.recentlyWatched(type), refetchType: "all" });

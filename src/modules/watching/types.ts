@@ -243,6 +243,14 @@ export interface ThemeFavorite {
   created_at: string;
 }
 
+// ── Rewatches ──
+export interface Rewatch {
+  id: string;
+  media_item_id: string;
+  watched_on: string;  // 'YYYY-MM-DD'
+  created_at: string;
+}
+
 // Structural input for hearting a track (a PlayerTrack satisfies this).
 export interface ThemeFavoriteInput {
   animeName: string;

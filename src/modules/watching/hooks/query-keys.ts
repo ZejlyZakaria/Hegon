@@ -60,6 +60,10 @@ export const WATCHING_KEYS = {
   // Theme favorites ("My Themes")
   themeFavorites: () =>
     [...WATCHING_KEYS.all, 'theme-favorites'] as const,
+
+  // Rewatches (per media item)
+  rewatches: (mediaItemId: string) =>
+    [...WATCHING_KEYS.all, 'rewatches', mediaItemId] as const,
 } as const;
 
 // =====================================================

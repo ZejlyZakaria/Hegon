@@ -21,6 +21,7 @@ import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 import { CaptureSheet } from "./CaptureSheet";
 import { DROP_REASONS } from "../../lib/drop-reasons";
+import { RESET_STATUS } from "../../lib/status-flags";
 import type { WatchingMedia } from "../../types";
 import { toast } from "@/shared/utils/toast";
 
@@ -130,6 +131,7 @@ export function MediaActionMenu({
         in_progress: false,
         want_to_watch: false,
         is_reference: false,
+        ...RESET_STATUS,
         watched_at: new Date().toISOString(),
       });
       // Ripple: the animated cross-module moment, same as the detail page.
@@ -154,6 +156,7 @@ export function MediaActionMenu({
         watched: false,
         want_to_watch: false,
         is_reference: false,
+        ...RESET_STATUS,
       });
       toast("Started watching.");
     });

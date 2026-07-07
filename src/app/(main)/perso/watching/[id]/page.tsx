@@ -28,8 +28,10 @@ import { CastCrew } from "@/modules/watching/components/detail/CastCrew";
 import { CurrentlyWatching } from "@/modules/watching/components/detail/CurrentlyWatching";
 import { DroppedNotice } from "@/modules/watching/components/detail/DroppedNotice";
 import { PausedNotice } from "@/modules/watching/components/detail/PausedNotice";
+import { Rewatches } from "@/modules/watching/components/detail/Rewatches";
 import { CaptureSheet } from "@/modules/watching/components/shared/CaptureSheet";
 import { DROP_REASONS } from "@/modules/watching/lib/drop-reasons";
+import { RESET_STATUS } from "@/modules/watching/lib/status-flags";
 import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
 import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import { stampSeasons, seasonRange } from "@/modules/watching/lib/season-years";
@@ -143,6 +145,7 @@ export default function MediaDetailPage() {
         in_progress: false,
         want_to_watch: false,
         is_reference: false,
+        ...RESET_STATUS,
         watched_at: new Date().toISOString(),
         ...(seasonYears ? { season_years: seasonYears } : {}),
       });
@@ -173,6 +176,7 @@ export default function MediaDetailPage() {
         watched: false,
         want_to_watch: false,
         is_reference: false,
+        ...RESET_STATUS,
       });
       toast("Started watching.");
     } catch (err) {
@@ -385,7 +389,7 @@ export default function MediaDetailPage() {
             <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
           )}
 
-          {isSeries && (media.season_episodes?.length ?? 0) > 1 && (media.in_progress || media.watched) && (
+          {isSeries && (media.season_episodes?.length ?? 0) > 1 && (media.in_progress || media.watched || media.paused || media.dropped) && (
             <SeasonHistoryStrip
               seasonEpisodes={media.season_episodes ?? []}
               seasonPosters={media.season_posters}
@@ -395,7 +399,7 @@ export default function MediaDetailPage() {
               showPoster={media.poster_url}
               releaseYear={media.year ?? null}
               currentSeason={currentSeason}
-              inProgress={media.in_progress}
+              inProgress={!media.watched}
               onYearChange={handleSeasonYearsChange}
               onRatingChange={handleSeasonRatingsChange}
             />
@@ -437,6 +441,8 @@ export default function MediaDetailPage() {
             {isSeries && media.dropped && (
               <DroppedNotice reason={media.drop_reason} onResume={handleResume} />
             )}
+
+            {media.watched && <Rewatches mediaItemId={media.id} />}
 
             <WatchProviders info={providers} />
 

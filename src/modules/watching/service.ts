@@ -2,7 +2,7 @@
 
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
-import type { WatchingMedia, MediaType, WatchStatus, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, ThemeFavorite, ThemeFavoriteInput } from "./types";
+import type { WatchingMedia, MediaType, WatchStatus, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, ThemeFavorite, ThemeFavoriteInput, Rewatch } from "./types";
 
 // =====================================================
 // WATCHING SERVICE (SUPABASE)
@@ -992,6 +992,40 @@ export async function removeThemeFavorite(trackKey: string): Promise<void> {
     .schema("watching").from("theme_favorites")
     .delete()
     .eq("track_key", trackKey);
+  if (error) throw error;
+}
+
+// ── Rewatches ────────────────────────────────────────────────────────────────
+// One row per re-viewing event of a media item (the first watch stays on
+// media_items.watched_at). watchedOn = 'YYYY-MM-DD'.
+export async function getRewatches(mediaItemId: string): Promise<Rewatch[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("rewatches")
+    .select("id, media_item_id, watched_on, created_at")
+    .eq("media_item_id", mediaItemId)
+    .order("watched_on", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Rewatch[];
+}
+
+export async function addRewatch(mediaItemId: string, watchedOn: string): Promise<void> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  const orgId = await getCurrentOrgId();
+  const { error } = await supabase
+    .schema("watching").from("rewatches")
+    .insert({ org_id: orgId, user_id: user.id, media_item_id: mediaItemId, watched_on: watchedOn });
+  if (error) throw error;
+}
+
+export async function removeRewatch(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("watching").from("rewatches")
+    .delete()
+    .eq("id", id);
   if (error) throw error;
 }
 

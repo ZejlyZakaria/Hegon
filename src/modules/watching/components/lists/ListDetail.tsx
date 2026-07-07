@@ -31,6 +31,7 @@ import {
   useAddTmdbItemToList,
 } from "../../hooks/useMediaLists";
 import { useUpdateMedia } from "../../hooks/useUpdateMedia";
+import { RESET_STATUS } from "../../lib/status-flags";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { ListGlyph, LIST_ICON_KEYS } from "./list-glyph";
 import type { MediaListWithThumbnails } from "../../service";
@@ -403,6 +404,7 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
           in_progress: false,
           want_to_watch: false,
           is_reference: false,
+          ...RESET_STATUS,
           watched_at: new Date().toISOString(),
         });
       } else if (action === "in_progress") {
@@ -412,6 +414,7 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
           watched: false,
           want_to_watch: false,
           is_reference: false,
+          ...RESET_STATUS,
         });
       } else {
         await updateMedia.mutateAsync({
@@ -420,6 +423,7 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
           watched: false,
           in_progress: false,
           is_reference: false,
+          ...RESET_STATUS,
         });
       }
       toast("Updated.");
