@@ -1031,6 +1031,19 @@ export async function removeRewatch(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// All rewatch events for the user (Stats). Joined to items in computeStats by
+// media_item_id — each event adds the title's full runtime to Hours Watched.
+export interface RewatchStatItem { media_item_id: string; watched_on: string; }
+export async function getRewatchStats(userId: string): Promise<RewatchStatItem[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("rewatches")
+    .select("media_item_id, watched_on")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data ?? []) as RewatchStatItem[];
+}
+
 // Full season with episodes (stills, titles, overviews, tmdb ratings).
 export async function getSeasonEpisodes(id: number, season: number) {
   return tmdbFetch<any>(`tv/${id}/season/${season}`);

@@ -32,6 +32,7 @@ const DONUT_COLORS = {
   film:  "var(--color-accent-watching-vivid)",
   serie: "#818cf8",
   anime: "#fb923c",
+  rewatches: "#f472b6",
 } as const;
 
 // ── Export CSV ────────────────────────────────────────────────────────────────
@@ -74,7 +75,7 @@ function MetricCard({ label, value, sub, icon }: {
         </div>
         <p className="text-sm font-medium text-text-secondary">{label}</p>
       </div>
-      <div className="flex items-baseline gap-1.5">
+      <div className="flex flex-wrap items-baseline gap-x-1.5">
         <p className="text-2xl font-bold tabular-nums text-text-primary">{value}</p>
         {sub && <span className="text-[11px] text-text-tertiary">{sub}</span>}
       </div>
@@ -82,9 +83,22 @@ function MetricCard({ label, value, sub, icon }: {
   );
 }
 
+// Status breakdown line for the TV Shows / Anime cards — only the non-empty statuses,
+// same wording as before plus paused/dropped. Wraps if long (that's fine). Hidden
+// when everything is watched (the value already says it).
+function statusSub(s: { watched: number; inProgress: number; paused: number; dropped: number }): string | undefined {
+  if (s.inProgress + s.paused + s.dropped === 0) return undefined;
+  const parts: string[] = [];
+  if (s.watched > 0)    parts.push(`${s.watched} watched`);
+  if (s.inProgress > 0) parts.push(`${s.inProgress} in progress`);
+  if (s.paused > 0)     parts.push(`${s.paused} paused`);
+  if (s.dropped > 0)    parts.push(`${s.dropped} dropped`);
+  return parts.join(" · ");
+}
+
 // ── Hours ─────────────────────────────────────────────────────────────────────
 
-type HoursFilter = "total" | "film" | "serie" | "anime";
+type HoursFilter = "total" | "film" | "serie" | "anime" | "rewatches";
 
 function fmtH(value: number) {
   const h = Math.floor(value);
@@ -96,12 +110,13 @@ function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] 
   const [filter, setFilter] = useState<HoursFilter>("total");
 
   const SEGMENTS = [
-    { key: "film"  as const, val: hours.film,  color: DONUT_COLORS.film,  label: "Films" },
-    { key: "serie" as const, val: hours.serie, color: DONUT_COLORS.serie, label: "Shows" },
-    { key: "anime" as const, val: hours.anime, color: DONUT_COLORS.anime, label: "Anime" },
+    { key: "film"      as const, val: hours.film,      color: DONUT_COLORS.film,      label: "Films" },
+    { key: "serie"     as const, val: hours.serie,     color: DONUT_COLORS.serie,     label: "Shows" },
+    { key: "anime"     as const, val: hours.anime,     color: DONUT_COLORS.anime,     label: "Anime" },
+    { key: "rewatches" as const, val: hours.rewatches, color: DONUT_COLORS.rewatches, label: "Rewatches" },
   ];
 
-  const ringTotal = (hours.film + hours.serie + hours.anime) || 1;
+  const ringTotal = (hours.film + hours.serie + hours.anime + hours.rewatches) || 1;
   const { h, m } = fmtH(hours[filter]);
 
   const R    = 15.9;
@@ -422,7 +437,8 @@ function ActivityCard({ activity, selectedYear }: {
 export function StatsPage() {
   const router = useRouter();
   const userId = useCurrentUserId();
-  const { data: rawData = [], isLoading } = useWatchingStatsData(userId ?? "");
+  const { data, isLoading } = useWatchingStatsData(userId ?? "");
+  const rawData = data?.items ?? [];
   const { data: watchingGoals = [] } = useWatchingGoals();
   // Year filter lives in the UI store (not local state) so navigating into a
   // media detail and pressing Back restores the year you were on instead of
@@ -435,8 +451,8 @@ export function StatsPage() {
   const selectedYear = statsYearReady ? statsYear : currentYear;
   const [wrappedOpen, setWrappedOpen] = useState(false);
 
-  const stats = useMemo(() => computeStats(rawData, selectedYear), [rawData, selectedYear]);
-  const achievements = useMemo(() => computeAchievements(rawData), [rawData]);
+  const stats = useMemo(() => computeStats(data?.items ?? [], data?.rewatches ?? [], selectedYear), [data, selectedYear]);
+  const achievements = useMemo(() => computeAchievements(data?.items ?? []), [data]);
 
   if (!userId || isLoading) return <StatsSkeleton />;
 
@@ -559,17 +575,13 @@ export function StatsPage() {
         <MetricCard
           label="TV Shows"
           value={stats.counts.serie}
-          sub={stats.inProgressCounts.serie > 0
-            ? `${stats.counts.serie - stats.inProgressCounts.serie} watched · ${stats.inProgressCounts.serie} in progress`
-            : undefined}
+          sub={statusSub(stats.statusCounts.serie)}
           icon={<Tv size={14} style={{ color: TEAL }} />}
         />
         <MetricCard
           label="Anime"
           value={stats.counts.anime}
-          sub={stats.inProgressCounts.anime > 0
-            ? `${stats.counts.anime - stats.inProgressCounts.anime} watched · ${stats.inProgressCounts.anime} in progress`
-            : undefined}
+          sub={statusSub(stats.statusCounts.anime)}
           icon={<Sparkles size={14} style={{ color: TEAL }} />}
         />
         <MetricCard

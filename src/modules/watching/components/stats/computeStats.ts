@@ -1,11 +1,18 @@
-import type { StatsRawItem } from "../../service";
+import type { StatsRawItem, RewatchStatItem } from "../../service";
 import type { Achievement } from "@/shared/components/achievements/types";
 
 export interface ComputedStats {
   availableYears: number[];
   counts: { film: number; serie: number; anime: number; total: number };
-  inProgressCounts: { serie: number; anime: number };  // among the counted shows, how many are still in progress
-  hours: { film: number; serie: number; anime: number; total: number };
+  // Per-type status split of the counted shows (watched / in progress / paused / dropped).
+  statusCounts: {
+    serie: { watched: number; inProgress: number; paused: number; dropped: number };
+    anime: { watched: number; inProgress: number; paused: number; dropped: number };
+  };
+  rewatches: number;  // rewatch events in the period (they add hours, not unique titles)
+  // Hours Watched — rewatch time is its own 4th slice (pulled out of the per-type
+  // hours), so the donut shows "how much of my time was re-watching".
+  hours: { film: number; serie: number; anime: number; rewatches: number; total: number };
   avgRating: number | null;
   ratedCount: number;
   topGenres: { name: string; count: number }[];
@@ -174,7 +181,7 @@ function effectiveRating(i: StatsRawItem, year: number | null): number | null {
   return Math.max(...ratings);
 }
 
-export function computeStats(items: StatsRawItem[], year: number | null): ComputedStats {
+export function computeStats(items: StatsRawItem[], rewatches: RewatchStatItem[], year: number | null): ComputedStats {
   // Completed titles (used for the available-year list below).
   const completed = items.filter((i) => i.watched);
 
@@ -189,10 +196,16 @@ export function computeStats(items: StatsRawItem[], year: number | null): Comput
     anime: periodItems.filter((i) => i.type === "anime").length,
     total: periodItems.length,
   };
-  const inProgressCounts = {
-    serie: periodItems.filter((i) => i.type === "serie" && i.in_progress).length,
-    anime: periodItems.filter((i) => i.type === "anime" && i.in_progress).length,
+  const statusOf = (type: "serie" | "anime") => {
+    const of = periodItems.filter((i) => i.type === type);
+    return {
+      watched:    of.filter((i) => i.watched).length,
+      inProgress: of.filter((i) => i.in_progress).length,
+      paused:     of.filter((i) => i.paused).length,
+      dropped:    of.filter((i) => i.dropped).length,
+    };
   };
+  const statusCounts = { serie: statusOf("serie"), anime: statusOf("anime") };
 
   // Hours Watched — completed films + series/anime episodes ACTUALLY watched (full
   // when completed, current progress when in-progress), each × the real runtime.
@@ -215,11 +228,32 @@ export function computeStats(items: StatsRawItem[], year: number | null): Comput
   const serieMin = tvMinutes("serie");
   const animeMin = tvMinutes("anime");
 
+  // Rewatches — each event = re-watched the whole title → its full runtime, on the
+  // event's year. Adds to Hours Watched (real time spent); does NOT bump the unique-
+  // title counts (same title) nor Recently Watched.
+  const itemById = new Map(items.map((i) => [i.id, i]));
+  const totalEps = (i: StatsRawItem) => (i.season_episodes?.reduce((a, b) => a + b, 0)) || i.episodes || 0;
+  let rewatchCount = 0;
+  const rewatchMin = { film: 0, serie: 0, anime: 0 };
+  for (const rw of rewatches) {
+    if (year && new Date(rw.watched_on).getFullYear() !== year) continue;
+    rewatchCount++;
+    const it = itemById.get(rw.media_item_id);
+    if (!it) continue;
+    const rt = it.runtime ?? 0;
+    const min = it.type === "film" ? rt : totalEps(it) * rt;
+    if (it.type === "film") rewatchMin.film += min;
+    else if (it.type === "serie") rewatchMin.serie += min;
+    else if (it.type === "anime") rewatchMin.anime += min;
+  }
+
+  const rewatchMinTotal = rewatchMin.film + rewatchMin.serie + rewatchMin.anime;
   const hours = {
     film:  toH(filmMin),
     serie: toH(serieMin),
     anime: toH(animeMin),
-    total: toH(filmMin + serieMin + animeMin),
+    rewatches: toH(rewatchMinTotal),
+    total: toH(filmMin + serieMin + animeMin + rewatchMinTotal),
   };
 
   // Ratings — season-aware: each period title contributes the rating that applies
@@ -335,7 +369,7 @@ export function computeStats(items: StatsRawItem[], year: number | null): Comput
     : null;
 
   return {
-    availableYears, counts, inProgressCounts, hours, avgRating,
+    availableYears, counts, statusCounts, rewatches: rewatchCount, hours, avgRating,
     ratedCount: periodRatings.length,
     topGenres, ratingDistribution, topFavorites, wrappedPosters, activity,
     streaks: { bestMonth, activeMonthsCount, bestYear },

@@ -22,7 +22,11 @@ export function useAddRewatch(mediaItemId: string) {
       if (isDemo) throw new DemoReadOnlyError();
       return addRewatch(mediaItemId, watchedOn);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.rewatches(mediaItemId) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.rewatches(mediaItemId) });
+      // Rewatches feed Hours Watched + the Rewatches stat → keep Stats live.
+      queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "stats"] });
+    },
     onError: handledDemoError,
   });
 }
@@ -35,7 +39,11 @@ export function useRemoveRewatch(mediaItemId: string) {
       if (isDemo) throw new DemoReadOnlyError();
       return removeRewatch(id);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.rewatches(mediaItemId) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.rewatches(mediaItemId) });
+      // Rewatches feed Hours Watched + the Rewatches stat → keep Stats live.
+      queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "stats"] });
+    },
     onError: handledDemoError,
   });
 }
