@@ -7,6 +7,8 @@ import {
   getEpisodeHighlights,
   getTmdbEpisode,
   removeEpisodeHighlight,
+  setEpisodeRating,
+  clearEpisodeRating,
 } from "../service";
 
 const KEYS = {
@@ -63,6 +65,42 @@ export function useAddEpisodeHighlight(mediaItemId: string) {
       queryClient.invalidateQueries({ queryKey: KEYS.byMedia(mediaItemId) });
     },
     onError: handledDemoError,
+  });
+}
+
+export function useSetEpisodeRating(mediaItemId: string) {
+  const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
+  return useMutation({
+    mutationFn: ({ userId, orgId, season, episode, rating, title, still_path }: {
+      userId: string;
+      orgId: string;
+      season: number;
+      episode: number;
+      rating: number | null;
+      title: string | null;
+      still_path: string | null;
+    }) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      if (rating == null) return clearEpisodeRating(mediaItemId, season, episode);
+      return setEpisodeRating({
+        media_item_id: mediaItemId,
+        user_id: userId,
+        org_id: orgId,
+        season,
+        episode,
+        rating,
+        title,
+        still_path,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: KEYS.byMedia(mediaItemId) });
+    },
+    onError: (error) => {
+      if (handledDemoError(error)) return;
+      toast.error("Failed to save rating.");
+    },
   });
 }
 

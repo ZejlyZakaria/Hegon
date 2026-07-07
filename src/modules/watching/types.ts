@@ -76,6 +76,8 @@ export interface EpisodeHighlight {
   title: string | null;
   still_path: string | null;
   note: string | null;
+  rating: number | null;    // per-episode user rating 0-10 (null = unrated)
+  highlighted: boolean;     // "best episode" flag (distinct from rating)
   created_at: string;
 }
 
