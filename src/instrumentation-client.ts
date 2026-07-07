@@ -21,6 +21,11 @@ Sentry.init({
     // On mobile a navigation can preempt the lock → a benign "Lock was stolen"
     // AbortError. The auth call still succeeds, so this is noise, not a failure.
     "Lock was stolen by another request",
+    // Injected by a mobile browser extension / in-app webview, NOT our code:
+    // `EmptyRanges` is nowhere in HEGON, and the frame is an anonymous "None" at an
+    // undefined source (no source map) — a WebKit "Can't find variable" from that
+    // injected script. Pure noise, filtered so it doesn't alert the team.
+    "Can't find variable: EmptyRanges",
   ],
 });
 
