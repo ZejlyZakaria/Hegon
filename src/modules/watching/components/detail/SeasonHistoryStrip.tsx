@@ -18,7 +18,8 @@ interface Props {
   showPoster: string | null;        // fallback when a season has no poster
   releaseYear: number | null;
   currentSeason: number;            // live, from Currently Watching
-  inProgress: boolean;
+  inProgress: boolean;              // ACTIVELY watching now → drives the "Now" badge
+  incomplete: boolean;              // not fully watched (in progress / paused / dropped) → locks unreached seasons
   onYearChange: (next: Record<string, number>) => void;
   onRatingChange: (next: Record<string, number>) => void;
 }
@@ -35,7 +36,7 @@ const fmtDate = (d: string) =>
 // in-progress show are locked; seasons that haven't aired yet show "Coming soon".
 export function SeasonHistoryStrip({
   seasonEpisodes, seasonPosters, seasonAirDates, seasonYears, seasonRatings,
-  showPoster, releaseYear, currentSeason, inProgress, onYearChange, onRatingChange,
+  showPoster, releaseYear, currentSeason, inProgress, incomplete, onYearChange, onRatingChange,
 }: Props) {
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -49,8 +50,8 @@ export function SeasonHistoryStrip({
     const d = seasonAirDates?.[idx];
     return !!d && new Date(d).getTime() > nowMs;
   };
-  // Locked = unreleased OR (in-progress show, season after the one you're watching).
-  const lockedAt = (idx: number) => comingSoonAt(idx) || (inProgress && idx + 1 > currentSeason);
+  // Locked = unreleased OR (not-fully-watched show, season after where you stopped).
+  const lockedAt = (idx: number) => comingSoonAt(idx) || (incomplete && idx + 1 > currentSeason);
   const airYearOf = (idx: number) => {
     const d = seasonAirDates?.[idx];
     return (d ? new Date(d).getFullYear() : null) ?? releaseYear ?? 1900;

@@ -27,6 +27,8 @@ export interface ExistingMediaEntry {
   want_to_watch: boolean;
   watched: boolean;
   recently_watched: boolean;
+  paused: boolean;
+  dropped: boolean;
   user_rating: number | null;
   notes: string | null;
   current_season: number | null;
@@ -56,7 +58,7 @@ export async function getExistingMediaEntry(
   if (!user) return null;
   const { data } = await supabase
     .schema("watching").from("media_items")
-    .select("id,favorite,priority,in_progress,want_to_watch,watched,recently_watched,user_rating,notes,current_season,current_episode")
+    .select("id,favorite,priority,in_progress,want_to_watch,watched,recently_watched,paused,dropped,user_rating,notes,current_season,current_episode")
     .eq("user_id", user.id)
     .eq("type", type)
     .eq("tmdb_id", tmdbId)
@@ -267,7 +269,7 @@ export async function getExistingMediaItem(
   const { data } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("id, favorite, priority, watched, recently_watched, watched_at, in_progress, want_to_watch, current_episode, current_season")
+    .select("id, favorite, priority, watched, recently_watched, watched_at, in_progress, want_to_watch, paused, dropped, current_episode, current_season")
     .eq("user_id", userId)
     .eq("type", type)
     .eq("tmdb_id", tmdbId)

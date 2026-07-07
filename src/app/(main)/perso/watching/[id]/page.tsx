@@ -399,7 +399,8 @@ export default function MediaDetailPage() {
               showPoster={media.poster_url}
               releaseYear={media.year ?? null}
               currentSeason={currentSeason}
-              inProgress={!media.watched}
+              inProgress={media.in_progress}
+              incomplete={!media.watched}
               onYearChange={handleSeasonYearsChange}
               onRatingChange={handleSeasonRatingsChange}
             />

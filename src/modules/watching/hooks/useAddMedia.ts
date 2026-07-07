@@ -11,6 +11,7 @@ import { syncWatchingGoals } from "../lib/sync-goals";
 import { syncWatchingHabits } from "../lib/sync-habits";
 import { toast } from "@/shared/utils/toast";
 import { resolveTransition } from "../lib/resolve-transition";
+import { RESET_STATUS } from "../lib/status-flags";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import type { ListType, MediaType } from "../types";
@@ -87,6 +88,9 @@ export function useAddMedia() {
       const insertData = {
         user_id: userId,
         type: defaultType,
+        // Re-adding a paused/dropped title merges onto its existing row — always
+        // clear those flags so it never ends up watched/in-progress AND paused/dropped.
+        ...RESET_STATUS,
         title: selectedItem.title || selectedItem.name,
         original_title: selectedItem.original_title || selectedItem.original_name,
         description: selectedItem.overview,
@@ -193,6 +197,7 @@ export function useAddMedia() {
             watched: false,
             recently_watched: false,
             want_to_watch: false,
+            ...RESET_STATUS,
             priority: existing!.priority,
           });
 
@@ -207,6 +212,7 @@ export function useAddMedia() {
             user_rating: userRating > 0 ? userRating : null,
             rating: selectedItem.vote_average,
             want_to_watch: false,
+            ...RESET_STATUS,
             in_progress: existing!.in_progress ?? false,
             current_episode: existing!.current_episode ?? null,
             current_season: existing!.current_season ?? null,

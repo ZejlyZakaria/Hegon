@@ -17,6 +17,10 @@ export interface MediaStateFlags {
   priority: number | null;
   in_progress: boolean;
   want_to_watch: boolean;
+  /** On-hold / abandoned — already in your collection, just set aside. Optional so
+   *  existing callers/tests still satisfy the shape (treated as false when absent). */
+  paused?: boolean;
+  dropped?: boolean;
   /** Optional — only used to enrich the (allowed) banner text in the UI.
    *  The write side never reads allowed-message text, so it can omit this. */
   user_rating?: number | null;
@@ -70,10 +74,14 @@ export function resolveTransition(
   const isInTopTen = existing.priority != null;
   const isInProgress = existing.in_progress;
   const isInWantToWatch = existing.want_to_watch;
+  const isPaused = !!existing.paused;
+  const isDropped = !!existing.dropped;
 
   const existingLists: string[] = [];
   if (isInTopTen) existingLists.push("Top 10");
   if (isInProgress) existingLists.push("In Progress");
+  if (isPaused) existingLists.push("Paused");
+  if (isDropped) existingLists.push("Dropped");
   if (isInWantToWatch) existingLists.push("Want to Watch");
   if (isInRecentlyWatched) existingLists.push("Recently Watched");
   if (isInLibrary) existingLists.push("Library");
@@ -101,6 +109,13 @@ export function resolveTransition(
 
   if (isAlreadyInTarget) {
     return blocked(`This media is already in "${LIST_NAMES[target]}".`);
+  }
+
+  // Paused / dropped = already in your collection, just set aside. Re-adding via the
+  // Add modal is blocked (you manage it from its detail page) — same "it already
+  // exists" UX as the other memberships, with an honest banner.
+  if (isPaused || isDropped) {
+    return blocked(`This title is already in your collection (${isDropped ? "dropped" : "paused"}). Manage it from its page.`);
   }
 
   // 2. Contextual (allowed) transitions — friendly amber message.

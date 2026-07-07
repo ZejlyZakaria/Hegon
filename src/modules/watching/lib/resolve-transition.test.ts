@@ -18,6 +18,8 @@ const recentlyWatched = flags({ watched: true, recently_watched: true });
 const topTen = flags({ watched: true, priority: 1 });
 const inProgress = flags({ in_progress: true });
 const wantToWatch = flags({ want_to_watch: true });
+const paused = flags({ paused: true });
+const dropped = flags({ dropped: true });
 
 describe("resolveTransition — no existing entry", () => {
   it("is a clean insert with no banner", () => {
@@ -38,6 +40,23 @@ describe("resolveTransition — already in target", () => {
     const t = resolveTransition(library, "library");
     expect(t.allowed).toBe(false);
     expect(t.message).toContain('"Library"');
+  });
+});
+
+describe("resolveTransition — paused / dropped are already in the collection", () => {
+  it("blocks re-adding a paused title to any list, with a collection banner", () => {
+    const t = resolveTransition(paused, "library");
+    expect(t.allowed).toBe(false);
+    expect(t.action).toBe("blocked");
+    expect(t.message).toContain("paused");
+    expect(t.existingLists).toContain("Paused");
+  });
+
+  it("blocks re-adding a dropped title (even to In Progress)", () => {
+    const t = resolveTransition(dropped, "inProgress");
+    expect(t.allowed).toBe(false);
+    expect(t.message).toContain("dropped");
+    expect(t.existingLists).toContain("Dropped");
   });
 });
 
