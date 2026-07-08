@@ -16,7 +16,7 @@ import { toast } from "@/shared/utils/toast";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
 import { useAddMedia } from "@/modules/watching/hooks/useAddMedia";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
-import { RatingSlider } from "@/modules/watching/components/detail/MyTakeRecord";
+import { RatingSlider } from "@/modules/watching/components/detail/MyTake";
 import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
 import { getTakenPriorities, getExistingMediaEntry, uploadCustomPoster } from "@/modules/watching/service";

@@ -22,13 +22,12 @@ import { ContributingToGoals } from "@/modules/watching/components/detail/Contri
 import { GoalRippleToast } from "@/modules/watching/components/detail/GoalRippleToast";
 import { MediaHero } from "@/modules/watching/components/detail/MediaHero";
 import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal";
-import { MyTakeRecord } from "@/modules/watching/components/detail/MyTakeRecord";
+import { StatusCard } from "@/modules/watching/components/detail/StatusCard";
+import { MyTake } from "@/modules/watching/components/detail/MyTake";
 import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis";
 import { CastCrew } from "@/modules/watching/components/detail/CastCrew";
-import { CurrentlyWatching } from "@/modules/watching/components/detail/CurrentlyWatching";
-import { DroppedNotice } from "@/modules/watching/components/detail/DroppedNotice";
-import { PausedNotice } from "@/modules/watching/components/detail/PausedNotice";
-import { Rewatches } from "@/modules/watching/components/detail/Rewatches";
+import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfirmModal";
+import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import { CaptureSheet } from "@/modules/watching/components/shared/CaptureSheet";
 import { DROP_REASONS } from "@/modules/watching/lib/drop-reasons";
 import { RESET_STATUS } from "@/modules/watching/lib/status-flags";
@@ -40,7 +39,6 @@ import { InList } from "@/modules/watching/components/detail/InList";
 import { WatchProviders } from "@/modules/watching/components/detail/WatchProviders";
 import { ExternalRatings } from "@/modules/watching/components/detail/ExternalRatings";
 import { AnimeThemes } from "@/modules/watching/components/detail/AnimeThemes";
-import { FloatingSaveBar } from "@/modules/watching/components/detail/FloatingSaveBar";
 import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { toast } from "@/shared/utils/toast";
 
@@ -81,11 +79,10 @@ export default function MediaDetailPage() {
     return (similar as any[]).filter((s) => !owned.has(s.id)).slice(0, 6);
   }, [similar, ownedIds]);
 
-  const [notes, setNotes] = useState("");
-  const [starRating, setStarRating] = useState(0);
   const [favorite, setFavorite] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
-  const savedRef = useRef({ notes: "", starRating: 0 });
+  const [forceTakeOpen, setForceTakeOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const deleteMedia = useDeleteMedia();
   const progressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mediaIdRef = useRef<string | null>(null);
   useEffect(() => () => { if (progressTimerRef.current) clearTimeout(progressTimerRef.current); }, []);
@@ -95,38 +92,25 @@ export default function MediaDetailPage() {
   useEffect(() => {
     if (media && media.id !== mediaIdRef.current) {
       mediaIdRef.current = media.id;
-      const stars = media.user_rating ?? 0;
-      setNotes(media.notes ?? "");
-      setStarRating(stars);
       setFavorite(media.favorite);
       setCurrentSeason(media.current_season ?? 1);
       setCurrentEpisode(media.current_episode ?? 0);
-      savedRef.current = { notes: media.notes ?? "", starRating: stars };
-      setIsDirty(false);
+      setForceTakeOpen(false);
     }
   }, [media]);
 
-  const markDirty = (n: string, r: number) => {
-    setIsDirty(n !== savedRef.current.notes || r !== savedRef.current.starRating);
-  };
-
-  const handleSave = async () => {
+  // Delete lives in the StatusCard's "…" menu — same modal + hook as the Library.
+  const confirmDelete = async () => {
     if (!media) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, notes, user_rating: starRating > 0 ? starRating : null, favorite });
-      savedRef.current = { notes, starRating };
-      setIsDirty(false);
-      toast("Saved.");
-    } catch (err) {
-      if (isDemoReadOnlyError(err)) return;
-      toast.error("Failed to save.");
+      await deleteMedia.mutateAsync(media.id);
+      setDeleteOpen(false);
+      toast("Deleted from your library.");
+      router.back();
+    } catch {
+      // errors (incl. demo read-only) are toasted by the hook
+      setDeleteOpen(false);
     }
-  };
-
-  const handleDiscard = () => {
-    setNotes(savedRef.current.notes);
-    setStarRating(savedRef.current.starRating);
-    setIsDirty(false);
   };
 
   const handleMarkWatched = async () => {
@@ -352,6 +336,33 @@ export default function MediaDetailPage() {
     });
   };
 
+  const isUnwatched = !!(media.is_reference || (media.want_to_watch && !media.watched && !media.in_progress));
+
+  // THE state-aware surface — the module's branded hero card. Rendered twice:
+  // right under the hero on mobile (the daily action must never sink below the
+  // fold) and first in the right rail on desktop.
+  const statusCard = (
+    <StatusCard
+      media={media}
+      isSeries={isSeries}
+      providers={providers}
+      currentSeason={currentSeason}
+      currentEpisode={currentEpisode}
+      onUpdateProgress={updateProgress}
+      favorite={favorite}
+      onFavoriteToggle={toggleFavorite}
+      onMarkWatched={handleMarkWatched}
+      onStartWatching={handleStartWatching}
+      onPause={handlePause}
+      onDrop={() => setDropSheetOpen(true)}
+      onResume={handleResume}
+      onAddNote={() => setForceTakeOpen(true)}
+      onWatchedYearChange={handleWatchedYearChange}
+      onDelete={() => setDeleteOpen(true)}
+      isUpdating={updateMedia.isPending}
+    />
+  );
+
   return (
     <div className="min-h-screen bg-surface-0">
 
@@ -364,6 +375,11 @@ export default function MediaDetailPage() {
         onPlayTrailer={() => setTrailerOpen(true)}
       />
 
+      {/* Mobile slot — the StatusCard right after the hero, before everything */}
+      <div className="px-4 pt-4 lg:hidden">
+        {statusCard}
+      </div>
+
       {/* Content rises slightly into the hero's lower gradient — magazine overlap. */}
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
 
@@ -371,19 +387,7 @@ export default function MediaDetailPage() {
         <div className="min-w-0 space-y-8 px-4 py-6 lg:py-8 lg:pl-8 lg:pr-2">
 
           {/* Manage/track surfaces = cards (rendered inside the components); browse = open */}
-          <MyTakeRecord
-            notes={notes}
-            onNotesChange={(v) => { setNotes(v); markDirty(v, starRating); }}
-            starRating={starRating}
-            onStarRatingChange={(v) => { setStarRating(v); markDirty(notes, v); }}
-            media={media}
-            favorite={favorite}
-            onFavoriteToggle={toggleFavorite}
-            isSeries={isSeries}
-            onMarkWatched={handleMarkWatched}
-            onStartWatching={handleStartWatching}
-            isUpdating={updateMedia.isPending}
-          />
+          <MyTake media={media} forceNoteOpen={forceTakeOpen} />
 
           {hasCastCrew && (
             <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
@@ -423,29 +427,14 @@ export default function MediaDetailPage() {
         <div className="min-w-0">
           <div className="space-y-6 px-4 py-6 lg:py-8 lg:pl-2 lg:pr-8">
 
-            {isSeries && media.in_progress && (
-              <CurrentlyWatching
-                currentSeason={currentSeason}
-                currentEpisode={currentEpisode}
-                onUpdate={updateProgress}
-                media={media}
-                onMarkCompleted={handleMarkWatched}
-                onPause={handlePause}
-                onDrop={() => setDropSheetOpen(true)}
-              />
-            )}
+            {/* Desktop slot — the branded hero card leads the rail */}
+            <div className="hidden lg:block">
+              {statusCard}
+            </div>
 
-            {isSeries && media.paused && (
-              <PausedNotice onResume={handleResume} />
-            )}
-
-            {isSeries && media.dropped && (
-              <DroppedNotice reason={media.drop_reason} onResume={handleResume} />
-            )}
-
-            {media.watched && <Rewatches mediaItemId={media.id} />}
-
-            <WatchProviders info={providers} />
+            {/* want_to_watch: the provider logos live in the StatusCard (the deciding
+                question of that state) — never in two places at once. */}
+            {!isUnwatched && <WatchProviders info={providers} />}
 
             <ExternalRatings media={media} />
 
@@ -453,7 +442,7 @@ export default function MediaDetailPage() {
 
             <InList mediaItemId={media.id} userId={media.user_id} />
 
-            <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} onWatchedYearChange={handleWatchedYearChange} />
+            <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
 
           </div>
         </div>
@@ -476,13 +465,6 @@ export default function MediaDetailPage() {
         initialItem={addItem}
       />
 
-      <FloatingSaveBar
-        isDirty={isDirty}
-        isPending={updateMedia.isPending}
-        onSave={handleSave}
-        onDiscard={handleDiscard}
-      />
-
       <CaptureSheet
         open={dropSheetOpen}
         onOpenChange={setDropSheetOpen}
@@ -492,6 +474,15 @@ export default function MediaDetailPage() {
         onPick={(reason) => handleDrop(reason)}
         onSkip={() => handleDrop(null)}
         skipLabel="Drop without a reason"
+      />
+
+      <DeleteConfirmModal
+        isOpen={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={confirmDelete}
+        title={`Delete "${media.title}"?`}
+        description="It will be removed from your library, along with your take, history and rewatches. This cannot be undone."
+        isDeleting={deleteMedia.isPending}
       />
     </div>
   );

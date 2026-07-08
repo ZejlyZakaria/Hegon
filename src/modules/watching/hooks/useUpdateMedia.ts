@@ -68,6 +68,20 @@ export function useUpdateMedia() {
         return old;
       });
 
+      // Optimistically remove the item from a section it's leaving (e.g. drop/pause →
+      // out of In Progress instantly, instead of waiting for the refetch). Removal-only
+      // (a status turned false) — the section snapshot restores it on error.
+      const leaves = (flag: "in_progress" | "want_to_watch", keyFor: (t: "film" | "serie" | "anime") => readonly unknown[]) => {
+        if ((updates as Record<string, unknown>)[flag] !== false) return;
+        for (const t of ["film", "serie", "anime"] as const) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          queryClient.setQueryData(keyFor(t), (old: any) =>
+            Array.isArray(old) ? old.filter((i: { id: string }) => i.id !== id) : old);
+        }
+      };
+      leaves("in_progress", WATCHING_KEYS.inProgress);
+      leaves("want_to_watch", WATCHING_KEYS.wantToWatch);
+
       return { snapshot };
     },
 
