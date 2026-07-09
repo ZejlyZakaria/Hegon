@@ -1,10 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Play, Star } from "lucide-react";
+import { ArrowLeft, Play } from "lucide-react";
 import type { WatchingMedia } from "../../types";
 import { displayTitle } from "../../utils";
+import { useImdbId } from "../../hooks/useImdbId";
+import { useOmdbRatings } from "../../hooks/useOmdbRatings";
+
+// Non-Latin (CJK / Kana / Hangul) original titles add nothing here — 進撃の巨人 / 기생충
+// are noise under the English title. Latin-script alternates (French, romaji…) stay.
+const NON_LATIN = /[　-ヿ㐀-鿿가-힯豈-﫿＀-￯]/;
+
+// Critical consensus at the decision point, inline in the meta row (no chrome). TMDB is
+// always there; IMDb/RT come from OMDb (often absent on anime → degrades, never empty).
+// RT falls back to Metacritic so the third slot fills more often.
+type HeroScore = { key: string; logo: string; alt: string; value: string };
+function useHeroScores(media: WatchingMedia): HeroScore[] {
+  const { data: imdbId } = useImdbId(media.tmdb_id ?? 0, media.type, !!media.tmdb_id);
+  const { data: omdb } = useOmdbRatings(imdbId, !!imdbId);
+  return [
+    media.rating ? { key: "tmdb", logo: "/logo/watching_rating/Tmdb.svg", alt: "TMDB", value: media.rating.toFixed(1) } : null,
+    omdb?.imdb ? { key: "imdb", logo: "/logo/watching_rating/Imdb.svg", alt: "IMDb", value: omdb.imdb } : null,
+    omdb?.rottenTomatoes
+      ? { key: "rt", logo: "/logo/watching_rating/Rotten_Tomatoes.svg", alt: "Rotten Tomatoes", value: omdb.rottenTomatoes }
+      : omdb?.metacritic
+        ? { key: "mc", logo: "/logo/watching_rating/Metacritic.svg", alt: "Metacritic", value: omdb.metacritic }
+        : null,
+  ].filter(Boolean) as HeroScore[];
+}
 
 // Synopsis clamped to 3 lines on both breakpoints (mobile used to dump the full wall,
 // desktop cut it dead). "More" only appears when the text actually overflows the clamp.
@@ -62,9 +86,10 @@ interface Props {
 }
 
 export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPlayTrailer }: Props) {
-  const tmdbRating = media.rating ?? 0;
   const mainTitle = displayTitle(media);
   const altTitle = mainTitle === media.title ? media.original_title : media.title;
+  const showAltTitle = !!altTitle && altTitle !== mainTitle && !NON_LATIN.test(altTitle);
+  const scores = useHeroScores(media);
 
   const metaRow = (
     <>
@@ -81,15 +106,17 @@ export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPl
           <span>{media.seasons} season{media.seasons > 1 ? "s" : ""}</span>
         </>
       )}
-      {tmdbRating > 0 && (
-        <>
+      {/* Ratings inline in the same row — no pill, just logo + score after the facts */}
+      {scores.map((s) => (
+        <Fragment key={s.key}>
           <span className="text-white/20">·</span>
-          <span className="flex items-center gap-1">
-            <Star size={11} className="fill-amber-400 text-amber-400" />
-            {tmdbRating.toFixed(1)}
+          <span className="flex items-center gap-1.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={s.logo} alt={s.alt} className="h-3.5 w-auto object-contain" />
+            <span className="font-medium tabular-nums text-white/85">{s.value}</span>
           </span>
-        </>
-      )}
+        </Fragment>
+      ))}
     </>
   );
 
@@ -147,7 +174,7 @@ export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPl
               <h1 className="text-balance text-xl font-bold leading-tight tracking-tight text-white line-clamp-3">
                 {mainTitle}
               </h1>
-              {altTitle && altTitle !== mainTitle && (
+              {showAltTitle && (
                 <p className="mt-0.5 truncate text-sm text-white/35">{altTitle}</p>
               )}
             </div>
@@ -263,7 +290,7 @@ export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPl
               <h1 className="text-balance text-4xl font-bold leading-tight tracking-tight text-white">
                 {mainTitle}
               </h1>
-              {altTitle && altTitle !== mainTitle && (
+              {showAltTitle && (
                 <p className="mt-0.5 truncate text-sm text-white/35">{altTitle}</p>
               )}
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Trophy } from "lucide-react";
 import { useImdbId } from "../../hooks/useImdbId";
+import { useOmdbRatings } from "../../hooks/useOmdbRatings";
 import { useAgeRating } from "../../hooks/useAgeRating";
 import type { WatchingMedia } from "../../types";
 
@@ -14,6 +15,34 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
+// OMDb awards come as one string ("Won 2 Oscars. 163 wins & 165 nominations total").
+// Split it into a bold headline + tabular counts so it reads as a highlight, not prose.
+function parseAwards(raw: string) {
+  const wins = raw.match(/(\d+)\s+wins?/i)?.[1] ?? null;
+  const noms = raw.match(/(\d+)\s+nomination/i)?.[1] ?? null;
+  const headline = raw.match(/^\s*(Won|Nominated for)[^.]*/i)?.[0]?.trim() ?? null;
+  return { headline, wins, noms, raw };
+}
+
+function AwardsBlock({ raw }: { raw: string }) {
+  const { headline, wins, noms } = parseAwards(raw);
+  const counts = [
+    wins && `${wins} win${wins === "1" ? "" : "s"}`,
+    noms && `${noms} nomination${noms === "1" ? "" : "s"}`,
+  ].filter(Boolean).join(" · ");
+  const title = headline ?? (wins ? "Award-winning" : noms ? "Award-nominated" : raw);
+
+  return (
+    <div className="flex items-start gap-2.5 border-b border-border-subtle px-4 py-3">
+      <Trophy size={15} className="mt-0.5 shrink-0 text-amber-400" />
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-text-primary">{title}</p>
+        {counts && <p className="mt-0.5 text-xs tabular-nums text-text-tertiary">{counts}</p>}
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   media: WatchingMedia;
   typeLabel: string;
@@ -21,10 +50,14 @@ interface Props {
 }
 
 // Pure catalog reference. YOUR data (watched year, rewatches, status) lives in
-// the StatusCard — one home per fact, never two.
+// the StatusCard — one home per fact, never two. Ratings live in the hero;
+// this card holds the reference facts + awards + box office.
 export function MediaDetails({ media, typeLabel, isSeries }: Props) {
   const { data: imdbId } = useImdbId(media.tmdb_id ?? 0, media.type, !!media.tmdb_id);
+  const { data: omdb } = useOmdbRatings(imdbId, !!imdbId);
   const { data: ageRating } = useAgeRating(media.tmdb_id ?? 0, media.type, !!media.tmdb_id);
+
+  const isFilm = media.type === "film";
 
   return (
     <section>
@@ -44,6 +77,7 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
         )}
       </div>
       <div className="surface-quiet overflow-hidden rounded-2xl">
+        {omdb?.awards && <AwardsBlock raw={omdb.awards} />}
         <div className="divide-y divide-border-subtle px-4">
           <DetailRow label="Type" value={typeLabel} />
           {ageRating ? (
@@ -69,6 +103,7 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
             <DetailRow label="Status" value={<span className="capitalize">{media.status}</span>} />
           ) : null}
           {media.studio ? <DetailRow label="Studio" value={media.studio} /> : null}
+          {isFilm && omdb?.boxOffice ? <DetailRow label="Box office" value={omdb.boxOffice} /> : null}
         </div>
       </div>
     </section>

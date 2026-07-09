@@ -3,9 +3,8 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { format } from "date-fns";
 import {
-  Bookmark, CalendarIcon, CalendarPlus, Check, ChevronDown, CircleSlash, Heart,
+  Bookmark, CalendarPlus, Check, ChevronDown, CircleSlash, Heart,
   Minus, MoreHorizontal, PauseCircle, Pencil, Play, Plus, Repeat, RotateCcw, Trash2, X,
 } from "lucide-react";
 import {
@@ -17,7 +16,6 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
-import { Calendar } from "@/shared/components/ui/calendar";
 import { cn } from "@/shared/utils/utils";
 import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
@@ -60,7 +58,7 @@ function watchedYearOf(media: WatchingMedia): number | null {
 }
 
 const fmtDate = (d: string) =>
-  new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  new Date(d).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 // ── Card atoms (white-on-teal language, ex-My Record skin) ─────────────────────
@@ -136,6 +134,75 @@ function PrimaryAction({ icon, children, onClick, disabled }: {
 
 const menuItemClass = "gap-2.5 px-3 py-2 text-xs text-text-secondary focus:bg-surface-2 focus:text-text-primary";
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const range = (from: number, to: number) =>
+  from > to ? [] : Array.from({ length: to - from + 1 }, (_, i) => from + i);
+
+// Log a past rewatch, constrained to [release, today] — you can't have rewatched a
+// title before it existed. Month precision is enough (Year → Month, month narrows to
+// the release/now bounds), so everything fits on one row.
+function RewatchDatePicker({ releaseISO, onAdd, onCancel, pending }: {
+  releaseISO: string | null;
+  onAdd: (iso: string) => void;
+  onCancel: () => void;
+  pending: boolean;
+}) {
+  const now = new Date();
+  const rel = releaseISO ? new Date(releaseISO) : null;
+  const valid = rel && !Number.isNaN(rel.getTime());
+  const relY = valid ? rel!.getFullYear() : null;
+  const relM = valid ? rel!.getMonth() + 1 : null;
+
+  const [y, setY] = useState<number | null>(null);
+  const [m, setM] = useState<number | null>(null);
+
+  const years = range(relY ?? 1950, now.getFullYear()).reverse();
+  const monthMin = y != null && y === relY ? relM! : 1;
+  const monthMax = y === now.getFullYear() ? now.getMonth() + 1 : 12;
+  const months = range(monthMin, monthMax);
+
+  const complete = y != null && m != null;
+  const submit = () => { if (complete) onAdd(`${y}-${String(m).padStart(2, "0")}-01`); };
+
+  const triggerCls = "h-8 flex-1 border-0 bg-white/10 text-white/90 focus:ring-0 data-[placeholder]:text-white/45";
+  const contentCls = "border-border-strong bg-surface-3";
+  const itemCls = "text-xs focus:bg-surface-2 focus:text-text-primary";
+
+  return (
+    <div className="mt-2 flex items-center gap-1.5">
+      <Select value={y != null ? String(y) : undefined} onValueChange={(v) => { setY(Number(v)); setM(null); }}>
+        <SelectTrigger className={triggerCls}><SelectValue placeholder="Year" /></SelectTrigger>
+        <SelectContent className={contentCls}>
+          {years.map((yr) => <SelectItem key={yr} value={String(yr)} className={itemCls}>{yr}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Select value={m != null ? String(m) : undefined} onValueChange={(v) => setM(Number(v))} disabled={y == null}>
+        <SelectTrigger className={triggerCls}><SelectValue placeholder="Month" /></SelectTrigger>
+        <SelectContent className={contentCls}>
+          {months.map((mm) => <SelectItem key={mm} value={String(mm)} className={itemCls}>{MONTHS[mm - 1]}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <button
+        type="button"
+        onClick={submit}
+        disabled={!complete || pending}
+        title="Add rewatch"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-white/15 text-white transition-colors hover:bg-white/20 disabled:opacity-40"
+      >
+        <Check size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        title="Cancel"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-white/60 transition-colors hover:text-white"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 // ── StatusCard ──────────────────────────────────────────────────────────────────
 // THE state-aware surface of the detail page — the module's branded hero card,
 // first in the right rail (desktop) / right under the hero (mobile). One home for
@@ -173,8 +240,10 @@ export function StatusCard({
   const addRewatch = useAddRewatch(media.id);
   const removeRewatch = useRemoveRewatch(media.id);
   const [backdating, setBackdating] = useState(false);
-  const [backDate, setBackDate] = useState<Date | undefined>(undefined);
-  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  // A rewatch can't predate the title's release — constrains the date picker.
+  // Series carry a full S1 air date; films only a year → floor to Jan 1.
+  const releaseISO = media.season_air_dates?.[0] || (media.year ? `${media.year}-01-01` : null);
 
   const maxSeason = media.seasons ?? null;
   const episodesInSeason = media.season_episodes?.[currentSeason - 1] ?? null;
@@ -199,7 +268,6 @@ export function StatusCard({
     try {
       await addRewatch.mutateAsync(on);
       setBackdating(false);
-      setBackDate(undefined);
       toast("Rewatch logged.");
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
@@ -390,97 +458,59 @@ export function StatusCard({
                   )
                 }
               />
-              <div className="h-px bg-white/10" />
-              <Row
-                label="Rewatches"
-                value={
-                  rewatches.length === 0 ? (
-                    <span className="text-white/55">Not yet</span>
-                  ) : (
-                    /* The dates live one tap away — a quiet list, removable per entry */
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          className="group inline-flex items-center gap-1 text-label font-medium text-white transition-colors hover:text-white/90"
-                        >
-                          {rewatches.length === 1 && lastRewatch
-                            ? fmtDate(lastRewatch)
-                            : `${rewatches.length} times`}
-                          <ChevronDown size={11} className="text-white/40 transition-colors group-hover:text-white/70" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent align="end" className="w-52 border-border-strong bg-surface-3 p-1.5">
-                        {rewatches.map((r) => (
-                          <div
-                            key={r.id}
-                            className="group flex items-center justify-between gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-2"
+              {rewatches.length > 0 && (
+                <>
+                  <div className="h-px bg-white/10" />
+                  <Row
+                    label="Rewatches"
+                    value={
+                      /* The dates live one tap away — a quiet list, removable per entry */
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="group inline-flex items-center gap-1 text-label font-medium text-white transition-colors hover:text-white/90"
                           >
-                            <span className="inline-flex items-center gap-2 text-xs text-text-secondary">
-                              <Repeat size={11} className="text-accent-watching-vivid" />
-                              {fmtDate(r.watched_on)}
-                            </span>
-                            <button
-                              type="button"
-                              title="Remove"
-                              onClick={() => handleRemoveRewatch(r.id)}
-                              className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary opacity-0 transition-[opacity,color] hover:text-red-400 group-hover:opacity-100"
+                            {rewatches.length === 1 && lastRewatch
+                              ? fmtDate(lastRewatch)
+                              : `${rewatches.length} times`}
+                            <ChevronDown size={11} className="text-white/40 transition-colors group-hover:text-white/70" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-52 border-border-strong bg-surface-3 p-1.5">
+                          {rewatches.map((r) => (
+                            <div
+                              key={r.id}
+                              className="group flex items-center justify-between gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-2"
                             >
-                              <X size={11} />
-                            </button>
-                          </div>
-                        ))}
-                      </PopoverContent>
-                    </Popover>
-                  )
-                }
-              />
+                              <span className="inline-flex items-center gap-2 text-xs text-text-secondary">
+                                <Repeat size={11} className="text-accent-watching-vivid" />
+                                {fmtDate(r.watched_on)}
+                              </span>
+                              <button
+                                type="button"
+                                title="Remove"
+                                onClick={() => handleRemoveRewatch(r.id)}
+                                className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary opacity-0 transition-[opacity,color] hover:text-red-400 group-hover:opacity-100"
+                              >
+                                <X size={11} />
+                              </button>
+                            </div>
+                          ))}
+                        </PopoverContent>
+                      </Popover>
+                    }
+                  />
+                </>
+              )}
 
               {backdating && (
-                <div className="mt-1.5 flex items-center gap-2">
-                  {/* Canonical HEGON date field: Popover + Calendar (like Goals/Tasks) */}
-                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className={cn(
-                          "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-control bg-white/10 px-2.5 transition-colors hover:bg-white/15",
-                          backDate ? "text-white" : "text-white/55",
-                        )}
-                      >
-                        <CalendarIcon size={13} className="shrink-0 text-white/55" />
-                        <span className="truncate text-label">
-                          {backDate ? format(backDate, "MMM d, yyyy") : "Pick a date"}
-                        </span>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-auto border-border-strong bg-surface-3 p-0">
-                      <Calendar
-                        mode="single"
-                        selected={backDate}
-                        onSelect={(date) => { setBackDate(date); setCalendarOpen(false); }}
-                        disabled={{ after: new Date() }}
-                        initialFocus
-                        className="bg-surface-3"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <button
-                    type="button"
-                    onClick={() => backDate && logRewatch(format(backDate, "yyyy-MM-dd"))}
-                    disabled={addRewatch.isPending || !backDate}
-                    className="h-8 shrink-0 rounded-control bg-white/15 px-3 text-label font-semibold text-white transition-colors hover:bg-white/20 disabled:opacity-50"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setBackdating(false); setBackDate(undefined); }}
-                    className="h-8 shrink-0 rounded-control px-2 text-label text-white/60 transition-colors hover:text-white"
-                  >
-                    Cancel
-                  </button>
-                </div>
+                <RewatchDatePicker
+                  releaseISO={releaseISO}
+                  pending={addRewatch.isPending}
+                  onAdd={(iso) => logRewatch(iso)}
+                  onCancel={() => setBackdating(false)}
+                />
               )}
             </div>
           )}
@@ -510,25 +540,6 @@ export function StatusCard({
             </div>
           )}
 
-          {status === "want_to_watch" && providers && providers.flatrate.length > 0 && (
-            <div className="mt-3">
-              <p className="text-label text-white/45">Where to watch</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {providers.flatrate.slice(0, 6).map((p) =>
-                  p.logo_url ? (
-                    <img
-                      key={p.id}
-                      src={p.logo_url}
-                      alt={p.name}
-                      title={p.name}
-                      className="h-8 w-8 rounded-control object-cover ring-1 ring-white/15"
-                    />
-                  ) : null,
-                )}
-              </div>
-            </div>
-          )}
-
           {status === "paused" && (
             <p className="mt-3 text-label leading-relaxed text-white/60">
               It kept its position{isSeries ? ` — S${currentSeason} · E${currentEpisode}` : ""}. Pick it back up any time.
@@ -555,6 +566,26 @@ export function StatusCard({
           )}
         </motion.div>
       </AnimatePresence>
+
+      {/* Where to watch — companion to every state, always in the card (quiet row) */}
+      {providers && providers.flatrate.length > 0 && (
+        <div className="mt-3.5">
+          <p className="text-label text-white/45">Where to watch</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {providers.flatrate.slice(0, 6).map((p) =>
+              p.logo_url ? (
+                <img
+                  key={p.id}
+                  src={p.logo_url}
+                  alt={p.name}
+                  title={p.name}
+                  className="h-8 w-8 rounded-control object-cover ring-1 ring-white/15"
+                />
+              ) : null,
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Footer: the state's one action ── */}
       <AnimatePresence mode="popLayout" initial={false}>

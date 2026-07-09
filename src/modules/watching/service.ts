@@ -693,7 +693,7 @@ export async function getListsWithThumbnails(userId: string): Promise<MediaListW
   return (lists as MediaList[]).map((list) => ({
     ...list,
     count: byList.get(list.id)?.length ?? 0,
-    thumbnails: (byList.get(list.id) ?? []).slice(0, 4),
+    thumbnails: (byList.get(list.id) ?? []).slice(0, 5),
   }));
 }
 

@@ -36,8 +36,6 @@ import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import { stampSeasons, seasonRange } from "@/modules/watching/lib/season-years";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { InList } from "@/modules/watching/components/detail/InList";
-import { WatchProviders } from "@/modules/watching/components/detail/WatchProviders";
-import { ExternalRatings } from "@/modules/watching/components/detail/ExternalRatings";
 import { AnimeThemes } from "@/modules/watching/components/detail/AnimeThemes";
 import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { toast } from "@/shared/utils/toast";
@@ -430,13 +428,7 @@ export default function MediaDetailPage() {
               {statusCard}
             </div>
 
-            {/* want_to_watch: the provider logos live in the StatusCard (the deciding
-                question of that state) — never in two places at once. */}
-            {!isUnwatched && <WatchProviders info={providers} />}
-
             <AnimeThemes media={media} />
-
-            <ExternalRatings media={media} />
 
             <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
 
