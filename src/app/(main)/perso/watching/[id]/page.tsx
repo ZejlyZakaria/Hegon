@@ -386,12 +386,8 @@ export default function MediaDetailPage() {
         {/* ── LEFT — primary column ─────────────────────────────────── */}
         <div className="min-w-0 space-y-8 px-4 py-6 lg:py-8 lg:pl-8 lg:pr-2">
 
-          {/* Manage/track surfaces = cards (rendered inside the components); browse = open */}
+          {/* Left = you & the work: verdict → memory → progress → catalogue (people, recos) */}
           <MyTake media={media} forceNoteOpen={forceTakeOpen} />
-
-          {hasCastCrew && (
-            <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
-          )}
 
           {isSeries && (media.season_episodes?.length ?? 0) > 1 && (media.in_progress || media.watched || media.paused || media.dropped) && (
             <SeasonHistoryStrip
@@ -410,16 +406,18 @@ export default function MediaDetailPage() {
             />
           )}
 
+          {/* want_to_watch: read-only (catalogue scope — no rating/best-ep on unwatched episodes) */}
           {isSeries && media.tmdb_id && (
-            <Episodes media={media} currentSeason={currentSeason} />
+            <Episodes media={media} currentSeason={currentSeason} readOnly={isUnwatched} />
+          )}
+
+          {hasCastCrew && (
+            <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
           )}
 
           {recommendations.length > 0 && (
             <MoreLikeThis items={recommendations} onAddClick={handleAddSimilar} />
           )}
-
-          {/* Connections — goals this title contributes to (kept open: can render null) */}
-          <ContributingToGoals media={media} />
 
         </div>
 
@@ -436,13 +434,16 @@ export default function MediaDetailPage() {
                 question of that state) — never in two places at once. */}
             {!isUnwatched && <WatchProviders info={providers} />}
 
-            <ExternalRatings media={media} />
-
             <AnimeThemes media={media} />
 
-            <InList mediaItemId={media.id} userId={media.user_id} />
+            <ExternalRatings media={media} />
 
             <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
+
+            {/* Connections cluster — goals this title feeds, then your lists */}
+            <ContributingToGoals media={media} />
+
+            <InList mediaItemId={media.id} userId={media.user_id} />
 
           </div>
         </div>

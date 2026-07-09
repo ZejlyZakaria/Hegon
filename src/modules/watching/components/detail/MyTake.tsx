@@ -53,33 +53,15 @@ export function RatingSlider({ value, onChange, showValue = true }: {
     };
   }, []);
 
-  const fillPercent = value > 0 ? ((value - 1) / 9) * 100 : 0;
+  const isUnrated = value <= 0;
+  const fillPercent = isUnrated ? 0 : ((value - 1) / 9) * 100;
   const label = ratingLabel(value);
 
   return (
     <div className="select-none">
-      {/* Tall, touch-friendly hit band — the whole strip (knob included) is grabbable
-          and shows the pointer; touch-none lets a finger drag without scrolling. */}
-      <div
-        className="relative -my-2.5 cursor-pointer touch-none py-2.5"
-        onMouseDown={(e) => { e.preventDefault(); isDragging.current = true; setFromClientX(e.clientX); }}
-        onTouchStart={(e) => { isDragging.current = true; if (e.touches[0]) setFromClientX(e.touches[0].clientX); }}
-      >
-        <div ref={trackRef} className="relative h-0.75 w-full rounded-full bg-black/25">
-          <div
-            className="pointer-events-none absolute inset-y-0 left-0 w-full origin-left rounded-full bg-linear-to-r from-amber-500 to-amber-300"
-            style={{ transform: `scaleX(${fillPercent / 100})`, transition: "transform 90ms cubic-bezier(0.22,1,0.36,1)" }}
-          />
-          {/* Knob always visible (even unrated, at 0) so a new title shows a grabbable handle */}
-          <div
-            className="pointer-events-none absolute top-1/2 -ml-2 h-4 w-4 -translate-y-1/2 rounded-full bg-white"
-            style={{ left: `${fillPercent}%`, boxShadow: "0 1px 3px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(0,0,0,0.15)" }}
-          />
-        </div>
-      </div>
-      {/* Scale — each number is centered exactly under its knob position, so the knob
-          lines up perfectly with the number it represents. */}
-      <div className="relative mt-3 h-3.5">
+      {/* Scale on top — numbers above the track so a dragging finger never covers the
+          number it's selecting; each is centered on its knob position. */}
+      <div className="relative mb-2.5 h-3.5">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
           <span
             key={n}
@@ -90,6 +72,29 @@ export function RatingSlider({ value, onChange, showValue = true }: {
           </span>
         ))}
       </div>
+      {/* Tall, touch-friendly hit band — the whole strip (knob included) is grabbable
+          and shows the pointer; touch-none lets a finger drag without scrolling. */}
+      <div
+        className="relative cursor-pointer touch-none py-2.5"
+        onMouseDown={(e) => { e.preventDefault(); isDragging.current = true; setFromClientX(e.clientX); }}
+        onTouchStart={(e) => { isDragging.current = true; if (e.touches[0]) setFromClientX(e.touches[0].clientX); }}
+      >
+        {/* Unrated: dimmed empty track, no knob — a knob-at-left reads as "1/10". */}
+        <div ref={trackRef} className={`relative h-0.75 w-full rounded-full ${isUnrated ? "bg-white/8" : "bg-black/25"}`}>
+          {!isUnrated && (
+            <>
+              <div
+                className="pointer-events-none absolute inset-y-0 left-0 w-full origin-left rounded-full bg-linear-to-r from-amber-500 to-amber-300"
+                style={{ transform: `scaleX(${fillPercent / 100})`, transition: "transform 90ms cubic-bezier(0.22,1,0.36,1)" }}
+              />
+              <div
+                className="pointer-events-none absolute top-1/2 -ml-2 h-4 w-4 -translate-y-1/2 rounded-full bg-white"
+                style={{ left: `${fillPercent}%`, boxShadow: "0 1px 3px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(0,0,0,0.15)" }}
+              />
+            </>
+          )}
+        </div>
+      </div>
       {showValue && (
         <div className="mt-2 flex items-baseline gap-2">
           {value > 0 ? (
@@ -99,7 +104,7 @@ export function RatingSlider({ value, onChange, showValue = true }: {
               {label && <span className="text-sm font-medium text-amber-400">{label}</span>}
             </>
           ) : (
-            <span className="text-xs text-white/55">Not rated yet</span>
+            <span className="text-xs text-white/55">Tap to rate</span>
           )}
         </div>
       )}

@@ -160,7 +160,7 @@ function StillCard({
   );
 }
 
-export function Episodes({ media, currentSeason }: { media: WatchingMedia; currentSeason?: number }) {
+export function Episodes({ media, currentSeason, readOnly = false }: { media: WatchingMedia; currentSeason?: number; readOnly?: boolean }) {
   const seasonCount = media.season_episodes?.length ?? media.seasons ?? 1;
   const [view, setView] = useState<View>("all");
   const [season, setSeason] = useState(
@@ -251,15 +251,18 @@ export function Episodes({ media, currentSeason }: { media: WatchingMedia; curre
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-title text-text-primary">Episodes</h2>
         <div className="flex items-center gap-1.5">
-          <SegmentedControl<View>
-            size="sm"
-            value={view}
-            onChange={setView}
-            items={[
-              { value: "all", label: "All" },
-              { value: "highlights", label: highlightRows.length ? `Highlights ${highlightRows.length}` : "Highlights" },
-            ]}
-          />
+          {/* No All/Highlights toggle when read-only — there are no highlights on an unwatched title */}
+          {!readOnly && (
+            <SegmentedControl<View>
+              size="sm"
+              value={view}
+              onChange={setView}
+              items={[
+                { value: "all", label: "All" },
+                { value: "highlights", label: highlightRows.length ? `Highlights ${highlightRows.length}` : "Highlights" },
+              ]}
+            />
+          )}
           {showChevrons && (
             <>
               <button type="button" onClick={() => scroll(-1)} className="flex h-7 w-7 items-center justify-center rounded-lg border border-border-subtle bg-surface-2 text-text-tertiary transition-colors hover:text-text-primary">
@@ -325,8 +328,8 @@ export function Episodes({ media, currentSeason }: { media: WatchingMedia; curre
                 overview={ep.overview}
                 highlighted={highlightMap.has(`${season}-${ep.number}`)}
                 rating={ratingMap.get(`${season}-${ep.number}`) ?? null}
-                onToggle={() => toggleHighlight(season, ep.number)}
-                onRate={(r) => handleRate(season, ep.number, {
+                onToggle={readOnly ? () => {} : () => toggleHighlight(season, ep.number)}
+                onRate={readOnly ? undefined : (r) => handleRate(season, ep.number, {
                   title: ep.name,
                   still_path: ep.still_url ? ep.still_url.replace(TMDB_STILL, "") : null,
                 }, r)}
