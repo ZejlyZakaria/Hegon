@@ -37,7 +37,7 @@ function titleBadge(t: PersonTitle): { label: string; cls: string; position?: st
     const position = t.type !== "film" && t.current_season ? `S${t.current_season}·E${t.current_episode ?? 0}` : undefined;
     return { label: "Watching", cls: "text-accent-watching-vivid", position };
   }
-  if (t.want_to_watch) return { label: "Want", cls: "text-white/90" };
+  if (t.want_to_watch) return { label: "Want to watch", cls: "text-violet-300" };
   return null;
 }
 
@@ -89,7 +89,7 @@ export default function PersonPage() {
 
   const journey = {
     owned, total, watchedCount: watched.length, avgRating,
-    top: top ? { id: top.id, title: top.title, poster_url: top.poster_url, user_rating: top.user_rating } : null,
+    top: top ? { id: top.id, title: top.title, poster_url: top.poster_url, user_rating: top.user_rating, year: top.year } : null,
   };
 
   const openAdd = (c: PersonCredit) =>

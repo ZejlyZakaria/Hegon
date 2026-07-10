@@ -12,7 +12,7 @@ export interface JourneyStats {
   total: number;
   watchedCount: number;
   avgRating: number | null;
-  top: { id: string; title: string; poster_url: string | null; user_rating: number | null } | null;
+  top: { id: string; title: string; poster_url: string | null; user_rating: number | null; year: number | null } | null;
 }
 
 function MiniStat({ label, children }: { label: string; children: React.ReactNode }) {
@@ -67,16 +67,20 @@ export function PersonJourney({ stats }: { stats: JourneyStats }) {
             <>
               <div className="my-3 h-px bg-white/10" />
               <p className="text-caption uppercase tracking-wide text-white/45">Your #1</p>
-              <Link href={`/perso/watching/${top.id}`} className="group mt-1.5 flex items-center gap-2.5">
+              {/* Half-width cell, poster + title + rating·year below — like Stats Top Picks */}
+              <Link href={`/perso/watching/${top.id}`} className="group -mx-1.5 mt-1 flex items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-white/5">
                 <div className="relative h-14 w-9 shrink-0 overflow-hidden rounded-md bg-white/10">
                   {top.poster_url && <Image src={top.poster_url} alt="" fill unoptimized sizes="36px" className="object-cover" />}
                 </div>
-                <span className="min-w-0 flex-1 truncate text-label font-medium text-white transition-colors group-hover:text-white/90">
-                  {top.title}
-                </span>
-                <span className="inline-flex shrink-0 items-center gap-1 text-label font-semibold text-white">
-                  <Star size={11} style={{ color: AMBER, fill: AMBER }} /> {top.user_rating}
-                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-label font-medium text-white transition-colors group-hover:text-white/90">{top.title}</p>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-0.5 text-caption font-semibold text-amber-300">
+                      <Star size={9} style={{ color: AMBER, fill: AMBER }} /> {top.user_rating}
+                    </span>
+                    {top.year && <span className="text-caption text-white/45">{top.year}</span>}
+                  </div>
+                </div>
               </Link>
             </>
           )}

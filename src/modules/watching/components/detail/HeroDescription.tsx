@@ -26,22 +26,26 @@ export function HeroDescription({ text }: { text: string }) {
 
   return (
     <div className="mt-3 max-w-4xl">
-      <p ref={measure} className="text-sm leading-relaxed text-white/60">
-        {collapsed ? (
-          <>
-            {text.slice(0, cut).trimEnd()}
-            {"… "}
-            <button type="button" onClick={() => setExpanded(true)} className={btn}>More</button>
-          </>
-        ) : expanded ? (
-          <>
-            {text}{" "}
-            <button type="button" onClick={() => setExpanded(false)} className={btn}>Less</button>
-          </>
-        ) : (
-          text
-        )}
-      </p>
+      {expanded ? (
+        // Capped + scrollable: a long bio (actors/directors) would otherwise grow the
+        // bottom-anchored hero upward and push the name off-screen. ~7 lines, then scroll.
+        <div className="max-h-40 overflow-y-auto pr-1 text-sm leading-relaxed text-white/60 [scrollbar-color:rgba(255,255,255,0.25)_transparent] [scrollbar-width:thin]">
+          {text}{" "}
+          <button type="button" onClick={() => setExpanded(false)} className={btn}>Less</button>
+        </div>
+      ) : (
+        <p ref={measure} className="text-sm leading-relaxed text-white/60">
+          {collapsed ? (
+            <>
+              {text.slice(0, cut).trimEnd()}
+              {"… "}
+              <button type="button" onClick={() => setExpanded(true)} className={btn}>More</button>
+            </>
+          ) : (
+            text
+          )}
+        </p>
+      )}
     </div>
   );
 }
