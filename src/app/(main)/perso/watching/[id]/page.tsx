@@ -63,7 +63,7 @@ export default function MediaDetailPage() {
   const hasStoredCast = (media?.cast_members?.length ?? 0) > 0;
   const { data: credits } = useMediaCredits(media?.tmdb_id ?? 0, media?.type ?? "film", !!media && !hasStoredCast);
   const { data: ownedIds = [] } = useOwnedTmdbIds(media?.user_id ?? "", media?.type ?? "film", !!media);
-  const { data: trailer } = useMediaTrailer(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
+  const { data: trailer, isLoading: trailerLoading } = useMediaTrailer(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
   const { data: providers } = useWatchProviders(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
   const { data: watchingGoals = [] } = useWatchingGoals();
   const [addItem, setAddItem] = useState<any | null>(null);
@@ -366,10 +366,10 @@ export default function MediaDetailPage() {
 
       <MediaHero
         media={media}
-        typeLabel={typeLabel}
         isSeries={isSeries}
         onBack={() => router.back()}
         hasTrailer={!!trailer?.key}
+        trailerLoading={trailerLoading}
         onPlayTrailer={() => setTrailerOpen(true)}
       />
 

@@ -10,6 +10,11 @@ export interface OmdbInfo {
   metacritic: string | null;      // "67" (out of 100)
   awards: string | null;
   boxOffice: string | null;
+  // Already in the same response — free reference facts for the Details card.
+  country: string | null;         // "South Korea"
+  language: string | null;        // "Korean"
+  released: string | null;        // "30 May 2019" (films)
+  yearRange: string | null;       // "2013–2023" (series run)
 }
 
 const clean = (v: any): string | null => (v && v !== "N/A" ? String(v) : null);
@@ -25,6 +30,10 @@ function mapOmdb(data: any): OmdbInfo | null {
     metacritic: clean(data.Metascore),
     awards: clean(data.Awards),
     boxOffice: clean(data.BoxOffice),
+    country: clean(data.Country),
+    language: clean(data.Language),
+    released: clean(data.Released),
+    yearRange: clean(data.Year),
   };
 }
 

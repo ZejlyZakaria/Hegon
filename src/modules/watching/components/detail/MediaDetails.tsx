@@ -78,6 +78,7 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
       </div>
       <div className="surface-quiet overflow-hidden rounded-2xl">
         {omdb?.awards && <AwardsBlock raw={omdb.awards} />}
+        {/* Reference only — year/runtime/seasons/status live in the hero, never twice. */}
         <div className="divide-y divide-border-subtle px-4">
           <DetailRow label="Type" value={typeLabel} />
           {ageRating ? (
@@ -90,20 +91,15 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
               }
             />
           ) : null}
-          {media.year ? <DetailRow label="Year" value={media.year} /> : null}
-          {media.runtime ? (
-            <DetailRow
-              label="Runtime"
-              value={media.type === "film" ? `${media.runtime} min` : `~${media.runtime} min/ep`}
-            />
-          ) : null}
-          {isSeries && media.seasons ? <DetailRow label="Seasons" value={media.seasons} /> : null}
           {isSeries && media.episodes ? <DetailRow label="Episodes" value={media.episodes} /> : null}
-          {media.status ? (
-            <DetailRow label="Status" value={<span className="capitalize">{media.status}</span>} />
-          ) : null}
+          {isSeries
+            ? (omdb?.yearRange ? <DetailRow label="Aired" value={omdb.yearRange} /> : null)
+            : (omdb?.released ? <DetailRow label="Released" value={omdb.released} /> : null)}
+          {omdb?.country ? <DetailRow label="Country" value={omdb.country} /> : null}
+          {omdb?.language ? <DetailRow label="Language" value={omdb.language} /> : null}
           {media.studio ? <DetailRow label="Studio" value={media.studio} /> : null}
           {isFilm && omdb?.boxOffice ? <DetailRow label="Box office" value={omdb.boxOffice} /> : null}
+          {omdb?.imdbVotes ? <DetailRow label="IMDb votes" value={omdb.imdbVotes} /> : null}
         </div>
       </div>
     </section>

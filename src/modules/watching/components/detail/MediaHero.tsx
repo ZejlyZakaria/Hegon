@@ -2,7 +2,8 @@
 
 import { Fragment, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Play } from "lucide-react";
+import { ArrowLeft, Loader2, Play } from "lucide-react";
+import { cn } from "@/shared/utils/utils";
 import type { WatchingMedia } from "../../types";
 import { displayTitle } from "../../utils";
 import { useImdbId } from "../../hooks/useImdbId";
@@ -11,6 +12,9 @@ import { useOmdbRatings } from "../../hooks/useOmdbRatings";
 // Non-Latin (CJK / Kana / Hangul) original titles add nothing here — 進撃の巨人 / 기생충
 // are noise under the English title. Latin-script alternates (French, romaji…) stay.
 const NON_LATIN = /[　-ヿ㐀-鿿가-힯豈-﫿＀-￯]/;
+
+// "DEATH NOTE" and "Death Note" are the same title — compare without case/punctuation.
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 // Critical consensus at the decision point, inline in the meta row (no chrome). TMDB is
 // always there; IMDb/RT come from OMDb (often absent on anime → degrades, never empty).
@@ -78,18 +82,26 @@ function HeroDescription({ text }: { text: string }) {
 
 interface Props {
   media: WatchingMedia;
-  typeLabel: string;
   isSeries: boolean;
   onBack: () => void;
   hasTrailer?: boolean;
+  trailerLoading?: boolean;
   onPlayTrailer?: () => void;
 }
 
-export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPlayTrailer }: Props) {
+export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading, onPlayTrailer }: Props) {
   const mainTitle = displayTitle(media);
-  const altTitle = mainTitle === media.title ? media.original_title : media.title;
-  const showAltTitle = !!altTitle && altTitle !== mainTitle && !NON_LATIN.test(altTitle);
+  const other = mainTitle === media.title ? media.original_title : media.title;
+  // Same title in a different case (title "Death Note" / original "DEATH NOTE"): keep the
+  // nicely-cased one and drop the echo. Done locally — displayTitle is used module-wide.
+  const sameTitle = !!other && norm(other) === norm(mainTitle);
+  const title = sameTitle ? media.title : mainTitle;
+  const showAltTitle = !!other && !sameTitle && !NON_LATIN.test(other);
   const scores = useHeroScores(media);
+
+  // No badges in the hero. The run status is a fact like "4 seasons" → it belongs in the
+  // meta row, and only when it changes the decision (series run, film not yet out).
+  const showStatus = !!media.status && (isSeries || media.status.toLowerCase() !== "released");
 
   const metaRow = (
     <>
@@ -106,6 +118,12 @@ export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPl
           <span>{media.seasons} season{media.seasons > 1 ? "s" : ""}</span>
         </>
       )}
+      {showStatus && (
+        <>
+          <span className="text-white/20">·</span>
+          <span className="capitalize">{media.status}</span>
+        </>
+      )}
       {/* Ratings inline in the same row — no pill, just logo + score after the facts */}
       {scores.map((s) => (
         <Fragment key={s.key}>
@@ -119,6 +137,32 @@ export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPl
       ))}
     </>
   );
+
+  // Last thing in the hero: after the pitch, the natural next gesture. Secondary on
+  // purpose — the StatusCard owns the white primary action.
+  // The slot is reserved from the first paint: the TMDB videos call resolves late, and
+  // letting the button pop in shoved the whole (bottom-anchored) hero upward. Loading →
+  // disabled + spinner; no trailer at all → invisible, but it still holds its row.
+  const trailerButton = onPlayTrailer ? (
+    <button
+      type="button"
+      disabled={!hasTrailer}
+      onClick={hasTrailer ? onPlayTrailer : undefined}
+      className={cn(
+        "group mt-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-[13px] font-medium text-white/85 backdrop-blur-sm transition-colors",
+        hasTrailer && "hover:border-white/35 hover:bg-white/10 hover:text-white",
+        trailerLoading && "cursor-wait opacity-50",
+        !hasTrailer && !trailerLoading && "invisible",
+      )}
+    >
+      {trailerLoading ? (
+        <Loader2 size={12} className="animate-spin" />
+      ) : (
+        <Play size={12} className="fill-current transition-transform group-hover:scale-110" />
+      )}
+      Watch trailer
+    </button>
+  ) : null;
 
   return (
     <>
@@ -144,16 +188,6 @@ export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPl
             <ArrowLeft size={14} />
             Back
           </button>
-          {hasTrailer && onPlayTrailer && (
-            <button
-              type="button"
-              onClick={onPlayTrailer}
-              className="absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[13px] font-medium text-white/80 backdrop-blur-sm"
-            >
-              <Play size={12} className="fill-current" />
-              Trailer
-            </button>
-          )}
         </div>
 
         <div className="relative -mt-16 px-4 pb-2">
@@ -172,30 +206,15 @@ export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPl
             </div>
             <div className="min-w-0 flex-1 pb-1">
               <h1 className="text-balance text-xl font-bold leading-tight tracking-tight text-white line-clamp-3">
-                {mainTitle}
+                {title}
               </h1>
               {showAltTitle && (
-                <p className="mt-0.5 truncate text-sm text-white/35">{altTitle}</p>
+                <p className="mt-0.5 truncate text-sm text-white/35">{other}</p>
               )}
             </div>
           </div>
 
-          {/* badges + meta — full width below the poster row */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-accent-watching px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
-              {typeLabel}
-            </span>
-            {media.status && (
-              <span className="inline-flex items-center rounded-full border border-white/10 bg-black/50 px-2.5 py-1 text-[11px] font-medium capitalize text-white/70 backdrop-blur-md">
-                {media.status}
-              </span>
-            )}
-          </div>
-
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/45">
-            {metaRow}
-          </div>
-
+          {/* Title → genres → facts → pitch → the trailer gesture */}
           {media.tags && media.tags.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {media.tags.slice(0, 5).map((tag) => (
@@ -206,7 +225,13 @@ export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPl
             </div>
           )}
 
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/45">
+            {metaRow}
+          </div>
+
           {media.description && <HeroDescription text={media.description} />}
+
+          {trailerButton}
         </div>
       </div>
 
@@ -233,17 +258,6 @@ export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPl
           <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
           Back
         </button>
-
-        {hasTrailer && onPlayTrailer && (
-          <button
-            type="button"
-            onClick={onPlayTrailer}
-            className="group absolute right-10 top-5 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3.5 py-2 text-[13px] font-medium text-white/70 backdrop-blur-sm transition-colors hover:border-white/20 hover:bg-black/50 hover:text-white"
-          >
-            <Play size={13} className="fill-current transition-transform group-hover:scale-110" />
-            Trailer
-          </button>
-        )}
 
         <div className="absolute bottom-0 left-0 right-0 z-10 px-10 pb-8">
           <div className="flex items-end gap-8">
@@ -274,31 +288,14 @@ export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPl
               </div>
             </div>
 
-            {/* Title + meta */}
+            {/* Title → genres → facts → pitch → the trailer gesture */}
             <div className="min-w-0 flex-1 pb-1">
-              <div className="mb-2.5 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-accent-watching px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-white">
-                  {typeLabel}
-                </span>
-                {media.status && (
-                  <span className="inline-flex items-center rounded-full border border-white/10 bg-black/50 px-2.5 py-1 text-xs font-medium capitalize text-white/70 backdrop-blur-md">
-                    {media.status}
-                  </span>
-                )}
-              </div>
-
               <h1 className="text-balance text-4xl font-bold leading-tight tracking-tight text-white">
-                {mainTitle}
+                {title}
               </h1>
               {showAltTitle && (
-                <p className="mt-0.5 truncate text-sm text-white/35">{altTitle}</p>
+                <p className="mt-0.5 truncate text-sm text-white/35">{other}</p>
               )}
-
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/45">
-                {metaRow}
-              </div>
-
-              {media.description && <HeroDescription text={media.description} />}
 
               {media.tags && media.tags.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
@@ -309,6 +306,14 @@ export function MediaHero({ media, typeLabel, isSeries, onBack, hasTrailer, onPl
                   ))}
                 </div>
               )}
+
+              <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/45">
+                {metaRow}
+              </div>
+
+              {media.description && <HeroDescription text={media.description} />}
+
+              {trailerButton}
             </div>
           </div>
         </div>
