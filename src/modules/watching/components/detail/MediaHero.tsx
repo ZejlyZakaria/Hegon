@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import Image from "next/image";
 import { ArrowLeft, Loader2, Play } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
@@ -8,6 +8,7 @@ import type { WatchingMedia } from "../../types";
 import { displayTitle } from "../../utils";
 import { useImdbId } from "../../hooks/useImdbId";
 import { useOmdbRatings } from "../../hooks/useOmdbRatings";
+import { HeroDescription } from "./HeroDescription";
 
 // Non-Latin (CJK / Kana / Hangul) original titles add nothing here — 進撃の巨人 / 기생충
 // are noise under the English title. Latin-script alternates (French, romaji…) stay.
@@ -33,53 +34,6 @@ function useHeroScores(media: WatchingMedia): HeroScore[] {
         : null,
   ].filter(Boolean) as HeroScore[];
 }
-
-// Synopsis clamped to 3 lines on both breakpoints (mobile used to dump the full wall,
-// desktop cut it dead). "More" only appears when the text actually overflows the clamp.
-function HeroDescription({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
-  // null = not yet measured (render full to measure) · -1 = fits, no toggle · n = collapse at n chars
-  const [cut, setCut] = useState<number | null>(null);
-
-  const measure = (el: HTMLParagraphElement | null) => {
-    // Ref callback runs at commit (not render) → measuring is lint-safe.
-    if (!el || expanded || cut !== null) return;
-    const lh = parseFloat(getComputedStyle(el).lineHeight) || 22;
-    const lines = Math.round(el.scrollHeight / lh);
-    if (lines <= 3) { setCut(-1); return; }
-    // Proportional cut to ~3 lines, trimmed to a word boundary, leaving room for "… More".
-    const approx = Math.floor(text.length * (3 / lines) * 0.92);
-    const boundary = text.lastIndexOf(" ", approx);
-    setCut(boundary > 40 ? boundary : approx);
-  };
-
-  const btn = "font-medium text-white/45 transition-colors hover:text-white/80";
-  const collapsed = !expanded && cut !== null && cut !== -1;
-
-  return (
-    <div className="mt-3 max-w-4xl">
-      {/* JS truncation instead of line-clamp: no color mask over the backdrop photo,
-          so "More" reads inline as "…More" right after the text on any background. */}
-      <p ref={measure} className="text-sm leading-relaxed text-white/60">
-        {collapsed ? (
-          <>
-            {text.slice(0, cut).trimEnd()}
-            {"… "}
-            <button type="button" onClick={() => setExpanded(true)} className={btn}>More</button>
-          </>
-        ) : expanded ? (
-          <>
-            {text}{" "}
-            <button type="button" onClick={() => setExpanded(false)} className={btn}>Less</button>
-          </>
-        ) : (
-          text
-        )}
-      </p>
-    </div>
-  );
-}
-
 interface Props {
   media: WatchingMedia;
   isSeries: boolean;

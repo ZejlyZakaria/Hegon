@@ -30,7 +30,7 @@ interface AddMediaInput {
   seasons: number | null;
   episodes: number | null;
   runtime: number | null;
-  directors: { name: string; profile_url: string | null }[] | null;
+  directors: { id?: number; name: string; profile_url: string | null }[] | null;
   cast: { id: number; name: string; character: string | null; profile_url: string | null }[];
   studio: string | null;
   status: string | null;

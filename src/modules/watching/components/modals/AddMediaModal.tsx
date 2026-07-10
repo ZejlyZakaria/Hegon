@@ -92,7 +92,7 @@ export default function AddMediaModal({
   const [seasonError, setSeasonError] = useState<string | null>(null);
   const [episodeError, setEpisodeError] = useState<string | null>(null);
   const [runtime, setRuntime]         = useState<number | null>(null);
-  const [directors, setDirectors]     = useState<{ name: string; profile_url: string | null }[] | null>(null);
+  const [directors, setDirectors]     = useState<{ id?: number; name: string; profile_url: string | null }[] | null>(null);
   const [cast, setCast]               = useState<{ id: number; name: string; character: string | null; profile_url: string | null }[]>([]);
   const [studio, setStudio]           = useState<string | null>(null);
   const [status, setStatus]           = useState<string | null>(null);
@@ -201,8 +201,9 @@ export default function AddMediaModal({
       const extractedDirectors = isMovie
         ? (details.credits?.crew ?? [])
             .filter((m) => m.job === "Director")
-            .map((d) => ({ name: d.name, profile_url: d.profile_path ? `https://image.tmdb.org/t/p/w200${d.profile_path}` : null }))
+            .map((d) => ({ id: d.id, name: d.name, profile_url: d.profile_path ? `https://image.tmdb.org/t/p/w200${d.profile_path}` : null }))
         : (details.created_by ?? []).map((c) => ({
+            id: c.id,
             name: c.name,
             profile_url: c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : null,
           }));

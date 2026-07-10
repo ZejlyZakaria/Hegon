@@ -64,6 +64,10 @@ export const WATCHING_KEYS = {
   // Rewatches (per media item)
   rewatches: (mediaItemId: string) =>
     [...WATCHING_KEYS.all, 'rewatches', mediaItemId] as const,
+
+  // Your collection titles featuring a person (actor/director)
+  titlesByPerson: (userId: string, personId: number) =>
+    [...WATCHING_KEYS.all, 'by-person', userId, personId] as const,
 } as const;
 
 // =====================================================
@@ -97,4 +101,6 @@ export const TMDB_KEYS = {
     ['omdb', 'episodes', imdbId, seasonCount] as const,
   forYou: (type: MediaType) =>
     ['tmdb', 'for-you', type] as const,
+  person: (personId: number) =>
+    ['tmdb', 'person', personId] as const,
 } as const;

@@ -45,7 +45,7 @@ export interface WatchingMedia {
   tmdb_id: number;
   notes: string | null;
   tags: string[];
-  directors?: { name: string; profile_url?: string }[];
+  directors?: { id?: number; name: string; profile_url?: string }[];
   // Cast cached from TMDB (top ~12) so the detail page renders Cast & Crew from
   // the DB with no extra TMDB call. Matches CastMember from useMediaCredits.
   cast_members?: { id: number; name: string; character: string | null; profile_url: string | null }[];
@@ -179,13 +179,13 @@ export interface TmdbModalResult {
   number_of_episodes?: number;
   seasons?: { season_number: number; episode_count: number }[];
   credits?: {
-    crew: { job: string; name: string; profile_path?: string }[];
+    crew: { id: number; job: string; name: string; profile_path?: string }[];
     cast?: { id: number; name: string; character?: string; profile_path?: string | null }[];
   };
   aggregate_credits?: {
     cast?: { id: number; name: string; roles?: { character?: string }[]; profile_path?: string | null }[];
   };
-  created_by?: { name: string; profile_path?: string | null }[];
+  created_by?: { id: number; name: string; profile_path?: string | null }[];
   production_companies?: { name: string }[];
   networks?: { name: string }[];
   status?: string;
@@ -223,7 +223,7 @@ export interface TMDBMediaDetails {
   number_of_episodes?: number;
   genres: { id: number; name: string }[];
   credits?: {
-    crew: { job: string; name: string; profile_path?: string }[];
+    crew: { id: number; job: string; name: string; profile_path?: string }[];
   };
   production_companies?: { name: string }[];
   status?: string;

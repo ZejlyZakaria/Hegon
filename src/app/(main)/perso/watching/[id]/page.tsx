@@ -311,7 +311,7 @@ export default function MediaDetailPage() {
 
   const directors =
     credits?.directors ??
-    media.directors?.map((d) => ({ id: -1, name: d.name, profile_url: d.profile_url ?? null })) ??
+    media.directors?.map((d) => ({ id: d.id ?? -1, name: d.name, profile_url: d.profile_url ?? null })) ??
     [];
   const cast = hasStoredCast ? (media.cast_members ?? []) : (credits?.cast ?? []);
   const hasCastCrew = cast.length > 0 || (!isSeries && directors.length > 0);
@@ -382,7 +382,7 @@ export default function MediaDetailPage() {
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
 
         {/* ── LEFT — primary column ─────────────────────────────────── */}
-        <div className="min-w-0 space-y-8 px-4 py-6 lg:py-8 lg:pl-8 lg:pr-2">
+        <div className="min-w-0 space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-8 lg:pr-2">
 
           {/* Left = you & the work: verdict → memory → progress → catalogue (people, recos) */}
           <MyTake media={media} forceNoteOpen={forceTakeOpen} />
@@ -421,7 +421,7 @@ export default function MediaDetailPage() {
 
         {/* ── RIGHT — quiet utility rail (flows with the page, one natural scroll) ── */}
         <div className="min-w-0">
-          <div className="space-y-6 px-4 py-6 lg:py-8 lg:pl-2 lg:pr-8">
+          <div className="space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-2 lg:pr-8">
 
             {/* Desktop slot — the branded hero card leads the rail */}
             <div className="hidden lg:block">

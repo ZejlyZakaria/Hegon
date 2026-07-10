@@ -1118,6 +1118,158 @@ export async function getMediaDetails(id: number, type: "movie" | "tv") {
   return tmdbFetch<any>(`${type}/${id}`, { append_to_response: append });
 }
 
+// =====================================================
+// PERSON — TMDB people + your titles with them
+// =====================================================
+
+export interface PersonProfile {
+  id: number;
+  name: string;
+  profile_url: string | null;
+  biography: string | null;
+  birthday: string | null;
+  place_of_birth: string | null;
+  known_for_department: string | null;
+}
+
+export interface PersonCredit {
+  tmdb_id: number;
+  type: MediaType;          // tv→serie (anime is a user choice on add)
+  title: string;
+  poster_url: string | null;
+  backdrop_url: string | null;
+  year: number | null;
+  vote: number;
+  popularity: number;
+  role: string | null;      // character (acting) or job (directing)
+  department: "Acting" | "Directing";
+}
+
+const NOISE_GENRES = new Set([10767, 10763, 10764]); // Talk · News · Reality
+const SELF_ROLE = /^(self|himself|herself|themselves)\b/i;
+
+// Profile + full filmography in ONE TMDB call (append_to_response). The filmography is
+// de-noised (no talk-show "Self", no News/Reality, must have a poster) and de-duped, so
+// "his whole filmo" = his real acting/directing work, not a wall of TV appearances.
+export async function getPersonBundle(
+  id: number,
+): Promise<{ profile: PersonProfile; credits: PersonCredit[] }> {
+  const p = await tmdbFetch<any>(`person/${id}`, { append_to_response: "combined_credits" });
+
+  const profile: PersonProfile = {
+    id: p.id,
+    name: p.name,
+    profile_url: p.profile_path ? `https://image.tmdb.org/t/p/w300${p.profile_path}` : null,
+    biography: p.biography || null,
+    birthday: p.birthday || null,
+    place_of_birth: p.place_of_birth || null,
+    known_for_department: p.known_for_department || null,
+  };
+
+  const toCredit = (c: any, role: string | null, dept: "Acting" | "Directing"): PersonCredit | null => {
+    const mt = c.media_type;
+    if (mt !== "movie" && mt !== "tv") return null;
+    const title = c.title || c.name;
+    if (!title || !c.poster_path) return null;
+    if (dept === "Acting" && role && SELF_ROLE.test(role)) return null;
+    if (mt === "tv" && (c.genre_ids ?? []).some((g: number) => NOISE_GENRES.has(g))) return null;
+    const date = c.release_date || c.first_air_date || "";
+    return {
+      tmdb_id: c.id,
+      type: mt === "movie" ? "film" : "serie",
+      title,
+      poster_url: `https://image.tmdb.org/t/p/w342${c.poster_path}`,
+      backdrop_url: c.backdrop_path ? `https://image.tmdb.org/t/p/w1280${c.backdrop_path}` : null,
+      year: date ? Number(date.slice(0, 4)) || null : null,
+      vote: c.vote_average ?? 0,
+      popularity: c.popularity ?? 0,
+      role,
+      department: dept,
+    };
+  };
+
+  const cc = p.combined_credits ?? {};
+  const acting: (PersonCredit | null)[] = (cc.cast ?? []).map((c: any) => toCredit(c, c.character || null, "Acting"));
+  const directing: (PersonCredit | null)[] = (cc.crew ?? [])
+    .filter((c: any) => ["Director", "Creator", "Series Director"].includes(c.job))
+    .map((c: any) => toCredit(c, c.job || "Director", "Directing"));
+
+  // Same title can appear twice (or as both cast & crew) → keep the most-voted, then
+  // most popular first.
+  const byId = new Map<number, PersonCredit>();
+  for (const c of [...acting, ...directing].filter(Boolean) as PersonCredit[]) {
+    const prev = byId.get(c.tmdb_id);
+    if (!prev || c.vote > prev.vote) byId.set(c.tmdb_id, c);
+  }
+  const credits = [...byId.values()].sort((a, b) => b.popularity - a.popularity);
+
+  return { profile, credits };
+}
+
+export interface PersonTitle {
+  id: string;
+  type: MediaType;
+  title: string;
+  poster_url: string | null;
+  backdrop_url: string | null;
+  year: number | null;
+  runtime: number | null;
+  user_rating: number | null;
+  watched: boolean;
+  in_progress: boolean;
+  want_to_watch: boolean;
+  paused: boolean;
+  dropped: boolean;
+  current_season: number | null;
+  current_episode: number | null;
+  watched_at: string | null;
+  tmdb_id: number;
+  role: string | null;
+}
+
+const PERSON_TITLE_COLUMNS =
+  "id, type, title, poster_url, backdrop_url, year, runtime, user_rating, watched, in_progress, want_to_watch, paused, dropped, current_season, current_episode, watched_at, tmdb_id, cast_members, directors";
+
+// Your collection titles featuring this person — matched on the person's id inside the
+// stored cast_members / directors jsonb. Directors only match once their id is stored
+// (backfill), so old titles surface via cast; new ones via both.
+export async function getTitlesByPerson(userId: string, personId: number): Promise<PersonTitle[]> {
+  if (!userId || !personId) return [];
+  const supabase = createClient();
+  const base = () =>
+    supabase.schema("watching").from("media_items").select(PERSON_TITLE_COLUMNS)
+      .eq("user_id", userId)
+      .or("watched.eq.true,in_progress.eq.true,dropped.eq.true,paused.eq.true,want_to_watch.eq.true");
+
+  // NB: supabase-js `.contains(col, [{...}])` serializes to invalid json for jsonb-array
+  // containment — use the explicit `cs` filter with a JSON string instead.
+  const needle = JSON.stringify([{ id: personId }]);
+  const [castRes, dirRes] = await Promise.all([
+    base().filter("cast_members", "cs", needle),
+    base().filter("directors", "cs", needle),
+  ]);
+  if (castRes.error) throw castRes.error;
+
+  const pick = (r: any, role: string | null): PersonTitle => ({
+    id: r.id, type: r.type, title: r.title, poster_url: r.poster_url, backdrop_url: r.backdrop_url,
+    year: r.year, runtime: r.runtime, user_rating: r.user_rating, watched: r.watched,
+    in_progress: r.in_progress, want_to_watch: r.want_to_watch, paused: r.paused, dropped: r.dropped,
+    current_season: r.current_season, current_episode: r.current_episode,
+    watched_at: r.watched_at, tmdb_id: r.tmdb_id, role,
+  });
+
+  const map = new Map<string, PersonTitle>();
+  for (const r of (castRes.data ?? []) as any[]) {
+    const cm = (r.cast_members ?? []).find((c: any) => c.id === personId);
+    map.set(r.id, pick(r, cm?.character ?? null));
+  }
+  for (const r of (dirRes.data ?? []) as any[]) {
+    if (map.has(r.id)) continue;
+    map.set(r.id, pick(r, r.type === "film" ? "Director" : "Creator"));
+  }
+  return [...map.values()];
+}
+
 // Hero data (trending + recommendations) — read from the GLOBAL trending cache
 // (watching.trending_cache, refreshed daily by the `trending-refresh` cron). One
 // shared row per type → instant DB read, zero TMDB latency at request time. The
