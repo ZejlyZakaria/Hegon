@@ -179,7 +179,7 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
             style={{ objectPosition: "center 25%" }}
             sizes="100vw"
           />
-          <div className="absolute inset-0 bg-linear-to-t from-zinc-950 via-zinc-950/30 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/30 to-transparent" />
           <button
             type="button"
             onClick={onBack}
@@ -193,7 +193,7 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
         <div className="relative -mt-16 px-4 pb-2">
           {/* poster + title side by side (title fills the space, not the badges) */}
           <div className="flex items-end gap-4">
-            <div className="relative aspect-2/3 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 shadow-xl">
+            <div className="relative aspect-2/3 w-24 shrink-0 overflow-hidden rounded-tile border border-white/10 shadow-xl">
               <Image
                 src={media.poster_url || "/placeholder.svg"}
                 alt={media.title}
@@ -247,8 +247,8 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
           style={{ objectPosition: "center 27%" }}
           sizes="100vw"
         />
-        <div className="absolute inset-0 bg-linear-to-b from-black/10 via-zinc-950/50 to-zinc-950" />
-        <div className="absolute inset-0 bg-linear-to-r from-zinc-950/80 via-zinc-950/20 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-b from-black/10 via-surface-0/50 to-surface-0" />
+        <div className="absolute inset-0 bg-linear-to-r from-surface-0/80 via-surface-0/20 to-transparent" />
 
         <button
           type="button"
@@ -263,7 +263,7 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
           <div className="flex items-end gap-8">
             {/* Poster */}
             <div className="relative shrink-0">
-              <div className="relative aspect-2/3 w-40 overflow-hidden rounded-xl p-1">
+              <div className="relative aspect-2/3 w-40 overflow-hidden rounded-tile p-1">
                 <div
                   className="absolute inset-0"
                   style={{

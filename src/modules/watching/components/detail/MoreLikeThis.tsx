@@ -28,7 +28,7 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
 
   return (
     <section>
-      <h2 className="mb-3 text-base font-semibold text-text-primary">More Like This</h2>
+      <h2 className="mb-3 text-title text-text-primary">More Like This</h2>
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
         {items.slice(0, 6).map((sim) => {
           const title = sim.title || sim.name || "";

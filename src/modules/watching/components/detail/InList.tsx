@@ -163,7 +163,7 @@ export function InList({ mediaItemId, userId }: Props) {
                 <Plus size={13} />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" sideOffset={6} className="w-56 border-border-subtle bg-surface-2 p-0 shadow-md">
+            <PopoverContent align="end" sideOffset={6} className="w-56 border-border-subtle bg-surface-3 p-0 shadow-md">
               <div className="p-1.5">
                 {isLoading && (
                   <div className="flex items-center justify-center py-4">
@@ -180,7 +180,7 @@ export function InList({ mediaItemId, userId }: Props) {
                       key={list.id}
                       type="button"
                       onClick={() => handleToggle(list.id)}
-                      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-surface-1"
+                      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-surface-2"
                     >
                       <div className={cn(
                         "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
@@ -207,7 +207,7 @@ export function InList({ mediaItemId, userId }: Props) {
                         if (e.key === "Escape") { setIsCreating(false); setNewName(""); }
                       }}
                       placeholder="List name…"
-                      className="min-w-0 flex-1 rounded-md border border-border-subtle bg-surface-1 px-2 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
+                      className="min-w-0 flex-1 rounded-md border border-border-subtle bg-surface-2 px-2 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
                     />
                     <button
                       type="button"
@@ -229,7 +229,7 @@ export function InList({ mediaItemId, userId }: Props) {
                   <button
                     type="button"
                     onClick={() => { setIsCreating(true); setTimeout(() => inputRef.current?.focus(), 50); }}
-                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-text-tertiary transition-colors hover:bg-surface-1 hover:text-text-primary"
+                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary"
                   >
                     <Plus size={12} />
                     New list

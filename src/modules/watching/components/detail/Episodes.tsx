@@ -10,6 +10,9 @@ import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/shared/components/ui/select";
 import { useSeasonEpisodes } from "../../hooks/useSeasonEpisodes";
 import {
   useEpisodeHighlights,
@@ -60,7 +63,7 @@ function StillCard({
 
   return (
     <div className="group relative w-66 shrink-0">
-      <div className="relative aspect-video overflow-hidden rounded-xl border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.03]">
+      <div className="relative aspect-video overflow-hidden rounded-card border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.03]">
         {still ? (
           <img src={still} alt={line2} loading="lazy" className="h-full w-full object-cover" />
         ) : (
@@ -286,25 +289,43 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
         </div>
       </div>
 
-      {/* Season selector — All view only */}
+      {/* Season selector — All view only. Chips up to 10; beyond that (One Piece: 23)
+          a wall of chips is unusable → collapse into a Select. */}
       {view === "all" && seasonCount > 1 && (
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {Array.from({ length: seasonCount }, (_, i) => i + 1).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setSeason(s)}
-              className={cn(
-                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
-                s === season
-                  ? "bg-accent-watching text-white"
-                  : "bg-surface-2 text-text-tertiary hover:bg-surface-3 hover:text-text-secondary",
-              )}
-            >
-              S{s}
-            </button>
-          ))}
-        </div>
+        seasonCount > 10 ? (
+          <div className="mb-3">
+            <Select value={String(season)} onValueChange={(v) => setSeason(Number(v))}>
+              <SelectTrigger className="h-8 w-40 border-border-subtle bg-surface-2 text-xs text-text-primary focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-border-strong bg-surface-3">
+                {Array.from({ length: seasonCount }, (_, i) => i + 1).map((s) => (
+                  <SelectItem key={s} value={String(s)} className="text-xs focus:bg-surface-2 focus:text-text-primary">
+                    Season {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {Array.from({ length: seasonCount }, (_, i) => i + 1).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSeason(s)}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
+                  s === season
+                    ? "bg-accent-watching text-white"
+                    : "bg-surface-2 text-text-tertiary hover:bg-surface-3 hover:text-text-secondary",
+                )}
+              >
+                S{s}
+              </button>
+            ))}
+          </div>
+        )
       )}
 
       {/* ── All: this season's episodes ── */}
@@ -312,7 +333,7 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
         isLoading ? (
           <div className="-ml-2 flex gap-3 overflow-x-auto scrollbar-hide py-2 pl-2 pr-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="aspect-video w-66 shrink-0 animate-pulse rounded-xl bg-surface-2" />
+              <div key={i} className="aspect-video w-66 shrink-0 animate-pulse rounded-card bg-surface-2" />
             ))}
           </div>
         ) : episodes.length === 0 ? (

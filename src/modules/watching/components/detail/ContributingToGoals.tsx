@@ -33,7 +33,7 @@ export function ContributingToGoals({ media }: { media: WatchingMedia }) {
               key={g.id}
               type="button"
               onClick={() => router.push(`/life/goals/${g.id}`)}
-              className="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border-subtle bg-surface-2/40 px-3 py-2.5 text-left transition-colors hover:bg-surface-2"
+              className="group flex w-full cursor-pointer items-center gap-3 rounded-card border border-border-subtle bg-surface-2/40 px-3 py-2.5 text-left transition-colors hover:bg-surface-2"
             >
               <div
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"

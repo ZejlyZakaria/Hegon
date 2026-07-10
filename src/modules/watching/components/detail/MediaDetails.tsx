@@ -69,14 +69,14 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
             target="_blank"
             rel="noopener noreferrer"
             title="View on IMDb"
-            className="inline-flex items-center gap-1 rounded-md bg-[#F5C518] px-2 py-1 text-[11px] font-bold text-black transition-transform duration-150 ease-out hover:scale-105"
+            className="inline-flex items-center gap-1 rounded-md bg-[#F5C518] px-2 py-1 text-[11px] font-bold text-black transition-opacity hover:opacity-85"
           >
             IMDb
             <ExternalLink size={10} strokeWidth={2.5} />
           </a>
         )}
       </div>
-      <div className="surface-quiet overflow-hidden rounded-2xl">
+      <div className="surface-quiet overflow-hidden rounded-card">
         {omdb?.awards && <AwardsBlock raw={omdb.awards} />}
         {/* Reference only — year/runtime/seasons/status live in the hero, never twice. */}
         <div className="divide-y divide-border-subtle px-4">
