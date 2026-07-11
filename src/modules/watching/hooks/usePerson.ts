@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getPersonBundle, getTitlesByPerson } from "../service";
+import { getPeopleCounts, getPersonBundle, getTitlesByPerson } from "../service";
 import { TMDB_KEYS, WATCHING_KEYS } from "./query-keys";
 
 // Profile + full filmography (one TMDB call). Cached under the TMDB namespace so DB
@@ -23,5 +23,16 @@ export function useTitlesByPerson(userId: string, personId: number, creditTmdbId
     queryKey: WATCHING_KEYS.titlesByPerson(userId, personId),
     queryFn: () => getTitlesByPerson(userId, creditTmdbIds),
     enabled: !!userId && !!personId && creditTmdbIds.length > 0,
+  });
+}
+
+// Library-wide people frequency — the same answer for every person page, so it's held
+// for the session and shared across navigations through the co-star web.
+export function usePeopleCounts(userId: string) {
+  return useQuery({
+    queryKey: WATCHING_KEYS.peopleCounts(userId),
+    queryFn: () => getPeopleCounts(userId),
+    staleTime: 30 * 60 * 1000,
+    enabled: !!userId,
   });
 }

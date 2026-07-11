@@ -68,6 +68,10 @@ export const WATCHING_KEYS = {
   // Your collection titles featuring a person (actor/director)
   titlesByPerson: (userId: string, personId: number) =>
     [...WATCHING_KEYS.all, 'by-person', userId, personId] as const,
+
+  // How many titles you've seen each person in (library-wide) — powers "your #3 actor"
+  peopleCounts: (userId: string) =>
+    [...WATCHING_KEYS.all, 'people-counts', userId] as const,
 } as const;
 
 // =====================================================

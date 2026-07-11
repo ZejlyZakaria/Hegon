@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { Clapperboard, Sparkles, Star } from "lucide-react";
+import { Clapperboard, Sparkles, Star, Trophy } from "lucide-react";
 
 const TEAL = "var(--color-accent-watching-vivid)";
 const AMBER = "#fbbf24";
@@ -12,7 +10,7 @@ export interface JourneyStats {
   total: number;
   watchedCount: number;
   avgRating: number | null;
-  top: { id: string; title: string; poster_url: string | null; user_rating: number | null; year: number | null } | null;
+  topTen: number;      // how many of your Top 10s (one per type) are theirs
 }
 
 function MiniStat({ label, children }: { label: string; children: React.ReactNode }) {
@@ -25,10 +23,10 @@ function MiniStat({ label, children }: { label: string; children: React.ReactNod
 }
 
 // The branded surface of the person page — pendant of the detail page's StatusCard
-// (same teal-deep material, rail #1). Your relationship in two mini stats + your #1 +
-// how far through their work you are. (No "hours" — undecidable across films/series.)
+// (same teal-deep material, rail #1). Your relationship in two mini stats + how far
+// through their work you are. (No "hours" — undecidable across films/series.)
 export function PersonJourney({ stats }: { stats: JourneyStats }) {
-  const { owned, total, watchedCount, avgRating, top } = stats;
+  const { owned, total, watchedCount, avgRating, topTen } = stats;
   const pct = total > 0 ? Math.min(100, Math.round((owned / total) * 100)) : 0;
 
   return (
@@ -63,25 +61,16 @@ export function PersonJourney({ stats }: { stats: JourneyStats }) {
             </MiniStat>
           </div>
 
-          {top && top.user_rating != null && (
+          {topTen > 0 && (
             <>
               <div className="my-3 h-px bg-white/10" />
-              <p className="text-caption uppercase tracking-wide text-white/45">Your #1</p>
-              {/* Half-width cell, poster + title + rating·year below — like Stats Top Picks */}
-              <Link href={`/perso/watching/${top.id}`} className="group -mx-1.5 mt-1 flex items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-white/5">
-                <div className="relative h-14 w-9 shrink-0 overflow-hidden rounded-md bg-white/10">
-                  {top.poster_url && <Image src={top.poster_url} alt="" fill unoptimized sizes="36px" className="object-cover" />}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-label font-medium text-white transition-colors group-hover:text-white/90">{top.title}</p>
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-0.5 text-caption font-semibold text-amber-300">
-                      <Star size={9} style={{ color: AMBER, fill: AMBER }} /> {top.user_rating}
-                    </span>
-                    {top.year && <span className="text-caption text-white/45">{top.year}</span>}
-                  </div>
-                </div>
-              </Link>
+              <p className="flex items-center gap-1.5 text-label text-white/70">
+                <Trophy size={12} style={{ color: AMBER }} />
+                <span>
+                  <span className="font-semibold text-white">{topTen}</span> of your Top 10{" "}
+                  {topTen > 1 ? "are" : "is"} theirs
+                </span>
+              </p>
             </>
           )}
 

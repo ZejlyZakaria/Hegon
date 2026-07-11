@@ -1147,6 +1147,10 @@ export interface PersonCredit {
 
 const NOISE_GENRES = new Set([10767, 10763, 10764]); // Talk · News · Reality
 const SELF_ROLE = /^(self|himself|herself|themselves)\b/i;
+// TMDB's own marker for a walk-on: "Narrator (voice) (uncredited)". It's the ONLY signal
+// that separates noise from a real role — `order` doesn't (Spacey is order 56 on Se7en as
+// John Doe, exactly like Jackson's uncredited narration on Inglourious Basterds).
+const UNCREDITED_ROLE = /\(uncredited\)/i;
 
 // Profile + full filmography in ONE TMDB call (append_to_response). The filmography is
 // de-noised (no talk-show "Self", no News/Reality, must have a poster) and de-duped, so
@@ -1171,7 +1175,7 @@ export async function getPersonBundle(
     if (mt !== "movie" && mt !== "tv") return null;
     const title = c.title || c.name;
     if (!title || !c.poster_path) return null;
-    if (dept === "Acting" && role && SELF_ROLE.test(role)) return null;
+    if (dept === "Acting" && role && (SELF_ROLE.test(role) || UNCREDITED_ROLE.test(role))) return null;
     if (mt === "tv" && (c.genre_ids ?? []).some((g: number) => NOISE_GENRES.has(g))) return null;
     const date = c.release_date || c.first_air_date || "";
     return {
@@ -1206,6 +1210,14 @@ export async function getPersonBundle(
   return { profile, credits };
 }
 
+// A person as stored on a media item (cast_members / directors entries).
+export interface PersonRef {
+  id?: number;
+  name: string;
+  character?: string | null;
+  profile_url?: string | null;
+}
+
 export interface PersonTitle {
   id: string;
   type: MediaType;
@@ -1220,15 +1232,19 @@ export interface PersonTitle {
   want_to_watch: boolean;
   paused: boolean;
   dropped: boolean;
+  priority: number | null;   // Top 10 rank (per type) — null = not in a Top 10
   current_season: number | null;
   current_episode: number | null;
   watched_at: string | null;
   tmdb_id: number;
   role: string | null;
+  // The other people on this title — feeds "Seen together".
+  cast_members: PersonRef[];
+  directors: PersonRef[];
 }
 
 const PERSON_TITLE_COLUMNS =
-  "id, type, title, poster_url, backdrop_url, year, runtime, user_rating, watched, in_progress, want_to_watch, paused, dropped, current_season, current_episode, watched_at, tmdb_id";
+  "id, type, title, poster_url, backdrop_url, year, runtime, user_rating, watched, in_progress, want_to_watch, paused, dropped, priority, current_season, current_episode, watched_at, tmdb_id, cast_members, directors";
 
 // Your collection titles featuring this person — matched on the person's TMDB filmography
 // (their credits' tmdb_ids) ∩ your library, NOT on stored cast_members (which caps at ~12
@@ -1248,9 +1264,49 @@ export async function getTitlesByPerson(userId: string, creditTmdbIds: number[])
     id: r.id, type: r.type, title: r.title, poster_url: r.poster_url, backdrop_url: r.backdrop_url,
     year: r.year, runtime: r.runtime, user_rating: r.user_rating, watched: r.watched,
     in_progress: r.in_progress, want_to_watch: r.want_to_watch, paused: r.paused, dropped: r.dropped,
-    current_season: r.current_season, current_episode: r.current_episode,
+    priority: r.priority ?? null, current_season: r.current_season, current_episode: r.current_episode,
     watched_at: r.watched_at, tmdb_id: r.tmdb_id, role: null,
+    cast_members: r.cast_members ?? [], directors: r.directors ?? [],
   }));
+}
+
+export interface PersonCount { n: number; name: string }
+
+// How many titles you've SEEN each person in, across your whole library — the basis of
+// "your #3 most-watched actor" (names included, so a tie can be named). Two lean jsonb
+// columns for the rows you actually watched (want_to_watch excluded: it isn't a shared
+// history yet). Client-side aggregation is enough at this size and keeps it one cached read.
+export async function getPeopleCounts(
+  userId: string,
+): Promise<{ acting: Record<number, PersonCount>; directing: Record<number, PersonCount> }> {
+  const acting: Record<number, PersonCount> = {};
+  const directing: Record<number, PersonCount> = {};
+  if (!userId) return { acting, directing };
+
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("media_items").select("cast_members, directors")
+    .eq("user_id", userId)
+    .or("watched.eq.true,in_progress.eq.true,dropped.eq.true,paused.eq.true,favorite.eq.true");
+  if (error) throw error;
+
+  for (const row of (data ?? []) as any[]) {
+    // A person can be listed twice on one title — count the title once per role
+    // (an actor-director like Eastwood still counts in both buckets).
+    const bump = (bucket: Record<number, PersonCount>, people: PersonRef[] | null) => {
+      const seen = new Set<number>();
+      for (const p of people ?? []) {
+        if (!p?.id || seen.has(p.id)) continue;
+        seen.add(p.id);
+        const prev = bucket[p.id];
+        if (prev) prev.n += 1;
+        else bucket[p.id] = { n: 1, name: p.name };
+      }
+    };
+    bump(acting, row.cast_members);
+    bump(directing, row.directors);
+  }
+  return { acting, directing };
 }
 
 // Hero data (trending + recommendations) — read from the GLOBAL trending cache

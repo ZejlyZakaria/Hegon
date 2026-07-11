@@ -3,12 +3,19 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { Plus, Search, Star } from "lucide-react";
+import { CalendarClock, Plus, Search, Star } from "lucide-react";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { cn } from "@/shared/utils/utils";
-import { usePersonBundle, useTitlesByPerson } from "@/modules/watching/hooks/usePerson";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/shared/components/ui/select";
+import { usePeopleCounts, usePersonBundle, useTitlesByPerson } from "@/modules/watching/hooks/usePerson";
 import { PersonHero } from "@/modules/watching/components/person/PersonHero";
 import { PersonJourney } from "@/modules/watching/components/person/PersonJourney";
+import { PersonSkeleton } from "@/modules/watching/components/person/PersonSkeleton";
+import { SeenTogether } from "@/modules/watching/components/person/SeenTogether";
+import { PersonInsights, type PersonInsightsData } from "@/modules/watching/components/person/PersonInsights";
+import { PersonTimelinePanel, datedCount } from "@/modules/watching/components/person/PersonTimelinePanel";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import type { PersonCredit, PersonTitle } from "@/modules/watching/service";
 
@@ -19,13 +26,25 @@ const AMBER = "#fbbf24";
 // Our stored urls are full (w342) — strip back to the raw TMDB path the modal expects.
 const stripSize = (u: string | null) => (u ? u.replace(/^https:\/\/image\.tmdb\.org\/t\/p\/w\d+/, "") : null);
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-border-subtle py-2.5 last:border-0">
-      <span className="shrink-0 text-xs text-text-tertiary">{label}</span>
-      <span className="text-right text-xs font-medium text-text-secondary">{value}</span>
-    </div>
-  );
+// The toolbar only earns its place once the grid is big enough to need it.
+const TOOLBAR_MIN = 5;
+const TIMELINE_MIN = 4;   // dated titles — fewer than that tells no story
+
+type SortKey = "rating" | "watched" | "released";
+const SORT_LABEL: Record<SortKey, string> = {
+  rating: "Your rating", watched: "Watch date", released: "Release date",
+};
+
+// Status is the spine of the grid — it never hides anything, it orders it. The sort
+// select only reorders WITHIN each status group, so the structure never disappears.
+const STATUS_RANK = (t: PersonTitle) =>
+  t.watched ? 0 : t.in_progress ? 1 : t.want_to_watch ? 2 : t.paused ? 3 : t.dropped ? 4 : 5;
+
+// Missing values always sink to the bottom of their group, whatever the sort.
+function sortValue(t: PersonTitle, key: SortKey): number {
+  if (key === "rating") return t.user_rating ?? -1;
+  if (key === "released") return t.year ?? -1;
+  return t.watched_at ? new Date(t.watched_at).getTime() : -1;
 }
 
 // Status pill on a "your titles" tile (watched → the rating badge shows instead).
@@ -49,19 +68,20 @@ export default function PersonPage() {
 
   const { data: bundle, isLoading } = usePersonBundle(personId);
   const creditTmdbIds = bundle ? bundle.credits.map((c) => c.tmdb_id) : [];
-  const { data: rawTitles = [] } = useTitlesByPerson(userId ?? "", personId, creditTmdbIds);
+  const { data: rawTitles = [], isFetched: titlesFetched } = useTitlesByPerson(userId ?? "", personId, creditTmdbIds);
+  const { data: peopleCounts, isFetched: countsFetched } = usePeopleCounts(userId ?? "");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [addItem, setAddItem] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(18);
+  const [sort, setSort] = useState<SortKey>("rating");
+  const [timelineOpen, setTimelineOpen] = useState(false);
 
-  if (isLoading || !bundle) {
-    return (
-      <div className="min-h-screen bg-surface-0">
-        <div className="aspect-video w-full animate-pulse bg-surface-1 lg:aspect-21/9" />
-      </div>
-    );
-  }
+  // Hold the skeleton until BOTH halves are in. The TMDB filmography lands first; if we
+  // painted then, "Not seen yet" would render alone and get shoved down when your titles
+  // arrive. A section appears once, in its place.
+  const waitingForTitles = !!userId && creditTmdbIds.length > 0 && !titlesFetched;
+  if (isLoading || !bundle || waitingForTitles) return <PersonSkeleton />;
 
   const { profile, credits } = bundle;
   const roleLabel = DEPT_LABEL[profile.known_for_department ?? ""] ?? profile.known_for_department ?? "Person";
@@ -74,6 +94,10 @@ export default function PersonPage() {
   const yourTitles = rawTitles
     .filter((t) => creditByKey.has(`${kind(t.type)}:${t.tmdb_id}`))
     .map((t) => ({ ...t, role: creditByKey.get(`${kind(t.type)}:${t.tmdb_id}`)?.role ?? null }));
+
+  const sortedTitles = [...yourTitles].sort(
+    (a, b) => STATUS_RANK(a) - STATUS_RANK(b) || sortValue(b, sort) - sortValue(a, sort),
+  );
 
   // ── Your relationship with this person ──
   const owned = yourTitles.length;
@@ -98,8 +122,57 @@ export default function PersonPage() {
 
   const journey = {
     owned, total, watchedCount: watched.length, avgRating,
-    top: top ? { id: top.id, title: top.title, poster_url: top.poster_url, user_rating: top.user_rating, year: top.year } : null,
+    // Top 10 = a priority rank (one Top 10 per type), NOT the favorite heart.
+    topTen: yourTitles.filter((t) => t.priority != null).length,
   };
+
+  // ── Your [name]: rank in your library + the two titles that define your relationship ──
+  const isDirector = profile.known_for_department === "Directing";
+  const bucket = (isDirector ? peopleCounts?.directing : peopleCounts?.acting) ?? {};
+  // A ranking has to measure everyone with the SAME ruler, so it reads the cast_members
+  // index for this person too — not their (richer) credits ∩ library count. Mixing the two
+  // made Brad #1-alone on his page but tied on Samuel's. The grid above still uses the
+  // richer match; the rank is a relative statement and consistency beats precision here.
+  const myCount = bucket[personId]?.n ?? 0;
+  const others = Object.entries(bucket)
+    .filter(([id]) => Number(id) !== personId)
+    .map(([, p]) => p);
+  const rank =
+    countsFetched && myCount >= 2
+      ? {
+          position: 1 + others.filter((p) => p.n > myCount).length,
+          noun: isDirector ? "director" : "actor",
+          // A rank you share is only honest if it says with whom.
+          tiedWith: others.filter((p) => p.n === myCount).map((p) => p.name).sort(),
+        }
+      : null;
+
+  // Where you and the world disagree most, in your favour. Your #1 is excluded — it's the
+  // cell right next to it, and repeating it would say nothing new.
+  const gem = watched
+    .filter((t) => t.user_rating != null && t.id !== top?.id)
+    .map((t) => {
+      const world = creditByKey.get(`${kind(t.type)}:${t.tmdb_id}`)?.vote ?? 0;
+      return { t, world, delta: (t.user_rating ?? 0) - world };
+    })
+    .filter((g) => g.world > 0 && g.delta >= 0.5)
+    .sort((a, b) => b.delta - a.delta)[0];
+
+  const insights: PersonInsightsData = {
+    rank,
+    best: top
+      ? { id: top.id, title: top.title, poster_url: top.poster_url, rating: top.user_rating!, meta: top.year ? String(top.year) : "" }
+      : null,
+    hiddenGem: gem
+      ? {
+          id: gem.t.id, title: gem.t.title, poster_url: gem.t.poster_url, rating: gem.t.user_rating!,
+          meta: gem.world.toFixed(1), metaLogo: "/logo/watching_rating/Tmdb.svg",
+        }
+      : null,
+  };
+
+  const showToolbar = yourTitles.length >= TOOLBAR_MIN;
+  const showTimeline = datedCount(yourTitles) >= TIMELINE_MIN;
 
   const openAdd = (c: PersonCredit) =>
     setAddItem({
@@ -131,9 +204,38 @@ export default function PersonPage() {
         <div className="min-w-0 space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-8 lg:pr-2">
           {yourTitles.length > 0 && (
             <section>
-              <h2 className="mb-3 text-title text-text-primary">Your titles with {firstName}</h2>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-title text-text-primary">Your titles with {firstName}</h2>
+                {showToolbar && (
+                  <div className="flex items-center gap-2">
+                    {showTimeline && (
+                      <button
+                        type="button"
+                        onClick={() => setTimelineOpen(true)}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-control border border-border-subtle bg-surface-1 px-3 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+                      >
+                        <CalendarClock size={13} />
+                        Timeline
+                      </button>
+                    )}
+                    <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+                      <SelectTrigger className="h-8 w-36 border-border-subtle bg-surface-1 text-xs text-text-secondary focus:ring-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-border-strong bg-surface-3">
+                        {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
+                          <SelectItem key={k} value={k} className="text-xs focus:bg-surface-2 focus:text-text-primary">
+                            {SORT_LABEL[k]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-                {yourTitles.map((t) => {
+                {sortedTitles.map((t) => {
                   const badge = titleBadge(t);
                   return (
                     <button
@@ -224,29 +326,25 @@ export default function PersonPage() {
           )}
         </div>
 
-        {/* ── RIGHT — branded journey + reference ── */}
+        {/* ── RIGHT — your journey, the web around them, your verdict ── */}
         <div className="min-w-0">
           <div className="space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-2 lg:pr-8">
             <div className="hidden lg:block">
               <PersonJourney stats={journey} />
             </div>
 
-            <section>
-              <h2 className="mb-3 text-title text-text-primary">Details</h2>
-              <div className="surface-quiet overflow-hidden rounded-card">
-                <div className="divide-y divide-border-subtle px-4">
-                  <Row label="Known for" value={roleLabel} />
-                  {profile.birthday && (
-                    <Row label="Born" value={new Date(profile.birthday).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} />
-                  )}
-                  {profile.place_of_birth && <Row label="From" value={profile.place_of_birth} />}
-                  <Row label="Filmography" value={`${total} titles`} />
-                </div>
-              </div>
-            </section>
+            <SeenTogether titles={yourTitles} personId={personId} firstName={firstName} />
+            <PersonInsights data={insights} firstName={firstName} />
           </div>
         </div>
       </div>
+
+      <PersonTimelinePanel
+        open={timelineOpen}
+        onClose={() => setTimelineOpen(false)}
+        titles={yourTitles}
+        firstName={firstName}
+      />
 
       <AddMediaModal
         isOpen={!!addItem}
