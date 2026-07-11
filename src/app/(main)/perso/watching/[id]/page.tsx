@@ -35,6 +35,7 @@ import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonH
 import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import { stampSeasons, seasonRange } from "@/modules/watching/lib/season-years";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
+import { QuickStats } from "@/modules/watching/components/detail/QuickStats";
 import { InList } from "@/modules/watching/components/detail/InList";
 import { AnimeThemes } from "@/modules/watching/components/detail/AnimeThemes";
 import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
@@ -382,7 +383,7 @@ export default function MediaDetailPage() {
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
 
         {/* ── LEFT — primary column ─────────────────────────────────── */}
-        <div className="min-w-0 space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-8 lg:pr-2">
+        <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
 
           {/* Left = you & the work: verdict → memory → progress → catalogue (people, recos) */}
           <MyTake media={media} forceNoteOpen={forceTakeOpen} />
@@ -421,12 +422,15 @@ export default function MediaDetailPage() {
 
         {/* ── RIGHT — quiet utility rail (flows with the page, one natural scroll) ── */}
         <div className="min-w-0">
-          <div className="space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-2 lg:pr-8">
+          <div className="space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-2 lg:pr-8">
 
             {/* Desktop slot — the branded hero card leads the rail */}
             <div className="hidden lg:block">
               {statusCard}
             </div>
+
+            {/* Your numbers first, the world's numbers (Details) after. */}
+            <QuickStats media={media} />
 
             <AnimeThemes media={media} />
 

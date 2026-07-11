@@ -191,7 +191,7 @@ export default function PersonPage() {
 
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
         {/* ── LEFT — your memory, then discovery ── */}
-        <div className="min-w-0 space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-8 lg:pr-2">
+        <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
           {yourTitles.length > 0 && (
             <section>
               <SectionHeader
@@ -296,7 +296,7 @@ export default function PersonPage() {
 
         {/* ── RIGHT — your journey, the web around them, your verdict ── */}
         <div className="min-w-0">
-          <div className="space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-2 lg:pr-8">
+          <div className="space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-2 lg:pr-8">
             <div className="hidden lg:block">
               <PersonJourney stats={journey} />
             </div>
