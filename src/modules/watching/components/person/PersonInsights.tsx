@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Gem, Star, Trophy } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 
 const AMBER = "#fbbf24";
 
@@ -72,7 +73,7 @@ export function PersonInsights({ data, firstName }: { data: PersonInsightsData; 
 
   return (
     <section>
-      <h2 className="mb-3 text-title text-text-primary">Your {firstName}</h2>
+      <SectionHeader title={`Your ${firstName}`} />
       <div className="surface-quiet rounded-card p-4">
         {rank && (
           <div className="flex items-center gap-3">

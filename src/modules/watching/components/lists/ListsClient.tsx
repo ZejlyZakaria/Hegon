@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Check, Loader2, Plus, Trash2, Trophy } from "lucide-react";
+import { Plus, Trash2, Trophy } from "lucide-react";
 import { toast } from "@/shared/utils/toast";
+import { InlineFormActions } from "@/shared/components/ui/inline-form-actions";
+import { Button } from "@/shared/components/ui/button";
+import { Hint } from "@/shared/components/ui/tooltip";
 import {
   useListsWithThumbnails,
   useCreateMediaList,
@@ -73,24 +76,14 @@ function NewListForm({ onConfirm, onCancel, isPending }: {
           placeholder="List name…"
           className="w-full bg-transparent text-center text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none"
         />
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => onConfirm(name.trim())}
-            disabled={!name.trim() || isPending}
-            className="flex items-center gap-1 rounded-md bg-accent-watching px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-40"
-          >
-            {isPending ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
-            Create
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md px-2 py-1 text-xs text-text-tertiary hover:text-text-primary"
-          >
-            Cancel
-          </button>
-        </div>
+        <InlineFormActions
+          onCancel={onCancel}
+          onSave={() => onConfirm(name.trim())}
+          saving={isPending}
+          disabled={!name.trim()}
+          accent="var(--color-accent-watching)"
+          saveLabel="Create"
+        />
       </div>
       <div className="border-t border-border-subtle p-3">
         <p className="text-sm font-semibold text-text-tertiary/40">New list</p>
@@ -140,13 +133,17 @@ function ListCard({ list, onClick, onDelete }: {
             <Trophy size={9} /> Ranked
           </div>
         )}
-        <button
-          type="button"
-          onClick={onDelete}
-          className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white/60 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-black/90 hover:text-white"
-        >
-          <Trash2 size={11} />
-        </button>
+        <Hint label="Delete list">
+          <Button
+            variant="glass"
+            size="icon-xs"
+            aria-label="Delete list"
+            onClick={onDelete}
+            className="absolute right-2 top-2 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+          >
+            <Trash2 />
+          </Button>
+        </Hint>
       </div>
 
       <div className="p-3">

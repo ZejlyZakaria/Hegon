@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Users } from "lucide-react";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 import type { PersonTitle } from "../../service";
 
 interface Props {
@@ -62,10 +62,7 @@ export function SeenTogether({ titles, personId, firstName }: Props) {
 
   return (
     <section>
-      <h2 className="mb-3 flex items-center gap-2 text-title text-text-primary">
-        <Users size={14} className="text-text-tertiary" />
-        Seen with {firstName}
-      </h2>
+      <SectionHeader title={`Seen with ${firstName}`} />
       <div className="surface-quiet rounded-card p-2">
         <div className="grid grid-cols-2 gap-1">
           {people.map((p) => (

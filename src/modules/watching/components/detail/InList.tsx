@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import { Button } from "@/shared/components/ui/button";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { Hint } from "@/shared/components/ui/tooltip";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 import {
   useMediaLists,
   useListsForMedia,
@@ -146,9 +147,10 @@ export function InList({ mediaItemId, userId }: Props) {
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-title text-text-primary">In List</h2>
-        <div className="flex items-center gap-1.5">
+      <SectionHeader
+        title="In List"
+        actions={
+          <>
           {showNav && <CarouselNav size="sm" onPrev={() => scroll(-1)} onNext={() => scroll(1)} />}
           <Popover open={open} onOpenChange={setOpen}>
             {/* Hint wraps the trigger (not the reverse): PopoverTrigger forwards its ref,
@@ -237,16 +239,13 @@ export function InList({ mediaItemId, userId }: Props) {
           </Popover>
 
           {cards.length > 0 && (
-            <button
-              type="button"
-              onClick={seeAll}
-              className="rounded-md px-2 py-1 text-xs font-medium text-text-tertiary transition-colors hover:text-text-primary"
-            >
+            <Button variant="subtle" size="xs" onClick={seeAll}>
               See all
-            </button>
+            </Button>
           )}
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {isLoading ? (
         <div className="h-44 w-2/3 animate-pulse rounded-tile bg-surface-1" />

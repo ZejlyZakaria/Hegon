@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { CalendarClock, Plus, Star } from "lucide-react";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { posterStatus, PosterStatusBadge } from "@/modules/watching/components/shared/StatusBadge";
 import { Button } from "@/shared/components/ui/button";
@@ -193,27 +194,29 @@ export default function PersonPage() {
         <div className="min-w-0 space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-8 lg:pr-2">
           {yourTitles.length > 0 && (
             <section>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-title text-text-primary">Your titles with {firstName}</h2>
-                {showToolbar && (
-                  <div className="flex items-center gap-2">
-                    {showTimeline && (
-                      <Button variant="quiet" size="sm" onClick={() => setTimelineOpen(true)}>
-                        <CalendarClock />
-                        Timeline
-                      </Button>
-                    )}
-                    <FilterSelect
-                      size="sm"
-                      className="w-36"
-                      value={sort}
-                      onChange={setSort}
-                      options={SORT_OPTIONS}
-                      aria-label="Sort your titles"
-                    />
-                  </div>
-                )}
-              </div>
+              <SectionHeader
+                title={`Your titles with ${firstName}`}
+                actions={
+                  showToolbar ? (
+                    <>
+                      {showTimeline && (
+                        <Button variant="quiet" size="sm" onClick={() => setTimelineOpen(true)}>
+                          <CalendarClock />
+                          Timeline
+                        </Button>
+                      )}
+                      <FilterSelect
+                        size="sm"
+                        className="w-36"
+                        value={sort}
+                        onChange={setSort}
+                        options={SORT_OPTIONS}
+                        aria-label="Sort your titles"
+                      />
+                    </>
+                  ) : null
+                }
+              />
 
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                 {sortedTitles.map((t) => {
@@ -245,18 +248,18 @@ export default function PersonPage() {
 
           {notSeen.length > 0 && (
             <section>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-title text-text-primary">
-                  Not seen yet <span className="text-text-tertiary">({notSeen.length})</span>
-                </h2>
-                <SearchInput
-                  containerClassName="w-full sm:w-60"
-                  placeholder="Search their films…"
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setVisibleCount(18); }}
-                  onClear={() => { setSearch(""); setVisibleCount(18); }}
-                />
-              </div>
+              <SectionHeader
+                title={<>Not seen yet <span className="text-text-tertiary">({notSeen.length})</span></>}
+                actions={
+                  <SearchInput
+                    containerClassName="w-full sm:w-60"
+                    placeholder="Search their films…"
+                    value={search}
+                    onChange={(e) => { setSearch(e.target.value); setVisibleCount(18); }}
+                    onClear={() => { setSearch(""); setVisibleCount(18); }}
+                  />
+                }
+              />
 
               {filteredNotSeen.length === 0 ? (
                 <p className="py-6 text-center text-xs text-text-tertiary">No match.</p>

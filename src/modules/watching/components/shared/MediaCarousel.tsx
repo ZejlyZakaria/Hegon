@@ -9,6 +9,7 @@ import type { WatchingMedia } from "@/modules/watching/types";
 import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
 import { displayTitle } from "@/modules/watching/utils";
 import { MediaActionMenu } from "./MediaActionMenu";
@@ -314,31 +315,27 @@ export function MediaCarousel({
 
   return (
     <section>
-      <div className="mb-1.5 flex items-center justify-between">
-        <div>
-          <h3 className="text-title text-text-primary">
-            {title}
-          </h3>
-          {subtitle && (
-            <p className="mt-1 text-xs text-text-tertiary">{subtitle}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <CarouselNav
-            className="hidden lg:flex"
-            onPrev={() => scroll("prev")}
-            onNext={() => scroll("next")}
-            canPrev={canGoPrev}
-            canNext={canGoNext}
-          />
-          {canAdd && (
-            <Button variant="accent" size="sm" style={WATCHING_ACCENT} onClick={onAddClick}>
-              <Plus />
-              Add
-            </Button>
-          )}
-        </div>
-      </div>
+      <SectionHeader
+        title={title}
+        subtitle={subtitle}
+        actions={
+          <>
+            <CarouselNav
+              className="hidden lg:flex"
+              onPrev={() => scroll("prev")}
+              onNext={() => scroll("next")}
+              canPrev={canGoPrev}
+              canNext={canGoNext}
+            />
+            {canAdd && (
+              <Button variant="accent" size="sm" style={WATCHING_ACCENT} onClick={onAddClick}>
+                <Plus />
+                Add
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <div
         ref={scrollRef}

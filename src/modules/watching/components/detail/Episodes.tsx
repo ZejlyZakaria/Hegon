@@ -14,6 +14,7 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { Hint } from "@/shared/components/ui/tooltip";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 import { useSeasonEpisodes } from "../../hooks/useSeasonEpisodes";
 import {
   useEpisodeHighlights,
@@ -254,9 +255,10 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
 
   return (
     <section>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-title text-text-primary">Episodes</h2>
-        <div className="flex items-center gap-1.5">
+      <SectionHeader
+        title="Episodes"
+        actions={
+          <>
           {/* No All/Highlights toggle when read-only — there are no highlights on an unwatched title */}
           {!readOnly && (
             <SegmentedControl<View>
@@ -276,8 +278,9 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
               Ratings
             </Button>
           )}
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Season selector — All view only. Chips up to 10; beyond that (One Piece: 23)
           a wall of chips is unusable → collapse into a Select. */}

@@ -29,6 +29,9 @@ const buttonVariants = cva(
         // contrast — a white CTA on a coloured surface (StatusCard's teal, accents)
         quiet:
           "border border-border-subtle bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary",
+        // subtle — a bare icon action inside a card/row: no border, no fill until hover.
+        subtle:
+          "text-text-tertiary hover:bg-surface-2 hover:text-text-primary",
         glass:
           "border border-white/15 bg-black/40 text-white/80 backdrop-blur-sm hover:border-white/25 hover:bg-black/60 hover:text-white",
         contrast:

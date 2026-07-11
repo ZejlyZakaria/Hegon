@@ -8,6 +8,7 @@ import { cn } from "@/shared/utils/utils";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { Button } from "@/shared/components/ui/button";
 import { Hint } from "@/shared/components/ui/tooltip";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 import { useThemeFavorites } from "@/modules/watching/hooks/useThemeFavorites";
 import { useThemeCovers } from "@/modules/watching/hooks/useThemeCovers";
 import { themeTrackKey } from "@/modules/watching/service";
@@ -125,29 +126,27 @@ export default function MyThemesSectionClient() {
 
   return (
     <section>
-      <div className="mb-1.5 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-title text-text-primary">My Themes</h3>
-          <p className="mt-1 text-xs text-text-tertiary">
-            {tracks.length} favorite {tracks.length === 1 ? "opening or ending" : "openings & endings"}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Hint label="Shuffle">
-            <Button variant="quiet" size="icon-sm" onClick={shuffle} aria-label="Shuffle">
-              <Shuffle />
+      <SectionHeader
+        title="My Themes"
+        subtitle={`${tracks.length} favorite ${tracks.length === 1 ? "opening or ending" : "openings & endings"}`}
+        actions={
+          <>
+            <Hint label="Shuffle">
+              <Button variant="quiet" size="icon-sm" onClick={shuffle} aria-label="Shuffle">
+                <Shuffle />
+              </Button>
+            </Hint>
+            <Hint label="Play in order">
+              <Button variant="quiet" size="icon-sm" onClick={() => play(tracks, 0)} aria-label="Play in order">
+                <Play className="translate-x-px fill-current" />
+              </Button>
+            </Hint>
+            <Button variant="quiet" size="sm" onClick={() => setPanelOpen(true)}>
+              View all
             </Button>
-          </Hint>
-          <Hint label="Play in order">
-            <Button variant="quiet" size="icon-sm" onClick={() => play(tracks, 0)} aria-label="Play in order">
-              <Play className="translate-x-px fill-current" />
-            </Button>
-          </Hint>
-          <Button variant="quiet" size="sm" onClick={() => setPanelOpen(true)}>
-            View all
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div
         className="flex gap-4 overflow-x-auto scroll-smooth py-1.5 snap-x -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"

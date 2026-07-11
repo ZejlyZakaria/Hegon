@@ -12,13 +12,13 @@ import * as Popover from "@radix-ui/react-popover";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { cn } from "@/shared/utils/utils";
 import { toast } from "@/shared/utils/toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui/select";
+import { Button } from "@/shared/components/ui/button";
+import { Hint } from "@/shared/components/ui/tooltip";
+import { InlineFormActions } from "@/shared/components/ui/inline-form-actions";
+import { WATCHING_ACCENT } from "../../ui";
+import { FilterSelect } from "@/shared/components/ui/filter-select";
+import { SearchInput } from "@/shared/components/ui/search-input";
+import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import {
   useListItems,
   useUpdateMediaList,
@@ -205,13 +205,10 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
   return (
     <Popover.Root onOpenChange={(open) => { if (!open) { setQuery(""); setAddingTmdbId(null); } }}>
       <Popover.Trigger asChild>
-        <button
-          type="button"
-          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-accent-watching px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
-          <Plus size={14} />
+        <Button variant="accent" size="sm" style={WATCHING_ACCENT} className="shrink-0">
+          <Plus />
           <span className="hidden sm:inline">Add title</span>
-        </button>
+        </Button>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content align="end" sideOffset={8} className="z-50 w-80 overflow-hidden rounded-xl border border-border-strong bg-surface-3 shadow-md">
@@ -346,16 +343,15 @@ function MoreMenu({ onDelete }: { onDelete: () => void }) {
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
+      <Button
+        variant="quiet"
+        size="icon-sm"
         onClick={() => setOpen((p) => !p)}
-        className={cn(
-          "flex h-8 w-8 items-center justify-center rounded-lg border border-border-subtle bg-surface-1 text-text-tertiary transition-colors hover:text-text-primary",
-          open && "bg-surface-2 text-text-primary",
-        )}
+        aria-label="List actions"
+        className={cn(open && "bg-surface-3 text-text-primary")}
       >
-        <MoreHorizontal size={14} />
-      </button>
+        <MoreHorizontal />
+      </Button>
       {open && (
         <div className="absolute right-0 top-full z-20 mt-1.5 w-44 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-md">
           <button
@@ -587,23 +583,28 @@ function TableRow({
 
         {/* Actions — always visible on touch, hover-reveal on desktop */}
         <div className="flex w-14 shrink-0 items-center justify-end gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setNoteOpen((p) => !p); }}
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-surface-2",
-              item.note ? "text-accent-watching" : "text-text-tertiary",
-            )}
-          >
-            <FileText size={13} />
-          </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-2 hover:text-red-400"
-          >
-            <X size={13} />
-          </button>
+          <Hint label={item.note ? "Edit note" : "Add a note"}>
+            <Button
+              variant="subtle"
+              size="icon-sm"
+              aria-label="Note"
+              onClick={(e) => { e.stopPropagation(); setNoteOpen((p) => !p); }}
+              className={cn(item.note && "text-accent-watching-vivid")}
+            >
+              <FileText />
+            </Button>
+          </Hint>
+          <Hint label="Remove from list">
+            <Button
+              variant="subtle"
+              size="icon-sm"
+              aria-label="Remove from list"
+              onClick={onRemove}
+              className="hover:text-red-400"
+            >
+              <X />
+            </Button>
+          </Hint>
         </div>
       </div>
 
@@ -618,10 +619,12 @@ function TableRow({
             rows={2}
             className="w-full resize-none rounded-lg border border-border-subtle bg-surface-1 px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
           />
-          <div className="mt-1.5 flex gap-2">
-            <button
-              type="button"
-              onClick={async () => {
+          <div className="mt-1.5 flex justify-end">
+            <InlineFormActions
+              accent="var(--color-accent-watching)"
+              saving={updateNote.isPending}
+              onCancel={() => { setNoteOpen(false); setNoteVal(item.note ?? ""); }}
+              onSave={async () => {
                 try {
                   await updateNote.mutateAsync({ listItemId: item.list_item_id, note: noteVal.trim() || null });
                   setNoteOpen(false);
@@ -630,19 +633,7 @@ function TableRow({
                   toast.error("Failed to save note.");
                 }
               }}
-              disabled={updateNote.isPending}
-              className="flex items-center gap-1.5 rounded-lg bg-accent-watching px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-            >
-              {updateNote.isPending ? <Loader2 size={11} className="animate-spin" /> : <Check size={10} />}
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={() => { setNoteOpen(false); setNoteVal(item.note ?? ""); }}
-              className="rounded-lg px-2 py-1.5 text-xs text-text-tertiary hover:text-text-primary"
-            >
-              Cancel
-            </button>
+            />
           </div>
         </div>
       )}
@@ -878,15 +869,13 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
 
         <div className="hidden flex-1 sm:block" />
 
-        <div className="relative min-w-0 flex-1 sm:flex-none sm:w-52">
-          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search in this list…"
-            className="w-full rounded-lg border border-border-subtle bg-surface-1 py-1.5 pl-8 pr-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
-          />
-        </div>
+        <SearchInput
+          containerClassName="min-w-0 flex-1 sm:w-52 sm:flex-none"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onClear={() => setSearch("")}
+          placeholder="Search in this list…"
+        />
 
         <AddTitlePopover listId={list.id} userId={userId} existingIds={existingIds} existingTmdbIds={existingTmdbIds} />
         <MoreMenu onDelete={handleDelete} />
@@ -1022,41 +1011,31 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
         <div className="flex items-center gap-2 py-2">
           <div className="flex items-center gap-1.5">
             <SlidersHorizontal size={11} className="text-text-tertiary" />
-            <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-              <SelectTrigger className="h-8 w-32 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="position">Order</SelectItem>
-                <SelectItem value="title">Title</SelectItem>
-                <SelectItem value="year">Year</SelectItem>
-                <SelectItem value="rating">My rating</SelectItem>
-              </SelectContent>
-            </Select>
+            <FilterSelect
+              size="sm"
+              className="w-32"
+              value={sort}
+              onChange={setSort}
+              options={[
+                { value: "position", label: "Order" },
+                { value: "title", label: "Title" },
+                { value: "year", label: "Year" },
+                { value: "rating", label: "My rating" },
+              ] as const}
+              aria-label="Sort list"
+            />
           </div>
 
-          <div className="flex rounded-lg border border-border-subtle bg-surface-1 p-0.5">
-            <button
-              type="button"
-              onClick={() => setView("table")}
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-                view === "table" ? "bg-surface-2 text-text-primary" : "text-text-tertiary hover:text-text-secondary",
-              )}
-            >
-              <List size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("grid")}
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-                view === "grid" ? "bg-surface-2 text-text-primary" : "text-text-tertiary hover:text-text-secondary",
-              )}
-            >
-              <LayoutGrid size={13} />
-            </button>
-          </div>
+          {/* A view switcher IS a segmented control — it was just wearing a costume. */}
+          <SegmentedControl<"table" | "grid">
+            size="sm"
+            value={view}
+            onChange={setView}
+            items={[
+              { value: "table", label: "", icon: <List size={13} /> },
+              { value: "grid", label: "", icon: <LayoutGrid size={13} /> },
+            ]}
+          />
         </div>
       </div>
 

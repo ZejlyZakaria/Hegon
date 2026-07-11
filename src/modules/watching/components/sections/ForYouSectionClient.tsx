@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Star, X } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { useForYouRecommendations } from "@/modules/watching/hooks/useForYouRecommendations";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
@@ -209,21 +210,19 @@ export default function ForYouSectionClient({
 
   return (
     <section>
-      <div className="mb-1.5 flex items-center justify-between">
-        <div>
-          <h3 className="text-title text-text-primary">
-            For You
-          </h3>
-          <p className="mt-1 text-xs text-text-tertiary">Based on what you love</p>
-        </div>
-        <CarouselNav
-          className="hidden lg:flex"
-          onPrev={() => scroll("prev")}
-          onNext={() => scroll("next")}
-          canPrev={canGoPrev}
-          canNext={canGoNext}
-        />
-      </div>
+      <SectionHeader
+        title="For You"
+        subtitle="Based on what you love"
+        actions={
+          <CarouselNav
+            className="hidden lg:flex"
+            onPrev={() => scroll("prev")}
+            onNext={() => scroll("next")}
+            canPrev={canGoPrev}
+            canNext={canGoNext}
+          />
+        }
+      />
 
       <div
         ref={scrollRef}

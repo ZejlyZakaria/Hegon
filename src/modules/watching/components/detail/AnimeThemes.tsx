@@ -163,10 +163,10 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
       <div className="mb-3 flex items-end justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-title text-text-primary">Openings &amp; Endings</h2>
-          {flat.length > 0 && <p className="mt-0.5 text-[11px] text-text-tertiary">{flat.length} themes</p>}
+          {flat.length > 0 && <p className="mt-1 text-xs text-text-tertiary">{flat.length} themes</p>}
         </div>
         {flat.length > 0 && (
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-2">
             <Hint label="Shuffle">
               <Button variant="quiet" size="icon-sm" onClick={shuffle} aria-label="Shuffle">
                 <Shuffle />
