@@ -6,7 +6,7 @@ const TEAL = "var(--color-accent-watching-vivid)";
 const AMBER = "#fbbf24";
 
 export interface JourneyStats {
-  owned: number;
+  owned: number;       // in your library, any status — gates the empty state
   total: number;
   watchedCount: number;
   avgRating: number | null;
@@ -27,7 +27,9 @@ function MiniStat({ label, children }: { label: string; children: React.ReactNod
 // through their work you are. (No "hours" — undecidable across films/series.)
 export function PersonJourney({ stats }: { stats: JourneyStats }) {
   const { owned, total, watchedCount, avgRating, topTen } = stats;
-  const pct = total > 0 ? Math.min(100, Math.round((owned / total) * 100)) : 0;
+  // Progress through their work = what you've SEEN. A want-to-watch filling a completion
+  // bar is a lie — it stays in the grid with its badge, not here.
+  const pct = total > 0 ? Math.min(100, Math.round((watchedCount / total) * 100)) : 0;
 
   return (
     <section
@@ -77,7 +79,7 @@ export function PersonJourney({ stats }: { stats: JourneyStats }) {
           <div className="my-3 h-px bg-white/10" />
           <div className="flex items-center justify-between text-label text-white/70">
             <span className="inline-flex items-center gap-1.5"><Clapperboard size={12} /> Filmography</span>
-            <span className="tabular-nums text-white">{owned} / {total}</span>
+            <span className="tabular-nums text-white">{watchedCount} / {total}</span>
           </div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-black/25">
             <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: TEAL }} />
