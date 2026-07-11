@@ -253,31 +253,32 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
   const scroll = (dir: number) => scrollRef.current?.scrollBy({ left: dir * 560, behavior: "smooth" });
   const showChevrons = (view === "all" ? episodes.length : highlightRows.length) > 3;
 
+  // A scrolling rail — no panel. (See CastCrew: a frame its own content escapes reads as a bug.)
   return (
     <section>
       <SectionHeader
         title="Episodes"
         actions={
           <>
-          {/* No All/Highlights toggle when read-only — there are no highlights on an unwatched title */}
-          {!readOnly && (
-            <SegmentedControl<View>
-              size="sm"
-              value={view}
-              onChange={setView}
-              items={[
-                { value: "all", label: "All" },
-                { value: "highlights", label: highlightRows.length ? `Highlights ${highlightRows.length}` : "Highlights" },
-              ]}
-            />
-          )}
-          {showChevrons && <CarouselNav size="md" onPrev={() => scroll(-1)} onNext={() => scroll(1)} />}
-          {HEATMAP_ENABLED && (
-            <Button variant="quiet" size="sm" onClick={() => setHeatmapOpen(true)}>
-              <BarChart3 />
-              Ratings
-            </Button>
-          )}
+            {/* No All/Highlights toggle when read-only — there are no highlights on an unwatched title */}
+            {!readOnly && (
+              <SegmentedControl<View>
+                size="sm"
+                value={view}
+                onChange={setView}
+                items={[
+                  { value: "all", label: "All" },
+                  { value: "highlights", label: highlightRows.length ? `Highlights ${highlightRows.length}` : "Highlights" },
+                ]}
+              />
+            )}
+            {showChevrons && <CarouselNav size="md" onPrev={() => scroll(-1)} onNext={() => scroll(1)} />}
+            {HEATMAP_ENABLED && (
+              <Button variant="quiet" size="sm" onClick={() => setHeatmapOpen(true)}>
+                <BarChart3 />
+                Ratings
+              </Button>
+            )}
           </>
         }
       />

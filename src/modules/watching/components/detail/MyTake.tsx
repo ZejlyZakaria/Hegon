@@ -8,6 +8,7 @@ import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { useUpdateMedia } from "../../hooks/useUpdateMedia";
 import { useRatingStanding } from "../../hooks/useRatingPercentile";
 import { RatingPicker, ratingLabel } from "../shared/RatingPicker";
+import { Panel } from "@/shared/components/ui/panel";
 import { Hint } from "@/shared/components/ui/tooltip";
 import type { WatchingMedia } from "../../types";
 
@@ -104,26 +105,31 @@ export function MyTake({ media, forceNoteOpen }: Props) {
   // resolved by absence, not by an empty form).
   if (isUnwatched && !hasNote && !forceNoteOpen) return null;
 
-  return (
-    <section>
-      <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-title text-text-primary">My Take</h2>
-        <AnimatePresence>
-          {savedFlash && (
-            <motion.span
-              initial={{ opacity: 0, y: 2 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15, ease: [0, 0, 0.2, 1] }}
-              className="text-caption uppercase text-text-tertiary"
-            >
-              Saved
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </div>
+  // The score IS the title — a "My Take" heading above a 9.5 only repeats it. But when
+  // there's no score (a note on something you haven't watched), the label is the ONLY thing
+  // saying these words are yours and not the synopsis. So it appears exactly then.
+  const savedFlash_ = (
+    <AnimatePresence>
+      {savedFlash && (
+        <motion.span
+          initial={{ opacity: 0, y: 2 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15, ease: [0, 0, 0.2, 1] }}
+          className="text-caption uppercase text-text-tertiary"
+        >
+          Saved
+        </motion.span>
+      )}
+    </AnimatePresence>
+  );
 
-      <div className="surface-card rounded-card p-5">
+  return (
+    <Panel
+      title={rating > 0 ? undefined : "My Take"}
+      actions={rating > 0 ? undefined : savedFlash_}
+    >
+      <div>
         {/* Verdict — the number, the word, and where it stands among your own ratings */}
         {!isUnwatched && (
           <>
@@ -139,18 +145,22 @@ export function MyTake({ media, forceNoteOpen }: Props) {
                   <span className="text-body text-text-secondary">How was it?</span>
                 )}
               </div>
-              {standing && (
-                <p className="max-w-50 text-right text-[11px] leading-snug text-text-tertiary">
-                  {standing.elite && (
-                    <span className="mb-0.5 block text-caption uppercase tracking-wide text-amber-400">
-                      Top {Math.max(1, Math.round((standing.rank / standing.total) * 100))}% of your {typeWord}
-                    </span>
-                  )}
-                  You rate it above{" "}
-                  <span className="font-semibold text-text-secondary">{standing.beats}%</span>{" "}
-                  of your {typeWord}
-                </p>
-              )}
+              <div className="flex items-center gap-3">
+                {/* No header to live in when the score is the title — the flash rides here. */}
+                {rating > 0 && savedFlash_}
+                {standing && (
+                  <p className="max-w-50 text-right text-[11px] leading-snug text-text-tertiary">
+                    {standing.elite && (
+                      <span className="mb-0.5 block text-caption uppercase tracking-wide text-amber-400">
+                        Top {Math.max(1, Math.round((standing.rank / standing.total) * 100))}% of your {typeWord}
+                      </span>
+                    )}
+                    You rate it above{" "}
+                    <span className="font-semibold text-text-secondary">{standing.beats}%</span>{" "}
+                    of your {typeWord}
+                  </p>
+                )}
+              </div>
             </div>
 
             <RatingPicker
@@ -212,6 +222,6 @@ export function MyTake({ media, forceNoteOpen }: Props) {
           <p className="mt-4 text-[11px] text-text-tertiary/70">Reviewed on {reviewedOn}</p>
         )}
       </div>
-    </section>
+    </Panel>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Target, Check } from "lucide-react";
+import { Panel } from "@/shared/components/ui/panel";
 import { useWatchingGoals } from "../../hooks/useWatchingGoals";
 import { goalMatchesMedia } from "../../lib/goal-contribution";
 import type { WatchingMedia } from "../../types";
@@ -21,8 +22,7 @@ export function ContributingToGoals({ media }: { media: WatchingMedia }) {
   if (matching.length === 0) return null;
 
   return (
-    <section>
-      <h2 className="mb-3 text-title text-text-primary">Contributing to</h2>
+    <Panel title="Contributing to">
       <div className="space-y-2">
         {matching.map((g) => {
           const target = g.metric_target ?? 0;
@@ -55,6 +55,6 @@ export function ContributingToGoals({ media }: { media: WatchingMedia }) {
           );
         })}
       </div>
-    </section>
+    </Panel>
   );
 }

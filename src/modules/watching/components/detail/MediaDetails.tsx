@@ -2,6 +2,7 @@
 
 import { ExternalLink, Trophy } from "lucide-react";
 import { Hint } from "@/shared/components/ui/tooltip";
+import { Panel } from "@/shared/components/ui/panel";
 import { useImdbId } from "../../hooks/useImdbId";
 import { useOmdbRatings } from "../../hooks/useOmdbRatings";
 import { useAgeRating } from "../../hooks/useAgeRating";
@@ -34,7 +35,7 @@ function AwardsBlock({ raw }: { raw: string }) {
   const title = headline ?? (wins ? "Award-winning" : noms ? "Award-nominated" : raw);
 
   return (
-    <div className="flex items-start gap-2.5 border-b border-border-subtle px-4 py-3">
+    <div className="flex items-start gap-2.5 border-b border-border-subtle px-4 py-3 sm:px-5">
       <Trophy size={15} className="mt-0.5 shrink-0 text-amber-400" />
       <div className="min-w-0">
         <p className="text-sm font-semibold text-text-primary">{title}</p>
@@ -61,10 +62,11 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
   const isFilm = media.type === "film";
 
   return (
-    <section>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-title text-text-primary">Details</h2>
-        {imdbId && (
+    <Panel
+      title="Details"
+      bleed
+      actions={
+        imdbId ? (
           <Hint label="View on IMDb">
             <a
               href={`https://www.imdb.com/title/${imdbId}/`}
@@ -76,12 +78,13 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
               <ExternalLink size={10} strokeWidth={2.5} />
             </a>
           </Hint>
-        )}
-      </div>
-      <div className="surface-quiet overflow-hidden rounded-card">
+        ) : null
+      }
+    >
+      <div className="overflow-hidden">
         {omdb?.awards && <AwardsBlock raw={omdb.awards} />}
         {/* Reference only — year/runtime/seasons/status live in the hero, never twice. */}
-        <div className="divide-y divide-border-subtle px-4">
+        <div className="divide-y divide-border-subtle px-4 sm:px-5">
           <DetailRow label="Type" value={typeLabel} />
           {ageRating ? (
             <DetailRow
@@ -104,6 +107,6 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
           {omdb?.imdbVotes ? <DetailRow label="IMDb votes" value={omdb.imdbVotes} /> : null}
         </div>
       </div>
-    </section>
+    </Panel>
   );
 }

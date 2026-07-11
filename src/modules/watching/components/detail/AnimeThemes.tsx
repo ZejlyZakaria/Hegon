@@ -8,6 +8,7 @@ import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
 import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { Hint } from "@/shared/components/ui/tooltip";
+import { Panel } from "@/shared/components/ui/panel";
 import { WATCHING_ACCENT } from "../../ui";
 import { useAnimeThemes } from "../../hooks/useAnimeThemes";
 import { useThemeFavorites, useToggleThemeFavorite } from "../../hooks/useThemeFavorites";
@@ -158,15 +159,12 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
   const partOf = (label: string) => flat.find((t) => t.id === `${media.tmdb_id}-${activePart}-${label}`);
 
   return (
-    <div>
-      {/* Header — playlist bar */}
-      <div className="mb-3 flex items-end justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="text-title text-text-primary">Openings &amp; Endings</h2>
-          {flat.length > 0 && <p className="mt-1 text-xs text-text-tertiary">{flat.length} themes</p>}
-        </div>
-        {flat.length > 0 && (
-          <div className="flex shrink-0 items-center gap-2">
+    <Panel
+      title="Openings & Endings"
+      subtitle={flat.length > 0 ? `${flat.length} themes` : undefined}
+      actions={
+        flat.length > 0 ? (
+          <>
             <Hint label="Shuffle">
               <Button variant="quiet" size="icon-sm" onClick={shuffle} aria-label="Shuffle">
                 <Shuffle />
@@ -176,10 +174,10 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
               <Play className="fill-current" />
               Play
             </Button>
-          </div>
-        )}
-      </div>
-
+          </>
+        ) : null
+      }
+    >
       {isLoading ? (
         <div className="flex items-center justify-center py-6"><Loader2 size={16} className="animate-spin text-text-tertiary" /></div>
       ) : (
@@ -219,6 +217,6 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
           </div>
         </>
       )}
-    </div>
+    </Panel>
   );
 }

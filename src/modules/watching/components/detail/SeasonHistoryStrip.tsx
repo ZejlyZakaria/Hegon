@@ -1,13 +1,15 @@
 "use client";
 
 import { useRef } from "react";
-import { Star, Pencil, Tv, Lock, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, Pencil, Tv, Lock, Clock } from "lucide-react";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/shared/components/ui/popover";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
+import { CarouselNav } from "@/shared/components/ui/carousel-nav";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 
 interface Props {
   seasonEpisodes: number[];
@@ -96,33 +98,31 @@ export function SeasonHistoryStrip({
 
   const scroll = (dir: number) => scrollRef.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
 
+  // A scrolling rail — no panel, same rule as Episodes / Cast / More Like This.
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-title text-text-primary">Watch History</h2>
-        <div className="flex items-center gap-1.5">
-          <Select onValueChange={(v) => setAll(Number(v))}>
-            <SelectTrigger className="h-6 w-auto gap-1 border-border-subtle bg-surface-2 px-2 text-[10px] text-text-tertiary focus:ring-0">
-              <SelectValue placeholder="Set all year" />
-            </SelectTrigger>
-            <SelectContent className="bg-surface-3 border-border-strong">
-              {setAllYears.map((y) => (
-                <SelectItem key={y} value={String(y)} className="text-xs focus:bg-surface-2 focus:text-text-primary">All in {y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {seasonEpisodes.length > 6 && (
-            <>
-              <button type="button" onClick={() => scroll(-1)} className="flex h-6 w-6 items-center justify-center rounded-md border border-border-subtle bg-surface-2 text-text-tertiary transition-colors hover:text-text-primary">
-                <ChevronLeft size={13} />
-              </button>
-              <button type="button" onClick={() => scroll(1)} className="flex h-6 w-6 items-center justify-center rounded-md border border-border-subtle bg-surface-2 text-text-tertiary transition-colors hover:text-text-primary">
-                <ChevronRight size={13} />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      <SectionHeader
+        title="Watch History"
+        actions={
+          <>
+            {/* An action-select, not a filter: it has no persisted value, it applies a year to
+                every season at once. Same trigger shell as FilterSelect so it lines up. */}
+            <Select onValueChange={(v) => setAll(Number(v))}>
+              <SelectTrigger className="h-8 w-auto gap-1 border-border-subtle bg-surface-2 px-3 text-xs text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary focus:ring-0">
+                <SelectValue placeholder="Set all year" />
+              </SelectTrigger>
+              <SelectContent className="border-border-strong bg-surface-3">
+                {setAllYears.map((y) => (
+                  <SelectItem key={y} value={String(y)} className="text-xs focus:bg-surface-2 focus:text-text-primary">All in {y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {seasonEpisodes.length > 6 && (
+              <CarouselNav size="md" onPrev={() => scroll(-1)} onNext={() => scroll(1)} />
+            )}
+          </>
+        }
+      />
 
       <div ref={scrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide py-1.5">
         {seasonEpisodes.map((eps, idx) => {

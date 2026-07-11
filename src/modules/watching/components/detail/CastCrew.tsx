@@ -3,13 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { User } from "lucide-react";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 import type { CastMember, CreditedDirector } from "../../hooks/useMediaCredits";
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="mb-3 text-title text-text-primary">{children}</h2>
-  );
-}
 
 function PersonCard({ id, name, src, subtitle, size = 60 }: {
   id: number;
@@ -75,10 +70,14 @@ export function CastCrew({ cast, directors, isSeries }: Props) {
     ...cast.slice(0, castSlots).map((p) => ({ id: p.id, name: p.name, src: p.profile_url, subtitle: p.character })),
   ];
 
+  // No panel: this is a rail that scrolls. A frame whose content escapes through its own
+  // edge reads as a layout bug, not as "there's more to the right". Panels are for bounded
+  // content you act on (My Take, the rail); scrolling rails breathe on the page.
   return (
     <section>
-      <SectionLabel>Cast & Crew</SectionLabel>
-      <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+      <SectionHeader title="Cast & Crew" />
+      {/* py-1: an overflow-x container clips vertically too, and the tiles grow on hover. */}
+      <div className="flex gap-4 overflow-x-auto py-1" style={{ scrollbarWidth: "none" }}>
         {allPeople.map((person, i) => (
           <PersonCard key={`${person.name}-${i}`} id={person.id} name={person.name} src={person.src} subtitle={person.subtitle} size={86} />
         ))}

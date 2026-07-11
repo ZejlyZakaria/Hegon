@@ -30,9 +30,10 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
   return (
     <section>
       <SectionHeader title="More Like This" />
-      {/* Mobile: one scrolling row (like the history strip) — a 3-wide grid of tiny posters
-          wrapped onto two lines and ate the screen. Desktop keeps the grid. */}
-      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-6">
+      {/* Mobile: one scrolling row — a 3-wide grid of tiny posters wrapped onto two lines and
+          ate the screen. Desktop keeps the grid. py-1 leaves room for the hover scale, which
+          an overflow-x container would otherwise clip. */}
+      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 py-1 scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-6">
         {items.slice(0, 6).map((sim) => {
           const title = sim.title || sim.name || "";
           return (
