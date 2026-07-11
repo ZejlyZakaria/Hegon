@@ -16,13 +16,9 @@ import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { Button } from "@/shared/components/ui/button";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui/select";
+import { FilterSelect } from "@/shared/components/ui/filter-select";
+import { WATCHING_ACCENT } from "@/modules/watching/ui";
+
 const ITEMS_PER_PAGE = 40;
 
 type MediaType = "all" | "film" | "serie" | "anime";
@@ -178,37 +174,24 @@ export default function LibraryClient({ initialItems, userId }: Props) {
               onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
               onClear={() => { setSearch(""); setCurrentPage(1); }}
             />
-            <Select value={status} onValueChange={v => { setStatus(v as StatusKey); setCurrentPage(1); }}>
-              <SelectTrigger className="w-36 h-9 bg-surface-1 border-border-subtle text-text-secondary text-xs hover:border-border-default focus:ring-0 focus:ring-offset-0 transition-colors">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
-                {STATUS_OPTIONS.map(({ value, label }) => (
-                  <SelectItem key={value} value={value} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={sortBy} onValueChange={v => { setSortBy(v as SortKey); setCurrentPage(1); }}>
-              <SelectTrigger className="w-36 h-9 bg-surface-1 border-border-subtle text-text-secondary text-xs hover:border-border-default focus:ring-0 focus:ring-offset-0 transition-colors">
-                <SelectValue placeholder="Sort by..." />
-              </SelectTrigger>
-              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
-                {SORT_OPTIONS.map(({ value, label }) => (
-                  <SelectItem key={value} value={value} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg px-3 h-9 text-xs font-semibold text-white shrink-0"
-              style={{ backgroundColor: "var(--color-accent-watching)" }}
-            >
-              <Plus size={13} />
+            <FilterSelect
+              className="w-36"
+              value={status}
+              onChange={(v) => { setStatus(v); setCurrentPage(1); }}
+              options={STATUS_OPTIONS}
+              placeholder="Status"
+              aria-label="Filter by status"
+            />
+            <FilterSelect
+              className="w-36"
+              value={sortBy}
+              onChange={(v) => { setSortBy(v); setCurrentPage(1); }}
+              options={SORT_OPTIONS}
+              placeholder="Sort by..."
+              aria-label="Sort by"
+            />
+            <Button variant="accent" style={WATCHING_ACCENT} onClick={() => setModalOpen(true)}>
+              <Plus />
               Add
             </Button>
           </div>
@@ -218,38 +201,29 @@ export default function LibraryClient({ initialItems, userId }: Props) {
         <div className="space-y-2 sm:hidden">
           <div className="flex items-center gap-2">
             {/* Width fixed to the widest option ("Animes") — avoids jitter on selection */}
-            <Select value={mediaType} onValueChange={(v) => { setMediaType(v as typeof mediaType); setCurrentPage(1); }}>
-              <SelectTrigger className="h-9 w-28 bg-surface-1 border-border-subtle text-text-secondary text-sm focus:ring-0 focus:ring-offset-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
-                {MEDIA_TYPES.map(({ value, label }) => (
-                  <SelectItem key={value} value={value} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={status} onValueChange={(v) => { setStatus(v as StatusKey); setCurrentPage(1); }}>
-              <SelectTrigger className="h-9 w-32 bg-surface-1 border-border-subtle text-text-secondary text-sm focus:ring-0 focus:ring-offset-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
-                {STATUS_OPTIONS.map(({ value, label }) => (
-                  <SelectItem key={value} value={value} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterSelect
+              className="w-28"
+              value={mediaType}
+              onChange={(v) => { setMediaType(v); setCurrentPage(1); }}
+              options={MEDIA_TYPES}
+              aria-label="Media type"
+            />
+            <FilterSelect
+              className="w-32"
+              value={status}
+              onChange={(v) => { setStatus(v); setCurrentPage(1); }}
+              options={STATUS_OPTIONS}
+              aria-label="Filter by status"
+            />
             <Button
-              type="button"
+              variant="accent"
+              size="icon"
+              style={WATCHING_ACCENT}
               onClick={() => setModalOpen(true)}
               aria-label="Add to library"
-              className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg p-0 text-white"
-              style={{ backgroundColor: "var(--color-accent-watching)" }}
+              className="ml-auto"
             >
-              <Plus size={16} />
+              <Plus />
             </Button>
           </div>
           <div className="flex items-center gap-2">
@@ -260,18 +234,14 @@ export default function LibraryClient({ initialItems, userId }: Props) {
               onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
               onClear={() => { setSearch(""); setCurrentPage(1); }}
             />
-            <Select value={sortBy} onValueChange={v => { setSortBy(v as SortKey); setCurrentPage(1); }}>
-              <SelectTrigger className="h-9 w-32 shrink-0 bg-surface-1 border-border-subtle text-text-secondary text-xs focus:ring-0 focus:ring-offset-0">
-                <SelectValue placeholder="Sort by..." />
-              </SelectTrigger>
-              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
-                {SORT_OPTIONS.map(({ value, label }) => (
-                  <SelectItem key={value} value={value} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterSelect
+              className="w-32 shrink-0"
+              value={sortBy}
+              onChange={(v) => { setSortBy(v); setCurrentPage(1); }}
+              options={SORT_OPTIONS}
+              placeholder="Sort by..."
+              aria-label="Sort by"
+            />
           </div>
         </div>
 
@@ -356,42 +326,29 @@ function Pagination({ currentPage, totalPages, onChange }: {
 
   return (
     <div className="flex items-center justify-center gap-1.5 pt-4">
-      <button
-        type="button"
-        onClick={() => onChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="px-3 py-1.5 text-sm rounded-lg bg-surface-1 border border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-      >
+      <Button variant="quiet" size="sm" onClick={() => onChange(currentPage - 1)} disabled={currentPage === 1}>
         Previous
-      </button>
+      </Button>
 
       {pages.map((page, i) =>
         page === "..." ? (
           <span key={`ellipsis-${i}`} className="px-2 text-text-tertiary">…</span>
         ) : (
-          <button
+          <Button
             key={page}
-            type="button"
+            variant={currentPage === page ? "contrast" : "quiet"}
+            size="icon-sm"
             onClick={() => onChange(page as number)}
-            className={`w-8 h-8 text-sm rounded-lg border transition-colors ${
-              currentPage === page
-                ? "bg-white text-black border-white font-semibold"
-                : "bg-surface-1 border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default"
-            }`}
+            aria-current={currentPage === page ? "page" : undefined}
           >
             {page}
-          </button>
+          </Button>
         )
       )}
 
-      <button
-        type="button"
-        onClick={() => onChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className="px-3 py-1.5 text-sm rounded-lg bg-surface-1 border border-border-subtle text-text-tertiary hover:text-text-primary hover:border-border-default disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-      >
+      <Button variant="quiet" size="sm" onClick={() => onChange(currentPage + 1)} disabled={currentPage === totalPages}>
         Next
-      </button>
+      </Button>
     </div>
   );
 }

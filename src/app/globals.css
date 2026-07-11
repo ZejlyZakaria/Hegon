@@ -329,6 +329,14 @@
     outline-color: var(--color-border-focus);
   }
 
+  /* Tailwind v4 dropped `cursor: pointer` from buttons in its reset. Restore it once,
+     globally — anything clickable feels clickable, without repeating a class 500 times. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
+    cursor: pointer;
+  }
+
   html {
     background: var(--color-surface-0);
   }

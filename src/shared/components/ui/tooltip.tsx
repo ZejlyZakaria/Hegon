@@ -58,4 +58,31 @@ function TooltipContent({
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+/**
+ * The one-liner form: `<Hint label="Add to a list"><Button…/></Hint>`.
+ * Four nested Radix parts is why the codebase reached for the native `title=` attribute
+ * instead — which renders the OS tooltip (slow, unstyled, off-brand). This wraps them so
+ * a styled tooltip costs exactly as much as `title` did. Use it everywhere `title=` was.
+ */
+function Hint({
+  label,
+  side = "top",
+  children,
+}: {
+  label: React.ReactNode
+  side?: React.ComponentProps<typeof TooltipPrimitive.Content>["side"]
+  children: React.ReactNode
+}) {
+  return (
+    <TooltipProvider delayDuration={250}>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side={side} sideOffset={6}>
+          {label}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, Hint }

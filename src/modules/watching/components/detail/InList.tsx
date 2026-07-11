@@ -3,9 +3,12 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Check, ChevronLeft, ChevronRight, List, Loader2, Plus, X } from "lucide-react";
+import { Check, List, Loader2, Plus, X } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { Button } from "@/shared/components/ui/button";
+import { CarouselNav } from "@/shared/components/ui/carousel-nav";
+import { Hint } from "@/shared/components/ui/tooltip";
 import {
   useMediaLists,
   useListsForMedia,
@@ -69,14 +72,17 @@ function ListCard({ list, onOpen, onRemove }: {
             </div>
           ))
         )}
-        <button
-          type="button"
-          title="Remove from list"
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white/60 opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/90 hover:text-white group-hover:opacity-100"
-        >
-          <X size={11} />
-        </button>
+        <Hint label="Remove from list">
+          <Button
+            variant="glass"
+            size="icon-xs"
+            aria-label="Remove from list"
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            className="absolute right-1.5 top-1.5 z-10 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+          >
+            <X />
+          </Button>
+        </Hint>
       </div>
       <div className="p-2.5">
         <p className="truncate text-xs font-semibold text-text-primary">{list.name}</p>
@@ -143,26 +149,17 @@ export function InList({ mediaItemId, userId }: Props) {
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-title text-text-primary">In List</h2>
         <div className="flex items-center gap-1.5">
-          {showNav && (
-            <>
-              <button type="button" onClick={() => scroll(-1)} className="flex h-6 w-6 items-center justify-center rounded-md border border-border-subtle bg-surface-2 text-text-tertiary transition-colors hover:text-text-primary">
-                <ChevronLeft size={13} />
-              </button>
-              <button type="button" onClick={() => scroll(1)} className="flex h-6 w-6 items-center justify-center rounded-md border border-border-subtle bg-surface-2 text-text-tertiary transition-colors hover:text-text-primary">
-                <ChevronRight size={13} />
-              </button>
-            </>
-          )}
+          {showNav && <CarouselNav size="sm" onPrev={() => scroll(-1)} onNext={() => scroll(1)} />}
           <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                title="Add to a list"
-                className="flex h-6 w-6 items-center justify-center rounded-md border border-border-subtle bg-surface-2 text-text-tertiary transition-colors hover:text-text-primary"
-              >
-                <Plus size={13} />
-              </button>
-            </PopoverTrigger>
+            {/* Hint wraps the trigger (not the reverse): PopoverTrigger forwards its ref,
+                a plain wrapper component would swallow it and the popover would never open. */}
+            <Hint label="Add to a list">
+              <PopoverTrigger asChild>
+                <Button variant="quiet" size="icon-xs" aria-label="Add to a list">
+                  <Plus />
+                </Button>
+              </PopoverTrigger>
+            </Hint>
             <PopoverContent align="end" sideOffset={6} className="w-56 border-border-subtle bg-surface-3 p-0 shadow-md">
               <div className="p-1.5">
                 {isLoading && (

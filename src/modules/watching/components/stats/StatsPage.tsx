@@ -19,9 +19,9 @@ import { computeStats, computeAchievements } from "./computeStats";
 import { AchievementGrid } from "@/shared/components/achievements/AchievementGrid";
 import { useWatchingGoals } from "../../hooks/useWatchingGoals";
 import { goalMetricLabel } from "../../lib/goal-contribution";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/shared/components/ui/select";
+import { Button } from "@/shared/components/ui/button";
+import { FilterSelect } from "@/shared/components/ui/filter-select";
+import { Hint } from "@/shared/components/ui/tooltip";
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 
@@ -479,83 +479,57 @@ export function StatsPage() {
       <div className="flex items-center gap-2">
         {/* Desktop: year pills */}
         <div className="hidden flex-1 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex">
-          <button
-            type="button"
+          <Button
+            variant={selectedYear === null ? "contrast" : "quiet"}
+            size="sm"
             onClick={() => setStatsYear(null)}
-            className={cn(
-              "shrink-0 rounded-lg px-4 py-1.5 text-xs font-medium transition-colors border",
-              selectedYear === null
-                ? "bg-white text-black border-white"
-                : "border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong",
-            )}
           >
             All time
-          </button>
+          </Button>
           {years.map((year) => (
-            <button
+            <Button
               key={year}
-              type="button"
+              variant={selectedYear === year ? "contrast" : "quiet"}
+              size="sm"
               onClick={() => setStatsYear(year)}
-              className={cn(
-                "shrink-0 rounded-lg px-4 py-1.5 text-xs font-medium transition-colors border",
-                selectedYear === year
-                  ? "bg-white text-black border-white"
-                  : "border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong",
-              )}
             >
               {year}
-            </button>
+            </Button>
           ))}
         </div>
 
         {/* Mobile: year select */}
         <div className="flex-1 sm:hidden">
-          <Select
+          <FilterSelect
+            className="w-full"
             value={selectedYear === null ? "all" : String(selectedYear)}
-            onValueChange={(v) => setStatsYear(v === "all" ? null : Number(v))}
-          >
-            <SelectTrigger className="h-9 w-full bg-surface-1 border-border-subtle text-text-secondary text-sm focus:ring-0 focus:ring-offset-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
-              <SelectItem value="all" className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
-                All time
-              </SelectItem>
-              {years.map((year) => (
-                <SelectItem
-                  key={year}
-                  value={String(year)}
-                  className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer"
-                >
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={(v) => setStatsYear(v === "all" ? null : Number(v))}
+            options={[
+              { value: "all", label: "All time" },
+              ...years.map((y) => ({ value: String(y), label: String(y) })),
+            ]}
+            aria-label="Stats year"
+          />
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          {/* Export CSV */}
-          <button
-            type="button"
-            onClick={() => exportCSV(rawData.filter((i) => i.watched))}
-            className="flex items-center gap-1.5 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-tertiary transition-colors hover:border-border-strong hover:text-text-secondary"
-            title="Export watchlist as CSV"
-          >
-            <Download size={12} />
-            Export
-          </button>
+          <Hint label="Export watchlist as CSV">
+            <Button variant="quiet" size="sm" onClick={() => exportCSV(rawData.filter((i) => i.watched))}>
+              <Download />
+              Export
+            </Button>
+          </Hint>
 
-          {/* Wrapped */}
           {selectedYear && (
-            <button
-              type="button"
+            <Button
+              variant="quiet"
+              size="sm"
               onClick={() => setWrappedOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-[rgba(45,212,191,0.3)] bg-[rgba(45,212,191,0.08)] px-3 py-1.5 text-xs font-semibold text-[#2dd4bf] transition-colors hover:bg-[rgba(45,212,191,0.14)]"
+              className="border-accent-watching-vivid/30 bg-accent-watching-vivid/8 font-semibold text-accent-watching-vivid hover:bg-accent-watching-vivid/15 hover:text-accent-watching-vivid"
             >
-              <Sparkles size={12} />
+              <Sparkles />
               {selectedYear} Wrapped
-            </button>
+            </Button>
           )}
         </div>
       </div>

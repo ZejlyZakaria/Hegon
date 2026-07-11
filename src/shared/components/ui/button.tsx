@@ -19,6 +19,24 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
+
+        // ── HEGON variants (graphite). The shadcn ones above are legacy: they speak
+        // bg-primary/bg-accent, which is why every module hand-rolled its controls.
+        // These three cover what the app actually needs. Prefer them in new code.
+        //
+        // quiet    — the default control on a page surface (filters, chevrons, ghost CTAs)
+        // glass    — over a photo/backdrop (hero, poster overlays): reads on any image
+        // contrast — a white CTA on a coloured surface (StatusCard's teal, accents)
+        quiet:
+          "border border-border-subtle bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary",
+        glass:
+          "border border-white/15 bg-black/40 text-white/80 backdrop-blur-sm hover:border-white/25 hover:bg-black/60 hover:text-white",
+        contrast:
+          "bg-white text-surface-0 hover:bg-white/90",
+        // accent — the module's own colour, passed as a CSS var so one variant serves every
+        // module: <Button variant="accent" style={{ "--btn-accent": "var(--color-accent-watching)" }}>
+        accent:
+          "bg-(--btn-accent) text-white hover:brightness-110",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

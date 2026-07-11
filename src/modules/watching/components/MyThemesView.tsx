@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Heart, Music, Pause, Play, Shuffle } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
+import { Hint } from "@/shared/components/ui/tooltip";
 import { useThemeFavorites, useToggleThemeFavorite } from "@/modules/watching/hooks/useThemeFavorites";
 import { useThemeCovers } from "@/modules/watching/hooks/useThemeCovers";
 import { themeTrackKey } from "@/modules/watching/service";
@@ -179,14 +180,16 @@ export default function MyThemesView() {
                 </div>
               </button>
 
-              <button
-                type="button"
-                onClick={() => toggleFav.mutate({ track, faved: true })}
-                title="Remove from My Themes"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-tertiary opacity-0 transition-[opacity,color] hover:text-text-primary group-hover/row:opacity-100"
-              >
-                <Heart size={16} className="fill-accent-watching-vivid text-accent-watching-vivid" />
-              </button>
+              <Hint label="Remove from My Themes">
+                <button
+                  type="button"
+                  onClick={() => toggleFav.mutate({ track, faved: true })}
+                  aria-label="Remove from My Themes"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-tertiary opacity-0 transition-[opacity,color] hover:text-text-primary group-hover/row:opacity-100"
+                >
+                  <Heart size={16} className="fill-accent-watching-vivid text-accent-watching-vivid" />
+                </button>
+              </Hint>
             </div>
           );
         })}

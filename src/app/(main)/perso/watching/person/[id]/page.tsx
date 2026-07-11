@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { CalendarClock, Plus, Search, Star } from "lucide-react";
+import { CalendarClock, Plus, Star } from "lucide-react";
+import { SearchInput } from "@/shared/components/ui/search-input";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
-import { cn } from "@/shared/utils/utils";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/shared/components/ui/select";
+import { posterStatus, PosterStatusBadge } from "@/modules/watching/components/shared/StatusBadge";
+import { Button } from "@/shared/components/ui/button";
+import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { usePeopleCounts, usePersonBundle, useTitlesByPerson } from "@/modules/watching/hooks/usePerson";
 import { PersonHero } from "@/modules/watching/components/person/PersonHero";
 import { PersonJourney } from "@/modules/watching/components/person/PersonJourney";
@@ -31,9 +31,11 @@ const TOOLBAR_MIN = 5;
 const TIMELINE_MIN = 4;   // dated titles — fewer than that tells no story
 
 type SortKey = "rating" | "watched" | "released";
-const SORT_LABEL: Record<SortKey, string> = {
-  rating: "Your rating", watched: "Watch date", released: "Release date",
-};
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "rating", label: "Your rating" },
+  { value: "watched", label: "Watch date" },
+  { value: "released", label: "Release date" },
+];
 
 // Status is the spine of the grid — it never hides anything, it orders it. The sort
 // select only reorders WITHIN each status group, so the structure never disappears.
@@ -45,19 +47,6 @@ function sortValue(t: PersonTitle, key: SortKey): number {
   if (key === "rating") return t.user_rating ?? -1;
   if (key === "released") return t.year ?? -1;
   return t.watched_at ? new Date(t.watched_at).getTime() : -1;
-}
-
-// Status pill on a "your titles" tile (watched → the rating badge shows instead).
-function titleBadge(t: PersonTitle): { label: string; cls: string; position?: string } | null {
-  if (t.watched) return null;
-  if (t.dropped) return { label: "Dropped", cls: "text-amber-300" };
-  if (t.paused) return { label: "Paused", cls: "text-sky-300" };
-  if (t.in_progress) {
-    const position = t.type !== "film" && t.current_season ? `S${t.current_season}·E${t.current_episode ?? 0}` : undefined;
-    return { label: "Watching", cls: "text-accent-watching-vivid", position };
-  }
-  if (t.want_to_watch) return { label: "Want to watch", cls: "text-violet-300" };
-  return null;
 }
 
 export default function PersonPage() {
@@ -209,34 +198,26 @@ export default function PersonPage() {
                 {showToolbar && (
                   <div className="flex items-center gap-2">
                     {showTimeline && (
-                      <button
-                        type="button"
-                        onClick={() => setTimelineOpen(true)}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-control border border-border-subtle bg-surface-1 px-3 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
-                      >
-                        <CalendarClock size={13} />
+                      <Button variant="quiet" size="sm" onClick={() => setTimelineOpen(true)}>
+                        <CalendarClock />
                         Timeline
-                      </button>
+                      </Button>
                     )}
-                    <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-                      <SelectTrigger className="h-8 w-36 border-border-subtle bg-surface-1 text-xs text-text-secondary focus:ring-0">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="border-border-strong bg-surface-3">
-                        {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
-                          <SelectItem key={k} value={k} className="text-xs focus:bg-surface-2 focus:text-text-primary">
-                            {SORT_LABEL[k]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FilterSelect
+                      size="sm"
+                      className="w-36"
+                      value={sort}
+                      onChange={setSort}
+                      options={SORT_OPTIONS}
+                      aria-label="Sort your titles"
+                    />
                   </div>
                 )}
               </div>
 
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                 {sortedTitles.map((t) => {
-                  const badge = titleBadge(t);
+                  const badge = posterStatus(t);
                   return (
                     <button
                       key={t.id}
@@ -251,17 +232,7 @@ export default function PersonPage() {
                             <Star size={9} style={{ color: AMBER, fill: AMBER }} /> {t.user_rating}
                           </div>
                         )}
-                        {badge && (
-                          <>
-                            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-linear-to-t from-black/90 via-black/40 to-transparent" />
-                            <div className="absolute inset-x-1.5 bottom-1.5 z-10 flex items-end justify-between gap-1">
-                              <span className={cn("shrink-0 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-white/10 backdrop-blur-sm", badge.cls)}>{badge.label}</span>
-                              {badge.position && (
-                                <span className="min-w-0 truncate rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur-sm">{badge.position}</span>
-                              )}
-                            </div>
-                          </>
-                        )}
+                        {badge && <PosterStatusBadge status={badge} />}
                       </div>
                       <p className="mt-2 truncate text-xs font-medium text-text-primary">{t.title}</p>
                       {t.role && <p className="truncate text-[11px] text-text-tertiary">{t.role}</p>}
@@ -278,15 +249,13 @@ export default function PersonPage() {
                 <h2 className="text-title text-text-primary">
                   Not seen yet <span className="text-text-tertiary">({notSeen.length})</span>
                 </h2>
-                <div className="relative w-full sm:w-60">
-                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
-                  <input
-                    value={search}
-                    onChange={(e) => { setSearch(e.target.value); setVisibleCount(18); }}
-                    placeholder="Search their films…"
-                    className="w-full rounded-control border border-border-subtle bg-surface-1 py-1.5 pl-8 pr-3 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
-                  />
-                </div>
+                <SearchInput
+                  containerClassName="w-full sm:w-60"
+                  placeholder="Search their films…"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setVisibleCount(18); }}
+                  onClear={() => { setSearch(""); setVisibleCount(18); }}
+                />
               </div>
 
               {filteredNotSeen.length === 0 ? (
@@ -311,13 +280,9 @@ export default function PersonPage() {
                   </div>
                   {visibleNotSeen.length < filteredNotSeen.length && (
                     <div className="mt-4 flex justify-center">
-                      <button
-                        type="button"
-                        onClick={() => setVisibleCount((n) => n + 18)}
-                        className="rounded-full border border-border-subtle bg-surface-1 px-4 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
-                      >
+                      <Button variant="quiet" size="sm" onClick={() => setVisibleCount((n) => n + 18)}>
                         Load more ({filteredNotSeen.length - visibleNotSeen.length})
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </>

@@ -35,12 +35,17 @@ export function SegmentedControl<T extends string>({
 }: SegmentedControlProps<T>) {
   const groupId = useId();
   const reduce = useReducedMotion();
-  const h = size === "sm" ? "h-7" : "h-8";
+  // The OUTER height is what matters: it's what a Button or a CarouselNav standing next to
+  // it has to match. Sizing only the inner segments (as before) let the padding + border
+  // decide the real height, so nothing could ever line up beside it.
+  //   sm → 32px (Button size="sm" / icon-sm)   md → 36px (Button size="default")
+  const box = size === "sm" ? "h-8 p-0.5" : "h-9 p-1";
 
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-control border border-border-subtle bg-surface-2 p-1",
+        "inline-flex items-center rounded-control border border-border-subtle bg-surface-2",
+        box,
         className,
       )}
     >
@@ -52,8 +57,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             onClick={() => onChange(item.value)}
             className={cn(
-              "relative flex shrink-0 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium outline-none transition-colors",
-              h,
+              "relative flex h-full shrink-0 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium outline-none transition-colors",
               active ? "text-text-primary" : "text-text-tertiary hover:text-text-primary",
             )}
           >

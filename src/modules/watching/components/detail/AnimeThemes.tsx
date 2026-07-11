@@ -5,9 +5,10 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, Loader2, Music, Play, Shuffle } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/shared/components/ui/select";
+import { Button } from "@/shared/components/ui/button";
+import { FilterSelect } from "@/shared/components/ui/filter-select";
+import { Hint } from "@/shared/components/ui/tooltip";
+import { WATCHING_ACCENT } from "../../ui";
 import { useAnimeThemes } from "../../hooks/useAnimeThemes";
 import { useThemeFavorites, useToggleThemeFavorite } from "../../hooks/useThemeFavorites";
 import { useThemePlayer, type PlayerTrack } from "../../store/theme-player";
@@ -166,13 +167,15 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
         </div>
         {flat.length > 0 && (
           <div className="flex shrink-0 items-center gap-1.5">
-            <button type="button" onClick={shuffle} title="Shuffle" className="flex h-8 w-8 items-center justify-center rounded-full border border-border-subtle bg-surface-2 text-text-secondary transition-colors hover:text-text-primary">
-              <Shuffle size={13} />
-            </button>
-            <button type="button" onClick={() => play(flat, 0)} className="flex items-center gap-1.5 rounded-full bg-accent-watching px-3.5 py-1.5 text-[11px] font-semibold text-white transition-transform hover:scale-105">
-              <Play size={11} className="fill-current" />
+            <Hint label="Shuffle">
+              <Button variant="quiet" size="icon-sm" onClick={shuffle} aria-label="Shuffle">
+                <Shuffle />
+              </Button>
+            </Hint>
+            <Button variant="accent" size="sm" style={WATCHING_ACCENT} onClick={() => play(flat, 0)}>
+              <Play className="fill-current" />
               Play
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -182,18 +185,17 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
       ) : (
         <>
           {groups.length > 1 && (
-            <Select value={String(activePart)} onValueChange={(v) => setPart(Number(v))}>
-              <SelectTrigger className="mb-2 h-8 w-full border-border-subtle bg-surface-2 text-xs text-text-primary focus:ring-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border-border-strong bg-surface-3">
-                {groups.map((g, i) => (
-                  <SelectItem key={i} value={String(i)} className="text-xs focus:bg-surface-2 focus:text-text-primary">
-                    {g.name}{g.year ? ` · ${g.year}` : ""} ({g.tracks.length})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterSelect
+              size="sm"
+              className="mb-2 w-full"
+              value={String(activePart)}
+              onChange={(v) => setPart(Number(v))}
+              options={groups.map((g, i) => ({
+                value: String(i),
+                label: `${g.name}${g.year ? ` · ${g.year}` : ""} (${g.tracks.length})`,
+              }))}
+              aria-label="Season"
+            />
           )}
 
           <div className="max-h-72 space-y-1 overflow-y-auto scrollbar-hide">

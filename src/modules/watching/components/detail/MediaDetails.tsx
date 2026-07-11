@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLink, Trophy } from "lucide-react";
+import { Hint } from "@/shared/components/ui/tooltip";
 import { useImdbId } from "../../hooks/useImdbId";
 import { useOmdbRatings } from "../../hooks/useOmdbRatings";
 import { useAgeRating } from "../../hooks/useAgeRating";
@@ -64,16 +65,17 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-title text-text-primary">Details</h2>
         {imdbId && (
-          <a
-            href={`https://www.imdb.com/title/${imdbId}/`}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="View on IMDb"
-            className="inline-flex items-center gap-1 rounded-md bg-[#F5C518] px-2 py-1 text-[11px] font-bold text-black transition-opacity hover:opacity-85"
-          >
-            IMDb
-            <ExternalLink size={10} strokeWidth={2.5} />
-          </a>
+          <Hint label="View on IMDb">
+            <a
+              href={`https://www.imdb.com/title/${imdbId}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-md bg-[#F5C518] px-2 py-1 text-[11px] font-bold text-black transition-opacity hover:opacity-85"
+            >
+              IMDb
+              <ExternalLink size={10} strokeWidth={2.5} />
+            </a>
+          </Hint>
         )}
       </div>
       <div className="surface-quiet overflow-hidden rounded-card">

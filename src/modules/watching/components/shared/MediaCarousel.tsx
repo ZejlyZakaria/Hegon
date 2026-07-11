@@ -4,16 +4,12 @@ import { useRef, useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import {
-  Star,
-  Heart,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Bookmark,
-} from "lucide-react";
+import { Star, Heart, Plus, Bookmark } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { cn } from "@/shared/utils/utils";
+import { Button } from "@/shared/components/ui/button";
+import { CarouselNav } from "@/shared/components/ui/carousel-nav";
+import { WATCHING_ACCENT } from "@/modules/watching/ui";
 import { displayTitle } from "@/modules/watching/utils";
 import { MediaActionMenu } from "./MediaActionMenu";
 
@@ -328,42 +324,18 @@ export function MediaCarousel({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => canGoPrev && scroll("prev")}
-            className={cn(
-              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,opacity,transform] duration-150 ease-out active:scale-[0.97]",
-              canGoPrev
-                ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
-                : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
-            )}
-            aria-label="Previous"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => canGoNext && scroll("next")}
-            className={cn(
-              "hidden lg:block rounded-full border border-white/10 p-2 transition-[background-color,opacity,transform] duration-150 ease-out active:scale-[0.97]",
-              canGoNext
-                ? "text-text-tertiary hover:bg-white/10 hover:text-text-primary cursor-pointer"
-                : "text-text-tertiary/20 border-white/5 cursor-not-allowed opacity-50",
-            )}
-            aria-label="Next"
-          >
-            <ChevronRight size={16} />
-          </button>
+          <CarouselNav
+            className="hidden lg:flex"
+            onPrev={() => scroll("prev")}
+            onNext={() => scroll("next")}
+            canPrev={canGoPrev}
+            canNext={canGoNext}
+          />
           {canAdd && (
-            <button
-              type="button"
-              onClick={onAddClick}
-              className="flex items-center gap-1.5 rounded-control px-3 py-1.5 text-xs font-medium text-white transition-[opacity,transform] duration-150 ease-out hover:opacity-90 active:scale-[0.97]"
-              style={{ backgroundColor: "var(--color-accent-watching)" }}
-            >
-              <Plus size={12} />
+            <Button variant="accent" size="sm" style={WATCHING_ACCENT} onClick={onAddClick}>
+              <Plus />
               Add
-            </button>
+            </Button>
           )}
         </div>
       </div>

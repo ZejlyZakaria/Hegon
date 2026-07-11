@@ -2,7 +2,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, ChevronLeft, ChevronRight, MoreVertical, Star } from "lucide-react";
+import { BarChart3, MoreVertical, Star } from "lucide-react";
+import { Button } from "@/shared/components/ui/button";
+import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { cn } from "@/shared/utils/utils";
 import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
@@ -10,9 +12,8 @@ import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/shared/components/ui/select";
+import { FilterSelect } from "@/shared/components/ui/filter-select";
+import { Hint } from "@/shared/components/ui/tooltip";
 import { useSeasonEpisodes } from "../../hooks/useSeasonEpisodes";
 import {
   useEpisodeHighlights,
@@ -76,9 +77,11 @@ function StillCard({
         {hasActions && (
           <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5">
             {highlighted && (
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 ring-1 ring-white/15 backdrop-blur-md" title="Best episode">
-                <Star size={13} style={{ color: HIGHLIGHT, fill: HIGHLIGHT }} />
-              </span>
+              <Hint label="Best episode">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 ring-1 ring-white/15 backdrop-blur-md">
+                  <Star size={13} style={{ color: HIGHLIGHT, fill: HIGHLIGHT }} />
+                </span>
+              </Hint>
             )}
             <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
               <DropdownMenuTrigger asChild>
@@ -266,25 +269,12 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
               ]}
             />
           )}
-          {showChevrons && (
-            <>
-              <button type="button" onClick={() => scroll(-1)} className="flex h-7 w-7 items-center justify-center rounded-lg border border-border-subtle bg-surface-2 text-text-tertiary transition-colors hover:text-text-primary">
-                <ChevronLeft size={14} />
-              </button>
-              <button type="button" onClick={() => scroll(1)} className="flex h-7 w-7 items-center justify-center rounded-lg border border-border-subtle bg-surface-2 text-text-tertiary transition-colors hover:text-text-primary">
-                <ChevronRight size={14} />
-              </button>
-            </>
-          )}
+          {showChevrons && <CarouselNav size="md" onPrev={() => scroll(-1)} onNext={() => scroll(1)} />}
           {HEATMAP_ENABLED && (
-            <button
-              type="button"
-              onClick={() => setHeatmapOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-2 px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary"
-            >
-              <BarChart3 size={13} />
+            <Button variant="quiet" size="sm" onClick={() => setHeatmapOpen(true)}>
+              <BarChart3 />
               Ratings
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -294,18 +284,17 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
       {view === "all" && seasonCount > 1 && (
         seasonCount > 10 ? (
           <div className="mb-3">
-            <Select value={String(season)} onValueChange={(v) => setSeason(Number(v))}>
-              <SelectTrigger className="h-8 w-40 border-border-subtle bg-surface-2 text-xs text-text-primary focus:ring-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border-border-strong bg-surface-3">
-                {Array.from({ length: seasonCount }, (_, i) => i + 1).map((s) => (
-                  <SelectItem key={s} value={String(s)} className="text-xs focus:bg-surface-2 focus:text-text-primary">
-                    Season {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterSelect
+              size="sm"
+              className="w-40"
+              value={String(season)}
+              onChange={(v) => setSeason(Number(v))}
+              options={Array.from({ length: seasonCount }, (_, i) => ({
+                value: String(i + 1),
+                label: `Season ${i + 1}`,
+              }))}
+              aria-label="Season"
+            />
           </div>
         ) : (
           <div className="mb-3 flex flex-wrap gap-1.5">

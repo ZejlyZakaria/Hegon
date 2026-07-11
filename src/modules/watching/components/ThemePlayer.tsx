@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Heart, Loader2, Maximize2, Music, Pause, Play, SkipBack, SkipForward, Video, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/shared/components/ui/dialog";
+import { Hint } from "@/shared/components/ui/tooltip";
 import { useThemePlayer } from "../store/theme-player";
 import { useThemeFavorites, useToggleThemeFavorite } from "../hooks/useThemeFavorites";
 import { themeTrackKey } from "../service";
@@ -110,7 +111,7 @@ export function ThemePlayer() {
             className="fixed bottom-4 right-4 z-40 w-85 max-w-[calc(100vw-2rem)] transform-gpu overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-2xl md:bg-black/70 md:backdrop-blur-xl"
           >
             <div className="flex items-center gap-3 p-3 pb-2">
-              <button type="button" onClick={() => setExpanded(true)} className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10" title="Expand player">
+              <button type="button" onClick={() => setExpanded(true)} aria-label="Expand player" className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10">
                 {cover ? <img src={cover} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><Music size={16} className="text-white/40" /></div>}
                 <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors hover:bg-black/30">
                   <Maximize2 size={14} className="text-white opacity-0 transition-opacity hover:opacity-100" />
@@ -145,8 +146,12 @@ export function ThemePlayer() {
             <div className="flex items-center justify-between border-t border-white/10 px-3 py-1.5">
               <button type="button" onClick={openVideo} disabled={!current.videoUrl} className="flex items-center gap-1.5 text-[11px] font-medium text-white/55 transition-colors hover:text-white disabled:opacity-30"><Video size={12} />Watch video</button>
               <div className="flex items-center gap-0.5">
-                <button type="button" onClick={() => setExpanded(true)} title="Expand" className="flex h-6 w-6 items-center justify-center rounded-full text-white/40 transition-colors hover:bg-white/10 hover:text-white/80"><Maximize2 size={12} /></button>
-                <button type="button" onClick={close} title="Close" className="flex h-6 w-6 items-center justify-center rounded-full text-white/40 transition-colors hover:bg-white/10 hover:text-white/80"><X size={13} /></button>
+                <Hint label="Expand">
+                  <button type="button" onClick={() => setExpanded(true)} aria-label="Expand" className="flex h-6 w-6 items-center justify-center rounded-full text-white/40 transition-colors hover:bg-white/10 hover:text-white/80"><Maximize2 size={12} /></button>
+                </Hint>
+                <Hint label="Close">
+                  <button type="button" onClick={close} aria-label="Close" className="flex h-6 w-6 items-center justify-center rounded-full text-white/40 transition-colors hover:bg-white/10 hover:text-white/80"><X size={13} /></button>
+                </Hint>
               </div>
             </div>
           </motion.div>
@@ -173,12 +178,16 @@ export function ThemePlayer() {
             <div className="relative mx-auto flex h-full w-full max-w-md flex-col px-6 pb-10 pt-6 md:h-auto md:max-w-none md:p-4">
               {/* Header */}
               <div className="flex items-center justify-between">
-                <button type="button" onClick={() => setExpanded(false)} title="Minimize" className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white md:h-8 md:w-8"><ChevronDown size={20} /></button>
+                <Hint label="Minimize">
+                  <button type="button" onClick={() => setExpanded(false)} aria-label="Minimize" className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white md:h-8 md:w-8"><ChevronDown size={20} /></button>
+                </Hint>
                 <div className="min-w-0 px-2 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-white/50">Openings &amp; Endings</p>
                   <p className="truncate text-xs font-medium text-white/80">{current.animeName}</p>
                 </div>
-                <button type="button" onClick={close} title="Close" className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white md:h-8 md:w-8"><X size={18} /></button>
+                <Hint label="Close">
+                  <button type="button" onClick={close} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white md:h-8 md:w-8"><X size={18} /></button>
+                </Hint>
               </div>
 
               <div className="flex flex-1 flex-col justify-center gap-8 md:flex-none md:gap-4 md:pt-3">

@@ -6,22 +6,7 @@ import Image from "next/image";
 import { Star, Heart, MoreVertical, Trash2, ExternalLink } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { displayTitle } from "@/modules/watching/utils";
-import { cn } from "@/shared/utils/utils";
-
-// Status badge shown on the poster: "Watching" (with S·E position for series) or
-// "Dropped". Completed titles carry no badge — they're the library's default state.
-function statusBadge(item: WatchingMedia): { label: string; tone: "watching" | "paused" | "dropped"; position?: string } | null {
-  if (item.dropped) return { label: "Dropped", tone: "dropped" };
-  if (item.paused) return { label: "Paused", tone: "paused" };
-  if (item.in_progress) {
-    const isSeries = item.type === "serie" || item.type === "anime";
-    const position = isSeries && item.current_season
-      ? `S${item.current_season} · E${item.current_episode ?? 0}`
-      : undefined;
-    return { label: "Watching", tone: "watching", position };
-  }
-  return null;
-}
+import { posterStatus, PosterStatusBadge } from "@/modules/watching/components/shared/StatusBadge";
 
 interface Props {
   item: WatchingMedia;
@@ -31,7 +16,7 @@ interface Props {
 }
 
 export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Props) {
-  const badge = statusBadge(item);
+  const badge = posterStatus(item);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
@@ -86,30 +71,7 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
           </div>
         )}
 
-        {/* dark scrim behind the status badge, so it stays legible over bright posters */}
-        {badge && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-linear-to-t from-black/95 via-black/50 to-transparent" />
-        )}
-
-        {/* status badge — Watching + S·E position / Paused / Dropped */}
-        {badge && (
-          <div className="absolute inset-x-2 bottom-2 z-10 flex items-end justify-between gap-1.5">
-            <span className={cn(
-              "shrink-0 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-sm ring-1 ring-white/10",
-              badge.tone === "watching" ? "text-accent-watching-vivid"
-                : badge.tone === "paused" ? "text-sky-300"
-                : "text-amber-300",
-            )}>
-              {badge.label}
-            </span>
-            {badge.position && (
-              <span className="min-w-0 truncate rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 backdrop-blur-sm ring-1 ring-white/10">
-                {badge.position}
-              </span>
-            )}
-          </div>
-        )}
-
+        {badge && <PosterStatusBadge status={badge} />}
       </div>
 
       {/* action menu trigger */}
