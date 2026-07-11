@@ -2,8 +2,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
-  User, SlidersHorizontal, LayoutGrid, Loader2, Camera, Check, LogOut, Share2,
+  User, SlidersHorizontal, LayoutGrid, Loader2, Camera, Check, LogOut, Palette, Share2,
 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -359,6 +360,21 @@ export default function SettingsPage() {
           )}
         </Section>
       )}
+
+      {/* ── Design system ── */}
+      <Section icon={<Palette size={15} />} title="Design system">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-text-primary">Components & tokens</p>
+            <p className="text-xs text-text-tertiary">
+              Every primitive and every token, live — the single source of truth for how HEGON looks.
+            </p>
+          </div>
+          <Button variant="quiet" size="sm" asChild>
+            <Link href="/settings/styleguide">Open</Link>
+          </Button>
+        </div>
+      </Section>
 
       {/* ── Account ── */}
       <Section icon={<Check size={15} />} title="Account">
