@@ -432,10 +432,11 @@ export default function MediaDetailPage() {
 
             <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
 
-            {/* Connections cluster — goals this title feeds, then your lists */}
-            <ContributingToGoals media={media} />
-
             <InList mediaItemId={media.id} userId={media.user_id} />
+
+            {/* The link out to another module closes the rail — it's the least "about this
+                title" thing here, so it earns the last slot, not a middle one. */}
+            <ContributingToGoals media={media} />
 
           </div>
         </div>

@@ -17,6 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
 import { cn } from "@/shared/utils/utils";
+import { Hint } from "@/shared/components/ui/tooltip";
 import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { useRewatches, useAddRewatch, useRemoveRewatch } from "../../hooks/useRewatches";
@@ -182,23 +183,27 @@ function RewatchDatePicker({ releaseISO, onAdd, onCancel, pending }: {
           {months.map((mm) => <SelectItem key={mm} value={String(mm)} className={itemCls}>{MONTHS[mm - 1]}</SelectItem>)}
         </SelectContent>
       </Select>
-      <button
-        type="button"
-        onClick={submit}
-        disabled={!complete || pending}
-        title="Add rewatch"
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-white/15 text-white transition-colors hover:bg-white/20 disabled:opacity-40"
-      >
-        <Check size={14} />
-      </button>
-      <button
-        type="button"
-        onClick={onCancel}
-        title="Cancel"
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-white/60 transition-colors hover:text-white"
-      >
-        <X size={14} />
-      </button>
+      <Hint label="Add rewatch">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!complete || pending}
+          aria-label="Add rewatch"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-white/15 text-white transition-colors hover:bg-white/20 disabled:opacity-40"
+        >
+          <Check size={14} />
+        </button>
+      </Hint>
+      <Hint label="Cancel">
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Cancel"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-white/60 transition-colors hover:text-white"
+        >
+          <X size={14} />
+        </button>
+      </Hint>
     </div>
   );
 }
@@ -424,7 +429,9 @@ export function StatusCard({
           {status === "watched" && (
             <div className="mt-2.5">
               <Row
-                label="Watched"
+                // NOT "Watched" — the badge above already says that. A row exists to add a
+                // fact, not to echo the header. What it adds is WHEN.
+                label={isSeries ? "Finished" : "First watched"}
                 value={
                   yearEditable ? (
                     <Popover>
@@ -487,14 +494,16 @@ export function StatusCard({
                                 <Repeat size={11} className="text-accent-watching-vivid" />
                                 {fmtDate(r.watched_on)}
                               </span>
-                              <button
-                                type="button"
-                                title="Remove"
-                                onClick={() => handleRemoveRewatch(r.id)}
-                                className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary opacity-0 transition-[opacity,color] hover:text-red-400 group-hover:opacity-100"
-                              >
-                                <X size={11} />
-                              </button>
+                              <Hint label="Remove this rewatch">
+                                <button
+                                  type="button"
+                                  aria-label="Remove this rewatch"
+                                  onClick={() => handleRemoveRewatch(r.id)}
+                                  className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary opacity-0 transition-[opacity,color] hover:text-red-400 group-hover:opacity-100"
+                                >
+                                  <X size={11} />
+                                </button>
+                              </Hint>
                             </div>
                           ))}
                         </PopoverContent>
@@ -551,15 +560,16 @@ export function StatusCard({
               <Row
                 label="Reason"
                 value={
-                  <button
-                    type="button"
-                    onClick={onDrop}
-                    title="Change reason"
-                    className="group inline-flex items-center gap-1.5 text-label font-medium text-white transition-colors hover:text-white/90"
-                  >
-                    {reason ?? "Add a reason"}
-                    <Pencil size={10} className="text-white/40 transition-colors group-hover:text-white/70" />
-                  </button>
+                  <Hint label="Change reason">
+                    <button
+                      type="button"
+                      onClick={onDrop}
+                      className="group inline-flex items-center gap-1.5 text-label font-medium text-white transition-colors hover:text-white/90"
+                    >
+                      {reason ?? "Add a reason"}
+                      <Pencil size={10} className="text-white/40 transition-colors group-hover:text-white/70" />
+                    </button>
+                  </Hint>
                 }
               />
             </div>
@@ -567,27 +577,9 @@ export function StatusCard({
         </motion.div>
       </AnimatePresence>
 
-      {/* Where to watch — companion to every state, always in the card (quiet row) */}
-      {providers && providers.flatrate.length > 0 && (
-        <div className="mt-3.5">
-          <p className="text-label text-white/45">Where to watch</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {providers.flatrate.slice(0, 6).map((p) =>
-              p.logo_url ? (
-                <img
-                  key={p.id}
-                  src={p.logo_url}
-                  alt={p.name}
-                  title={p.name}
-                  className="h-8 w-8 rounded-control object-cover ring-1 ring-white/15"
-                />
-              ) : null,
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Footer: the state's one action ── */}
+      {/* ── The state's one action — it follows the state's facts. It used to sit BELOW
+             "Where to watch", which made the card's primary button read as an action on the
+             streaming services rather than on the title. ── */}
       <AnimatePresence mode="popLayout" initial={false}>
         {status === "want_to_watch" && (
           <motion.div key="f-want" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
@@ -627,6 +619,27 @@ export function StatusCard({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Footer: where to watch. A quiet, separated strip — it's reference, not an action
+             on this card, so it closes it instead of interrupting it. ── */}
+      {providers && providers.flatrate.length > 0 && (
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <p className="text-caption uppercase tracking-wide text-white/45">Where to watch</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {providers.flatrate.slice(0, 6).map((p) =>
+              p.logo_url ? (
+                <Hint key={p.id} label={p.name}>
+                  <img
+                    src={p.logo_url}
+                    alt={p.name}
+                    className="h-8 w-8 rounded-control object-cover ring-1 ring-white/15"
+                  />
+                </Hint>
+              ) : null,
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -136,29 +136,58 @@ export function StatsSkeleton() {
 // Shared by the detail page's client loading state AND its route-level loading.tsx
 // so navigating in never flashes the carousel (parent) skeleton first.
 
+// Mirrors the real detail page: bottom-anchored hero, then the 2fr/1fr split with the
+// branded card leading the rail. (The old one still drew a bordered, darker rail and a
+// zinc-950 page — neither has existed for a while, so the layout jumped on load.)
 export function DetailSkeleton() {
   return (
-    <div className="min-h-screen bg-zinc-950">
-      <div className="relative w-full animate-pulse bg-surface-1" style={{ aspectRatio: "21/9", maxHeight: "55vh", minHeight: 280 }}>
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-8 md:px-10">
-          <div className="flex items-end gap-6">
-            <div className="aspect-2/3 w-32 shrink-0 rounded-xl bg-surface-2 md:w-40" />
-            <div className="flex-1 space-y-3 pb-2">
-              <div className="h-7 w-2/3 rounded-lg bg-surface-2" />
-              <div className="h-4 w-1/3 rounded bg-surface-1" />
-              <div className="h-12 w-full max-w-xl rounded-lg bg-surface-1" />
+    <div className="min-h-screen bg-surface-0">
+      <div className="relative aspect-video w-full overflow-hidden bg-surface-1 lg:aspect-21/9 lg:max-h-[55vh] lg:min-h-70">
+        <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/40 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 px-4 pb-6 lg:px-10 lg:pb-8">
+          <div className="flex items-end gap-4 lg:gap-8">
+            <div className="aspect-2/3 w-24 shrink-0 animate-pulse rounded-tile bg-surface-2 lg:w-40" />
+            <div className="flex-1 space-y-3 pb-1">
+              <div className="h-7 w-2/3 animate-pulse rounded-lg bg-surface-2" />
+              <div className="h-4 w-1/3 animate-pulse rounded bg-surface-2" />
+              <div className="h-10 w-full max-w-4xl animate-pulse rounded-lg bg-surface-2" />
+              {/* Reserved trailer slot — same height as the real button, so nothing shifts */}
+              <div className="h-8 w-32 animate-pulse rounded-full bg-surface-2" />
             </div>
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-5 p-6 md:p-10">
-          <div className="h-3 w-1/4 rounded bg-surface-2" />
-          <div className="h-40 rounded-2xl bg-surface-1" />
+
+      <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
+        {/* Left — My Take, then the long-form sections */}
+        <div className="min-w-0 space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-8 lg:pr-2">
+          {[36, 28].map((w, i) => (
+            <div key={i}>
+              <div className="mb-3 h-4 animate-pulse rounded bg-surface-2" style={{ width: `${w}%`, maxWidth: 180 }} />
+              <div className="h-36 animate-pulse rounded-card bg-surface-1" />
+            </div>
+          ))}
+          <div>
+            <div className="mb-3 h-4 w-24 animate-pulse rounded bg-surface-2" />
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+              {Array.from({ length: 6 }, (_, i) => (
+                <div key={i} className="aspect-2/3 animate-pulse rounded-tile bg-surface-2" />
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="space-y-5 border-l border-border-subtle bg-[#0c0c0f] p-6">
-          <div className="h-3 w-1/3 rounded bg-surface-2" />
-          <div className="h-20 rounded-xl bg-surface-2" />
+
+        {/* Rail — the branded status card leads, then the quiet blocks */}
+        <div className="min-w-0 space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-2 lg:pr-8">
+          <div className="h-56 animate-pulse rounded-card bg-surface-2" />
+          <div>
+            <div className="mb-3 h-4 w-20 animate-pulse rounded bg-surface-2" />
+            <div className="h-48 animate-pulse rounded-card bg-surface-1" />
+          </div>
+          <div>
+            <div className="mb-3 h-4 w-16 animate-pulse rounded bg-surface-2" />
+            <div className="h-28 animate-pulse rounded-card bg-surface-1" />
+          </div>
         </div>
       </div>
     </div>

@@ -1270,6 +1270,21 @@ export async function getTitlesByPerson(userId: string, creditTmdbIds: number[])
   }));
 }
 
+// Every rating you've given inside one type — the basis of "you rated this higher than
+// 84% of your films". Compared WITHIN a type on purpose: ranking a series against your
+// films would make the sentence false.
+export async function getRatingsForType(userId: string, type: MediaType): Promise<number[]> {
+  if (!userId) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("media_items").select("user_rating")
+    .eq("user_id", userId)
+    .eq("type", type)
+    .not("user_rating", "is", null);
+  if (error) throw error;
+  return (data ?? []).map((r: { user_rating: number }) => r.user_rating);
+}
+
 export interface PersonCount { n: number; name: string }
 
 // How many titles you've SEEN each person in, across your whole library — the basis of

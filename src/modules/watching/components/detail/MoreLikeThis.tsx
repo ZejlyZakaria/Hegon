@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { Plus } from "lucide-react";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 
 interface SimilarItem {
   id: number;
@@ -28,8 +29,10 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
 
   return (
     <section>
-      <h2 className="mb-3 text-title text-text-primary">More Like This</h2>
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+      <SectionHeader title="More Like This" />
+      {/* Mobile: one scrolling row (like the history strip) — a 3-wide grid of tiny posters
+          wrapped onto two lines and ate the screen. Desktop keeps the grid. */}
+      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-6">
         {items.slice(0, 6).map((sim) => {
           const title = sim.title || sim.name || "";
           return (
@@ -38,7 +41,7 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
               type="button"
               disabled={!clickable}
               onClick={() => onAddClick?.(sim)}
-              className="group block w-full cursor-pointer text-left disabled:cursor-default"
+              className="group block w-28 shrink-0 snap-start cursor-pointer text-left disabled:cursor-default sm:w-auto"
             >
               <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
                 <Image

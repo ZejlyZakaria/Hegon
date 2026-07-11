@@ -72,6 +72,10 @@ export const WATCHING_KEYS = {
   // How many titles you've seen each person in (library-wide) — powers "your #3 actor"
   peopleCounts: (userId: string) =>
     [...WATCHING_KEYS.all, 'people-counts', userId] as const,
+
+  // All your ratings within one type — powers "you rated this higher than 84% of your films"
+  ratingsByType: (userId: string, type: MediaType) =>
+    [...WATCHING_KEYS.all, 'ratings', userId, type] as const,
 } as const;
 
 // =====================================================

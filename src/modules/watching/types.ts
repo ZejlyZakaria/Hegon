@@ -44,6 +44,9 @@ export interface WatchingMedia {
   priority_level?: "high" | "medium" | "low"; 
   tmdb_id: number;
   notes: string | null;
+  // Stamped by a DB trigger, and ONLY when `notes` changes — `updated_at` moves on any
+  // status/progress edit, so it could never date a review.
+  note_updated_at?: string | null;
   tags: string[];
   directors?: { id?: number; name: string; profile_url?: string }[];
   // Cast cached from TMDB (top ~12) so the detail page renders Cast & Crew from
