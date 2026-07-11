@@ -17,10 +17,11 @@ export function usePersonBundle(personId: number) {
 }
 
 // Your collection titles featuring this person (live DB — reflects adds/removes).
-export function useTitlesByPerson(userId: string, personId: number) {
+// Matched on the person's credit tmdb_ids ∩ your library (robust to uncredited roles).
+export function useTitlesByPerson(userId: string, personId: number, creditTmdbIds: number[]) {
   return useQuery({
     queryKey: WATCHING_KEYS.titlesByPerson(userId, personId),
-    queryFn: () => getTitlesByPerson(userId, personId),
-    enabled: !!userId && !!personId,
+    queryFn: () => getTitlesByPerson(userId, creditTmdbIds),
+    enabled: !!userId && !!personId && creditTmdbIds.length > 0,
   });
 }

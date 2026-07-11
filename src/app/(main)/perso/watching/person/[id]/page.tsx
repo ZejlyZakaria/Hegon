@@ -48,7 +48,8 @@ export default function PersonPage() {
   const userId = useCurrentUserId();
 
   const { data: bundle, isLoading } = usePersonBundle(personId);
-  const { data: yourTitles = [] } = useTitlesByPerson(userId ?? "", personId);
+  const creditTmdbIds = bundle ? bundle.credits.map((c) => c.tmdb_id) : [];
+  const { data: rawTitles = [] } = useTitlesByPerson(userId ?? "", personId, creditTmdbIds);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [addItem, setAddItem] = useState<any>(null);
   const [search, setSearch] = useState("");
@@ -66,6 +67,14 @@ export default function PersonPage() {
   const roleLabel = DEPT_LABEL[profile.known_for_department ?? ""] ?? profile.known_for_department ?? "Person";
   const firstName = profile.name.split(" ")[0];
 
+  // Match library ↔ credit by (kind, tmdb_id): film→movie, serie & anime→tv (anime is a
+  // HEGON subtype of tv). Attach the person's role (character / job) from the credit.
+  const kind = (t: string) => (t === "film" ? "movie" : "tv");
+  const creditByKey = new Map(credits.map((c) => [`${kind(c.type)}:${c.tmdb_id}`, c] as const));
+  const yourTitles = rawTitles
+    .filter((t) => creditByKey.has(`${kind(t.type)}:${t.tmdb_id}`))
+    .map((t) => ({ ...t, role: creditByKey.get(`${kind(t.type)}:${t.tmdb_id}`)?.role ?? null }));
+
   // ── Your relationship with this person ──
   const owned = yourTitles.length;
   const total = credits.length;
@@ -74,8 +83,8 @@ export default function PersonPage() {
   const avgRating = rated.length ? rated.reduce((s, t) => s + (t.user_rating ?? 0), 0) / rated.length : null;
   const top = rated.length ? rated.reduce((a, b) => ((b.user_rating ?? 0) > (a.user_rating ?? 0) ? b : a)) : null;
 
-  const ownedIds = new Set(yourTitles.map((t) => t.tmdb_id));
-  const notSeen = credits.filter((c) => !ownedIds.has(c.tmdb_id));
+  const ownedKeys = new Set(yourTitles.map((t) => `${kind(t.type)}:${t.tmdb_id}`));
+  const notSeen = credits.filter((c) => !ownedKeys.has(`${kind(c.type)}:${c.tmdb_id}`));
   const q = search.trim().toLowerCase();
   const filteredNotSeen = q ? notSeen.filter((c) => c.title.toLowerCase().includes(q)) : notSeen;
   const visibleNotSeen = filteredNotSeen.slice(0, visibleCount);

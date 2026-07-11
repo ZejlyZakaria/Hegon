@@ -1228,46 +1228,29 @@ export interface PersonTitle {
 }
 
 const PERSON_TITLE_COLUMNS =
-  "id, type, title, poster_url, backdrop_url, year, runtime, user_rating, watched, in_progress, want_to_watch, paused, dropped, current_season, current_episode, watched_at, tmdb_id, cast_members, directors";
+  "id, type, title, poster_url, backdrop_url, year, runtime, user_rating, watched, in_progress, want_to_watch, paused, dropped, current_season, current_episode, watched_at, tmdb_id";
 
-// Your collection titles featuring this person — matched on the person's id inside the
-// stored cast_members / directors jsonb. Directors only match once their id is stored
-// (backfill), so old titles surface via cast; new ones via both.
-export async function getTitlesByPerson(userId: string, personId: number): Promise<PersonTitle[]> {
-  if (!userId || !personId) return [];
+// Your collection titles featuring this person — matched on the person's TMDB filmography
+// (their credits' tmdb_ids) ∩ your library, NOT on stored cast_members (which caps at ~12
+// and misses uncredited/low-billed roles, e.g. Kevin Spacey in Se7en). `favorite` covers
+// Top 10 items. Roles are attached client-side from the credits. Type is matched by the
+// caller (film vs tv/anime) since the ids alone can collide across TMDB namespaces.
+export async function getTitlesByPerson(userId: string, creditTmdbIds: number[]): Promise<PersonTitle[]> {
+  if (!userId || creditTmdbIds.length === 0) return [];
   const supabase = createClient();
-  const base = () =>
-    supabase.schema("watching").from("media_items").select(PERSON_TITLE_COLUMNS)
-      .eq("user_id", userId)
-      .or("watched.eq.true,in_progress.eq.true,dropped.eq.true,paused.eq.true,want_to_watch.eq.true");
-
-  // NB: supabase-js `.contains(col, [{...}])` serializes to invalid json for jsonb-array
-  // containment — use the explicit `cs` filter with a JSON string instead.
-  const needle = JSON.stringify([{ id: personId }]);
-  const [castRes, dirRes] = await Promise.all([
-    base().filter("cast_members", "cs", needle),
-    base().filter("directors", "cs", needle),
-  ]);
-  if (castRes.error) throw castRes.error;
-
-  const pick = (r: any, role: string | null): PersonTitle => ({
+  const { data, error } = await supabase
+    .schema("watching").from("media_items").select(PERSON_TITLE_COLUMNS)
+    .eq("user_id", userId)
+    .in("tmdb_id", creditTmdbIds)
+    .or("watched.eq.true,in_progress.eq.true,dropped.eq.true,paused.eq.true,want_to_watch.eq.true,favorite.eq.true");
+  if (error) throw error;
+  return (data ?? []).map((r: any): PersonTitle => ({
     id: r.id, type: r.type, title: r.title, poster_url: r.poster_url, backdrop_url: r.backdrop_url,
     year: r.year, runtime: r.runtime, user_rating: r.user_rating, watched: r.watched,
     in_progress: r.in_progress, want_to_watch: r.want_to_watch, paused: r.paused, dropped: r.dropped,
     current_season: r.current_season, current_episode: r.current_episode,
-    watched_at: r.watched_at, tmdb_id: r.tmdb_id, role,
-  });
-
-  const map = new Map<string, PersonTitle>();
-  for (const r of (castRes.data ?? []) as any[]) {
-    const cm = (r.cast_members ?? []).find((c: any) => c.id === personId);
-    map.set(r.id, pick(r, cm?.character ?? null));
-  }
-  for (const r of (dirRes.data ?? []) as any[]) {
-    if (map.has(r.id)) continue;
-    map.set(r.id, pick(r, r.type === "film" ? "Director" : "Creator"));
-  }
-  return [...map.values()];
+    watched_at: r.watched_at, tmdb_id: r.tmdb_id, role: null,
+  }));
 }
 
 // Hero data (trending + recommendations) — read from the GLOBAL trending cache
