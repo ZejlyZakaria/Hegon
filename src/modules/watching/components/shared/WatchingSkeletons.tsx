@@ -142,16 +142,38 @@ export function StatsSkeleton() {
 export function DetailSkeleton() {
   return (
     <div className="min-h-screen bg-surface-0">
-      <div className="relative aspect-video w-full overflow-hidden bg-surface-1 lg:aspect-21/9 lg:max-h-[55vh] lg:min-h-70">
+      {/* ── Mobile — the real hero FLOWS: backdrop, then a centred column pulled up over it.
+             The old skeleton anchored everything to the bottom of the backdrop (the desktop
+             shape), so the page re-laid itself out the moment the data landed. ── */}
+      <div className="lg:hidden">
+        <div className="relative aspect-video w-full overflow-hidden bg-surface-1">
+          <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/30 to-transparent" />
+        </div>
+        <div className="relative -mt-16 flex flex-col items-center px-4 pb-2">
+          <div className="aspect-2/3 w-(--poster-md) shrink-0 animate-pulse rounded-tile bg-surface-2" />
+          <div className="mt-3 h-6 w-40 animate-pulse rounded-lg bg-surface-2" />
+          <div className="mt-3 flex gap-1.5">
+            {[14, 16, 12].map((w, i) => (
+              <div key={i} className="h-5 animate-pulse rounded-full bg-surface-2" style={{ width: `${w * 4}px` }} />
+            ))}
+          </div>
+          <div className="mt-2.5 h-4 w-48 animate-pulse rounded bg-surface-2" />
+          <div className="mt-3 h-14 w-full animate-pulse rounded-lg bg-surface-2" />
+          {/* Reserved trailer slot — same height as the real button, so nothing shifts */}
+          <div className="mt-4 h-8 w-32 animate-pulse rounded-full bg-surface-2" />
+        </div>
+      </div>
+
+      {/* ── Desktop — content anchored to the bottom of the banner ── */}
+      <div className="relative hidden w-full overflow-hidden bg-surface-1 lg:block lg:aspect-21/9 lg:max-h-[55vh] lg:min-h-70">
         <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/40 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 px-4 pb-6 lg:px-10 lg:pb-8">
-          <div className="flex items-end gap-4 lg:gap-8">
-            <div className="aspect-2/3 w-24 shrink-0 animate-pulse rounded-tile bg-surface-2 lg:w-40" />
+        <div className="absolute inset-x-0 bottom-0 px-10 pb-8">
+          <div className="flex items-end gap-8">
+            <div className="aspect-2/3 w-(--poster-xl) shrink-0 animate-pulse rounded-tile bg-surface-2" />
             <div className="flex-1 space-y-3 pb-1">
               <div className="h-7 w-2/3 animate-pulse rounded-lg bg-surface-2" />
               <div className="h-4 w-1/3 animate-pulse rounded bg-surface-2" />
               <div className="h-10 w-full max-w-4xl animate-pulse rounded-lg bg-surface-2" />
-              {/* Reserved trailer slot — same height as the real button, so nothing shifts */}
               <div className="h-8 w-32 animate-pulse rounded-full bg-surface-2" />
             </div>
           </div>
@@ -160,7 +182,7 @@ export function DetailSkeleton() {
 
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
         {/* Left — My Take, then the long-form sections */}
-        <div className="min-w-0 space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-8 lg:pr-2">
+        <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
           {[36, 28].map((w, i) => (
             <div key={i}>
               <div className="mb-3 h-4 animate-pulse rounded bg-surface-2" style={{ width: `${w}%`, maxWidth: 180 }} />
@@ -178,7 +200,7 @@ export function DetailSkeleton() {
         </div>
 
         {/* Rail — the branded status card leads, then the quiet blocks */}
-        <div className="min-w-0 space-y-6 px-4 py-6 lg:space-y-8 lg:py-8 lg:pl-2 lg:pr-8">
+        <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-2 lg:pr-8">
           <div className="h-56 animate-pulse rounded-card bg-surface-2" />
           <div>
             <div className="mb-3 h-4 w-20 animate-pulse rounded bg-surface-2" />

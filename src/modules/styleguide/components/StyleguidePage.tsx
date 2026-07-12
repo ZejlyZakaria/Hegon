@@ -89,6 +89,13 @@ const ACCENTS = [
   "--color-accent-journal", "--color-accent-tasks", "--color-accent-sports",
 ];
 const RADII = ["--radius-chip", "--radius-control", "--radius-tile", "--radius-card", "--radius-modal"];
+const POSTERS: { name: string; use: string }[] = [
+  { name: "--poster-xs", use: "attribution, Top Picks, timeline rows" },
+  { name: "--poster-sm", use: "info rows (Books)" },
+  { name: "--poster-md", use: "rail tile — mobile · hero poster — mobile" },
+  { name: "--poster-lg", use: "rail tile — desktop" },
+  { name: "--poster-xl", use: "hero poster — desktop" },
+];
 const TYPE = [
   { cls: "text-caption text-text-tertiary", name: "text-caption", use: "eyebrows, micro-labels" },
   { cls: "text-label text-text-secondary", name: "text-label", use: "metadata, chips, dates" },
@@ -170,6 +177,47 @@ export function StyleguidePage() {
             <div>
               <p className="mb-1 text-caption uppercase text-text-tertiary">Radius by role</p>
               {RADII.map((n) => <RadiusSwatch key={n} name={n} />)}
+            </div>
+          </div>
+
+          {/* Posters — one ratio, five widths. Shown at true size, side by side: two rails
+              that don't match are impossible to miss here (that's how the 144 vs 112 mobile
+              mismatch was found). */}
+          <div className="mt-6 border-t border-border-subtle pt-5">
+            <p className="mb-1 text-caption uppercase text-text-tertiary">Poster scale</p>
+            <p className="mb-2 text-xs leading-relaxed text-text-tertiary">
+              One ratio (2:3), five widths — height always follows, so a cover is never cropped.
+              A poster&apos;s width comes from its <span className="text-text-secondary">container</span>, and there
+              are exactly three containers:
+            </p>
+            <ul className="mb-4 space-y-1 text-xs leading-relaxed text-text-tertiary">
+              <li>
+                <span className="font-medium text-text-secondary">Grid</span> → fluid. The grid decides
+                (Library, person pages, More Like This on desktop).
+              </li>
+              <li>
+                <span className="font-medium text-text-secondary">Full-width carousel</span> (home sections) →
+                a fraction of the page: N cards per view, ~2.4 peeking on a phone.
+              </li>
+              <li>
+                <span className="font-medium text-text-secondary">In-column rail</span> (detail page) →{" "}
+                <code className="font-mono text-[11px]">--rail-peek</code> on a phone (3.4 cards, so the 4th is
+                cut and says &quot;this scrolls&quot;), <code className="font-mono text-[11px]">--poster-lg</code> on
+                desktop. Two rails in the same column then match by construction — a fixed 144 vs 112 never could.
+              </li>
+            </ul>
+            <div className="flex flex-wrap items-end gap-5">
+              {POSTERS.map((p) => (
+                <div key={p.name} className="min-w-0">
+                  <div
+                    className="aspect-2/3 rounded-tile bg-linear-to-br from-surface-2 to-surface-3 ring-1 ring-border-subtle"
+                    style={{ width: `var(${p.name})` }}
+                  />
+                  <p className="mt-2 font-mono text-[11px] text-text-secondary">{p.name}</p>
+                  <p ref={liveValue(p.name)} className="font-mono text-[11px] text-text-tertiary" />
+                  <p className="mt-0.5 max-w-40 text-[11px] leading-snug text-text-tertiary">{p.use}</p>
+                </div>
+              ))}
             </div>
           </div>
         </Block>

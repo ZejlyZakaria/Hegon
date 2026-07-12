@@ -42,7 +42,7 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
               type="button"
               disabled={!clickable}
               onClick={() => onAddClick?.(sim)}
-              className="group block w-28 shrink-0 snap-start cursor-pointer text-left disabled:cursor-default sm:w-auto"
+              className="group block w-(--rail-peek) shrink-0 snap-start cursor-pointer text-left disabled:cursor-default sm:w-auto"
             >
               <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
                 <Image

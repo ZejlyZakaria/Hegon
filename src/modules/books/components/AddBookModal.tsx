@@ -387,7 +387,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                       onClick={() => openBook(result)}
                       className="flex gap-3 p-3 bg-surface-2 hover:bg-surface-3 rounded-control border border-border-subtle transition-colors text-left"
                     >
-                      <div className="relative aspect-2/3 w-(--cover-sm) shrink-0 bg-surface-2 rounded-[4px] overflow-hidden">
+                      <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 bg-surface-2 rounded-[4px] overflow-hidden">
                         {result.cover_candidates.length > 0 ? (
                           <ResultCover candidates={result.cover_candidates} alt={result.title} />
                         ) : (

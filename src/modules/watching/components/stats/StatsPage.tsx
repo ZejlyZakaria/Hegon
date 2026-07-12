@@ -219,7 +219,7 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
               className="group -m-1.5 flex cursor-pointer items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface-2"
               onClick={() => router.push(`/perso/watching/${item.id}`)}
             >
-              <div className="relative h-14 w-9 shrink-0 overflow-hidden rounded-md">
+              <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-md">
                 {(seasonPoster ? `https://image.tmdb.org/t/p/w300${seasonPoster}` : item.poster_url) ? (
                   <Image
                     src={seasonPoster ? `https://image.tmdb.org/t/p/w300${seasonPoster}` : item.poster_url!}

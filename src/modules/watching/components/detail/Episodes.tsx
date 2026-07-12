@@ -324,7 +324,7 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
       {/* ── All: this season's episodes ── */}
       {view === "all" ? (
         isLoading ? (
-          <div className="-ml-2 flex gap-3 overflow-x-auto scrollbar-hide py-2 pl-2 pr-2">
+          <div className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:mx-0 sm:px-0">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="aspect-video w-66 shrink-0 animate-pulse rounded-card bg-surface-2" />
             ))}
@@ -332,7 +332,7 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
         ) : episodes.length === 0 ? (
           <p className="py-6 text-center text-xs text-text-tertiary">No episodes found.</p>
         ) : (
-          <div ref={scrollRef} className="-ml-2 flex gap-3 overflow-x-auto scrollbar-hide py-2 pl-2 pr-2">
+          <div ref={scrollRef} className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:mx-0 sm:px-0">
             {episodes.map((ep) => (
               <StillCard
                 key={ep.number}
@@ -358,7 +358,7 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
             Star an episode in <span className="text-text-secondary">All</span> to pin your best moments here.
           </p>
         ) : (
-          <div ref={scrollRef} className="-ml-2 flex gap-3 overflow-x-auto scrollbar-hide py-2 pl-2 pr-2">
+          <div ref={scrollRef} className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:mx-0 sm:px-0">
             {highlightRows.map((h) => (
               <StillCard
                 key={h.id}

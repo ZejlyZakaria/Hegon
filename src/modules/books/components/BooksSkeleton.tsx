@@ -26,7 +26,7 @@ export function BookCardSkeleton() {
 export function BookRowSkeleton() {
   return (
     <div className="flex gap-4 surface-card rounded-card p-3">
-      <SkeletonBlock className="aspect-2/3 w-(--cover-md) shrink-0 rounded-tile" />
+      <SkeletonBlock className="aspect-2/3 w-(--poster-sm) shrink-0 rounded-tile" />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <SkeletonBlock className="h-3.5 w-3/4" />
         <SkeletonBlock className="h-3 w-1/2" />
@@ -94,7 +94,7 @@ function RecentlyFinishedSkeleton() {
       <SkeletonBlock className="h-3 w-32" />
       {[1, 2].map((i) => (
         <div key={i} className="flex gap-3">
-          <SkeletonBlock className="aspect-2/3 w-(--cover-sm) shrink-0 rounded-[4px]" />
+          <SkeletonBlock className="aspect-2/3 w-(--poster-xs) shrink-0 rounded-[4px]" />
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <SkeletonBlock className="h-3.5 w-full" />
             <SkeletonBlock className="h-3 w-16" />

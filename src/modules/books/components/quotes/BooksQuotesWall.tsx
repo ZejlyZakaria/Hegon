@@ -117,7 +117,7 @@ function QuoteCard({ quote, onOpen, onToggleFav }: {
 
       <div className="mt-4 flex items-center gap-2.5 border-t border-border-subtle pt-3">
         <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-          <div className="relative aspect-2/3 w-(--cover-sm) shrink-0 overflow-hidden rounded-[4px] bg-surface-2">
+          <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-[4px] bg-surface-2">
             {quote.book_cover ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={quote.book_cover} alt={quote.book_title} loading="lazy" className="h-full w-full object-cover" />

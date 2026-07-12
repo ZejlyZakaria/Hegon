@@ -520,7 +520,7 @@ function TableRow({
         </div>
 
         {/* Poster */}
-        <div className="relative h-14 w-9 shrink-0 cursor-pointer overflow-hidden rounded-md" onClick={onOpen}>
+        <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 cursor-pointer overflow-hidden rounded-md" onClick={onOpen}>
           {item.media.poster_url
             ? <Image src={item.media.poster_url} alt="" fill unoptimized className="object-cover" sizes="28px" />
             : <div className="h-full w-full bg-zinc-800" />

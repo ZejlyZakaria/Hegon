@@ -30,7 +30,7 @@ export function BookRow({ book }: { book: Book }) {
     >
       <div className="flex gap-4">
         {/* Cover */}
-        <div className="relative aspect-2/3 w-(--cover-md) shrink-0 overflow-hidden rounded-tile bg-surface-2">
+        <div className="relative aspect-2/3 w-(--poster-sm) shrink-0 overflow-hidden rounded-tile bg-surface-2">
           {book.cover_url ? (
             <Image src={book.cover_url} alt={book.title} fill sizes="80px" className="object-cover" />
           ) : (

@@ -143,7 +143,7 @@ export function BooksRightPanel() {
           <div className="flex flex-col gap-3">
             {recently_finished.map((book) => (
               <div key={book.id} className="flex gap-3">
-                <div className="relative aspect-2/3 w-(--cover-sm) shrink-0 bg-surface-2 rounded-[4px] overflow-hidden">
+                <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 bg-surface-2 rounded-[4px] overflow-hidden">
                   {book.cover_url ? (
                     <Image src={book.cover_url} alt={book.title} fill sizes="40px" className="object-contain" />
                   ) : (

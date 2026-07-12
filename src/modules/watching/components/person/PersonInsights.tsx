@@ -33,7 +33,7 @@ function TitleCell({ label, icon, t }: { label: string; icon: React.ReactNode; t
         {icon} {label}
       </p>
       <div className="mt-1.5 flex items-center gap-2.5">
-        <div className="relative h-14 w-9 shrink-0 overflow-hidden rounded-md bg-surface-2 ring-1 ring-border-subtle">
+        <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-md bg-surface-2 ring-1 ring-border-subtle">
           {t.poster_url && (
             <Image src={t.poster_url} alt="" fill unoptimized loading="lazy" sizes="36px" className="object-cover" />
           )}

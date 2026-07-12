@@ -76,8 +76,13 @@ export function CastCrew({ cast, directors, isSeries }: Props) {
   return (
     <section>
       <SectionHeader title="Cast & Crew" />
-      {/* py-1: an overflow-x container clips vertically too, and the tiles grow on hover. */}
-      <div className="flex gap-4 overflow-x-auto py-1" style={{ scrollbarWidth: "none" }}>
+      {/* Same bleed as every other rail: break out of the column gutter so a face can scroll
+          under the screen edge, and start at the same x as its neighbours. py-1 is the hover
+          scale's headroom — an overflow-x container clips vertically too. */}
+      <div
+        className="-mx-4 flex gap-4 overflow-x-auto scroll-px-4 px-4 py-1 sm:mx-0 sm:px-0"
+        style={{ scrollbarWidth: "none" }}
+      >
         {allPeople.map((person, i) => (
           <PersonCard key={`${person.name}-${i}`} id={person.id} name={person.name} src={person.src} subtitle={person.subtitle} size={86} />
         ))}

@@ -144,33 +144,29 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
           </button>
         </div>
 
-        <div className="relative -mt-16 px-4 pb-2">
-          {/* poster + title side by side (title fills the space, not the badges) */}
-          <div className="flex items-end gap-4">
-            <div className="relative aspect-2/3 w-24 shrink-0 overflow-hidden rounded-tile border border-white/10 shadow-xl">
-              <Image
-                src={media.poster_url || "/placeholder.svg"}
-                alt={media.title}
-                fill
-                unoptimized
-                priority
-                sizes="96px"
-                className="object-cover"
-              />
-            </div>
-            <div className="min-w-0 flex-1 pb-1">
-              <h1 className="text-balance text-xl font-bold leading-tight tracking-tight text-white line-clamp-3">
-                {title}
-              </h1>
-              {showAltTitle && (
-                <p className="mt-0.5 truncate text-sm text-white/35">{other}</p>
-              )}
-            </div>
+        {/* Centred column: poster → title → genres → facts → pitch → trailer. A title set
+            beside a portrait poster gets a ~180px column to live in and breaks into three
+            ragged lines; under it, it owns the full width. */}
+        <div className="relative -mt-16 flex flex-col items-center px-4 pb-2 text-center">
+          <div className="relative aspect-2/3 w-(--poster-md) shrink-0 overflow-hidden rounded-tile border border-white/10 shadow-xl">
+            <Image
+              src={media.poster_url || "/placeholder.svg"}
+              alt={media.title}
+              fill
+              unoptimized
+              priority
+              sizes="112px"
+              className="object-cover"
+            />
           </div>
 
-          {/* Title → genres → facts → pitch → the trailer gesture */}
+          <h1 className="mt-3 text-balance text-xl font-bold leading-tight tracking-tight text-white">
+            {title}
+          </h1>
+          {showAltTitle && <p className="mt-0.5 text-sm text-white/35">{other}</p>}
+
           {media.tags && media.tags.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
               {media.tags.slice(0, 5).map((tag) => (
                 <span key={tag} className="rounded-full bg-white/6 px-2.5 py-0.5 text-xs text-white/40 ring-1 ring-white/6">
                   {tag}
@@ -179,7 +175,7 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
             </div>
           )}
 
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/45">
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-white/45">
             {metaRow}
           </div>
 
@@ -217,7 +213,7 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
           <div className="flex items-end gap-8">
             {/* Poster */}
             <div className="relative shrink-0">
-              <div className="relative aspect-2/3 w-40 overflow-hidden rounded-tile p-1">
+              <div className="relative aspect-2/3 w-(--poster-xl) overflow-hidden rounded-tile p-1">
                 <div
                   className="absolute inset-0"
                   style={{

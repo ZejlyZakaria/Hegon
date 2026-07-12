@@ -245,10 +245,23 @@
   --radius-card: 12px;    /* horizontal / content cards — carousels, Goals, Habits, Stats */
   --radius-modal: 16px;   /* modals, sheets, large panels */
 
-  /* ── Cover / poster sizes — 1 ratio (aspect-2/3) + 3 widths. Height ALWAYS
-     follows the ratio → never crop. Large = grid-fluid (w-full). ── */
-  --cover-md: 5rem;       /* 80px — info rows (Reading), medium attribution */
-  --cover-sm: 2.5rem;     /* 40px — Top Picks, Quotes attribution */
+  /* ── Poster scale — ONE ratio (aspect-2/3), five widths. Height ALWAYS follows the
+     ratio → never crop. Films, series, book covers: same object, same ladder.
+     THE RULE: a scrolling RAIL uses a fixed width (md on a phone → lg on a desktop);
+     a GRID stays fluid (w-full) and takes its width from the grid, never from itself.
+     Watch History used to sit at 144px even on a phone while More Like This sat at 112 —
+     two rails, same column, different tiles. This ladder is what prevents that. ── */
+  --poster-xs: 2.5rem;    /* 40px  — attribution, Top Picks, timeline rows */
+  --poster-sm: 5rem;      /* 80px  — info rows (Books reading) */
+  --poster-md: 7rem;      /* 112px — hero poster on mobile */
+  --poster-lg: 9rem;      /* 144px — rail tile on desktop */
+  --poster-xl: 10.625rem; /* 170px — hero poster on desktop */
+
+  /* A rail's tile on a PHONE is sized by its peek, not by pixels: 3.4 cards visible, so the
+     4th is cut and says "this scrolls". Two rails that share this share a tile by
+     construction, on any screen width — which is what a fixed 144 vs 112 could never do.
+     3 gaps of 0.75rem (gap-3) sit inside the 3.4 visible cards. */
+  --rail-peek: calc((100% - 2.25rem) / 3.4);
 
   --z-base: 0;
   --z-sticky: 10;

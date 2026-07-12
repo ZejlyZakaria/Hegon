@@ -26,14 +26,14 @@ export function PersonSkeleton() {
       </div>
       <div className="relative -mt-16 px-4 pb-2 lg:hidden">
         <div className="flex items-end gap-4">
-          <div className="aspect-2/3 w-24 shrink-0 animate-pulse rounded-tile bg-surface-2" />
+          <div className="aspect-2/3 w-(--poster-md) shrink-0 animate-pulse rounded-tile bg-surface-2" />
           <Bar className="mb-2 h-5 w-40" />
         </div>
         <Bar className="mt-3 h-3 w-2/3" />
       </div>
 
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
-        <div className="min-w-0 space-y-8 px-4 py-6 lg:py-8 lg:pl-8 lg:pr-2">
+        <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
           <div>
             <Bar className="mb-3 h-4 w-44" />
             <PosterGrid n={6} />
@@ -44,7 +44,7 @@ export function PersonSkeleton() {
           </div>
         </div>
 
-        <div className="min-w-0 space-y-8 px-4 py-6 lg:py-8 lg:pl-2 lg:pr-8">
+        <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-2 lg:pr-8">
           <div className="h-52 animate-pulse rounded-card bg-surface-2" />
           <div>
             <Bar className="mb-3 h-4 w-32" />

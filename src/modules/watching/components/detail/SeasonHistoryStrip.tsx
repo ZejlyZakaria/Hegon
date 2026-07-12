@@ -124,7 +124,13 @@ export function SeasonHistoryStrip({
         }
       />
 
-      <div ref={scrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide py-1.5">
+      {/* Breaks out of the column padding like More Like This does, so a card can scroll under
+          the screen's right edge instead of stopping short of it. Both rails now bleed the
+          same way — THAT was the mismatch, not the tile size. */}
+      <div
+        ref={scrollRef}
+        className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:mx-0 sm:px-0"
+      >
         {seasonEpisodes.map((eps, idx) => {
           const s = idx + 1;
           const comingSoon = comingSoonAt(idx);
@@ -137,7 +143,7 @@ export function SeasonHistoryStrip({
           const airDate = seasonAirDates?.[idx] ?? null;
 
           const cardInner = (
-            <div className={`relative aspect-2/3 w-36 overflow-hidden rounded-tile border border-border-subtle bg-surface-1 transition-transform duration-300 ease-out ${
+            <div className={`relative aspect-2/3 w-full overflow-hidden rounded-tile border border-border-subtle bg-surface-1 transition-transform duration-300 ease-out ${
               locked ? "" : "group-hover:z-10 group-hover:scale-[1.04]"
             }`}>
               {poster ? (
@@ -203,7 +209,7 @@ export function SeasonHistoryStrip({
 
           if (locked) {
             return (
-              <div key={s} className="w-36 shrink-0 cursor-not-allowed" title={comingSoon ? "Not aired yet" : "Not started yet"}>
+              <div key={s} className="w-(--rail-peek) shrink-0 cursor-not-allowed sm:w-(--poster-lg)" title={comingSoon ? "Not aired yet" : "Not started yet"}>
                 {cardInner}
               </div>
             );
@@ -212,7 +218,7 @@ export function SeasonHistoryStrip({
           return (
             <Popover key={s}>
               <PopoverTrigger asChild>
-                <button type="button" className="group w-36 shrink-0 cursor-pointer text-left">
+                <button type="button" className="group w-(--rail-peek) shrink-0 cursor-pointer text-left sm:w-(--poster-lg)">
                   {cardInner}
                 </button>
               </PopoverTrigger>

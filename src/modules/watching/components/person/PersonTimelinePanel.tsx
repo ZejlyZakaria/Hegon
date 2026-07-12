@@ -30,7 +30,7 @@ function Entry({ t }: { t: PersonTitle }) {
       href={`/perso/watching/${t.id}`}
       className="group flex items-center gap-3 rounded-control px-2 py-2 transition-colors hover:bg-surface-2"
     >
-      <div className="relative h-12 w-8 shrink-0 overflow-hidden rounded-md bg-surface-2 ring-1 ring-border-subtle">
+      <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-md bg-surface-2 ring-1 ring-border-subtle">
         {t.poster_url && (
           <Image src={t.poster_url} alt="" fill unoptimized loading="lazy" sizes="32px" className="object-cover" />
         )}
