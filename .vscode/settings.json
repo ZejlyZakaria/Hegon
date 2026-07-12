@@ -1,1 +1,22 @@
-{}
+{
+  // Tailwind v4 keeps its config IN the CSS (@theme, @utility, @custom-variant). VS Code's
+  // built-in CSS validator doesn't know those at-rules, so it flagged every one of them as
+  // an error — ~20 squiggles in globals.css, not one of them real. Handing .css files to the
+  // Tailwind language server (which understands them) is the fix; the built-in linter then
+  // stops running on them. Needs the Tailwind CSS IntelliSense extension — see extensions.json.
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+
+  // Belt and braces: without the extension the file falls back to plain CSS — this keeps the
+  // at-rules from being flagged anyway.
+  "css.lint.unknownAtRules": "ignore",
+
+  // Compat noise for browsers we don't target (color-mix, scrollbar-width…). We ship to
+  // evergreen Chrome/Safari/Firefox; these are deliberate, not accidents.
+  "css.lint.compatibleVendorPrefixes": "ignore",
+  "css.lint.vendorPrefix": "ignore",
+
+  // v4 has no tailwind.config.js — point IntelliSense at the CSS entrypoint instead.
+  "tailwindCSS.experimental.configFile": "src/app/globals.css"
+}

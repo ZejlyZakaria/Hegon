@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { CalendarClock, Plus, Star } from "lucide-react";
+import { CalendarClock, Plus } from "lucide-react";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { posterStatus, PosterStatusBadge } from "@/modules/watching/components/shared/StatusBadge";
+import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { Button } from "@/shared/components/ui/button";
 import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { usePeopleCounts, usePersonBundle, useTitlesByPerson } from "@/modules/watching/hooks/usePerson";
@@ -23,7 +24,6 @@ import type { PersonCredit, PersonTitle } from "@/modules/watching/service";
 const DEPT_LABEL: Record<string, string> = {
   Acting: "Actor", Directing: "Director", Writing: "Writer", Production: "Producer",
 };
-const AMBER = "#fbbf24";
 // Our stored urls are full (w342) — strip back to the raw TMDB path the modal expects.
 const stripSize = (u: string | null) => (u ? u.replace(/^https:\/\/image\.tmdb\.org\/t\/p\/w\d+/, "") : null);
 
@@ -230,14 +230,18 @@ export default function PersonPage() {
                     >
                       <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
                         <Image src={t.poster_url || "/placeholder.svg"} alt={t.title} fill unoptimized sizes="15vw" className="object-cover" />
-                        {t.user_rating != null && (
-                          <div className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5 text-micro font-semibold text-white ring-1 ring-white/15 backdrop-blur-md">
-                            <Star size={9} style={{ color: AMBER, fill: AMBER }} /> {t.user_rating}
-                          </div>
-                        )}
                         {badge && <PosterStatusBadge status={badge} />}
                       </div>
-                      <p className="mt-2 truncate text-xs font-medium text-text-primary">{t.title}</p>
+                      {/* The score sits on the TITLE LINE, not on the artwork. These tiles are
+                          six to a row; a mark in the corner fought the status badge for the same
+                          few pixels and won nothing. Under the poster it has a whole line, it
+                          reads at a glance, and the artwork stays artwork. */}
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <p className="min-w-0 flex-1 truncate text-xs font-medium text-text-primary">{t.title}</p>
+                        {t.user_rating != null && (
+                          <ScoreMark value={t.user_rating} source="mine" className="shrink-0" />
+                        )}
+                      </div>
                       {t.role && <p className="truncate text-micro text-text-tertiary">{t.role}</p>}
                     </button>
                   );

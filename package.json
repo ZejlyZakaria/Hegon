@@ -10,7 +10,8 @@
     "prepare": "husky",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "ds:coverage": "node scripts/ds-coverage.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

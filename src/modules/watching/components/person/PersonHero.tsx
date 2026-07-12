@@ -48,21 +48,22 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
           </button>
         </div>
 
-        <div className="relative -mt-16 px-4 pb-2">
-          <div className="flex items-end gap-4">
-            <div className="relative aspect-2/3 w-(--poster-md) shrink-0 overflow-hidden rounded-tile border border-white/10 bg-surface-2 shadow-xl">
-              {profile.profile_url ? (
-                <Image src={profile.profile_url} alt={profile.name} fill unoptimized priority sizes="96px" className="object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center"><User className="text-text-tertiary" size={28} /></div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1 pb-1">
-              <h1 className="text-balance text-xl font-bold leading-tight tracking-tight text-white line-clamp-3">{profile.name}</h1>
-            </div>
+        {/* Same centred column as the detail hero — portrait, then the name owning the full
+            width, then the facts, then the bio. It used to set the name BESIDE the portrait,
+            in a ~180px gutter, which broke it into three ragged lines and made a person page
+            read like a different product from the title page it was reached from. */}
+        <div className="relative -mt-16 flex flex-col items-center px-4 pb-2 text-center">
+          <div className="relative aspect-2/3 w-(--poster-md) shrink-0 overflow-hidden rounded-tile border border-white/10 bg-surface-2 shadow-xl">
+            {profile.profile_url ? (
+              <Image src={profile.profile_url} alt={profile.name} fill unoptimized priority sizes="112px" className="object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center"><User className="text-text-tertiary" size={28} /></div>
+            )}
           </div>
 
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/45">{metaRow}</div>
+          <h1 className="mt-3 text-balance text-xl font-bold leading-tight tracking-tight text-white">{profile.name}</h1>
+
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-white/45">{metaRow}</div>
 
           {profile.biography && <HeroDescription text={profile.biography} />}
         </div>

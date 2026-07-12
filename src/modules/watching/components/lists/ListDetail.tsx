@@ -15,7 +15,17 @@ import { toast } from "@/shared/utils/toast";
 import { Button } from "@/shared/components/ui/button";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { InlineFormActions } from "@/shared/components/ui/inline-form-actions";
+import { Badge } from "@/shared/components/ui/badge";
+import { GOLD, MINE } from "@/modules/watching/components/shared/Marks";
 import { WATCHING_ACCENT } from "../../ui";
+
+// Type is a category → a tinted badge, one colour per type. It used to be a grey pill that
+// said nothing beyond its word.
+const TYPE_COLOR: Record<string, string> = {
+  film: "#60a5fa",
+  serie: "#a78bfa",
+  anime: "#fb923c",
+};
 import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
@@ -542,16 +552,17 @@ function TableRow({
 
         {/* Type */}
         <div className="hidden w-20 shrink-0 md:block">
-          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-micro text-text-tertiary">
+          <Badge color={TYPE_COLOR[item.media.type] ?? "var(--color-text-tertiary)"}>
             {mediaTypeLabel(item.media.type)}
-          </span>
+          </Badge>
         </div>
 
-        {/* TMDB rating */}
+        {/* TMDB's score → GOLD. Yours → TEAL. They both used to be an amber star (one just
+            paler), so the two numbers were indistinguishable at a glance. */}
         <div className="hidden w-16 shrink-0 lg:block">
           {item.media.rating > 0 ? (
-            <span className="flex items-center gap-1 text-xs text-text-tertiary">
-              <Star size={10} className="text-amber-400/50" />
+            <span className="flex items-center gap-1 text-xs tabular-nums text-text-secondary">
+              <Star size={10} style={{ color: GOLD, fill: GOLD }} />
               {item.media.rating.toFixed(1)}
             </span>
           ) : (
@@ -559,11 +570,10 @@ function TableRow({
           )}
         </div>
 
-        {/* My rating */}
         <div className="w-20 shrink-0">
           {item.media.user_rating != null ? (
-            <span className="flex items-center gap-1 text-xs text-amber-400">
-              <Star size={10} className="fill-current" />
+            <span className="flex items-center gap-1 text-xs font-semibold tabular-nums" style={{ color: MINE }}>
+              <Star size={10} style={{ color: MINE, fill: MINE }} />
               {item.media.user_rating}
             </span>
           ) : (
@@ -869,7 +879,10 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
 
         <div className="hidden flex-1 sm:block" />
 
+        {/* 32px, like the two buttons beside it. The offset was mechanical: SearchInput had
+            no size at all and sat at 36px next to 32px controls. */}
         <SearchInput
+          size="sm"
           containerClassName="min-w-0 flex-1 sm:w-52 sm:flex-none"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -935,19 +948,21 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
                 className="flex-1 min-w-0 text-xl font-bold leading-tight text-text-primary bg-transparent focus:outline-none"
               />
 
-              <button
-                type="button"
-                onClick={handleToggleRanked}
-                className={cn(
-                  "shrink-0 flex items-center gap-1.5 rounded-full px-2 py-1 text-micro font-medium transition-colors",
-                  editRanked
-                    ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                    : "text-text-tertiary/30 hover:text-text-tertiary hover:bg-surface-2",
-                )}
-              >
-                <Trophy size={11} />
-                {editRanked && <span>Ranked</span>}
-              </button>
+              {/* "Ranked" is a MODE, not an action — and a mode you can't see is a mode you
+                  don't trust. It was a ghost icon at 30% opacity that only named itself once
+                  already on. Now it's a real two-state control that always says what it does. */}
+              <Hint label={editRanked ? "Numbered list — click to unrank" : "Number this list, best first"}>
+                <Button
+                  variant={editRanked ? "accent" : "quiet"}
+                  size="sm"
+                  style={editRanked ? WATCHING_ACCENT : undefined}
+                  onClick={handleToggleRanked}
+                  className="shrink-0"
+                >
+                  <Trophy />
+                  {editRanked ? "Ranked" : "Rank"}
+                </Button>
+              </Hint>
             </div>
 
             {/* Description */}
@@ -986,27 +1001,19 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
       </div>
 
       {/* ── Filter tabs + toolbar ── */}
-      <div className="flex flex-col gap-1 border-b border-border-subtle px-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0 sm:px-6">
-        <div className="flex overflow-x-auto custom-scrollbar-hide">
-          {FILTER_TABS.filter((t) => t.key === "all" || t.count > 0).map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveFilter(tab.key)}
-              className="relative px-4 pb-3 pt-2 text-sm font-medium transition-colors"
-            >
-              <span className={activeFilter === tab.key ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary"}>
-                {tab.label}
-                {tab.key !== "all" && (
-                  <span className="ml-1.5 text-xs opacity-60">({tab.count})</span>
-                )}
-              </span>
-              {activeFilter === tab.key && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-sm bg-accent-watching" />
-              )}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-col gap-3 border-b border-border-subtle px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        {/* All / Watched / Unwatched is a VIEW SWITCH on the same data — that's the segmented
+            control's exact job. Hand-rolled underline tabs read as page navigation, which
+            these are not. */}
+        <SegmentedControl<FilterKey>
+          size="sm"
+          value={activeFilter}
+          onChange={setActiveFilter}
+          items={FILTER_TABS.filter((t) => t.key === "all" || t.count > 0).map((tab) => ({
+            value: tab.key,
+            label: tab.key === "all" ? tab.label : `${tab.label} ${tab.count}`,
+          }))}
+        />
 
         <div className="flex items-center gap-2 py-2">
           <div className="flex items-center gap-1.5">

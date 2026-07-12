@@ -24,12 +24,19 @@ export function PersonSkeleton() {
       <div className="relative aspect-video w-full overflow-hidden bg-surface-1 lg:aspect-21/9 lg:max-h-[55vh] lg:min-h-70">
         <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/40 to-transparent lg:bg-linear-to-b lg:via-surface-0/50" />
       </div>
-      <div className="relative -mt-16 px-4 pb-2 lg:hidden">
-        <div className="flex items-end gap-4">
-          <div className="aspect-2/3 w-(--poster-md) shrink-0 animate-pulse rounded-tile bg-surface-2" />
-          <Bar className="mb-2 h-5 w-40" />
-        </div>
-        <Bar className="mt-3 h-3 w-2/3" />
+      {/* Mobile — the real hero is a CENTRED column (portrait → name → facts → bio). The
+          skeleton drew the old beside-the-poster layout, so the page re-laid itself out the
+          instant the data landed. */}
+      <div className="relative -mt-16 flex flex-col items-center px-4 pb-2 lg:hidden">
+        <div className="aspect-2/3 w-(--poster-md) shrink-0 animate-pulse rounded-tile bg-surface-2" />
+        <Bar className="mt-3 h-6 w-40" />
+        <Bar className="mt-2.5 h-4 w-56" />
+        <Bar className="mt-3 h-14 w-full" />
+      </div>
+
+      {/* Mobile slot — the branded card rides right after the hero, as on the real page */}
+      <div className="px-4 pt-4 lg:hidden">
+        <div className="h-52 animate-pulse rounded-card bg-surface-2" />
       </div>
 
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
@@ -45,7 +52,8 @@ export function PersonSkeleton() {
         </div>
 
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-2 lg:pr-8">
-          <div className="h-52 animate-pulse rounded-card bg-surface-2" />
+          {/* Desktop only — on mobile this card already appeared under the hero */}
+          <div className="hidden h-52 animate-pulse rounded-card bg-surface-2 lg:block" />
           <div>
             <Bar className="mb-3 h-4 w-32" />
             <div className="h-40 animate-pulse rounded-card bg-surface-2" />

@@ -155,7 +155,7 @@ export function InList({ mediaItemId, userId }: Props) {
           {/* See all first, then the primary action — the toolbar reads left→right, and the
               button you press most sits at the end, next to nothing that can steal the click. */}
           {cards.length > 0 && (
-            <Button variant="subtle" size="sm" onClick={seeAll}>
+            <Button variant="quiet" size="sm" onClick={seeAll}>
               See all
             </Button>
           )}

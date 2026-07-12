@@ -1,0 +1,501 @@
+{
+  "generatedAt": "2026-07-12",
+  "primitives": [
+    "ErrorFallback",
+    "badge",
+    "button",
+    "calendar",
+    "carousel-nav",
+    "color-palette",
+    "command",
+    "dialog",
+    "dropdown-menu",
+    "filter-select",
+    "form",
+    "icon-picker",
+    "inline-form-actions",
+    "input",
+    "label",
+    "motion",
+    "panel",
+    "popover",
+    "search-input",
+    "section-header",
+    "segmented-control",
+    "select",
+    "slider",
+    "sliding-panel",
+    "tab-nav",
+    "tabs",
+    "textarea",
+    "tooltip"
+  ],
+  "smells": [
+    {
+      "key": "arbitrary-type",
+      "label": "Off-scale type",
+      "fix": "use a type token (text-caption / micro / label / body / title)"
+    },
+    {
+      "key": "arbitrary-radius",
+      "label": "Off-scale radius",
+      "fix": "use a radius token (rounded-chip / control / tile / card / modal)"
+    },
+    {
+      "key": "handrolled-glass",
+      "label": "Hand-rolled glass",
+      "fix": "use the glass-thin / glass / glass-panel material"
+    },
+    {
+      "key": "raw-scrim",
+      "label": "Raw black scrim chip",
+      "fix": "use <Badge variant=\"glass\"> or the OVERLAY_CIRCLE"
+    }
+  ],
+  "modules": {
+    "books": {
+      "files": 29,
+      "uses": [
+        "button",
+        "dialog",
+        "inline-form-actions",
+        "input",
+        "motion",
+        "select",
+        "tab-nav",
+        "textarea"
+      ],
+      "smells": {
+        "arbitrary-type": 26,
+        "arbitrary-radius": 6,
+        "raw-scrim": 4,
+        "handrolled-glass": 3
+      },
+      "worst": {
+        "arbitrary-type": {
+          "file": "src/modules/books/components/stats/BooksStatsPage.tsx",
+          "n": 10
+        },
+        "arbitrary-radius": {
+          "file": "src/modules/books/components/AddBookModal.tsx",
+          "n": 3
+        },
+        "raw-scrim": {
+          "file": "src/modules/books/components/BookCard.tsx",
+          "n": 3
+        },
+        "handrolled-glass": {
+          "file": "src/modules/books/components/BookCard.tsx",
+          "n": 3
+        }
+      }
+    },
+    "command-center": {
+      "files": 6,
+      "uses": [],
+      "smells": {
+        "arbitrary-type": 7,
+        "handrolled-glass": 1,
+        "raw-scrim": 1
+      },
+      "worst": {
+        "arbitrary-type": {
+          "file": "src/modules/command-center/components/CommandCenter.tsx",
+          "n": 7
+        },
+        "handrolled-glass": {
+          "file": "src/modules/command-center/components/CommandCenter.tsx",
+          "n": 1
+        },
+        "raw-scrim": {
+          "file": "src/modules/command-center/components/CommandCenter.tsx",
+          "n": 1
+        }
+      }
+    },
+    "dashboard": {
+      "files": 8,
+      "uses": [],
+      "smells": {},
+      "worst": {}
+    },
+    "dashboard-os": {
+      "files": 21,
+      "uses": [
+        "motion",
+        "sliding-panel"
+      ],
+      "smells": {
+        "arbitrary-type": 60,
+        "handrolled-glass": 6,
+        "arbitrary-radius": 10,
+        "raw-scrim": 3
+      },
+      "worst": {
+        "arbitrary-type": {
+          "file": "src/modules/dashboard-os/components/Widgets.tsx",
+          "n": 27
+        },
+        "handrolled-glass": {
+          "file": "src/modules/dashboard-os/components/DashboardHome.tsx",
+          "n": 3
+        },
+        "arbitrary-radius": {
+          "file": "src/modules/dashboard-os/components/Widgets.tsx",
+          "n": 4
+        },
+        "raw-scrim": {
+          "file": "src/modules/dashboard-os/components/weather/WeatherSky.tsx",
+          "n": 2
+        }
+      }
+    },
+    "goals": {
+      "files": 29,
+      "uses": [
+        "badge",
+        "button",
+        "calendar",
+        "dialog",
+        "dropdown-menu",
+        "form",
+        "input",
+        "motion",
+        "popover",
+        "select",
+        "slider",
+        "sliding-panel",
+        "tab-nav",
+        "textarea"
+      ],
+      "smells": {
+        "arbitrary-type": 36,
+        "raw-scrim": 1
+      },
+      "worst": {
+        "arbitrary-type": {
+          "file": "src/modules/goals/components/GoalDetailPage.tsx",
+          "n": 18
+        },
+        "raw-scrim": {
+          "file": "src/modules/goals/components/GoalFocusPanel.tsx",
+          "n": 1
+        }
+      }
+    },
+    "habits": {
+      "files": 29,
+      "uses": [
+        "button",
+        "calendar",
+        "dialog",
+        "dropdown-menu",
+        "form",
+        "icon-picker",
+        "input",
+        "motion",
+        "popover",
+        "search-input",
+        "select",
+        "tab-nav",
+        "textarea",
+        "tooltip"
+      ],
+      "smells": {
+        "arbitrary-type": 44,
+        "arbitrary-radius": 2,
+        "raw-scrim": 2
+      },
+      "worst": {
+        "arbitrary-type": {
+          "file": "src/modules/habits/components/HabitDetailPanel.tsx",
+          "n": 9
+        },
+        "arbitrary-radius": {
+          "file": "src/modules/habits/components/AllHabitsHeatmap.tsx",
+          "n": 2
+        },
+        "raw-scrim": {
+          "file": "src/modules/habits/components/HabitDetailPanel.tsx",
+          "n": 1
+        }
+      }
+    },
+    "journal": {
+      "files": 25,
+      "uses": [
+        "button",
+        "dialog",
+        "inline-form-actions",
+        "input",
+        "motion",
+        "popover",
+        "segmented-control",
+        "sliding-panel",
+        "tab-nav"
+      ],
+      "smells": {
+        "arbitrary-type": 16
+      },
+      "worst": {
+        "arbitrary-type": {
+          "file": "src/modules/journal/components/JournalRightPanel.tsx",
+          "n": 4
+        }
+      }
+    },
+    "onboarding": {
+      "files": 1,
+      "uses": [],
+      "smells": {
+        "arbitrary-type": 12
+      },
+      "worst": {
+        "arbitrary-type": {
+          "file": "src/modules/onboarding/components/OnboardingFlow.tsx",
+          "n": 12
+        }
+      }
+    },
+    "orgs": {
+      "files": 4,
+      "uses": [],
+      "smells": {},
+      "worst": {}
+    },
+    "settings": {
+      "files": 4,
+      "uses": [],
+      "smells": {},
+      "worst": {}
+    },
+    "sports": {
+      "files": 66,
+      "uses": [
+        "button",
+        "select"
+      ],
+      "smells": {
+        "handrolled-glass": 13,
+        "arbitrary-type": 128,
+        "raw-scrim": 13
+      },
+      "worst": {
+        "handrolled-glass": {
+          "file": "src/modules/sports/football/components/hero/HeroSwiper.tsx",
+          "n": 2
+        },
+        "arbitrary-type": {
+          "file": "src/modules/sports/football/components/squad/FootballLegends.tsx",
+          "n": 15
+        },
+        "raw-scrim": {
+          "file": "src/modules/sports/football/components/squad/FootballLegends.tsx",
+          "n": 3
+        }
+      }
+    },
+    "tasks": {
+      "files": 53,
+      "uses": [
+        "button",
+        "calendar",
+        "color-palette",
+        "dialog",
+        "dropdown-menu",
+        "form",
+        "input",
+        "popover",
+        "search-input",
+        "segmented-control",
+        "select",
+        "textarea",
+        "tooltip"
+      ],
+      "smells": {
+        "arbitrary-type": 48,
+        "raw-scrim": 4
+      },
+      "worst": {
+        "arbitrary-type": {
+          "file": "src/modules/tasks/components/panels/TaskDetailPanel.tsx",
+          "n": 18
+        },
+        "raw-scrim": {
+          "file": "src/modules/tasks/components/layout/TasksSidebar.tsx",
+          "n": 1
+        }
+      }
+    },
+    "watching": {
+      "files": 103,
+      "uses": [
+        "badge",
+        "button",
+        "carousel-nav",
+        "dialog",
+        "dropdown-menu",
+        "filter-select",
+        "inline-form-actions",
+        "panel",
+        "popover",
+        "search-input",
+        "section-header",
+        "segmented-control",
+        "select",
+        "sliding-panel",
+        "tooltip"
+      ],
+      "smells": {
+        "raw-scrim": 41,
+        "handrolled-glass": 19,
+        "arbitrary-type": 11
+      },
+      "worst": {
+        "raw-scrim": {
+          "file": "src/modules/watching/components/lists/ListDetail.tsx",
+          "n": 10
+        },
+        "handrolled-glass": {
+          "file": "src/modules/watching/components/ThemePlayer.tsx",
+          "n": 4
+        },
+        "arbitrary-type": {
+          "file": "src/modules/watching/components/detail/MediaHero.tsx",
+          "n": 3
+        }
+      }
+    }
+  },
+  "adoption": {
+    "ErrorFallback": [],
+    "badge": [
+      "goals",
+      "watching"
+    ],
+    "button": [
+      "books",
+      "goals",
+      "habits",
+      "journal",
+      "sports",
+      "tasks",
+      "watching"
+    ],
+    "calendar": [
+      "goals",
+      "habits",
+      "tasks"
+    ],
+    "carousel-nav": [
+      "watching"
+    ],
+    "color-palette": [
+      "tasks"
+    ],
+    "command": [],
+    "dialog": [
+      "books",
+      "goals",
+      "habits",
+      "journal",
+      "tasks",
+      "watching"
+    ],
+    "dropdown-menu": [
+      "goals",
+      "habits",
+      "tasks",
+      "watching"
+    ],
+    "filter-select": [
+      "watching"
+    ],
+    "form": [
+      "goals",
+      "habits",
+      "tasks"
+    ],
+    "icon-picker": [
+      "habits"
+    ],
+    "inline-form-actions": [
+      "books",
+      "journal",
+      "watching"
+    ],
+    "input": [
+      "books",
+      "goals",
+      "habits",
+      "journal",
+      "tasks"
+    ],
+    "label": [],
+    "motion": [
+      "books",
+      "dashboard-os",
+      "goals",
+      "habits",
+      "journal"
+    ],
+    "panel": [
+      "watching"
+    ],
+    "popover": [
+      "goals",
+      "habits",
+      "journal",
+      "tasks",
+      "watching"
+    ],
+    "search-input": [
+      "habits",
+      "tasks",
+      "watching"
+    ],
+    "section-header": [
+      "watching"
+    ],
+    "segmented-control": [
+      "journal",
+      "tasks",
+      "watching"
+    ],
+    "select": [
+      "books",
+      "goals",
+      "habits",
+      "sports",
+      "tasks",
+      "watching"
+    ],
+    "slider": [
+      "goals"
+    ],
+    "sliding-panel": [
+      "dashboard-os",
+      "goals",
+      "journal",
+      "watching"
+    ],
+    "tab-nav": [
+      "books",
+      "goals",
+      "habits",
+      "journal"
+    ],
+    "tabs": [],
+    "textarea": [
+      "books",
+      "goals",
+      "habits",
+      "tasks"
+    ],
+    "tooltip": [
+      "habits",
+      "tasks",
+      "watching"
+    ]
+  }
+}

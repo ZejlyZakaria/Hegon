@@ -3,7 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { Star, Heart, MoreVertical, Trash2, ExternalLink } from "lucide-react";
+import { MoreVertical, Trash2, ExternalLink } from "lucide-react";
+import { cn } from "@/shared/utils/utils";
+import { LoveMark, ScoreMark, OVERLAY_CIRCLE, OVERLAY_CLUSTER } from "@/modules/watching/components/shared/Marks";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { displayTitle } from "@/modules/watching/utils";
 import { posterStatus, PosterStatusBadge } from "@/modules/watching/components/shared/StatusBadge";
@@ -64,29 +66,35 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
           priority={eagerLoad}
         />
 
-        {/* favorite badge */}
+        {/* THE TWO CLUSTERS — and they must live in the SAME box. The heart used to sit
+            inside this (scaling) image while the menu sat outside it, so the moment you
+            hovered, one grew and the other didn't: two marks on the same line, drifting
+            apart. Same parent, same inset, same 24px height → aligned by construction, at
+            rest and in motion. (The menu portals its dropdown, so `overflow-hidden` here
+            can't clip it.) */}
         {item.favorite && (
-          <div className="absolute top-2 left-2 z-10">
-            <Heart size={13} className="fill-red-500 text-red-500 drop-shadow" />
+          <div className={cn(OVERLAY_CLUSTER, "left-2.5")}>
+            <span className={OVERLAY_CIRCLE}>
+              <LoveMark size={12} />
+            </span>
           </div>
         )}
 
-        {badge && <PosterStatusBadge status={badge} />}
-      </div>
-
-      {/* action menu trigger */}
-      <div
-        className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          ref={btnRef}
-          type="button"
-          onClick={handleMenuOpen}
-          className="flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white/70 backdrop-blur-sm hover:text-white transition-colors"
+        <div
+          className={cn(OVERLAY_CLUSTER, "right-2.5 opacity-0 transition-opacity group-hover:opacity-100")}
+          onClick={(e) => e.stopPropagation()}
         >
-          <MoreVertical size={11} />
-        </button>
+          <button
+            ref={btnRef}
+            type="button"
+            onClick={handleMenuOpen}
+            className={cn(OVERLAY_CIRCLE, "text-white/75 transition-colors hover:text-white")}
+          >
+            <MoreVertical size={13} />
+          </button>
+        </div>
+
+        {badge && <PosterStatusBadge status={badge} />}
       </div>
 
       {/* dropdown — portal so it escapes all stacking contexts */}
@@ -126,14 +134,15 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
       {/* title + year · rating */}
       <div className="mt-2 px-0.5">
         <h4 className="text-xs font-medium text-text-primary line-clamp-1">{displayTitle(item)}</h4>
+        {/* Score first, year second — the verdict leads, the fact trails. (They were the other
+            way round, which put the dullest number on the card in the eye's first stop.) */}
         <div className="mt-0.5 flex items-center justify-between text-micro text-text-tertiary">
-          <span>{item.year}</span>
-          {item.user_rating != null && item.user_rating > 0 && (
-            <span className="flex items-center gap-1">
-              <Star size={9} className="fill-amber-400 text-amber-400" />
-              {item.user_rating}
-            </span>
+          {item.user_rating != null && item.user_rating > 0 ? (
+            <ScoreMark value={item.user_rating} source="mine" />
+          ) : (
+            <span />
           )}
+          <span>{item.year}</span>
         </div>
       </div>
     </div>

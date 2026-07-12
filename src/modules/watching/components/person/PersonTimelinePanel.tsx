@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { CalendarClock, Star } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
+import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import type { PersonTitle } from "../../service";
 
 const TEAL = "var(--color-accent-watching-vivid)";
-const AMBER = "var(--color-gold)";
 
 interface Props {
   open: boolean;
@@ -41,10 +41,10 @@ function Entry({ t }: { t: PersonTitle }) {
         </p>
         {t.role && <p className="truncate text-micro text-text-tertiary">{t.role}</p>}
       </div>
+      {/* YOUR rating → the shared mark, in teal. It wore a GOLD star, i.e. the world's colour
+          on a number only you wrote — the same lie the carousel and the person grid told. */}
       {t.user_rating != null && (
-        <span className="inline-flex shrink-0 items-center gap-0.5 text-micro font-semibold tabular-nums text-text-secondary">
-          <Star size={9} style={{ color: AMBER, fill: AMBER }} /> {t.user_rating}
-        </span>
+        <ScoreMark value={t.user_rating} source="mine" className="shrink-0" />
       )}
     </Link>
   );

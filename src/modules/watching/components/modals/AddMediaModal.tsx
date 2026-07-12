@@ -232,11 +232,19 @@ export default function AddMediaModal({
       setStatus(extractedStatus);
       if (!isMovie) { setSeasons(details.number_of_seasons ?? null); setEpisodes(details.number_of_episodes ?? null); }
 
+      // TMDB speaks two dialects: /search returns `genre_ids: number[]`, /movie/{id} returns
+      // `genres: {id,name}[]`. We stored the genres from `genre_ids` only — which works when
+      // the pick came from the search list, and silently yields NO categories when the caller
+      // hands us an item that never went through search (the person page's filmography, where
+      // a credit carries no genres). Translating the details dialect here fixes it for EVERY
+      // caller, present and future — the modal is the one place that always sees both.
+      const detailGenres: number[] = (details.genres ?? []).map((g: { id: number }) => g.id);
       const merged: TmdbModalResult = {
         ...result,
         ...details,
         poster_path:   result.poster_path   ?? details.poster_path,
         backdrop_path: result.backdrop_path ?? details.backdrop_path,
+        genre_ids: detailGenres.length ? detailGenres : (result.genre_ids ?? []),
       };
       setSelectedItem(merged);
 

@@ -54,7 +54,9 @@ export function PersonJourney({ stats }: { stats: JourneyStats }) {
             <MiniStat label="Avg rating">
               {avgRating != null ? (
                 <>
-                  <Star size={15} style={{ color: AMBER, fill: AMBER }} />
+                  {/* The average of YOUR scores → teal. It wore the gold star, which is the
+                      world's colour — the mark said "TMDB" about a number only you wrote. */}
+                  <Star size={15} style={{ color: TEAL, fill: TEAL }} />
                   {avgRating.toFixed(1)}
                 </>
               ) : (

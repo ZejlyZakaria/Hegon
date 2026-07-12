@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Star, Pencil, Tv, Lock, Clock } from "lucide-react";
+import { Pencil, Tv, Lock, Clock } from "lucide-react";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/shared/components/ui/popover";
@@ -10,6 +10,8 @@ import {
 } from "@/shared/components/ui/select";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
+import { Badge } from "@/shared/components/ui/badge";
+import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 
 interface Props {
   seasonEpisodes: number[];
@@ -155,31 +157,35 @@ export function SeasonHistoryStrip({
                 </div>
               )}
 
-              {/* Year pill — top-left */}
+              {/* Top-left = WHEN. A flag on artwork → the shared glass badge, not a hand-rolled
+                  black pill (this card had three different ones). */}
               {!locked && (
-                <div className={`absolute left-1.5 top-1.5 rounded-full px-2 py-0.5 text-micro font-semibold ring-1 ring-white/15 backdrop-blur-md ${
-                  year ? "bg-black/65 text-white" : "bg-black/45 text-white/70"
-                }`}>
+                <Badge
+                  variant="glass"
+                  size="sm"
+                  color={year ? "#ffffff" : "rgba(255,255,255,0.7)"}
+                  className="absolute left-1.5 top-1.5 tabular-nums"
+                >
                   {year ?? "Year"}
-                </div>
+                </Badge>
               )}
 
-              {/* "Now" badge — current season of an in-progress show (top-right) */}
+              {/* Top-right = the live season of a show you're on. This badge (teal dot + white
+                  word) was the only glass chip in the app that ever looked right — it's now
+                  the primitive's own behaviour, so the hand-rolled dot goes. */}
               {current && !comingSoon && (
-                <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-black/55 px-1.5 py-0.5 ring-1 ring-white/15 backdrop-blur-md">
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: TEAL, boxShadow: `0 0 6px ${TEAL}` }} />
-                  <span className="text-[9px] font-semibold text-white">Now</span>
-                </div>
+                <Badge variant="glass" size="sm" dot color={TEAL} className="absolute right-1.5 top-1.5">
+                  Now
+                </Badge>
               )}
 
-              {/* Bottom gradient — season + rating */}
+              {/* Bottom mask — the season, and YOUR score for it. The star was amber: the
+                  world's colour on a number the world never gave. It's yours → teal. */}
               <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/85 to-transparent p-2 pt-7">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white">S{s}</span>
                   {!locked && rating != null && (
-                    <span className="flex items-center gap-0.5 text-micro font-semibold text-amber-300">
-                      <Star size={10} className="fill-amber-300 text-amber-300" />{rating}
-                    </span>
+                    <ScoreMark value={rating} source="mine" onArtwork />
                   )}
                 </div>
               </div>
@@ -199,7 +205,7 @@ export function SeasonHistoryStrip({
               ) : (
                 /* Hover edit affordance */
                 <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/25 group-hover:opacity-100">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 ring-1 ring-white/20 backdrop-blur-md">
+                  <div className="glass-thin flex h-7 w-7 items-center justify-center rounded-full">
                     <Pencil size={12} className="text-white" />
                   </div>
                 </div>
@@ -243,7 +249,7 @@ export function SeasonHistoryStrip({
 
                 <label className="mb-1 mt-3 block text-micro text-text-tertiary">Rating</label>
                 <Select value={rating ? String(rating) : undefined} onValueChange={(v) => setRating(s, v)}>
-                  <SelectTrigger className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-amber-400 focus:ring-0">
+                  <SelectTrigger className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-accent-watching-vivid focus:ring-0">
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent className="bg-surface-3 border-border-strong">

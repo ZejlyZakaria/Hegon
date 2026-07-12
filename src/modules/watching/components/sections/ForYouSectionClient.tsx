@@ -2,7 +2,9 @@
 
 import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
 import Image from "next/image";
-import { Star, X } from "lucide-react";
+import { X } from "lucide-react";
+import { Badge } from "@/shared/components/ui/badge";
+import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { Button } from "@/shared/components/ui/button";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
@@ -82,11 +84,18 @@ function ForYouCard({
         )}
         <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
 
-        {/* "New" badge — surfaced in the latest 5-day rotation */}
+        {/* "New" — surfaced in the latest rotation. Glass, like every mark on artwork: a
+            solid teal pill was the loudest thing on the card, for the least important fact. */}
         {item.is_new && (
-          <div className="absolute top-2 left-2 z-10 rounded-full bg-accent-watching-vivid px-2 py-0.5 text-caption font-bold uppercase tracking-wide text-surface-0 shadow-sm">
+          <Badge
+            variant="glass"
+            size="sm"
+            uppercase
+            color="var(--color-accent-watching-vivid)"
+            className="absolute left-2 top-2 z-10"
+          >
             New
-          </div>
+          </Badge>
         )}
 
         {/* Dismiss — sits on the artwork, so it's glass, not a page control */}
@@ -105,12 +114,9 @@ function ForYouCard({
         <div className="absolute bottom-0 inset-x-0 p-4">
           <h4 className="text-sm font-semibold text-white line-clamp-1">{item.title}</h4>
           <div className="mt-1.5 flex items-center gap-2">
-            {rating && (
-              <div className="flex items-center gap-1">
-                <Star size={11} className="fill-amber-400 text-amber-400" />
-                <span className="text-xs text-amber-400">{rating}</span>
-              </div>
-            )}
+            {/* TMDB's score → gold. A recommendation is by definition unwatched, so this can
+                never be your rating. */}
+            {rating && <ScoreMark value={rating} source="world" />}
             {item.year && <span className="text-xs text-white/40">{item.year}</span>}
           </div>
         </div>

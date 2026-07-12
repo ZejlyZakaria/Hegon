@@ -4,13 +4,23 @@ import { useRef, useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Star, Heart, Plus, Bookmark } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
+import { Badge } from "@/shared/components/ui/badge";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
+import { LoveMark, RankMark, ScoreMark, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
+
+// Priority on a want-to-watch: a WORD, not a cryptic bookmark. Red/amber/neutral = urgency,
+// a scale everyone already reads.
+const PRIORITY_COLOR: Record<string, string> = {
+  high: "#fb7185",
+  medium: "#fcd34d",
+  low: "rgba(255,255,255,0.75)",
+};
 import { displayTitle } from "@/modules/watching/utils";
 import { MediaActionMenu } from "./MediaActionMenu";
 
@@ -86,34 +96,18 @@ function MovieCard({
         />
         <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
 
-        {/* rank badge */}
-        {showRankBadge && item.priority && (
-          <div className="absolute top-3 left-3 flex h-8 w-8 items-center justify-center rounded-full bg-black border-2 border-white text-xs font-bold text-white z-10">
-            {item.priority}
-          </div>
-        )}
-
-        {/* priority icon */}
-        {item.want_to_watch && item.priority_level && (
-          <div className="absolute top-0 left-0 z-10">
-            <Bookmark
-              size={24}
-              className={cn(
-                "fill-current",
-                item.priority_level === "high"   ? "text-red-500"    :
-                item.priority_level === "medium" ? "text-amber-400"  :
-                                                   "text-zinc-300",
-              )}
-              style={{ filter: "drop-shadow(0 1px 4px rgba(0,0,0,0.9))" }}
-            />
-          </div>
-        )}
-
-        {item.favorite && (
-          <div className="absolute top-3 right-10">
-            <Heart size={16} className="fill-red-500 text-red-500" />
-          </div>
-        )}
+        {/* THE OVERLAY GRAMMAR — two clusters, and nothing else may sit on the artwork:
+            left = IDENTITY (what this title is: rank, priority), right = ACTIONS (favorite,
+            menu). Same inset, same 24px item height, same gap → they align by construction
+            instead of by three separate `top-2` / `top-3` guesses. */}
+        <div className={cn(OVERLAY_CLUSTER, "left-2.5")}>
+          {showRankBadge && item.priority && <RankMark rank={item.priority} />}
+          {item.want_to_watch && item.priority_level && (
+            <Badge variant="glass" size="sm" uppercase color={PRIORITY_COLOR[item.priority_level]}>
+              {item.priority_level}
+            </Badge>
+          )}
+        </div>
 
         <div className="absolute bottom-0 inset-x-0 p-4">
           <h4 className="text-sm font-semibold text-white line-clamp-1">
@@ -126,7 +120,7 @@ function MovieCard({
             ((item.current_episode ?? 0) > 0 || (item.current_season ?? 1) > 1) && (
               <div className="space-y-1.5">
                 <span
-                  className="text-micro font-semibold px-2 py-0.5 rounded-full"
+                  className="rounded-chip px-2 py-0.5 text-micro font-semibold"
                   style={{
                     backgroundColor: "color-mix(in srgb, var(--color-accent-watching) 40%, transparent)",
                     color: "var(--color-accent-watching-vivid)",
@@ -151,39 +145,39 @@ function MovieCard({
               </div>
             )}
 
-          <div className="mt-1.5 flex items-center gap-2 min-w-0">
+          <div className="mt-1.5 flex min-w-0 items-center gap-2">
+            {/* `truncate` on the Badge itself did nothing: the badge is an inline-flex box, and
+                text-overflow only applies to the element that HOLDS the text. So the label gets
+                its own span — "Science Fiction" ellipsises instead of shoving the year and the
+                score off the card. */}
             {!isPoster && item.tags?.slice(0, 2).map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-white/10 px-2 py-0.5 text-micro text-white max-w-20 truncate"
-              >
-                {tag}
-              </span>
+              <Badge key={tag} variant="overlay" size="sm" color="rgba(255,255,255,0.8)" className="max-w-24 shrink">
+                <span className="min-w-0 truncate">{tag}</span>
+              </Badge>
             ))}
-            <span className="text-xs text-text-tertiary shrink-0">
-              {item.year}
-            </span>
+            <span className="shrink-0 text-xs text-text-tertiary">{item.year}</span>
 
+            {/* YOUR rating → teal star. It used to be gold, which is the WORLD's colour —
+                the same mark meant two different things depending on the screen. */}
             {item.user_rating != null && item.user_rating > 0 && (
-              <div className="flex items-center gap-1 text-xs text-white shrink-0">
-                <Star size={12} className="fill-amber-400 text-amber-400" />
-                {item.user_rating}
-              </div>
+              <ScoreMark value={item.user_rating} source="mine" className="shrink-0" />
             )}
           </div>
         </div>
       </div>
 
-      {/* MediaActionMenu renders its dropdown via Portal — no overflow clip */}
-      <div
-        className="absolute top-2 right-2 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-150 ease-out"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <MediaActionMenu
-          item={item}
-          onView={onView}
-          onDelete={onDelete}
-        />
+      {/* Right cluster = ACTIONS. The favorite mark lives here too — it used to float at
+          `right-10 top-3` while the menu sat at `right-2 top-2`, so nothing lined up.
+          (MediaActionMenu portals its dropdown, so no overflow clip.) */}
+      <div className={cn(OVERLAY_CLUSTER, "right-2.5")} onClick={(e) => e.stopPropagation()}>
+        {item.favorite && (
+          <span className={OVERLAY_CIRCLE}>
+            <LoveMark size={12} />
+          </span>
+        )}
+        <span className="opacity-100 transition-opacity duration-150 ease-out sm:opacity-0 sm:group-hover:opacity-100">
+          <MediaActionMenu item={item} onView={onView} onDelete={onDelete} />
+        </span>
       </div>
     </div>
   );

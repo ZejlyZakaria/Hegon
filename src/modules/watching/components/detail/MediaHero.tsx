@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import Image from "next/image";
 import { ArrowLeft, Loader2, Play } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
+import { Badge } from "@/shared/components/ui/badge";
 import type { WatchingMedia } from "../../types";
 import { displayTitle } from "../../utils";
 import { useImdbId } from "../../hooks/useImdbId";
@@ -168,9 +169,9 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
           {media.tags && media.tags.length > 0 && (
             <div className="mt-3 flex flex-wrap justify-center gap-1.5">
               {media.tags.slice(0, 5).map((tag) => (
-                <span key={tag} className="rounded-full bg-white/6 px-2.5 py-0.5 text-xs text-white/40 ring-1 ring-white/6">
+                <Badge key={tag} variant="overlay" size="lg" color="rgba(255,255,255,0.8)">
                   {tag}
-                </span>
+                </Badge>
               ))}
             </div>
           )}

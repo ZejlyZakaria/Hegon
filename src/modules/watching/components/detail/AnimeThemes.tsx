@@ -8,6 +8,7 @@ import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
 import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { Hint } from "@/shared/components/ui/tooltip";
+import { LOVE } from "../shared/Marks";
 import { Panel } from "@/shared/components/ui/panel";
 import { WATCHING_ACCENT } from "../../ui";
 import { useAnimeThemes } from "../../hooks/useAnimeThemes";
@@ -95,7 +96,7 @@ function ThemeRow({
           title={faved ? "Remove from My Themes" : "Add to My Themes"}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/55 transition-colors hover:text-white"
         >
-          <Heart size={15} className={faved ? "fill-accent-watching-vivid text-accent-watching-vivid" : ""} />
+          <Heart size={15} style={faved ? { color: LOVE, fill: LOVE } : undefined} />
         </button>
       </div>
     </div>

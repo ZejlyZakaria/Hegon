@@ -4,7 +4,9 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Star, TrendingUp } from "lucide-react";
+import { Plus, TrendingUp } from "lucide-react";
+import { Badge } from "@/shared/components/ui/badge";
+import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
 import { useWatchingHero } from "@/modules/watching/hooks/useWatchingHero";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
@@ -103,9 +105,9 @@ function DontMissCard({
               {genres.length > 0 && (
                 <div className="flex gap-1.5 flex-wrap mb-2">
                   {genres.map((g) => (
-                    <span key={g} className="text-micro px-2 py-0.5 bg-white/10 rounded-full text-white/65">
+                    <Badge key={g} variant="overlay" size="sm" color="rgba(255,255,255,0.8)">
                       {g}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               )}
@@ -115,12 +117,8 @@ function DontMissCard({
               </h3>
 
               <div className="flex items-center gap-2.5 mb-2">
-                {rating && (
-                  <div className="flex items-center gap-1">
-                    <Star size={11} className="fill-amber-400 text-amber-400" />
-                    <span className="text-xs font-semibold text-amber-400">{rating}</span>
-                  </div>
-                )}
+                {/* The WORLD's score → gold. Yours would be teal — same mark, different source. */}
+                {rating && <ScoreMark value={rating} source="world" size="md" />}
                 {year && <span className="text-xs text-white/40">{year}</span>}
               </div>
 
@@ -156,24 +154,27 @@ function DontMissCard({
           >
             <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
             <div className="relative px-3 pb-3 flex flex-col gap-1">
-              <p className="text-micro font-semibold text-white truncate">{title}</p>
-              {rating && (
-                <div className="flex items-center gap-1">
-                  <Star size={9} className="fill-amber-400 text-amber-400" />
-                  <span className="text-micro font-medium text-amber-400">{rating}</span>
-                </div>
-              )}
+              <p className="truncate text-micro font-semibold text-white">{title}</p>
+              {rating && <ScoreMark value={rating} source="world" />}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── trending badge — always on the poster (single source, never duplicated) ── */}
+      {/* ── trending — a FLAG on artwork, so: glass. It was `solid`, a filled teal slab that
+             punched a hole in the poster; the whole point of the flag grammar is that the
+             material is chosen by the SURFACE, and this surface is an image. ── */}
       {isTrending && (
-        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-micro font-semibold text-white bg-accent-watching backdrop-blur-sm">
+        <Badge
+          variant="glass"
+          size="md"
+          uppercase
+          color="var(--color-accent-watching-vivid)"
+          className="absolute left-3 top-3 z-10"
+        >
           <TrendingUp size={10} />
           Trending
-        </div>
+        </Badge>
       )}
     </div>
   );
@@ -205,19 +206,20 @@ function TrendingMobileCard({
       )}
       <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/10 to-transparent" />
       {isTrending && (
-        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-accent-watching px-2 py-0.5 text-[9px] font-semibold text-white">
+        <Badge
+          variant="glass"
+          size="sm"
+          uppercase
+          color="var(--color-accent-watching-vivid)"
+          className="absolute left-2 top-2"
+        >
           <TrendingUp size={9} />
           Trending
-        </div>
+        </Badge>
       )}
       <div className="absolute inset-x-0 bottom-0 p-2">
         <p className="truncate text-micro font-semibold text-white">{title}</p>
-        {rating && (
-          <div className="mt-0.5 flex items-center gap-1">
-            <Star size={9} className="fill-amber-400 text-amber-400" />
-            <span className="text-micro font-medium text-amber-400">{rating}</span>
-          </div>
-        )}
+        {rating && <ScoreMark value={rating} source="world" className="mt-1" />}
       </div>
     </button>
   );

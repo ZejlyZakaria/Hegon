@@ -1,0 +1,5 @@
+{
+  // Required for globals.css to validate correctly — settings.json hands .css files to this
+  // extension's language server precisely because the built-in one can't read Tailwind v4.
+  "recommendations": ["bradlc.vscode-tailwindcss"]
+}

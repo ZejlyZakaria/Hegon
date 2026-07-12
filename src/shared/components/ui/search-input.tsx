@@ -4,11 +4,18 @@ import * as React from "react";
 import { Search, X } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 
-export interface SearchInputProps extends React.ComponentProps<"input"> {
+export interface SearchInputProps extends Omit<React.ComponentProps<"input">, "size"> {
   /** Width / positioning of the wrapper (e.g. "w-48", "flex-1"). */
   containerClassName?: string;
   /** When provided, a clear (✕) button appears while the field has a value. */
   onClear?: () => void;
+  /**
+   * sm = 32px (beside Button size="sm" / icon-sm) · md = 36px (default).
+   * It had NO size at all, which is why a search field next to two 32px buttons sat 4px
+   * taller and the whole toolbar looked off. A control that can't match its neighbours
+   * isn't a primitive, it's a liability.
+   */
+  size?: "sm" | "md";
 }
 
 /**
@@ -22,9 +29,11 @@ export function SearchInput({
   containerClassName,
   onClear,
   value,
+  size = "md",
   ...props
 }: SearchInputProps) {
   const hasValue = value != null && value !== "";
+  const h = size === "sm" ? "h-8" : "h-9";
 
   return (
     <div className={cn("relative flex items-center", containerClassName)}>
@@ -37,7 +46,8 @@ export function SearchInput({
         data-slot="search-input"
         value={value}
         className={cn(
-          "h-9 w-full rounded-control border border-border-default bg-surface-2 py-0 pl-8 text-sm",
+          h,
+          "w-full rounded-control border border-border-default bg-surface-2 py-0 pl-8 text-sm",
           onClear ? "pr-8" : "pr-3",
           "text-text-primary placeholder:text-text-tertiary",
           "transition-[background-color,border-color] duration-150 ease-out",

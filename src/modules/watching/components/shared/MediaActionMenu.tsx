@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
+import { OVERLAY_CIRCLE } from "./Marks";
 import { useUpdateMedia } from "../../hooks/useUpdateMedia";
 import { useWatchingGoals } from "../../hooks/useWatchingGoals";
 import { goalWouldCount } from "../../lib/goal-contribution";
@@ -194,16 +195,15 @@ export function MediaActionMenu({
 
   return (
     <>
+      {/* The same 24px glass circle as every other overlay action — it used to be a
+          `p-1.5` black disc, so it never matched the heart standing next to it. */}
       <button
         ref={btnRef}
         type="button"
         onClick={handleOpen}
-        className={cn(
-          "p-1.5 rounded-full bg-black/70 backdrop-blur-sm text-white/70 hover:text-white hover:bg-black/80 transition-colors",
-          triggerClassName,
-        )}
+        className={cn(OVERLAY_CIRCLE, "text-white/75 transition-colors hover:text-white", triggerClassName)}
       >
-        <MoreVertical size={14} />
+        <MoreVertical size={13} />
       </button>
 
       {open &&

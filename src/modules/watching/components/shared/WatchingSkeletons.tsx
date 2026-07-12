@@ -181,22 +181,34 @@ export function DetailSkeleton() {
       </div>
 
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
-        {/* Left — My Take, then the long-form sections */}
+        {/* Left — My Take, then the rails. My Take is a CARD WITH NO HEADING (the score is its
+            title) whose shape is: big numeral → rating scale → rule → note. The skeleton drew
+            a heading bar above a blank slab, i.e. the card as it looked two redesigns ago. */}
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
-          {[36, 28].map((w, i) => (
-            <div key={i}>
-              <div className="mb-3 h-4 animate-pulse rounded bg-surface-2" style={{ width: `${w}%`, maxWidth: 180 }} />
-              <div className="h-36 animate-pulse rounded-card bg-surface-1" />
+          <div className="surface-card rounded-card p-5">
+            <div className="flex items-baseline gap-2">
+              <div className="h-9 w-14 animate-pulse rounded bg-surface-2" />
+              <div className="h-4 w-20 animate-pulse rounded bg-surface-2" />
             </div>
-          ))}
-          <div>
-            <div className="mb-3 h-4 w-24 animate-pulse rounded bg-surface-2" />
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-              {Array.from({ length: 6 }, (_, i) => (
-                <div key={i} className="aspect-2/3 animate-pulse rounded-tile bg-surface-2" />
-              ))}
+            <div className="mt-3 h-2 max-w-2xl animate-pulse rounded-full bg-surface-2" />
+            <div className="my-4 h-px bg-border-subtle" />
+            <div className="space-y-2">
+              <div className="h-4 w-full animate-pulse rounded bg-surface-2" />
+              <div className="h-4 w-4/5 animate-pulse rounded bg-surface-2" />
             </div>
           </div>
+
+          {/* The rails below it carry no card — a title, then artwork. */}
+          {[["w-28", 6], ["w-36", 6]].map(([w, n], i) => (
+            <div key={i}>
+              <div className={`mb-3 h-4 animate-pulse rounded bg-surface-2 ${w}`} />
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                {Array.from({ length: n as number }, (_, j) => (
+                  <div key={j} className="aspect-2/3 animate-pulse rounded-tile bg-surface-2" />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Rail — the branded status card leads, then the quiet blocks */}

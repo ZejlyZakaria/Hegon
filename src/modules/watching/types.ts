@@ -176,6 +176,8 @@ export interface TmdbModalResult {
   genre_ids: number[];
   origin_country?: string[];
   // detail fields (populated after selectResult fetch)
+  /** /movie/{id} & /tv/{id} return objects here, not the ids /search returns. */
+  genres?: { id: number; name: string }[];
   runtime?: number;
   episode_run_time?: number[];
   number_of_seasons?: number;
