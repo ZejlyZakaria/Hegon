@@ -22,21 +22,9 @@ const PRIORITY_COLOR: Record<string, string> = {
   low: "rgba(255,255,255,0.75)",
 };
 import { displayTitle } from "@/modules/watching/utils";
+import { formatPosition, overallProgress } from "@/modules/watching/lib/progress";
+import { NextEpisodeButton } from "./NextEpisodeButton";
 import { MediaActionMenu } from "./MediaActionMenu";
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
-
-function computeProgress(item: WatchingMedia): number {
-  if (!item.season_episodes?.length) return 0;
-  const seasonIdx = (item.current_season ?? 1) - 1;
-  const prevEps = item.season_episodes
-    .slice(0, seasonIdx)
-    .reduce((s, n) => s + n, 0);
-  const total = item.season_episodes.reduce((s, n) => s + n, 0);
-  return total
-    ? Math.round(((prevEps + (item.current_episode ?? 0)) / total) * 100)
-    : 0;
-}
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -114,29 +102,37 @@ function MovieCard({
             {displayTitle(item)}
           </h4>
 
-          {/* episode progress — show once started: current episode, OR past season 1
-              (a season bump resets the episode to 0 but prior seasons are done). */}
+          {/* Episode progress — and, beside it, the way to move it. The card has always known
+              you were on S03 E03; it just wouldn't let you say you'd watched E04, so the most
+              frequent gesture in the app cost four taps and a page load.
+
+              The chip and the button are forced to the SAME 24px height (h-6). The chip was a
+              hand-rolled span with its own padding, so it sat a few pixels off the button beside
+              it — the same mechanical mismatch that made the List Detail toolbar look "off". A
+              row aligns when its items share a height, not when you nudge them. */}
           {showEpisodeBadge &&
             ((item.current_episode ?? 0) > 0 || (item.current_season ?? 1) > 1) && (
               <div className="space-y-1.5">
-                <span
-                  className="rounded-chip px-2 py-0.5 text-micro font-semibold"
-                  style={{
-                    backgroundColor: "color-mix(in srgb, var(--color-accent-watching) 40%, transparent)",
-                    color: "var(--color-accent-watching-vivid)",
-                  }}
-                >
-                  {"S" +
-                    String(item.current_season ?? 1).padStart(2, "0") +
-                    " E" +
-                    String(item.current_episode).padStart(2, "0")}
-                </span>
-                {computeProgress(item) > 0 && (
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-flex h-6 shrink-0 items-center rounded-chip px-2 text-micro font-semibold leading-none"
+                    style={{
+                      backgroundColor: "color-mix(in srgb, var(--color-accent-watching) 40%, transparent)",
+                      color: "var(--color-accent-watching-vivid)",
+                    }}
+                  >
+                    {formatPosition(item.current_season ?? 1, item.current_episode ?? 0)}
+                  </span>
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <NextEpisodeButton item={item} />
+                  </span>
+                </div>
+                {overallProgress(item) > 0 && (
                   <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{
-                        width: `${computeProgress(item)}%`,
+                        width: `${overallProgress(item)}%`,
                         backgroundColor: "var(--color-accent-watching-vivid)",
                       }}
                     />

@@ -51,9 +51,9 @@ export function PosterStatusBadge({ status, className }: { status: PosterStatus;
       {/* Scrim — keeps the badge readable over a bright poster */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-linear-to-t from-black/95 via-black/50 to-transparent" />
       <div className={cn("absolute inset-x-2 bottom-2 z-10 flex items-end", className)}>
-        {/* dot = the status colour. The word stays white — glass can't hold coloured text
-            without being dimmed into a sticker, so the colour rides the dot instead. */}
-        <Badge variant="flag" size="sm" dot color={TONE[status.tone]} className="shrink-0">
+        {/* Coloured label. The flat chip owns its own fill, so the colour reads on any poster
+            — and it says "Paused" at a glance in a way a white word beside a dot never did. */}
+        <Badge variant="flag" size="sm" color={TONE[status.tone]} className="shrink-0">
           {status.label}
         </Badge>
       </div>

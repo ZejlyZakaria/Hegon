@@ -82,8 +82,13 @@ export async function uploadCustomPoster(file: File): Promise<string | null> {
 // need what MediaCarousel + MovieCard + MediaActionMenu render — NOT select("*").
 // Deliberately excludes description/notes/season jsonbs/cast_members/directors, etc.
 // Clicking a card refetches the full row by id, so nothing downstream is starved.
+// `season_years` is here for one reason, and it is NOT display: the "+1" button on an
+// In Progress card can roll over a season, and rolling over stamps the finished season's
+// year. stampSeasons MERGES into the existing map — so if the map isn't loaded, it merges
+// into `undefined`, and writing the result REPLACES the jsonb column with a single entry.
+// Every year you'd ever set by hand would be gone. Load it, or don't write it.
 const SECTION_COLUMNS =
-  "id, type, title, original_title, poster_url, backdrop_url, year, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, in_progress, current_season, current_episode, season_episodes";
+  "id, type, title, original_title, poster_url, backdrop_url, year, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, in_progress, current_season, current_episode, season_episodes, season_years";
 
 export async function getMediaItems(
   userId: string,

@@ -27,13 +27,13 @@ import { cn } from "@/shared/utils/utils";
  * The physics is kept in globals.css for the Dashboard dock, where content really does move
  * behind it and the material EARNS itself.
  *
- * ── WHY THE LABEL IS WHITE ───────────────────────────────────────────────────────────
- * This part survived the glass, because it was never a property of glass — it's a property
- * of putting text on an image you don't control. Teal reads on a dark poster and dies on a
- * white one. So the label is WHITE (legible on anything, with the fill behind it) and the
- * colour rides a DOT or the icon. We'd already stumbled onto this once: the "Now" badge on
- * Watch History has always been a teal dot + a white word, and it was the only chip on
- * artwork that looked right.
+ * ── AND WHY ITS LABEL IS COLOURED AGAIN ──────────────────────────────────────────────
+ * Briefly the label was white and the colour rode a dot. That was a rule borrowed from the
+ * glass era — and it was a property of GLASS, not of badges: glass took its brightness from
+ * the poster, so teal read on a dark one and died on a white one. A FLAT chip has its own
+ * opaque fill, independent of the artwork, so colour is legible on anything again. The
+ * constraint fell with the material, and colour says "Paused" better than a dot ever could.
+ * (`dot` survives for the one case where the colour is a LIGHT, not a label: "Now".)
  *
  * WEIGHT follows the nature: a flag SHOUTS (semibold), metadata WHISPERS (medium).
  */
@@ -43,7 +43,7 @@ interface BadgeProps {
   variant?: "tint" | "solid" | "outline" | "flag" | "overlay";
   /** sm = dense overlays (poster corners) · md = default · lg = hero chips */
   size?: "sm" | "md" | "lg";
-  /** flag only — a coloured dot before the label, for flags with no icon of their own. */
+  /** flag only — a status LIGHT (the "Now" pip). Not a colour carrier: the label is coloured. */
   dot?: boolean;
   uppercase?: boolean;
   className?: string;
@@ -94,8 +94,13 @@ export function Badge({
         : variant === "overlay"
           ? { color, backgroundColor: "rgba(255,255,255,0.10)" }
         : isFlag
-          ? // White label; `color` is handed to the dot and to any icon inside, via a var.
-            ({ color: "#fff", "--badge-mark": color } as CSSProperties)
+          ? // COLOURED label — and this is a rule that was RIGHT to relax. The white-label rule
+            // was never a property of badges; it was a property of GLASS, whose brightness came
+            // from the poster underneath (teal read on a dark one and died on a white one). The
+            // flag is now FLAT and opaque: its fill no longer depends on the artwork, so colour
+            // is legible again — and colour carries the status far better than a dot ever did.
+            // The constraint fell with the material. `--badge-mark` still drives the optional dot.
+            ({ color, "--badge-mark": color } as CSSProperties)
           : {
               color,
               backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
