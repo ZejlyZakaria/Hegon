@@ -130,9 +130,12 @@ export function RatingPicker({
           const tone = rated && value >= a.at ? "text-text-secondary" : "text-text-tertiary/70";
           return (
             <span key={a.at} className={cn(a.wide && "hidden sm:block")}>
+              {/* text-caption is the 10px tier, but it's styled as an eyebrow (letter-spacing
+                  + weight 600). A scale legend is plain small text, so the size comes from the
+                  token and the eyebrow styling is neutralised — 11px (micro) was too loud here. */}
               <span
                 className={cn(
-                  "absolute top-0 text-micro font-semibold leading-tight tabular-nums",
+                  "absolute top-0 text-caption font-semibold leading-tight tracking-normal tabular-nums",
                   first ? "" : "-translate-x-1/2",
                   tone,
                 )}
@@ -145,7 +148,7 @@ export function RatingPicker({
                   // Centred on its tick like every other anchor — including the last one.
                   // Its right half spills a few px past the bar, which lands harmlessly in
                   // the panel's padding; right-aligning it (the old fix) just looked broken.
-                  "absolute top-3.5 whitespace-nowrap text-micro leading-tight",
+                  "absolute top-3.5 whitespace-nowrap text-caption font-normal leading-tight tracking-normal",
                   first ? "" : "-translate-x-1/2",
                   tone,
                 )}
