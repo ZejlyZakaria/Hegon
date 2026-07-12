@@ -56,14 +56,14 @@ export function PosterStatusBadge({ status, className }: { status: PosterStatus;
       <div className={cn("absolute inset-x-2 bottom-2 z-10 flex items-end justify-between gap-1.5", className)}>
         <span
           className={cn(
-            "shrink-0 rounded-chip bg-black/75 px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-white/10 backdrop-blur-sm",
+            "shrink-0 rounded-chip bg-black/75 px-1.5 py-0.5 text-micro font-bold ring-1 ring-white/10 backdrop-blur-sm",
             TONE[status.tone],
           )}
         >
           {status.label}
         </span>
         {status.position && (
-          <span className="min-w-0 truncate rounded-chip bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur-sm">
+          <span className="min-w-0 truncate rounded-chip bg-black/75 px-1.5 py-0.5 text-micro font-semibold text-white/90 ring-1 ring-white/10 backdrop-blur-sm">
             {status.position}
           </span>
         )}

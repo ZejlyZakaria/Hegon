@@ -3,7 +3,7 @@
 import { Clapperboard, Sparkles, Star, Trophy } from "lucide-react";
 
 const TEAL = "var(--color-accent-watching-vivid)";
-const AMBER = "#fbbf24";
+const AMBER = "var(--color-gold)";
 
 export interface JourneyStats {
   owned: number;       // in your library, any status — gates the empty state

@@ -28,7 +28,7 @@ export function WatchingError({ error, resetErrorBoundary }: FallbackProps) {
           type="button"
           onClick={resetErrorBoundary}
           className={cn(
-            "flex items-center gap-2 px-4 h-9 rounded-lg",
+            "flex items-center gap-2 px-4 h-9 rounded-control",
             "bg-surface-2 border border-border-subtle text-text-primary text-sm font-medium",
             "hover:bg-surface-3 hover:border-border-default transition-colors"
           )}

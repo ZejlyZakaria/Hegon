@@ -213,7 +213,9 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
           <div className="flex items-end gap-8">
             {/* Poster */}
             <div className="relative shrink-0">
-              <div className="relative aspect-2/3 w-(--poster-xl) overflow-hidden rounded-tile p-1">
+              {/* Nested radii: the inner one must be OUTER − padding, or the corners can't
+                  sit inside each other. rounded-card (12) − p-1 (4) = rounded-tile (8). */}
+              <div className="relative aspect-2/3 w-(--poster-xl) overflow-hidden rounded-card p-1">
                 <div
                   className="absolute inset-0"
                   style={{
@@ -224,14 +226,14 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
                   }}
                 />
                 <div className="absolute inset-0 bg-white/15" />
-                <div className="relative h-full w-full overflow-hidden rounded-[10px]">
+                <div className="relative h-full w-full overflow-hidden rounded-tile">
                   <Image
                     src={media.poster_url || "/placeholder.svg"}
                     alt={media.title}
                     fill
                     unoptimized
                     priority
-                    sizes="160px"
+                    sizes="170px"
                     className="object-cover"
                   />
                 </div>

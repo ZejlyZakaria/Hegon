@@ -6,7 +6,7 @@ import { Gem, Star, Trophy } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 
-const AMBER = "#fbbf24";
+const AMBER = "var(--color-gold)";
 
 export interface InsightTitle {
   id: string;
@@ -29,11 +29,11 @@ export interface PersonInsightsData {
 function TitleCell({ label, icon, t }: { label: string; icon: React.ReactNode; t: InsightTitle }) {
   return (
     <Link href={`/perso/watching/${t.id}`} className="group min-w-0 rounded-control p-2 transition-colors hover:bg-surface-2">
-      <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+      <p className="flex items-center gap-1 text-micro font-semibold uppercase tracking-wide text-text-tertiary">
         {icon} {label}
       </p>
       <div className="mt-1.5 flex items-center gap-2.5">
-        <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-md bg-surface-2 ring-1 ring-border-subtle">
+        <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-chip bg-surface-2 ring-1 ring-border-subtle">
           {t.poster_url && (
             <Image src={t.poster_url} alt="" fill unoptimized loading="lazy" sizes="36px" className="object-cover" />
           )}
@@ -43,10 +43,10 @@ function TitleCell({ label, icon, t }: { label: string; icon: React.ReactNode; t
             {t.title}
           </p>
           <div className="mt-0.5 flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold tabular-nums text-amber-300">
+            <span className="inline-flex items-center gap-0.5 text-micro font-semibold tabular-nums text-amber-300">
               <Star size={9} style={{ color: AMBER, fill: AMBER }} /> {t.rating}
             </span>
-            <span className="inline-flex min-w-0 items-center gap-1 text-[11px] text-text-tertiary">
+            <span className="inline-flex min-w-0 items-center gap-1 text-micro text-text-tertiary">
               {t.metaLogo && (
                 <Image src={t.metaLogo} alt="TMDB" width={22} height={9} className="h-2.25 w-auto opacity-70" />
               )}
@@ -84,7 +84,7 @@ export function PersonInsights({ data, firstName }: { data: PersonInsightsData; 
               Your{" "}
               <span className="text-sm font-bold tabular-nums text-text-primary">#{rank.position}</span>{" "}
               most-watched {rank.noun}
-              <span className="block truncate text-[11px] text-text-tertiary">{tieLine}</span>
+              <span className="block truncate text-micro text-text-tertiary">{tieLine}</span>
             </p>
           </div>
         )}

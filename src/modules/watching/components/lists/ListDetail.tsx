@@ -95,7 +95,7 @@ function Poster({ src, title }: { src: string | null; title?: string }) {
       {src && <Image src={src} alt="" fill unoptimized className="object-cover transition-opacity duration-500" sizes="320px" loading="eager" />}
       <div className="absolute inset-x-0 bottom-0 h-14 bg-linear-to-t from-black/80 to-transparent" />
       {title && (
-        <p className="absolute bottom-2 left-2 right-2 truncate text-[10px] font-semibold leading-tight text-white">
+        <p className="absolute bottom-2 left-2 right-2 truncate text-micro font-semibold leading-tight text-white">
           {title}
         </p>
       )}
@@ -211,7 +211,7 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
         </Button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content align="end" sideOffset={8} className="z-50 w-80 overflow-hidden rounded-xl border border-border-strong bg-surface-3 shadow-md">
+        <Popover.Content align="end" sideOffset={8} className="z-50 w-80 overflow-hidden rounded-card border border-border-strong bg-surface-3 shadow-md">
           {/* Search input */}
           <div className="border-b border-border-subtle p-2">
             <div className="relative">
@@ -221,7 +221,7 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search library or TMDB…"
-                className="w-full rounded-lg bg-surface-2 py-2 pl-8 pr-8 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none"
+                className="w-full rounded-control bg-surface-2 py-2 pl-8 pr-8 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none"
               />
               {isFetching && debouncedQuery.length >= 2 && (
                 <Loader2 size={11} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-text-tertiary" />
@@ -253,11 +253,11 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
                       onClick={() => !inList && handleAdd(media.id)}
                       disabled={inList || addItem.isPending}
                       className={cn(
-                        "flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors",
+                        "flex w-full items-center gap-2.5 rounded-control px-2 py-2 text-left transition-colors",
                         inList ? "cursor-default opacity-40" : "hover:bg-surface-2",
                       )}
                     >
-                      <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md">
+                      <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-chip">
                         {media.poster_url
                           ? <Image src={media.poster_url} alt="" fill unoptimized className="object-cover" sizes="40px" />
                           : <div className="h-full w-full bg-zinc-800" />
@@ -298,9 +298,9 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
                       type="button"
                       onClick={() => addingTmdbId === null && handleAddFromTmdb(item)}
                       disabled={addingTmdbId !== null}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-surface-2 disabled:opacity-50"
+                      className="flex w-full items-center gap-2.5 rounded-control px-2 py-2 text-left transition-colors hover:bg-surface-2 disabled:opacity-50"
                     >
-                      <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md">
+                      <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-chip">
                         {item.poster_path
                           ? <Image src={`https://image.tmdb.org/t/p/w92${item.poster_path}`} alt="" fill unoptimized className="object-cover" sizes="40px" />
                           : <div className="h-full w-full bg-zinc-800" />
@@ -353,7 +353,7 @@ function MoreMenu({ onDelete }: { onDelete: () => void }) {
         <MoreHorizontal />
       </Button>
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-1.5 w-44 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-md">
+        <div className="absolute right-0 top-full z-20 mt-1.5 w-44 overflow-hidden rounded-card border border-border-strong bg-surface-3 py-1 shadow-md">
           <button
             type="button"
             onClick={() => { onDelete(); setOpen(false); }}
@@ -435,7 +435,7 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
         ? <Loader2 size={9} className="animate-spin text-text-tertiary" />
         : <div className={cn("h-1.5 w-1.5 shrink-0 rounded-full", status.dotClass)} />
       }
-      <span className={cn("text-[11px] leading-none", status.textClass)}>{status.label}</span>
+      <span className={cn("text-micro leading-none", status.textClass)}>{status.label}</span>
     </div>
   );
 
@@ -458,11 +458,11 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 min-w-40 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-md">
+        <div className="absolute left-0 top-full z-30 mt-1 min-w-40 overflow-hidden rounded-card border border-border-strong bg-surface-3 py-1 shadow-md">
           <button
             type="button"
             onClick={() => handleAction("watched")}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-label text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
             <Check size={11} className="shrink-0 text-emerald-400" />
             Mark as watched
@@ -471,7 +471,7 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
             <button
               type="button"
               onClick={() => handleAction("in_progress")}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-label text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
             >
               <Play size={11} className="shrink-0 fill-current" style={{ color: "var(--color-accent-watching-vivid)" }} />
               Start watching
@@ -481,7 +481,7 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
             <button
               type="button"
               onClick={() => handleAction("want_to_watch")}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-[12px] text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-label text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
             >
               <Bookmark size={11} className="shrink-0 text-zinc-400" />
               Want to Watch
@@ -520,7 +520,7 @@ function TableRow({
         </div>
 
         {/* Poster */}
-        <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 cursor-pointer overflow-hidden rounded-md" onClick={onOpen}>
+        <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 cursor-pointer overflow-hidden rounded-chip" onClick={onOpen}>
           {item.media.poster_url
             ? <Image src={item.media.poster_url} alt="" fill unoptimized className="object-cover" sizes="28px" />
             : <div className="h-full w-full bg-zinc-800" />
@@ -531,7 +531,7 @@ function TableRow({
         <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpen}>
           <p className="truncate text-sm font-medium leading-tight text-text-primary">{displayTitle(item.media)}</p>
           {item.note && !noteOpen && (
-            <p className="mt-0.5 truncate text-[11px] italic text-text-tertiary">&quot;{item.note}&quot;</p>
+            <p className="mt-0.5 truncate text-micro italic text-text-tertiary">&quot;{item.note}&quot;</p>
           )}
         </div>
 
@@ -542,7 +542,7 @@ function TableRow({
 
         {/* Type */}
         <div className="hidden w-20 shrink-0 md:block">
-          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] text-text-tertiary">
+          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-micro text-text-tertiary">
             {mediaTypeLabel(item.media.type)}
           </span>
         </div>
@@ -617,7 +617,7 @@ function TableRow({
             onChange={(e) => setNoteVal(e.target.value)}
             placeholder="Add a note about this title…"
             rows={2}
-            className="w-full resize-none rounded-lg border border-border-subtle bg-surface-1 px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
+            className="w-full resize-none rounded-control border border-border-subtle bg-surface-1 px-3 py-2 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
           />
           <div className="mt-1.5 flex justify-end">
             <InlineFormActions
@@ -667,7 +667,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
   return (
     <div className="group relative">
       <div className="relative cursor-pointer" onClick={onOpen}>
-        <div className="relative aspect-2/3 overflow-hidden rounded-lg transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
+        <div className="relative aspect-2/3 overflow-hidden rounded-tile transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
           {item.media.poster_url ? (
             <Image src={item.media.poster_url} alt={item.media.title} fill unoptimized className="object-cover" sizes="15vw" />
           ) : (
@@ -676,7 +676,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
             </div>
           )}
           {rank !== null && (
-            <div className="absolute left-1.5 top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-black/70 px-1.5 text-[10px] font-bold tabular-nums text-white backdrop-blur-sm">
+            <div className="absolute left-1.5 top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-black/70 px-1.5 text-micro font-bold tabular-nums text-white backdrop-blur-sm">
               {rank}
             </div>
           )}
@@ -715,14 +715,14 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
             onChange={(e) => setNoteVal(e.target.value)}
             placeholder="Note…"
             rows={2}
-            className="w-full resize-none rounded-lg border border-border-subtle bg-surface-2 px-2.5 py-2 text-[11px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
+            className="w-full resize-none rounded-control border border-border-subtle bg-surface-2 px-2.5 py-2 text-micro text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
           />
           <div className="flex gap-1.5">
             <button
               type="button"
               onClick={handleSaveNote}
               disabled={updateNote.isPending}
-              className="flex flex-1 items-center justify-center gap-1 rounded-md bg-accent-watching py-1 text-[10px] font-semibold text-white disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-1 rounded-chip bg-accent-watching py-1 text-micro font-semibold text-white disabled:opacity-50"
             >
               {updateNote.isPending ? <Loader2 size={9} className="animate-spin" /> : <Check size={9} />}
               Save
@@ -730,7 +730,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
             <button
               type="button"
               onClick={() => setNoteOpen(false)}
-              className="rounded-md px-2 py-1 text-[10px] text-text-tertiary hover:text-text-primary"
+              className="rounded-chip px-2 py-1 text-micro text-text-tertiary hover:text-text-primary"
             >
               Cancel
             </button>
@@ -882,11 +882,11 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
       </div>
 
       {/* ── Hero ── */}
-      <div className="mx-4 sm:mx-6 my-4 overflow-hidden rounded-2xl bg-surface-1 p-4">
+      <div className="mx-4 sm:mx-6 my-4 overflow-hidden rounded-modal bg-surface-1 p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6 lg:min-h-47.5">
 
           {/* Backdrop collage — full width on mobile, fills card height on desktop */}
-          <div className="relative w-full shrink-0 aspect-video overflow-hidden rounded-xl ring-1 ring-white/20 lg:aspect-auto lg:w-80 lg:self-stretch">
+          <div className="relative w-full shrink-0 aspect-video overflow-hidden rounded-card ring-1 ring-white/20 lg:aspect-auto lg:w-80 lg:self-stretch">
             <PosterHero thumbnails={heroThumbnails} emoji={list.emoji} />
           </div>
 
@@ -905,7 +905,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
                   <Popover.Content
                     align="start"
                     sideOffset={8}
-                    className="z-50 flex flex-wrap gap-1 p-2 w-56 rounded-xl border border-border-strong bg-surface-3 shadow-md"
+                    className="z-50 flex flex-wrap gap-1 p-2 w-56 rounded-card border border-border-strong bg-surface-3 shadow-md"
                   >
                     {LIST_ICON_KEYS.map((e) => (
                       <button
@@ -916,7 +916,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
                           handleAutoSave({ emoji: e });
                         }}
                         className={cn(
-                          "rounded-md px-2 py-2 transition-colors hover:bg-surface-2",
+                          "rounded-chip px-2 py-2 transition-colors hover:bg-surface-2",
                           editEmoji === e && "bg-accent-watching/20",
                         )}
                       >
@@ -939,7 +939,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
                 type="button"
                 onClick={handleToggleRanked}
                 className={cn(
-                  "shrink-0 flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-medium transition-colors",
+                  "shrink-0 flex items-center gap-1.5 rounded-full px-2 py-1 text-micro font-medium transition-colors",
                   editRanked
                     ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
                     : "text-text-tertiary/30 hover:text-text-tertiary hover:bg-surface-2",
@@ -967,7 +967,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
           </div>
 
           {/* Stats panel — 2×2 on mobile, 4 rows on desktop */}
-          <div className="shrink-0 w-full overflow-hidden rounded-xl bg-surface-2 grid grid-cols-2 lg:flex lg:w-64 lg:flex-col lg:justify-around py-2">
+          <div className="shrink-0 w-full overflow-hidden rounded-card bg-surface-2 grid grid-cols-2 lg:flex lg:w-64 lg:flex-col lg:justify-around py-2">
             {[
               { value: rawItems.length,                                                        label: "Titles",      icon: <Film   size={14} className="text-white" /> },
               { value: watchedCount,                                                           label: "Watched",     icon: <Eye    size={14} className="text-white" /> },
@@ -1044,7 +1044,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
         {isLoading && (
           <div className="space-y-px px-4 pt-1">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-14 animate-pulse rounded-lg bg-surface-1" />
+              <div key={i} className="h-14 animate-pulse rounded-control bg-surface-1" />
             ))}
           </div>
         )}

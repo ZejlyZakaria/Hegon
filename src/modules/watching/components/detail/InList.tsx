@@ -152,13 +152,21 @@ export function InList({ mediaItemId, userId }: Props) {
         actions={
           <>
           {showNav && <CarouselNav size="sm" onPrev={() => scroll(-1)} onNext={() => scroll(1)} />}
+          {/* See all first, then the primary action — the toolbar reads left→right, and the
+              button you press most sits at the end, next to nothing that can steal the click. */}
+          {cards.length > 0 && (
+            <Button variant="subtle" size="sm" onClick={seeAll}>
+              See all
+            </Button>
+          )}
           <Popover open={open} onOpenChange={setOpen}>
             {/* Hint wraps the trigger (not the reverse): PopoverTrigger forwards its ref,
                 a plain wrapper component would swallow it and the popover would never open. */}
             <Hint label="Add to a list">
               <PopoverTrigger asChild>
-                <Button variant="quiet" size="icon-xs" aria-label="Add to a list">
+                <Button variant="quiet" size="sm">
                   <Plus />
+                  Add
                 </Button>
               </PopoverTrigger>
             </Hint>
@@ -179,7 +187,7 @@ export function InList({ mediaItemId, userId }: Props) {
                       key={list.id}
                       type="button"
                       onClick={() => handleToggle(list.id)}
-                      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-surface-2"
+                      className="flex w-full items-center gap-2.5 rounded-chip px-2.5 py-2 text-left text-sm transition-colors hover:bg-surface-2"
                     >
                       <div className={cn(
                         "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
@@ -206,20 +214,20 @@ export function InList({ mediaItemId, userId }: Props) {
                         if (e.key === "Escape") { setIsCreating(false); setNewName(""); }
                       }}
                       placeholder="List name…"
-                      className="min-w-0 flex-1 rounded-md border border-border-subtle bg-surface-2 px-2 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
+                      className="min-w-0 flex-1 rounded-chip border border-border-subtle bg-surface-2 px-2 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-watching/30"
                     />
                     <button
                       type="button"
                       onClick={handleCreate}
                       disabled={!newName.trim() || createList.isPending}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent-watching text-white disabled:opacity-40"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-chip bg-accent-watching text-white disabled:opacity-40"
                     >
                       {createList.isPending ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
                     </button>
                     <button
                       type="button"
                       onClick={() => { setIsCreating(false); setNewName(""); }}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:text-text-primary"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-chip text-text-tertiary hover:text-text-primary"
                     >
                       <X size={11} />
                     </button>
@@ -228,7 +236,7 @@ export function InList({ mediaItemId, userId }: Props) {
                   <button
                     type="button"
                     onClick={() => { setIsCreating(true); setTimeout(() => inputRef.current?.focus(), 50); }}
-                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary"
+                    className="flex w-full items-center gap-2 rounded-chip px-2.5 py-2 text-xs text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary"
                   >
                     <Plus size={12} />
                     New list
@@ -238,11 +246,6 @@ export function InList({ mediaItemId, userId }: Props) {
             </PopoverContent>
           </Popover>
 
-          {cards.length > 0 && (
-            <Button variant="subtle" size="xs" onClick={seeAll}>
-              See all
-            </Button>
-          )}
           </>
         }
       />

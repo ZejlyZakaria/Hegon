@@ -48,7 +48,7 @@ function ThemeRow({
   const cover = track.cover;
 
   return (
-    <div className="group relative overflow-hidden rounded-xl">
+    <div className="group relative overflow-hidden rounded-card">
       {/* Colour tint pulled from the artwork (blurred), + dark scrim for legibility */}
       {cover && (
         <div
@@ -67,7 +67,7 @@ function ThemeRow({
       <div className="relative flex items-center gap-2.5 px-2 py-1.5">
         <button type="button" onClick={onPlay} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
           {/* Crisp thumbnail + overlay */}
-          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10">
+          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-tile bg-white/5 ring-1 ring-white/10">
             {cover ? (
               <img src={cover} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -81,10 +81,10 @@ function ThemeRow({
           {/* Info — hard-truncated */}
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
-              <span className="shrink-0 rounded bg-accent-watching-vivid/25 px-1.5 py-0.5 text-[10px] font-bold text-accent-watching-vivid">{track.label}</span>
+              <span className="shrink-0 rounded bg-accent-watching-vivid/25 px-1.5 py-0.5 text-micro font-bold text-accent-watching-vivid">{track.label}</span>
               <span className="min-w-0 truncate text-xs font-semibold text-white">{track.title}</span>
             </div>
-            {track.artist && <span className="mt-0.5 block truncate text-[11px] text-white/55">{track.artist}</span>}
+            {track.artist && <span className="mt-0.5 block truncate text-micro text-white/55">{track.artist}</span>}
           </div>
         </button>
 

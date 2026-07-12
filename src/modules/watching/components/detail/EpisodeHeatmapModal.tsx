@@ -55,7 +55,7 @@ export function EpisodeHeatmapModal({ open, onClose, media }: Props) {
         {/* Legend */}
         <div className="flex flex-wrap gap-x-4 gap-y-1.5">
           {LEGEND.map((l) => (
-            <span key={l.label} className="flex items-center gap-1.5 text-[11px] text-text-tertiary">
+            <span key={l.label} className="flex items-center gap-1.5 text-micro text-text-tertiary">
               <span className="h-2.5 w-2.5 rounded-sm" style={{ background: l.color }} />
               {l.label}
             </span>
@@ -75,7 +75,7 @@ export function EpisodeHeatmapModal({ open, onClose, media }: Props) {
               <div className="sticky left-0 z-10 flex shrink-0 flex-col gap-1 bg-surface-1 pr-1">
                 <div className="h-7" />
                 {episodes.map((e) => (
-                  <div key={e} className="flex h-9 items-center text-[11px] font-medium text-text-tertiary">
+                  <div key={e} className="flex h-9 items-center text-micro font-medium text-text-tertiary">
                     E{e}
                   </div>
                 ))}
@@ -95,7 +95,7 @@ export function EpisodeHeatmapModal({ open, onClose, media }: Props) {
                       <div
                         key={e}
                         title={`S${s}E${e} · ${r.toFixed(1)}`}
-                        className="flex h-9 items-center justify-center rounded-md text-xs font-bold tabular-nums"
+                        className="flex h-9 items-center justify-center rounded-chip text-xs font-bold tabular-nums"
                         style={{ background: cellColor(r), color: textColor(r) }}
                       >
                         {r.toFixed(1)}
@@ -108,7 +108,7 @@ export function EpisodeHeatmapModal({ open, onClose, media }: Props) {
           </div>
         )}
 
-        <p className="text-[10px] text-text-tertiary/50">IMDb episode ratings via OMDb</p>
+        <p className="text-micro text-text-tertiary/50">IMDb episode ratings via OMDb</p>
       </DialogContent>
     </Dialog>
   );

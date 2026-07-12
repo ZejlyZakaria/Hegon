@@ -70,14 +70,14 @@ function MetricCard({ label, value, sub, icon }: {
   return (
     <div className="relative overflow-hidden rounded-card surface-card p-4">
       <div className="mb-3 flex items-center gap-2">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-2">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-chip bg-surface-2">
           {icon}
         </div>
         <p className="text-sm font-medium text-text-secondary">{label}</p>
       </div>
       <div className="flex flex-wrap items-baseline gap-x-1.5">
         <p className="text-2xl font-bold tabular-nums text-text-primary">{value}</p>
-        {sub && <span className="text-[11px] text-text-tertiary">{sub}</span>}
+        {sub && <span className="text-micro text-text-tertiary">{sub}</span>}
       </div>
     </div>
   );
@@ -164,7 +164,7 @@ function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] 
               {h}<span className="text-sm font-normal text-text-tertiary">h</span>
               {m > 0 && <>{" "}{m}<span className="text-sm font-normal text-text-tertiary">m</span></>}
             </p>
-            <p className="mt-0.5 text-[10px] text-text-tertiary/50">{centerLabel}</p>
+            <p className="mt-0.5 text-micro text-text-tertiary/50">{centerLabel}</p>
           </div>
         </div>
 
@@ -177,7 +177,7 @@ function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] 
                 type="button"
                 onClick={() => setFilter(filter === seg.key ? "total" : seg.key)}
                 className={cn(
-                  "flex items-center justify-between rounded-lg px-2.5 py-1.5 transition-colors text-left w-full",
+                  "flex items-center justify-between rounded-control px-2.5 py-1.5 transition-colors text-left w-full",
                   filter === seg.key ? "bg-surface-2" : "hover:bg-surface-2/40",
                 )}
               >
@@ -216,10 +216,10 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
           {items.map(({ item, seasonLabel, rating, seasonPoster }) => (
             <div
               key={item.id}
-              className="group -m-1.5 flex cursor-pointer items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface-2"
+              className="group -m-1.5 flex cursor-pointer items-center gap-2.5 rounded-tile p-1.5 transition-colors hover:bg-surface-2"
               onClick={() => router.push(`/perso/watching/${item.id}`)}
             >
-              <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-md">
+              <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-chip">
                 {(seasonPoster ? `https://image.tmdb.org/t/p/w300${seasonPoster}` : item.poster_url) ? (
                   <Image
                     src={seasonPoster ? `https://image.tmdb.org/t/p/w300${seasonPoster}` : item.poster_url!}
@@ -241,13 +241,13 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
                   {rating != null && (
                     <div className="flex items-center gap-0.5">
                       <Star size={9} className="fill-amber-400 text-amber-400" />
-                      <span className="text-[10px] tabular-nums font-medium text-amber-400">{rating}</span>
+                      <span className="text-micro tabular-nums font-medium text-amber-400">{rating}</span>
                     </div>
                   )}
                   {seasonLabel ? (
-                    <span className="truncate text-[10px] font-medium" style={{ color: TEAL }}>{seasonLabel}</span>
+                    <span className="truncate text-micro font-medium" style={{ color: TEAL }}>{seasonLabel}</span>
                   ) : (
-                    <span className="text-[10px] text-text-tertiary/50">{item.year}</span>
+                    <span className="text-micro text-text-tertiary/50">{item.year}</span>
                   )}
                 </div>
               </div>
@@ -400,7 +400,7 @@ function ActivityCard({ activity, selectedYear }: {
           <p className="text-sm font-semibold text-text-primary">Activity</p>
         </div>
         {best && best.count > 0 && (
-          <p className="text-[10px] text-text-tertiary/50 tabular-nums">
+          <p className="text-micro text-text-tertiary/50 tabular-nums">
             Best: <span className="text-text-tertiary">{best.label}</span> ({best.count})
           </p>
         )}
@@ -595,7 +595,7 @@ export function StatsPage() {
                       style={{ width: `${pct}%`, backgroundColor: GOALS_ACCENT }}
                     />
                   </div>
-                  <p className="mt-1.5 text-[11px] text-text-tertiary">
+                  <p className="mt-1.5 text-micro text-text-tertiary">
                     {Math.round(pct)}% · {goalMetricLabel(g)} {g.metric_period === "year" ? `in ${g.metric_year}` : "all-time"}
                   </p>
                 </button>

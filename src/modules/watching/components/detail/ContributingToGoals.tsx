@@ -39,7 +39,7 @@ export function ContributingToGoals({ media }: { media: WatchingMedia }) {
               className="group flex w-full cursor-pointer items-center gap-3 rounded-card border border-border-subtle bg-surface-2/40 px-3 py-2.5 text-left transition-colors hover:bg-surface-2"
             >
               <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control"
                 style={{ backgroundColor: `color-mix(in srgb, ${GOALS_ACCENT} 16%, transparent)`, color: GOALS_ACCENT }}
               >
                 <Target size={15} />

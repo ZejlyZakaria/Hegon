@@ -93,7 +93,7 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
       {menuOpen && typeof document !== "undefined" && createPortal(
         <div
           ref={menuRef}
-          className="fixed z-200 w-44 overflow-hidden rounded-xl border border-border-strong bg-surface-3 py-1 shadow-md"
+          className="fixed z-200 w-44 overflow-hidden rounded-card border border-border-strong bg-surface-3 py-1 shadow-md"
           style={{ top: menuPos.top, right: menuPos.right }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -126,7 +126,7 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
       {/* title + year · rating */}
       <div className="mt-2 px-0.5">
         <h4 className="text-xs font-medium text-text-primary line-clamp-1">{displayTitle(item)}</h4>
-        <div className="mt-0.5 flex items-center justify-between text-[10px] text-text-tertiary">
+        <div className="mt-0.5 flex items-center justify-between text-micro text-text-tertiary">
           <span>{item.year}</span>
           {item.user_rating != null && item.user_rating > 0 && (
             <span className="flex items-center gap-1">

@@ -353,7 +353,7 @@ export function StatusCard({
                 <MoreHorizontal size={14} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 rounded-xl border-border-default bg-surface-3 p-1 shadow-md">
+            <DropdownMenuContent align="end" className="w-52 rounded-card border-border-default bg-surface-3 p-1 shadow-md">
               {status === "want_to_watch" && (
                 <>
                   {isSeries && (
@@ -445,7 +445,7 @@ export function StatusCard({
                         </button>
                       </PopoverTrigger>
                       <PopoverContent align="end" className="w-44 border-border-strong bg-surface-3 p-3">
-                        <label className="mb-1 block text-[11px] text-text-tertiary">
+                        <label className="mb-1 block text-micro text-text-tertiary">
                           {media.type === "film" ? "Year watched" : "Year watched"}
                         </label>
                         <Select value={selectedYear ? String(selectedYear) : undefined} onValueChange={(v) => onWatchedYearChange(Number(v))}>
@@ -488,7 +488,7 @@ export function StatusCard({
                           {rewatches.map((r) => (
                             <div
                               key={r.id}
-                              className="group flex items-center justify-between gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-2"
+                              className="group flex items-center justify-between gap-2 rounded-chip px-2 py-1.5 transition-colors hover:bg-surface-2"
                             >
                               <span className="inline-flex items-center gap-2 text-xs text-text-secondary">
                                 <Repeat size={11} className="text-accent-watching-vivid" />

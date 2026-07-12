@@ -30,8 +30,8 @@ function PersonCard({ id, name, src, subtitle, size = 60 }: {
           </div>
         )}
       </div>
-      <p className={`mt-2 w-full truncate text-[11px] font-medium text-text-secondary ${linkable ? "transition-colors group-hover:text-text-primary" : ""}`}>{name}</p>
-      {subtitle && <p className="mt-0.5 w-full truncate text-[10px] text-text-tertiary">{subtitle}</p>}
+      <p className={`mt-2 w-full truncate text-micro font-medium text-text-secondary ${linkable ? "transition-colors group-hover:text-text-primary" : ""}`}>{name}</p>
+      {subtitle && <p className="mt-0.5 w-full truncate text-micro text-text-tertiary">{subtitle}</p>}
     </>
   );
 

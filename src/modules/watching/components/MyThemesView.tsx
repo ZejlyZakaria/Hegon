@@ -97,7 +97,7 @@ export default function MyThemesView() {
     <div className="px-4 py-6">
       {/* Hero — vertical (fits the panel width) */}
       <div className="flex flex-col items-center text-center">
-        <div className="aspect-square w-40 overflow-hidden rounded-2xl shadow-xl ring-1 ring-white/10">
+        <div className="aspect-square w-40 overflow-hidden rounded-modal shadow-xl ring-1 ring-white/10">
           {mosaic.length >= 4 ? (
             <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-0.5">
               {mosaic.map((src, i) => (
@@ -109,7 +109,7 @@ export default function MyThemesView() {
           )}
         </div>
 
-        <p className="mt-4 text-[11px] font-semibold uppercase tracking-widest text-accent-watching-vivid">Playlist</p>
+        <p className="mt-4 text-micro font-semibold uppercase tracking-widest text-accent-watching-vivid">Playlist</p>
         <h2 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">My Themes</h2>
         <p className="mt-1 text-sm text-text-tertiary">
           {tracks.length} favorite {tracks.length === 1 ? "opening or ending" : "openings & endings"}
@@ -145,7 +145,7 @@ export default function MyThemesView() {
             <div
               key={track.id}
               className={cn(
-                "group/row flex items-center gap-3 rounded-xl px-2 py-2 transition-colors",
+                "group/row flex items-center gap-3 rounded-card px-2 py-2 transition-colors",
                 active ? "bg-surface-2" : "hover:bg-surface-1",
               )}
             >
@@ -167,13 +167,13 @@ export default function MyThemesView() {
                   )}
                 </div>
 
-                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10">
+                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-control ring-1 ring-white/10">
                   <Cover src={track.cover} size={16} />
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="shrink-0 rounded bg-accent-watching-vivid/20 px-1.5 py-0.5 text-[10px] font-bold text-accent-watching-vivid">{track.label}</span>
+                    <span className="shrink-0 rounded bg-accent-watching-vivid/20 px-1.5 py-0.5 text-micro font-bold text-accent-watching-vivid">{track.label}</span>
                     <span className={cn("min-w-0 truncate text-sm font-medium", active ? "text-accent-watching-vivid" : "text-text-primary")}>{track.title}</span>
                   </div>
                   <span className="mt-0.5 block truncate text-xs text-text-tertiary">{track.animeName}</span>

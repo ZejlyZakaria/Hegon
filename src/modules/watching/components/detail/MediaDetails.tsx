@@ -72,7 +72,7 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
               href={`https://www.imdb.com/title/${imdbId}/`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-md bg-[#F5C518] px-2 py-1 text-[11px] font-bold text-black transition-opacity hover:opacity-85"
+              className="inline-flex items-center gap-1 rounded-chip bg-[#F5C518] px-2 py-1 text-micro font-bold text-black transition-opacity hover:opacity-85"
             >
               IMDb
               <ExternalLink size={10} strokeWidth={2.5} />
@@ -90,7 +90,7 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
             <DetailRow
               label="Age rating"
               value={
-                <span className="inline-flex items-center rounded border border-border-default px-1.5 py-0.5 text-[11px] font-semibold text-text-primary">
+                <span className="inline-flex items-center rounded border border-border-default px-1.5 py-0.5 text-micro font-semibold text-text-primary">
                   {ageRating}
                 </span>
               }

@@ -12,7 +12,7 @@ import { DontMissSkeleton } from "@/modules/watching/components/shared/WatchingS
 import type { WatchingConfig } from "@/modules/watching/types";
 
 const TMDB_W500 = "https://image.tmdb.org/t/p/w500";
-const CARD_BG   = "#0e0e10";
+const CARD_BG   = "var(--color-surface-0)";
 const EXP       = 22;   // 22/(22+7×4) = 44%
 const COL       = 7;    // 7/50         = 14%
 // card row height = h-60 = 240px → portrait poster width = 240 × 2/3 = 160px
@@ -103,7 +103,7 @@ function DontMissCard({
               {genres.length > 0 && (
                 <div className="flex gap-1.5 flex-wrap mb-2">
                   {genres.map((g) => (
-                    <span key={g} className="text-[10px] px-2 py-0.5 bg-white/10 rounded-full text-white/65">
+                    <span key={g} className="text-micro px-2 py-0.5 bg-white/10 rounded-full text-white/65">
                       {g}
                     </span>
                   ))}
@@ -125,7 +125,7 @@ function DontMissCard({
               </div>
 
               {item.overview && (
-                <p className="text-[11px] text-white/60 line-clamp-3 leading-relaxed mb-3 min-h-[3.3rem]">
+                <p className="text-micro text-white/60 line-clamp-3 leading-relaxed mb-3 min-h-[3.3rem]">
                   {item.overview}
                 </p>
               )}
@@ -156,11 +156,11 @@ function DontMissCard({
           >
             <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
             <div className="relative px-3 pb-3 flex flex-col gap-1">
-              <p className="text-[11px] font-semibold text-white truncate">{title}</p>
+              <p className="text-micro font-semibold text-white truncate">{title}</p>
               {rating && (
                 <div className="flex items-center gap-1">
                   <Star size={9} className="fill-amber-400 text-amber-400" />
-                  <span className="text-[10px] font-medium text-amber-400">{rating}</span>
+                  <span className="text-micro font-medium text-amber-400">{rating}</span>
                 </div>
               )}
             </div>
@@ -170,7 +170,7 @@ function DontMissCard({
 
       {/* ── trending badge — always on the poster (single source, never duplicated) ── */}
       {isTrending && (
-        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold text-white bg-accent-watching backdrop-blur-sm">
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-micro font-semibold text-white bg-accent-watching backdrop-blur-sm">
           <TrendingUp size={10} />
           Trending
         </div>
@@ -211,11 +211,11 @@ function TrendingMobileCard({
         </div>
       )}
       <div className="absolute inset-x-0 bottom-0 p-2">
-        <p className="truncate text-[11px] font-semibold text-white">{title}</p>
+        <p className="truncate text-micro font-semibold text-white">{title}</p>
         {rating && (
           <div className="mt-0.5 flex items-center gap-1">
             <Star size={9} className="fill-amber-400 text-amber-400" />
-            <span className="text-[10px] font-medium text-amber-400">{rating}</span>
+            <span className="text-micro font-medium text-amber-400">{rating}</span>
           </div>
         )}
       </div>

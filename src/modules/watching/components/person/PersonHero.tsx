@@ -90,7 +90,7 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
         <div className="absolute bottom-0 left-0 right-0 z-10 px-10 pb-8">
           <div className="flex items-end gap-8">
             {/* Portrait — same glossy frame as the detail-page poster */}
-            <div className="relative aspect-2/3 w-(--poster-xl) shrink-0 overflow-hidden rounded-tile p-1">
+            <div className="relative aspect-2/3 w-(--poster-xl) shrink-0 overflow-hidden rounded-card p-1">
               {profile.profile_url ? (
                 <>
                   <div
@@ -103,12 +103,12 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
                     }}
                   />
                   <div className="absolute inset-0 bg-white/15" />
-                  <div className="relative h-full w-full overflow-hidden rounded-[10px]">
+                  <div className="relative h-full w-full overflow-hidden rounded-tile">
                     <Image src={profile.profile_url} alt={profile.name} fill unoptimized priority sizes="160px" className="object-cover" />
                   </div>
                 </>
               ) : (
-                <div className="relative h-full w-full overflow-hidden rounded-[10px] border border-white/10 bg-surface-2">
+                <div className="relative h-full w-full overflow-hidden rounded-tile border border-white/10 bg-surface-2">
                   <div className="flex h-full w-full items-center justify-center"><User className="text-text-tertiary" size={40} /></div>
                 </div>
               )}

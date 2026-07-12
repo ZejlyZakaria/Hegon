@@ -108,10 +108,10 @@ export function ThemePlayer() {
             transition={{ type: "spring", stiffness: 380, damping: 32 }}
             // Mobile: solid bg (no backdrop-blur) — animating a backdrop-blur is a
             // per-frame GPU cost that stutters the entrance. Glass kept on desktop.
-            className="fixed bottom-4 right-4 z-40 w-85 max-w-[calc(100vw-2rem)] transform-gpu overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-2xl md:bg-black/70 md:backdrop-blur-xl"
+            className="fixed bottom-4 right-4 z-40 w-85 max-w-[calc(100vw-2rem)] transform-gpu overflow-hidden rounded-modal border border-white/10 bg-zinc-950/95 shadow-2xl md:bg-black/70 md:backdrop-blur-xl"
           >
             <div className="flex items-center gap-3 p-3 pb-2">
-              <button type="button" onClick={() => setExpanded(true)} aria-label="Expand player" className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10">
+              <button type="button" onClick={() => setExpanded(true)} aria-label="Expand player" className="relative h-12 w-12 shrink-0 overflow-hidden rounded-tile bg-white/5 ring-1 ring-white/10">
                 {cover ? <img src={cover} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><Music size={16} className="text-white/40" /></div>}
                 <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors hover:bg-black/30">
                   <Maximize2 size={14} className="text-white opacity-0 transition-opacity hover:opacity-100" />
@@ -122,7 +122,7 @@ export function ThemePlayer() {
                 <p className="truncate text-[13px] font-semibold text-white">
                   <span className="text-accent-watching-vivid">{current.label}</span> · {current.title}
                 </p>
-                <p className="truncate text-[11px] text-white/50">{current.artist || current.animeName}</p>
+                <p className="truncate text-micro text-white/50">{current.artist || current.animeName}</p>
               </button>
 
               <div className="flex items-center gap-0.5">
@@ -137,14 +137,14 @@ export function ThemePlayer() {
               <div className="group/prog h-1 w-full cursor-pointer rounded-full bg-white/10" onClick={seek}>
                 <div className="h-full rounded-full bg-accent-watching transition-[width] duration-100" style={{ width: `${pct}%` }} />
               </div>
-              <div className="mt-1 flex justify-between text-[10px] tabular-nums text-white/35">
+              <div className="mt-1 flex justify-between text-micro tabular-nums text-white/35">
                 <span>{fmt(time)}</span>
                 <span>{fmt(duration)}</span>
               </div>
             </div>
 
             <div className="flex items-center justify-between border-t border-white/10 px-3 py-1.5">
-              <button type="button" onClick={openVideo} disabled={!current.videoUrl} className="flex items-center gap-1.5 text-[11px] font-medium text-white/55 transition-colors hover:text-white disabled:opacity-30"><Video size={12} />Watch video</button>
+              <button type="button" onClick={openVideo} disabled={!current.videoUrl} className="flex items-center gap-1.5 text-micro font-medium text-white/55 transition-colors hover:text-white disabled:opacity-30"><Video size={12} />Watch video</button>
               <div className="flex items-center gap-0.5">
                 <Hint label="Expand">
                   <button type="button" onClick={() => setExpanded(true)} aria-label="Expand" className="flex h-6 w-6 items-center justify-center rounded-full text-white/40 transition-colors hover:bg-white/10 hover:text-white/80"><Maximize2 size={12} /></button>
@@ -167,7 +167,7 @@ export function ThemePlayer() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 16 }}
             transition={{ type: "spring", stiffness: 320, damping: 34 }}
-            className="fixed inset-0 z-50 transform-gpu overflow-hidden md:inset-auto md:bottom-4 md:right-4 md:w-85 md:max-w-[calc(100vw-2rem)] md:rounded-2xl md:border md:border-white/10 md:shadow-2xl"
+            className="fixed inset-0 z-50 transform-gpu overflow-hidden md:inset-auto md:bottom-4 md:right-4 md:w-85 md:max-w-[calc(100vw-2rem)] md:rounded-modal md:border md:border-white/10 md:shadow-2xl"
           >
             {/* Background = the cover, blurred + darkened. Lighter blur + its own GPU
                 layer so it rasterizes once instead of every animation frame. */}
@@ -182,7 +182,7 @@ export function ThemePlayer() {
                   <button type="button" onClick={() => setExpanded(false)} aria-label="Minimize" className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white md:h-8 md:w-8"><ChevronDown size={20} /></button>
                 </Hint>
                 <div className="min-w-0 px-2 text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/50">Openings &amp; Endings</p>
+                  <p className="text-caption font-semibold uppercase tracking-widest text-white/50">Openings &amp; Endings</p>
                   <p className="truncate text-xs font-medium text-white/80">{current.animeName}</p>
                 </div>
                 <Hint label="Close">
@@ -192,7 +192,7 @@ export function ThemePlayer() {
 
               <div className="flex flex-1 flex-col justify-center gap-8 md:flex-none md:gap-4 md:pt-3">
                 {/* Cover */}
-                <div className="mx-auto aspect-square w-full max-w-[20rem] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10 md:max-w-none md:rounded-xl">
+                <div className="mx-auto aspect-square w-full max-w-[20rem] overflow-hidden rounded-modal shadow-2xl ring-1 ring-white/10 md:max-w-none md:rounded-card">
                   {cover ? <img src={cover} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center bg-white/5"><Music size={48} className="text-white/30" /></div>}
                 </div>
 
@@ -215,7 +215,7 @@ export function ThemePlayer() {
                     <div className="group/prog h-1.5 w-full cursor-pointer rounded-full bg-white/15" onClick={seek}>
                       <div className="h-full rounded-full bg-white transition-[width] duration-100" style={{ width: `${pct}%` }} />
                     </div>
-                    <div className="mt-1.5 flex justify-between text-[11px] tabular-nums text-white/50">
+                    <div className="mt-1.5 flex justify-between text-micro tabular-nums text-white/50">
                       <span>{fmt(time)}</span>
                       <span>-{fmt(Math.max(0, duration - time))}</span>
                     </div>

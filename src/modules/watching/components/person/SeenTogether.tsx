@@ -75,7 +75,7 @@ export function SeenTogether({ titles, personId, firstName }: Props) {
                 {p.profile_url ? (
                   <Image src={p.profile_url} alt={p.name} fill unoptimized loading="lazy" sizes="36px" className="object-cover" />
                 ) : (
-                  <span className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-text-tertiary">
+                  <span className="flex h-full w-full items-center justify-center text-micro font-semibold text-text-tertiary">
                     {initials(p.name)}
                   </span>
                 )}
@@ -84,7 +84,7 @@ export function SeenTogether({ titles, personId, firstName }: Props) {
                 <p className="truncate text-xs font-medium text-text-secondary transition-colors group-hover:text-text-primary">
                   {p.name}
                 </p>
-                <p className="truncate text-[11px] text-text-tertiary">
+                <p className="truncate text-micro text-text-tertiary">
                   {p.count > 1 ? `${p.count} titles` : p.isDirector ? "Director" : "Actor"}
                 </p>
               </div>

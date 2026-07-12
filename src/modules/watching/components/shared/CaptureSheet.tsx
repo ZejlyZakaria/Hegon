@@ -40,7 +40,7 @@ export function CaptureSheet({
               key={o.value}
               type="button"
               onClick={() => { onPick(o.value); onOpenChange(false); }}
-              className="flex items-center gap-2.5 rounded-xl border border-border-subtle bg-surface-2 px-3.5 py-2.5 text-left text-sm text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary"
+              className="flex items-center gap-2.5 rounded-card border border-border-subtle bg-surface-2 px-3.5 py-2.5 text-left text-sm text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary"
             >
               {o.icon && <span className="shrink-0 text-text-tertiary">{o.icon}</span>}
               {o.label}
@@ -52,7 +52,7 @@ export function CaptureSheet({
           <button
             type="button"
             onClick={() => { onSkip(); onOpenChange(false); }}
-            className="-mt-1 w-full rounded-lg py-1.5 text-center text-xs font-medium text-text-tertiary transition-colors hover:text-text-primary"
+            className="-mt-1 w-full rounded-control py-1.5 text-center text-xs font-medium text-text-tertiary transition-colors hover:text-text-primary"
           >
             {skipLabel}
           </button>

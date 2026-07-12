@@ -108,7 +108,7 @@ export function SeasonHistoryStrip({
             {/* An action-select, not a filter: it has no persisted value, it applies a year to
                 every season at once. Same trigger shell as FilterSelect so it lines up. */}
             <Select onValueChange={(v) => setAll(Number(v))}>
-              <SelectTrigger className="h-8 w-auto gap-1 border-border-subtle bg-surface-2 px-3 text-xs text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary focus:ring-0">
+              <SelectTrigger className="h-8 w-auto gap-2 border-border-subtle bg-surface-2 px-3.5 text-xs text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary focus:ring-0">
                 <SelectValue placeholder="Set all year" />
               </SelectTrigger>
               <SelectContent className="border-border-strong bg-surface-3">
@@ -157,7 +157,7 @@ export function SeasonHistoryStrip({
 
               {/* Year pill — top-left */}
               {!locked && (
-                <div className={`absolute left-1.5 top-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-white/15 backdrop-blur-md ${
+                <div className={`absolute left-1.5 top-1.5 rounded-full px-2 py-0.5 text-micro font-semibold ring-1 ring-white/15 backdrop-blur-md ${
                   year ? "bg-black/65 text-white" : "bg-black/45 text-white/70"
                 }`}>
                   {year ?? "Year"}
@@ -177,7 +177,7 @@ export function SeasonHistoryStrip({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white">S{s}</span>
                   {!locked && rating != null && (
-                    <span className="flex items-center gap-0.5 text-[11px] font-semibold text-amber-300">
+                    <span className="flex items-center gap-0.5 text-micro font-semibold text-amber-300">
                       <Star size={10} className="fill-amber-300 text-amber-300" />{rating}
                     </span>
                   )}
@@ -188,7 +188,7 @@ export function SeasonHistoryStrip({
                 /* Mask — not aired yet */
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/70 px-2 text-center">
                   <Clock size={14} className="text-white/75" />
-                  <span className="text-[10px] font-semibold text-white/85">Coming soon</span>
+                  <span className="text-micro font-semibold text-white/85">Coming soon</span>
                   {airDate && <span className="text-[9px] text-white/50">{fmtDate(airDate)}</span>}
                 </div>
               ) : locked ? (
@@ -226,10 +226,10 @@ export function SeasonHistoryStrip({
               <PopoverContent align="start" className="w-52 bg-surface-3 border-border-strong p-3">
                 <div className="mb-2">
                   <p className="text-xs font-semibold text-text-primary">Season {s}</p>
-                  {airDate && <p className="text-[10px] text-text-tertiary">Aired {fmtDate(airDate)} · {eps} ep{eps > 1 ? "s" : ""}</p>}
+                  {airDate && <p className="text-micro text-text-tertiary">Aired {fmtDate(airDate)} · {eps} ep{eps > 1 ? "s" : ""}</p>}
                 </div>
 
-                <label className="mb-1 block text-[11px] text-text-tertiary">Year watched</label>
+                <label className="mb-1 block text-micro text-text-tertiary">Year watched</label>
                 <Select value={year ? String(year) : undefined} onValueChange={(v) => setYear(s, Number(v))}>
                   <SelectTrigger className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0">
                     <SelectValue placeholder="Pick a year" />
@@ -241,7 +241,7 @@ export function SeasonHistoryStrip({
                   </SelectContent>
                 </Select>
 
-                <label className="mb-1 mt-3 block text-[11px] text-text-tertiary">Rating</label>
+                <label className="mb-1 mt-3 block text-micro text-text-tertiary">Rating</label>
                 <Select value={rating ? String(rating) : undefined} onValueChange={(v) => setRating(s, v)}>
                   <SelectTrigger className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-amber-400 focus:ring-0">
                     <SelectValue placeholder="—" />

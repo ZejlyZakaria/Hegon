@@ -7,7 +7,7 @@ import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import type { PersonTitle } from "../../service";
 
 const TEAL = "var(--color-accent-watching-vivid)";
-const AMBER = "#fbbf24";
+const AMBER = "var(--color-gold)";
 
 interface Props {
   open: boolean;
@@ -30,7 +30,7 @@ function Entry({ t }: { t: PersonTitle }) {
       href={`/perso/watching/${t.id}`}
       className="group flex items-center gap-3 rounded-control px-2 py-2 transition-colors hover:bg-surface-2"
     >
-      <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-md bg-surface-2 ring-1 ring-border-subtle">
+      <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-chip bg-surface-2 ring-1 ring-border-subtle">
         {t.poster_url && (
           <Image src={t.poster_url} alt="" fill unoptimized loading="lazy" sizes="32px" className="object-cover" />
         )}
@@ -39,10 +39,10 @@ function Entry({ t }: { t: PersonTitle }) {
         <p className="truncate text-xs font-medium text-text-primary transition-colors group-hover:text-accent-watching-vivid">
           {t.title}
         </p>
-        {t.role && <p className="truncate text-[11px] text-text-tertiary">{t.role}</p>}
+        {t.role && <p className="truncate text-micro text-text-tertiary">{t.role}</p>}
       </div>
       {t.user_rating != null && (
-        <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold tabular-nums text-text-secondary">
+        <span className="inline-flex shrink-0 items-center gap-0.5 text-micro font-semibold tabular-nums text-text-secondary">
           <Star size={9} style={{ color: AMBER, fill: AMBER }} /> {t.user_rating}
         </span>
       )}

@@ -6,7 +6,7 @@
 // not reusable skeletons.)
 
 function Pulse({ className }: { className: string }) {
-  return <div className={`animate-pulse rounded-lg bg-surface-2 ${className}`} />;
+  return <div className={`animate-pulse rounded-control bg-surface-2 ${className}`} />;
 }
 
 // ─── Carousel skeleton ────────────────────────────────────────────────────────
@@ -27,13 +27,13 @@ export function CarouselSkeleton({ cards = 4 }: { cards?: number }) {
       {/* Desktop: backdrop grid */}
       <div className="hidden lg:grid gap-4 py-1.5" style={{ gridTemplateColumns: `repeat(${cards}, 1fr)` }}>
         {Array.from({ length: cards }).map((_, i) => (
-          <div key={i} className="animate-pulse rounded-xl overflow-hidden bg-surface-2 aspect-video" />
+          <div key={i} className="animate-pulse rounded-card overflow-hidden bg-surface-2 aspect-video" />
         ))}
       </div>
       {/* Mobile: poster rail (~2.4 visible) */}
       <div className="flex gap-3 py-1.5 lg:hidden">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="w-[42%] shrink-0 animate-pulse rounded-xl overflow-hidden bg-surface-2 aspect-2/3" />
+          <div key={i} className="w-[42%] shrink-0 animate-pulse rounded-card overflow-hidden bg-surface-2 aspect-2/3" />
         ))}
       </div>
     </div>
@@ -61,7 +61,7 @@ export function DontMissSkeleton() {
             <div
               key={i}
               className="relative overflow-hidden rounded-card ring-1 ring-inset ring-white/10"
-              style={{ flex: f, backgroundColor: "#0e0e10" }}
+              style={{ flex: f, backgroundColor: "var(--color-surface-0)" }}
             >
               <div className="absolute inset-y-0 left-0 bg-surface-2 animate-pulse" style={{ aspectRatio: "2/3" }} />
             </div>
@@ -71,7 +71,7 @@ export function DontMissSkeleton() {
       {/* Mobile: poster rail */}
       <div className="flex gap-3 py-1.5 lg:hidden">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="aspect-2/3 w-[42%] shrink-0 animate-pulse rounded-xl bg-surface-2" />
+          <div key={i} className="aspect-2/3 w-[42%] shrink-0 animate-pulse rounded-card bg-surface-2" />
         ))}
       </div>
     </section>
@@ -97,13 +97,13 @@ export function ForYouSkeleton() {
       {/* Desktop: backdrop row — py-1.5 mirrors the real row's hover-scale headroom */}
       <div className="hidden gap-4 py-1.5 lg:flex">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex-1 aspect-video rounded-xl bg-surface-2 animate-pulse" />
+          <div key={i} className="flex-1 aspect-video rounded-card bg-surface-2 animate-pulse" />
         ))}
       </div>
       {/* Mobile: poster rail */}
       <div className="flex gap-3 py-1.5 lg:hidden">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="aspect-2/3 w-[42%] shrink-0 rounded-xl bg-surface-2 animate-pulse" />
+          <div key={i} className="aspect-2/3 w-[42%] shrink-0 rounded-card bg-surface-2 animate-pulse" />
         ))}
       </div>
     </section>
@@ -116,17 +116,17 @@ export function StatsSkeleton() {
   return (
     <div className="space-y-4 p-4 md:p-6 animate-pulse">
       <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {[1, 2, 3].map((i) => <div key={i} className="h-7 w-16 shrink-0 rounded-lg bg-surface-1" />)}
+        {[1, 2, 3].map((i) => <div key={i} className="h-7 w-16 shrink-0 rounded-control bg-surface-1" />)}
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-28 rounded-xl bg-surface-1" />)}
+        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-28 rounded-card bg-surface-1" />)}
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        {[1, 2, 3].map((i) => <div key={i} className="h-60 rounded-xl bg-surface-1" />)}
+        {[1, 2, 3].map((i) => <div key={i} className="h-60 rounded-card bg-surface-1" />)}
       </div>
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="h-52 rounded-xl bg-surface-1" />
-        <div className="h-52 rounded-xl bg-surface-1" />
+        <div className="h-52 rounded-card bg-surface-1" />
+        <div className="h-52 rounded-card bg-surface-1" />
       </div>
     </div>
   );
@@ -151,14 +151,14 @@ export function DetailSkeleton() {
         </div>
         <div className="relative -mt-16 flex flex-col items-center px-4 pb-2">
           <div className="aspect-2/3 w-(--poster-md) shrink-0 animate-pulse rounded-tile bg-surface-2" />
-          <div className="mt-3 h-6 w-40 animate-pulse rounded-lg bg-surface-2" />
+          <div className="mt-3 h-6 w-40 animate-pulse rounded-control bg-surface-2" />
           <div className="mt-3 flex gap-1.5">
             {[14, 16, 12].map((w, i) => (
               <div key={i} className="h-5 animate-pulse rounded-full bg-surface-2" style={{ width: `${w * 4}px` }} />
             ))}
           </div>
           <div className="mt-2.5 h-4 w-48 animate-pulse rounded bg-surface-2" />
-          <div className="mt-3 h-14 w-full animate-pulse rounded-lg bg-surface-2" />
+          <div className="mt-3 h-14 w-full animate-pulse rounded-control bg-surface-2" />
           {/* Reserved trailer slot — same height as the real button, so nothing shifts */}
           <div className="mt-4 h-8 w-32 animate-pulse rounded-full bg-surface-2" />
         </div>
@@ -171,9 +171,9 @@ export function DetailSkeleton() {
           <div className="flex items-end gap-8">
             <div className="aspect-2/3 w-(--poster-xl) shrink-0 animate-pulse rounded-tile bg-surface-2" />
             <div className="flex-1 space-y-3 pb-1">
-              <div className="h-7 w-2/3 animate-pulse rounded-lg bg-surface-2" />
+              <div className="h-7 w-2/3 animate-pulse rounded-control bg-surface-2" />
               <div className="h-4 w-1/3 animate-pulse rounded bg-surface-2" />
-              <div className="h-10 w-full max-w-4xl animate-pulse rounded-lg bg-surface-2" />
+              <div className="h-10 w-full max-w-4xl animate-pulse rounded-control bg-surface-2" />
               <div className="h-8 w-32 animate-pulse rounded-full bg-surface-2" />
             </div>
           </div>
@@ -226,26 +226,26 @@ export function LibrarySkeleton() {
         {/* Desktop: chips left + search/sort/add right */}
         <div className="hidden items-center gap-3 sm:flex">
           <div className="flex gap-2">
-            <Pulse className="h-9 w-10 rounded-md bg-surface-2" />
-            <Pulse className="h-9 w-14 rounded-md bg-surface-2" />
-            <Pulse className="h-9 w-16 rounded-md bg-surface-2" />
-            <Pulse className="h-9 w-16 rounded-md bg-surface-2" />
+            <Pulse className="h-9 w-10 rounded-chip bg-surface-2" />
+            <Pulse className="h-9 w-14 rounded-chip bg-surface-2" />
+            <Pulse className="h-9 w-16 rounded-chip bg-surface-2" />
+            <Pulse className="h-9 w-16 rounded-chip bg-surface-2" />
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Pulse className="h-9 w-56 rounded-lg bg-surface-2" />
-            <Pulse className="h-9 w-36 rounded-lg bg-surface-2" />
-            <Pulse className="h-9 w-16 rounded-lg bg-surface-2" />
+            <Pulse className="h-9 w-56 rounded-control bg-surface-2" />
+            <Pulse className="h-9 w-36 rounded-control bg-surface-2" />
+            <Pulse className="h-9 w-16 rounded-control bg-surface-2" />
           </div>
         </div>
         {/* Mobile: select + add  /  search + sort */}
         <div className="space-y-2 sm:hidden">
           <div className="flex items-center gap-2">
-            <Pulse className="h-9 w-28 rounded-lg bg-surface-2" />
-            <Pulse className="ml-auto h-9 w-9 rounded-lg bg-surface-2" />
+            <Pulse className="h-9 w-28 rounded-control bg-surface-2" />
+            <Pulse className="ml-auto h-9 w-9 rounded-control bg-surface-2" />
           </div>
           <div className="flex items-center gap-2">
-            <Pulse className="h-9 flex-1 rounded-lg bg-surface-2" />
-            <Pulse className="h-9 w-32 rounded-lg bg-surface-2" />
+            <Pulse className="h-9 flex-1 rounded-control bg-surface-2" />
+            <Pulse className="h-9 w-32 rounded-control bg-surface-2" />
           </div>
         </div>
         {/* count */}
@@ -256,7 +256,7 @@ export function LibrarySkeleton() {
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
         {Array.from({ length: 20 }).map((_, i) => (
           <div key={i} className="animate-pulse space-y-2">
-            <Pulse className="aspect-2/3 w-full bg-surface-2 rounded-xl" />
+            <Pulse className="aspect-2/3 w-full bg-surface-2 rounded-card" />
             <Pulse className="h-3 w-3/4 bg-surface-2" />
             <Pulse className="h-3 w-1/2 bg-surface-2" />
           </div>

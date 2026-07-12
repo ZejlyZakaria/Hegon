@@ -231,14 +231,14 @@ export default function PersonPage() {
                       <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
                         <Image src={t.poster_url || "/placeholder.svg"} alt={t.title} fill unoptimized sizes="15vw" className="object-cover" />
                         {t.user_rating != null && (
-                          <div className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white ring-1 ring-white/15 backdrop-blur-md">
+                          <div className="absolute right-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5 text-micro font-semibold text-white ring-1 ring-white/15 backdrop-blur-md">
                             <Star size={9} style={{ color: AMBER, fill: AMBER }} /> {t.user_rating}
                           </div>
                         )}
                         {badge && <PosterStatusBadge status={badge} />}
                       </div>
                       <p className="mt-2 truncate text-xs font-medium text-text-primary">{t.title}</p>
-                      {t.role && <p className="truncate text-[11px] text-text-tertiary">{t.role}</p>}
+                      {t.role && <p className="truncate text-micro text-text-tertiary">{t.role}</p>}
                     </button>
                   );
                 })}
@@ -277,7 +277,7 @@ export default function PersonPage() {
                           </div>
                         </div>
                         <p className="mt-2 truncate text-xs font-medium text-text-secondary transition-colors group-hover:text-text-primary">{c.title}</p>
-                        {c.year && <p className="text-[11px] text-text-tertiary">{c.year}</p>}
+                        {c.year && <p className="text-micro text-text-tertiary">{c.year}</p>}
                       </button>
                     ))}
                   </div>

@@ -132,7 +132,7 @@ export function RatingPicker({
             <span key={a.at} className={cn(a.wide && "hidden sm:block")}>
               <span
                 className={cn(
-                  "absolute top-0 text-[10px] font-semibold leading-tight tabular-nums",
+                  "absolute top-0 text-micro font-semibold leading-tight tabular-nums",
                   first ? "" : "-translate-x-1/2",
                   tone,
                 )}
@@ -145,7 +145,7 @@ export function RatingPicker({
                   // Centred on its tick like every other anchor — including the last one.
                   // Its right half spills a few px past the bar, which lands harmlessly in
                   // the panel's padding; right-aligning it (the old fix) just looked broken.
-                  "absolute top-3.5 whitespace-nowrap text-[10px] leading-tight",
+                  "absolute top-3.5 whitespace-nowrap text-micro leading-tight",
                   first ? "" : "-translate-x-1/2",
                   tone,
                 )}

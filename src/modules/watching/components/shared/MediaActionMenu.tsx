@@ -211,7 +211,7 @@ export function MediaActionMenu({
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-200 w-52 bg-surface-3 border border-border-default rounded-xl shadow-md overflow-hidden py-1"
+            className="fixed z-200 w-52 bg-surface-3 border border-border-default rounded-card shadow-md overflow-hidden py-1"
             style={{ top: menuPos.top, right: menuPos.right }}
             onClick={(e) => e.stopPropagation()}
           >

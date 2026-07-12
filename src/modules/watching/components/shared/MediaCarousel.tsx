@@ -126,7 +126,7 @@ function MovieCard({
             ((item.current_episode ?? 0) > 0 || (item.current_season ?? 1) > 1) && (
               <div className="space-y-1.5">
                 <span
-                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  className="text-micro font-semibold px-2 py-0.5 rounded-full"
                   style={{
                     backgroundColor: "color-mix(in srgb, var(--color-accent-watching) 40%, transparent)",
                     color: "var(--color-accent-watching-vivid)",
@@ -155,7 +155,7 @@ function MovieCard({
             {!isPoster && item.tags?.slice(0, 2).map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white max-w-20 truncate"
+                className="rounded-full bg-white/10 px-2 py-0.5 text-micro text-white max-w-20 truncate"
               >
                 {tag}
               </span>

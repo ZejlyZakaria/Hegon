@@ -35,7 +35,7 @@ function NewListCard({ onClick }: { onClick: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer overflow-hidden rounded-xl border border-white/20 bg-linear-to-br from-zinc-900 to-black transition-colors hover:border-white/40"
+      className="group cursor-pointer overflow-hidden rounded-card border border-white/20 bg-linear-to-br from-zinc-900 to-black transition-colors hover:border-white/40"
     >
       <div className="relative flex h-42 items-center justify-center">
         <div className="flex flex-col items-center gap-2 text-white/60 transition-colors group-hover:text-white">
@@ -47,7 +47,7 @@ function NewListCard({ onClick }: { onClick: () => void }) {
       </div>
       <div className="border-t border-white/10 p-3">
         <p className="text-sm font-semibold text-white/40">Create a list</p>
-        <p className="mt-1 text-[10px] text-white/20">—</p>
+        <p className="mt-1 text-micro text-white/20">—</p>
       </div>
     </div>
   );
@@ -62,7 +62,7 @@ function NewListForm({ onConfirm, onCancel, isPending }: {
 }) {
   const [name, setName] = useState("");
   return (
-    <div className="overflow-hidden rounded-xl border border-border-subtle bg-surface-1">
+    <div className="overflow-hidden rounded-card border border-border-subtle bg-surface-1">
       <div className="flex h-42 flex-col items-center justify-center gap-3 px-4">
         <input
           autoFocus
@@ -104,7 +104,7 @@ function ListCard({ list, onClick, onDelete }: {
   return (
     <div
       onClick={onClick}
-      className="group relative cursor-pointer overflow-hidden rounded-xl border border-border-subtle bg-surface-1 transition-colors hover:bg-surface-2"
+      className="group relative cursor-pointer overflow-hidden rounded-card border border-border-subtle bg-surface-1 transition-colors hover:bg-surface-2"
     >
       <div className="relative flex h-42 gap-0.5 overflow-hidden bg-black">
         {list.thumbnails.length === 0 ? (
@@ -129,7 +129,7 @@ function ListCard({ list, onClick, onDelete }: {
         <div className="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-black/50" />
 
         {list.is_ranked && (
-          <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-amber-400 backdrop-blur-sm">
+          <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-micro font-medium text-amber-400 backdrop-blur-sm">
             <Trophy size={9} /> Ranked
           </div>
         )}
@@ -155,7 +155,7 @@ function ListCard({ list, onClick, onDelete }: {
           <span className="text-xs text-text-tertiary">
             {list.count} {list.count === 1 ? "title" : "titles"}
           </span>
-          <span className="text-[10px] text-text-tertiary/60">{formatUpdated(list.updated_at)}</span>
+          <span className="text-micro text-text-tertiary/60">{formatUpdated(list.updated_at)}</span>
         </div>
       </div>
     </div>
@@ -224,7 +224,7 @@ export function ListsClient({ userId }: Props) {
       {isLoading && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="animate-pulse rounded-xl bg-surface-1" style={{ height: 204 }} />
+            <div key={i} className="animate-pulse rounded-card bg-surface-1" style={{ height: 204 }} />
           ))}
         </div>
       )}

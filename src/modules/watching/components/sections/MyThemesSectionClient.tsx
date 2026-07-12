@@ -47,7 +47,7 @@ function ThemeTile({
     >
       {/* Square artwork */}
       <div className={cn(
-        "relative aspect-square w-full overflow-hidden rounded-2xl bg-surface-2 ring-1 transition-shadow",
+        "relative aspect-square w-full overflow-hidden rounded-modal bg-surface-2 ring-1 transition-shadow",
         active ? "ring-2 ring-accent-watching-vivid" : "ring-white/10",
       )}>
         {track.cover ? (
@@ -67,14 +67,14 @@ function ThemeTile({
         </div>
 
         {/* Label chip */}
-        <span className="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-accent-watching-vivid backdrop-blur-sm">
+        <span className="absolute left-2 top-2 rounded-chip bg-black/55 px-1.5 py-0.5 text-micro font-bold text-accent-watching-vivid backdrop-blur-sm">
           {track.label}
         </span>
       </div>
 
       {/* Meta — song title + anime name */}
       <p className="mt-2 truncate text-[13px] font-semibold text-text-primary">{track.title}</p>
-      <p className="truncate text-[11px] text-text-tertiary">{track.animeName}</p>
+      <p className="truncate text-micro text-text-tertiary">{track.animeName}</p>
     </button>
   );
 }

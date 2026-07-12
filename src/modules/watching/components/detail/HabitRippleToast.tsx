@@ -23,7 +23,7 @@ export function HabitRippleToast({
       initial={{ opacity: 0, y: 10, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
-      className="flex w-[330px] items-center gap-3 rounded-xl border p-3"
+      className="flex w-[330px] items-center gap-3 rounded-card border p-3"
       style={{
         background: "#1a1a1d",
         borderColor: `color-mix(in srgb, ${ACCENT} 35%, transparent)`,
@@ -34,7 +34,7 @@ export function HabitRippleToast({
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.1, type: "spring", stiffness: 400, damping: 18 }}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control"
         style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 16%, transparent)`, color: ACCENT }}
       >
         <Check size={18} strokeWidth={3} />
@@ -44,7 +44,7 @@ export function HabitRippleToast({
         <p className="truncate text-xs font-semibold text-white">
           {weekly ? "Done this week ✓" : "Done today ✓"}
         </p>
-        <p className="truncate text-[10px] text-white/50">{title}</p>
+        <p className="truncate text-micro text-white/50">{title}</p>
       </div>
 
       {streak > 0 && (
@@ -53,7 +53,7 @@ export function HabitRippleToast({
           <span className="text-sm font-bold" style={{ color: FIRE }}>
             {streak}
           </span>
-          <span className="text-[10px] text-white/40">{weekly ? "wk" : "d"}</span>
+          <span className="text-micro text-white/40">{weekly ? "wk" : "d"}</span>
         </div>
       )}
     </motion.div>

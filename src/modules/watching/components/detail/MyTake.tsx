@@ -149,7 +149,7 @@ export function MyTake({ media, forceNoteOpen }: Props) {
                 {/* No header to live in when the score is the title — the flash rides here. */}
                 {rating > 0 && savedFlash_}
                 {standing && (
-                  <p className="max-w-50 text-right text-[11px] leading-snug text-text-tertiary">
+                  <p className="max-w-50 text-right text-micro leading-snug text-text-tertiary">
                     {standing.elite && (
                       <span className="mb-0.5 block text-caption uppercase tracking-wide text-amber-400">
                         Top {Math.max(1, Math.round((standing.rank / standing.total) * 100))}% of your {typeWord}
@@ -219,7 +219,7 @@ export function MyTake({ media, forceNoteOpen }: Props) {
         {/* When you wrote it. Stamped by the DB only when the note itself changes — so it
             dates the review, not the last time you bumped an episode. */}
         {hasNote && !showEditor && reviewedOn && (
-          <p className="mt-4 text-[11px] text-text-tertiary/70">Reviewed on {reviewedOn}</p>
+          <p className="mt-4 text-micro text-text-tertiary/70">Reviewed on {reviewedOn}</p>
         )}
       </div>
     </Panel>

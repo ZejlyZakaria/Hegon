@@ -26,7 +26,7 @@ import { EpisodeHeatmapModal } from "./EpisodeHeatmapModal";
 import type { WatchingMedia } from "../../types";
 
 type View = "all" | "highlights";
-const HIGHLIGHT = "#f59e0b";                              // gold — "best episode"
+const HIGHLIGHT = "var(--color-gold)";                              // gold — "best episode"
 const RATE_COLOR = "var(--color-accent-watching-vivid)"; // teal — your rating
 const MAX_HIGHLIGHTS = 20;
 const TMDB_STILL = "https://image.tmdb.org/t/p/w300";
@@ -96,7 +96,7 @@ function StillCard({
                   <MoreVertical size={14} />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60 rounded-xl border-border-default bg-surface-3 p-1 shadow-md">
+              <DropdownMenuContent align="end" className="w-60 rounded-card border-border-default bg-surface-3 p-1 shadow-md">
                 <DropdownMenuItem
                   onClick={onToggle}
                   className="gap-2.5 px-3 py-2 text-xs text-text-secondary focus:bg-surface-2 focus:text-text-primary"
@@ -109,7 +109,7 @@ function StillCard({
 
                 {/* Rating — values shown directly (no nested select), menu stays open */}
                 <div className="px-2 pb-1.5 pt-1">
-                  <p className="mb-1.5 flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">
+                  <p className="mb-1.5 flex items-center gap-1.5 px-1 text-caption font-semibold uppercase tracking-wide text-text-tertiary">
                     <Star size={11} style={{ color: RATE_COLOR, fill: RATE_COLOR }} />
                     Your rating
                   </p>
@@ -120,7 +120,7 @@ function StillCard({
                         type="button"
                         onClick={() => { onRate(n); setMenuOpen(false); }}
                         className={cn(
-                          "flex h-7 items-center justify-center rounded-md text-[11px] font-semibold tabular-nums transition-colors",
+                          "flex h-7 items-center justify-center rounded-chip text-micro font-semibold tabular-nums transition-colors",
                           rating === n ? "text-white" : "bg-surface-2 text-text-secondary hover:bg-surface-1 hover:text-text-primary",
                         )}
                         style={rating === n ? { backgroundColor: RATE_COLOR } : undefined}
@@ -133,7 +133,7 @@ function StillCard({
                     <button
                       type="button"
                       onClick={() => { onRate(null); setMenuOpen(false); }}
-                      className="mt-1.5 w-full rounded-md py-1 text-[11px] font-medium text-text-tertiary transition-colors hover:text-text-primary"
+                      className="mt-1.5 w-full rounded-chip py-1 text-micro font-medium text-text-tertiary transition-colors hover:text-text-primary"
                     >
                       Clear rating
                     </button>
@@ -149,7 +149,7 @@ function StillCard({
           <div className="pointer-events-none absolute bottom-2 right-2 z-10">
             <span className="flex h-6 items-center gap-1 rounded-full bg-black/55 px-1.5 ring-1 ring-white/15 backdrop-blur-md">
               <Star size={11} style={{ color: RATE_COLOR, fill: RATE_COLOR }} />
-              <span className="text-[11px] font-semibold tabular-nums" style={{ color: RATE_COLOR }}>{rating}</span>
+              <span className="text-micro font-semibold tabular-nums" style={{ color: RATE_COLOR }}>{rating}</span>
             </span>
           </div>
         )}
@@ -157,10 +157,10 @@ function StillCard({
 
       {/* Number · title · overview */}
       <div className="mt-2">
-        <p className="text-[10px] font-medium text-text-tertiary">{line1}</p>
+        <p className="text-micro font-medium text-text-tertiary">{line1}</p>
         <p className="truncate text-xs font-semibold text-text-primary">{line2}</p>
         {overview && (
-          <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-text-tertiary">{overview}</p>
+          <p className="mt-1 line-clamp-2 text-micro leading-relaxed text-text-tertiary">{overview}</p>
         )}
       </div>
     </div>
@@ -308,7 +308,7 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
                 type="button"
                 onClick={() => setSeason(s)}
                 className={cn(
-                  "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
+                  "rounded-control px-2.5 py-1 text-xs font-medium transition-colors",
                   s === season
                     ? "bg-accent-watching text-white"
                     : "bg-surface-2 text-text-tertiary hover:bg-surface-3 hover:text-text-secondary",

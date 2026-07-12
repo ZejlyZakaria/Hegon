@@ -84,7 +84,7 @@ function ForYouCard({
 
         {/* "New" badge — surfaced in the latest 5-day rotation */}
         {item.is_new && (
-          <div className="absolute top-2 left-2 z-10 rounded-full bg-[#2dd4bf] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-950 shadow-sm">
+          <div className="absolute top-2 left-2 z-10 rounded-full bg-accent-watching-vivid px-2 py-0.5 text-caption font-bold uppercase tracking-wide text-surface-0 shadow-sm">
             New
           </div>
         )}
