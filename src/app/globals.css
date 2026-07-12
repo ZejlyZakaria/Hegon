@@ -257,11 +257,11 @@
   --poster-lg: 9rem;      /* 144px — rail tile on desktop */
   --poster-xl: 10.625rem; /* 170px — hero poster on desktop */
 
-  /* A rail's tile on a PHONE is sized by its peek, not by pixels: 3.4 cards visible, so the
-     4th is cut and says "this scrolls". Two rails that share this share a tile by
+  /* A rail's tile on a PHONE is sized by its peek, not by pixels: 3.1 cards visible, so the
+     4th is just cut and says "this scrolls". Two rails that share this share a tile by
      construction, on any screen width — which is what a fixed 144 vs 112 could never do.
-     3 gaps of 0.75rem (gap-3) sit inside the 3.4 visible cards. */
-  --rail-peek: calc((100% - 2.25rem) / 3.4);
+     3 gaps of 0.75rem (gap-3) sit inside the visible cards. */
+  --rail-peek: calc((100% - 2.25rem) / 3.1);
 
   --z-base: 0;
   --z-sticky: 10;

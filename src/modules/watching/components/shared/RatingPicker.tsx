@@ -127,7 +127,6 @@ export function RatingPicker({
         {ANCHORS.map((a, i) => {
           const pos = `${((a.at - 1) / 9) * 100}%`;
           const first = i === 0;
-          const last = i === ANCHORS.length - 1;
           const tone = rated && value >= a.at ? "text-text-secondary" : "text-text-tertiary/70";
           return (
             <span key={a.at} className={cn(a.wide && "hidden sm:block")}>
@@ -143,10 +142,11 @@ export function RatingPicker({
               </span>
               <span
                 className={cn(
+                  // Centred on its tick like every other anchor — including the last one.
+                  // Its right half spills a few px past the bar, which lands harmlessly in
+                  // the panel's padding; right-aligning it (the old fix) just looked broken.
                   "absolute top-3.5 whitespace-nowrap text-[10px] leading-tight",
-                  // The word is far wider than the tick: centred everywhere, except the
-                  // last one on a phone, where centring would push it off the bar.
-                  first ? "" : last ? "-translate-x-full sm:-translate-x-1/2" : "-translate-x-1/2",
+                  first ? "" : "-translate-x-1/2",
                   tone,
                 )}
                 style={{ left: pos }}
