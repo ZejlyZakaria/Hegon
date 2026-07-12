@@ -56,7 +56,7 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
                 />
                 {clickable && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/25 group-hover:opacity-100">
-                    <div className="glass-thin flex h-7 w-7 items-center justify-center rounded-full">
+                    <div className="on-artwork flex h-7 w-7 items-center justify-center rounded-full">
                       <Plus size={13} className="text-white" />
                     </div>
                   </div>

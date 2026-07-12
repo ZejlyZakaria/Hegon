@@ -28,11 +28,14 @@ export const LOVE = "#f43f5e";   // rose-500 — affection, and only affection
 export const OVERLAY_CLUSTER = "absolute top-2.5 z-10 flex h-6 items-center gap-1.5";
 
 /**
- * A round overlay control. `rounded-full` is reserved for shapes that ARE round — circles,
- * dots, avatars. Anything carrying TEXT takes a radius token (a badge is `rounded-chip`),
- * never a pill. That's the whole rule.
+ * A round overlay control (the favorite heart, the `…` menu). FLAT — it was frosted glass,
+ * and a frosted `…` that opens a plain dropdown promises a physical object and hands you a
+ * list. The material was making a promise the interaction never kept.
+ *
+ * `rounded-full` is right here, and only here: this shape IS round. Anything carrying TEXT
+ * takes a radius token (a badge is `rounded-chip`), never a pill.
  */
-export const OVERLAY_CIRCLE = "glass-thin flex h-6 w-6 items-center justify-center rounded-full";
+export const OVERLAY_CIRCLE = "on-artwork flex h-6 w-6 items-center justify-center rounded-full";
 
 type Source = "world" | "mine";
 

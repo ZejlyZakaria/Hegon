@@ -166,7 +166,7 @@ function DontMissCard({
              material is chosen by the SURFACE, and this surface is an image. ── */}
       {isTrending && (
         <Badge
-          variant="glass"
+          variant="flag"
           size="md"
           uppercase
           color="var(--color-accent-watching-vivid)"
@@ -207,7 +207,7 @@ function TrendingMobileCard({
       <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/10 to-transparent" />
       {isTrending && (
         <Badge
-          variant="glass"
+          variant="flag"
           size="sm"
           uppercase
           color="var(--color-accent-watching-vivid)"

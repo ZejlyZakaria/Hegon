@@ -135,7 +135,7 @@ function ListCard({ list, onClick, onDelete }: {
         )}
         <Hint label="Delete list">
           <Button
-            variant="glass"
+            variant="overlay"
             size="icon-xs"
             aria-label="Delete list"
             onClick={onDelete}

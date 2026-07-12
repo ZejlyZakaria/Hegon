@@ -429,7 +429,7 @@ export function StyleguidePage() {
         </Block>
 
         {/* ── Buttons ── */}
-        <Block id="buttons" title="Buttons" note="One component, four HEGON variants. quiet is the default control; glass sits on artwork; contrast and accent are CTAs.">
+        <Block id="buttons" title="Buttons" note="One component. quiet is THE DEFAULT; overlay sits on artwork; contrast and accent are CTAs. legacy is shadcn — every use of it is a call site awaiting review.">
           <Row label="quiet">
             <Button variant="quiet" size="xs">xs</Button>
             <Button variant="quiet" size="sm">sm</Button>
@@ -449,11 +449,11 @@ export function StyleguidePage() {
             <Button variant="accent" style={DEMO_ACCENT}>Module CTA</Button>
             <span className="font-mono text-[11px] text-text-tertiary">--btn-accent = the module colour</span>
           </Row>
-          <Row label="glass">
+          <Row label="overlay">
             {/* Glass only makes sense over an image — so it's shown over one. */}
             <div className="flex items-center gap-2 rounded-card bg-linear-to-br from-zinc-600 to-zinc-900 p-3">
-              <Button variant="glass" size="sm">Watch trailer</Button>
-              <Button variant="glass" size="icon-sm" aria-label="Favorite"><Heart /></Button>
+              <Button variant="overlay" size="sm">Watch trailer</Button>
+              <Button variant="overlay" size="icon-sm" aria-label="Favorite"><Heart /></Button>
             </div>
           </Row>
           <Row label="icon sizes">
@@ -553,8 +553,8 @@ export function StyleguidePage() {
           {/* THE rule of the module, shown on artwork because that's the only place it applies. */}
           <Row label="on artwork">
             <div className="flex items-center gap-2 rounded-tile bg-linear-to-br from-amber-200 via-rose-400 to-zinc-800 p-3">
-              <Badge variant="glass" size="sm" uppercase color="var(--color-accent-watching-vivid)">New</Badge>
-              <Badge variant="glass" size="sm" uppercase color="#fb7185">High</Badge>
+              <Badge variant="flag" size="sm" uppercase color="var(--color-accent-watching-vivid)">New</Badge>
+              <Badge variant="flag" size="sm" uppercase color="#fb7185">High</Badge>
               <Badge variant="overlay" size="sm" color="rgba(255,255,255,0.8)">Thriller</Badge>
               <span className="inline-flex items-center gap-1 text-micro font-semibold tabular-nums" style={{ color: "var(--color-gold)" }}>
                 <Star size={10} style={{ color: "var(--color-gold)", fill: "var(--color-gold)" }} />
@@ -573,8 +573,8 @@ export function StyleguidePage() {
               className="flex items-center gap-2 rounded-tile p-3"
               style={{ backgroundImage: "linear-gradient(115deg,#f8fafc 0%,#38bdf8 32%,#f43f5e 62%,#18181b 100%)" }}
             >
-              <Badge variant="glass" size="md" uppercase color="var(--color-accent-watching-vivid)">Trending</Badge>
-              <Badge variant="glass" size="md" dot color="#7dd3fc">Paused</Badge>
+              <Badge variant="flag" size="md" uppercase color="var(--color-accent-watching-vivid)">Trending</Badge>
+              <Badge variant="flag" size="md" dot color="#7dd3fc">Paused</Badge>
               <span className="glass-thin flex h-6 w-6 items-center justify-center rounded-full">
                 <Heart size={12} style={{ color: "#f43f5e", fill: "#f43f5e" }} />
               </span>

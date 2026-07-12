@@ -7,38 +7,43 @@ import { cn } from "@/shared/utils/utils";
  * MATERIAL is dictated by the surface underneath — never by taste.
  *
  *   tint    — colour-tinted fill + hairline (on a page surface: category, status)
- *   solid   — filled with the colour (a loud, singular label: "Trending")
+ *   solid   — filled with the colour (a loud, singular label)
  *   outline — hairline only (quiet)
- *   glass   — ON ARTWORK, and ONLY FOR A FLAG.
- *   overlay — ON ARTWORK, for METADATA (genres). Barely-there, no blur.
+ *   flag    — ON ARTWORK, for a FLAG. Flat: a firm dark fill + a hairline.
+ *   overlay — ON ARTWORK, for METADATA (genres). Barely-there.
  *
  * THE RULE ON ARTWORK — three natures of information, three treatments:
- *   · a FLAG is something added to the title (Trending, New, Priority, Status) → `glass`
- *   · METADATA is what the title IS (its genres)                              → `overlay`
+ *   · a FLAG is something added to the title (Trending, New, Priority, Status) → `flag`
+ *   · METADATA is what the title IS (its genres)                               → `overlay`
  *   · a NUMBER (year, score) wears NO container at all — colour carries it.
- * Glass everywhere = glass signals nothing. It's the loudest material, so it's the rarest.
  *
- * ── WHY A GLASS BADGE HAS A WHITE LABEL ──────────────────────────────────────────────
- * Because real glass can't carry coloured text. Glass has to SHOW what's under it (that's
- * the whole point of the material), which means its own brightness is whatever the poster
- * gives it. Teal text survives a dark backdrop and dies on a white one. Every previous
- * attempt at this chip solved that by darkening the fill until the text worked — and killed
- * the glass in the process. That's backwards: you don't dim the window to read the sticker.
+ * ── WHY `flag` IS FLAT, AND NOT GLASS ────────────────────────────────────────────────
+ * It was glass, briefly, and the glass was wrong. Glass simulates a pane FLOATING over
+ * content that MOVES — that's why iOS puts it on nav bars, where the blur recomputes as you
+ * scroll and you watch it refract. Behind a badge on a poster, NOTHING ever moves. The blur
+ * is computed once and never changes: a static image pretending to be a window. We paid the
+ * whole cost (visual noise, a backdrop-filter per tile that mauls the GPU on a scrolling
+ * grid) for none of the benefit. Neither Netflix nor Apple TV puts glass on a poster tile.
+ * The physics is kept in globals.css for the Dashboard dock, where content really does move
+ * behind it and the material EARNS itself.
  *
- * So the label goes WHITE (which reads on anything, with a shadow), and the colour moves to
- * a DOT or the icon beside it. iOS does exactly this, and we'd already stumbled onto it once
- * — the "Now" badge on Watch History has always been a teal dot + a white word. It was the
- * only glass chip in the app that looked right. Now it's the rule.
+ * ── WHY THE LABEL IS WHITE ───────────────────────────────────────────────────────────
+ * This part survived the glass, because it was never a property of glass — it's a property
+ * of putting text on an image you don't control. Teal reads on a dark poster and dies on a
+ * white one. So the label is WHITE (legible on anything, with the fill behind it) and the
+ * colour rides a DOT or the icon. We'd already stumbled onto this once: the "Now" badge on
+ * Watch History has always been a teal dot + a white word, and it was the only chip on
+ * artwork that looked right.
  *
  * WEIGHT follows the nature: a flag SHOUTS (semibold), metadata WHISPERS (medium).
  */
 interface BadgeProps {
-  /** Semantic colour — hex or CSS var. On glass it paints the dot/icon, not the text. */
+  /** Semantic colour — hex or CSS var. On a flag it paints the dot/icon, not the text. */
   color?: string;
-  variant?: "tint" | "solid" | "outline" | "glass" | "overlay";
+  variant?: "tint" | "solid" | "outline" | "flag" | "overlay";
   /** sm = dense overlays (poster corners) · md = default · lg = hero chips */
   size?: "sm" | "md" | "lg";
-  /** glass only — a coloured dot before the label, for flags with no icon of their own. */
+  /** flag only — a coloured dot before the label, for flags with no icon of their own. */
   dot?: boolean;
   uppercase?: boolean;
   className?: string;
@@ -51,9 +56,9 @@ const SIZES: Record<NonNullable<BadgeProps["size"]>, string> = {
   lg: "gap-1.5 px-2.5 py-1 text-micro",
 };
 
-// Glass is a THICKER chip: a pane of glass has edges, and edges need room. A tight chip
-// reads as a label with a blur behind it; this reads as an object lying on the poster.
-const GLASS_SIZES: Record<NonNullable<BadgeProps["size"]>, string> = {
+// A flag on artwork gets a little more room than a chip on a page: it has to survive being
+// read at a glance, over an image, at poster scale.
+const FLAG_SIZES: Record<NonNullable<BadgeProps["size"]>, string> = {
   sm: "gap-1.5 px-2 py-1 text-caption",
   md: "gap-1.5 px-2.5 py-1.5 text-caption",
   lg: "gap-2 px-3 py-1.5 text-micro",
@@ -74,7 +79,7 @@ export function Badge({
   className,
   children,
 }: BadgeProps) {
-  const isGlass = variant === "glass";
+  const isFlag = variant === "flag";
 
   const style: CSSProperties =
     variant === "solid"
@@ -88,7 +93,7 @@ export function Badge({
         ? { color, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 35%, transparent)` }
         : variant === "overlay"
           ? { color, backgroundColor: "rgba(255,255,255,0.10)" }
-        : isGlass
+        : isFlag
           ? // White label; `color` is handed to the dot and to any icon inside, via a var.
             ({ color: "#fff", "--badge-mark": color } as CSSProperties)
           : {
@@ -102,18 +107,15 @@ export function Badge({
       className={cn(
         "inline-flex w-fit items-center leading-none",
         variant === "overlay" ? "font-medium" : "font-semibold",
-        // Radius stays `rounded-chip` — the locked rule (a pill is for shapes that ARE round).
-        // The iOS reference is a capsule, and that's a real question, but it's YOURS to answer:
-        // changing the radius rule quietly would break it everywhere else.
-        isGlass
-          ? ["glass-thin rounded-chip [&_svg]:text-(--badge-mark)", GLASS_SIZES[size]]
+        isFlag
+          ? ["on-artwork rounded-chip [&_svg]:text-(--badge-mark)", FLAG_SIZES[size]]
           : ["rounded-chip", SIZES[size]],
         uppercase && "uppercase tracking-wider",
         className,
       )}
       style={style}
     >
-      {isGlass && dot && (
+      {isFlag && dot && (
         <span
           className={cn("shrink-0 rounded-full", DOT_SIZE[size])}
           style={{

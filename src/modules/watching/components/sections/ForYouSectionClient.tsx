@@ -88,7 +88,7 @@ function ForYouCard({
             solid teal pill was the loudest thing on the card, for the least important fact. */}
         {item.is_new && (
           <Badge
-            variant="glass"
+            variant="flag"
             size="sm"
             uppercase
             color="var(--color-accent-watching-vivid)"
@@ -101,7 +101,7 @@ function ForYouCard({
         {/* Dismiss — sits on the artwork, so it's glass, not a page control */}
         <Hint label="Not interested">
           <Button
-            variant="glass"
+            variant="overlay"
             size="icon-xs"
             aria-label="Not interested"
             onClick={(e) => { e.stopPropagation(); onDismiss(); }}

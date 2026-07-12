@@ -30,15 +30,19 @@ const buttonVariants = cva(
         // which is why every module ended up hand-rolling its controls. These are the app.
         //
         // quiet    — THE DEFAULT. The control on a page surface (filters, chevrons, ghost CTAs)
-        // glass    — over a photo/backdrop (hero, poster overlays): reads on any image
+        // overlay  — over a photo/backdrop (hero, poster): flat, legible on any image
         // contrast — a white CTA on a coloured surface (StatusCard's teal, accents)
         quiet:
           "border border-border-subtle bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary",
         // subtle — a bare icon action inside a card/row: no border, no fill until hover.
         subtle:
           "text-text-tertiary hover:bg-surface-2 hover:text-text-primary",
-        glass:
-          "border border-white/15 bg-black/40 text-white/80 backdrop-blur-sm hover:border-white/25 hover:bg-black/60 hover:text-white",
+        // overlay — was `glass`, and the glass was a lie: a control on a STATIC image has
+        // nothing moving behind it to refract, so the blur was a still image pretending to
+        // be a window. Worse, a frosted `…` that opens a plain dropdown promises a physical
+        // object and delivers a list. Flat, dark, legible: it looks like what it is.
+        overlay:
+          "on-artwork text-white/85 hover:bg-black/85 hover:text-white",
         contrast:
           "bg-white text-surface-0 hover:bg-white/90",
         // accent — the module's own colour, passed as a CSS var so one variant serves every

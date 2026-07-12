@@ -75,7 +75,7 @@ function ListCard({ list, onOpen, onRemove }: {
         )}
         <Hint label="Remove from list">
           <Button
-            variant="glass"
+            variant="overlay"
             size="icon-xs"
             aria-label="Remove from list"
             onClick={(e) => { e.stopPropagation(); onRemove(); }}

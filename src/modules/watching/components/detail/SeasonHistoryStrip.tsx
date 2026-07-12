@@ -161,7 +161,7 @@ export function SeasonHistoryStrip({
                   black pill (this card had three different ones). */}
               {!locked && (
                 <Badge
-                  variant="glass"
+                  variant="flag"
                   size="sm"
                   color={year ? "#ffffff" : "rgba(255,255,255,0.7)"}
                   className="absolute left-1.5 top-1.5 tabular-nums"
@@ -174,7 +174,7 @@ export function SeasonHistoryStrip({
                   word) was the only glass chip in the app that ever looked right — it's now
                   the primitive's own behaviour, so the hand-rolled dot goes. */}
               {current && !comingSoon && (
-                <Badge variant="glass" size="sm" dot color={TEAL} className="absolute right-1.5 top-1.5">
+                <Badge variant="flag" size="sm" dot color={TEAL} className="absolute right-1.5 top-1.5">
                   Now
                 </Badge>
               )}
@@ -205,7 +205,7 @@ export function SeasonHistoryStrip({
               ) : (
                 /* Hover edit affordance */
                 <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/25 group-hover:opacity-100">
-                  <div className="glass-thin flex h-7 w-7 items-center justify-center rounded-full">
+                  <div className="on-artwork flex h-7 w-7 items-center justify-center rounded-full">
                     <Pencil size={12} className="text-white" />
                   </div>
                 </div>

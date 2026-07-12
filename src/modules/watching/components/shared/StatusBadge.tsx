@@ -53,7 +53,7 @@ export function PosterStatusBadge({ status, className }: { status: PosterStatus;
       <div className={cn("absolute inset-x-2 bottom-2 z-10 flex items-end", className)}>
         {/* dot = the status colour. The word stays white — glass can't hold coloured text
             without being dimmed into a sticker, so the colour rides the dot instead. */}
-        <Badge variant="glass" size="sm" dot color={TONE[status.tone]} className="shrink-0">
+        <Badge variant="flag" size="sm" dot color={TONE[status.tone]} className="shrink-0">
           {status.label}
         </Badge>
       </div>

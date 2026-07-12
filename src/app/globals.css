@@ -422,10 +422,31 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   GLASS — frosted floating surfaces (Dashboard OS: dock, widgets, panels)
-   Reserved for surfaces that FLOAT over a wallpaper. Refracts what's behind
-   it (backdrop-blur), catches light on its rim. Never for dense content
-   surfaces inside modules — those stay on the solid surface scale.
+   GLASS — and THE ONE RULE THAT SAYS WHERE IT MAY GO
+   ════════════════════════════════════════════════════════════════════════
+   Glass is not a style. It is a SIMULATION OF PHYSICS, and physics needs a
+   story: a pane FLOATING over content that MOVES underneath it. That's why iOS
+   puts it on nav bars and Control Center — the blur RECOMPUTES as you scroll, and
+   the material earns itself through motion. You watch it refract.
+
+   ⇒ GLASS IS ALLOWED ONLY WHERE CONTENT MOVES BEHIND IT.
+     The Dashboard dock and widgets, over a wallpaper. That's the list.
+
+   It was on the Watching poster tiles and it was WRONG — and the owner caught it
+   before this comment existed. Behind a badge on a poster, NOTHING ever moves. The
+   blur is computed once and never changes; it is a static image pretending to be a
+   window. We paid the full cost — visual noise, ambiguity, and a backdrop-filter per
+   tile that mauls the GPU when you scroll a grid of 40 posters on a phone — for zero
+   benefit. Decoration cosplaying as physics.
+
+   Two tells that should have stopped us earlier: a card with no elevation of its own
+   can't host a material with thickness (nothing else on it claims a z-axis), and a
+   `…` button in glass that opens a plain dropdown MAKES A PROMISE IT DOESN'T KEEP —
+   the exact sin the badge grammar exists to prevent. Also: neither Netflix nor Apple
+   TV puts glass on a poster tile, and it isn't for lack of means.
+
+   On artwork, use `on-artwork` below. It's flat, and it's honest: a label that looks
+   like a label.
 
    ⚠️ NEVER hand-write `-webkit-backdrop-filter` next to `backdrop-filter`.
    Lightning CSS (Tailwind v4's compiler) prefixes for you, and when it finds a
@@ -436,49 +457,58 @@
    property alone; the prefix appears in the built CSS on its own.
    ════════════════════════════════════════════════════════════════════════ */
 
+/* THE PHYSICS — kept, and now correct. Three parts, learned the hard way:
+     1. SHOW what's behind. Moderate blur (a 24px blur dissolves the wallpaper into
+        grey mush — nothing left to refract) + heavy saturation, so the hue survives.
+     2. CLAMP the luminance (brightness + contrast < 1): white lands ~.68, black lifts
+        ~.06. Whatever is behind, the material lands in the same narrow band — so white
+        text always reads and the pane always separates. A translucent fill can't do
+        this: it darkens by a FIXED amount, so it's invisible on dark and blinding on
+        light. Subtractive = sticker.
+     3. THE EDGE IS THE EFFECT. Specular top bevel, the light bouncing back beneath, a
+        bright hairline all round, and an inner glow raking down — that glow IS the
+        pane's thickness. One flat hairline reads as a rectangle with a blur behind it.
+   The dock has never actually had any of this: the -webkit bug below meant it never
+   blurred at all. It does now. */
 @utility glass {
   background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(200%) brightness(0.85) contrast(0.95);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.14),   /* top rim light */
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08),   /* hairline edge */
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.35),   /* specular — the top bevel */
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.10),  /* the light bouncing back up */
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),   /* hairline edge */
     0 8px 30px -8px rgba(0, 0, 0, 0.55);         /* soft lift */
 }
 
-/* Denser variant — for widgets carrying text, where legibility needs more
-   backing than the dock's lighter frost. */
+/* Denser variant — for widgets CARRYING TEXT, where legibility needs a firmer clamp
+   than the dock's lighter frost. */
 @utility glass-panel {
-  background: rgba(20, 20, 26, 0.55);
-  backdrop-filter: blur(28px) saturate(150%);
+  background: rgba(20, 20, 26, 0.40);
+  backdrop-filter: blur(20px) saturate(200%) brightness(0.65) contrast(0.9);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.10),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
     0 10px 34px -10px rgba(0, 0, 0, 0.6);
 }
 
-/* ON ARTWORK — the thin material. This is the one every previous attempt got wrong,
-   so here is what glass actually IS, in three parts:
+/* ON ARTWORK — the honest material. FLAT. No blur, no bevel, no pretend thickness.
+   A mark on a poster has one job: be legible over an image we don't control, without
+   hiding it. A firm dark fill and a hairline do that, they cost nothing to scroll, and
+   they LOOK like what they are — a label, not a pane of glass.
+   The one thing kept from the glass era, because it was never a property of glass but
+   of putting text on an arbitrary image: the LABEL IS WHITE and the colour rides a dot.
+   (See badge.tsx.) */
+@utility on-artwork {
+  background: rgba(10, 10, 12, 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),   /* hairline — it has a shape */
+    0 1px 3px 0 rgba(0, 0, 0, 0.40);             /* contact shadow — it sits ON the image */
+}
 
-   1. IT SHOWS WHAT'S UNDER IT. Not "a bit", not "if the poster is dark" — you must
-      READ the colours through it. Hence a MODERATE blur (10px, not 24: at 24 the
-      poster dissolves into grey mush and there's nothing left to see) and a big
-      saturation push, so the hue survives the darkening. The old version ran
-      brightness(.45), which crushed every poster to black — a tinted window, not
-      glass. This one only takes the top off (.72) and lets contrast do the clamping.
-
-   2. IT HAS AN EDGE, AND THE EDGE IS THE WHOLE EFFECT. Look at any iOS control: the
-      rim is what sells it. A bright specular line where the light catches the top
-      bevel, a dimmer one underneath where it bounces back, a bright hairline all the
-      way round, and an inner glow raking down from the top face — that inner glow IS
-      the pane's thickness. A single flat 1px hairline (what we had) reads as a
-      rectangle with a blur behind it. It is not a material.
-
-   3. IT NEVER CARRIES COLOURED TEXT. See badge.tsx — the label is white, the colour
-      goes on the dot. That's what frees the material to be bright and glassy instead
-      of being dimmed until teal text survives on it.
-
-   The luminance still lands in a predictable band (white → ~.68, black → ~.06), so
-   white text reads on any poster; the shadow does the rest. */
+/* The THIN glass — same physics, lighter presence. Kept for a floating chip on the
+   Dashboard, where content genuinely moves behind it. It was built for poster tiles;
+   that was the mistake. Nothing on artwork may use it. */
 @utility glass-thin {
   background: linear-gradient(
     160deg,
@@ -492,7 +522,7 @@
     inset 0 -1px 0 0 rgba(255, 255, 255, 0.18),     /* the light bouncing back up */
     inset 0 0 0 1px rgba(255, 255, 255, 0.20),      /* bright hairline, all the way round */
     inset 0 7px 10px -7px rgba(255, 255, 255, 0.35),/* inner glow = the pane's THICKNESS */
-    0 2px 8px -1px rgba(0, 0, 0, 0.40);             /* contact shadow — it sits ON the poster */
+    0 2px 8px -1px rgba(0, 0, 0, 0.40);             /* contact shadow */
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 }
 

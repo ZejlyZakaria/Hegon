@@ -103,7 +103,7 @@ function MovieCard({
         <div className={cn(OVERLAY_CLUSTER, "left-2.5")}>
           {showRankBadge && item.priority && <RankMark rank={item.priority} />}
           {item.want_to_watch && item.priority_level && (
-            <Badge variant="glass" size="sm" uppercase color={PRIORITY_COLOR[item.priority_level]}>
+            <Badge variant="flag" size="sm" uppercase color={PRIORITY_COLOR[item.priority_level]}>
               {item.priority_level}
             </Badge>
           )}
