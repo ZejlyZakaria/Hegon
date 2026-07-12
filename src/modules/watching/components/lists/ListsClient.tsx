@@ -11,7 +11,9 @@ import {
   useListsWithThumbnails,
   useCreateMediaList,
   useDeleteMediaList,
+  useRestoreMediaList,
 } from "../../hooks/useMediaLists";
+import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 import { useWatchingUIStore } from "../../hooks/useWatchingUIStore";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { ListDetail } from "./ListDetail";
@@ -168,10 +170,15 @@ interface Props { userId: string }
 
 export function ListsClient({ userId }: Props) {
   const [isCreating, setIsCreating]         = useState(false);
+  // The list awaiting confirmation. Deleting a list used to be a single click on a hover
+  // icon — no confirmation, no undo — while deleting one TITLE asked for confirmation. The
+  // most destructive action in the module was the least protected, and it cost a real list.
+  const [pendingDelete, setPendingDelete] = useState<MediaListWithThumbnails | null>(null);
 
   const { data: lists = [], isLoading } = useListsWithThumbnails(userId);
   const createList = useCreateMediaList(userId);
   const deleteList = useDeleteMediaList(userId);
+  const restoreList = useRestoreMediaList(userId);
   const setDetailOpen = useWatchingUIStore((s) => s.setDetailOpen);
   // Persisted in the UI store (not local state) so returning from a media detail
   // page restores the open list instead of dropping back to the grid.
@@ -198,16 +205,47 @@ export function ListsClient({ userId }: Props) {
     }
   };
 
-  const handleDelete = async (listId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  // Two locks, on purpose. The confirmation stops the accident; the undo catches the
+  // deliberate mistake. And underneath both, the delete is now SOFT — the list and its
+  // titles are only hidden, so even a dismissed toast isn't the end of the story.
+  const confirmDelete = async () => {
+    const list = pendingDelete;
+    if (!list) return;
+    setPendingDelete(null);
     try {
-      await deleteList.mutateAsync(listId);
-      toast("List deleted.");
+      await deleteList.mutateAsync(list.id);
+      toast(`"${list.name}" deleted.`, {
+        duration: 10_000,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            restoreList.mutate(list.id, {
+              onSuccess: () => toast.success(`"${list.name}" restored.`),
+              onError: () => toast.error("Failed to restore the list."),
+            });
+          },
+        },
+      });
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to delete list.");
     }
   };
+
+  const deleteModal = (
+    <DeleteConfirmModal
+      isOpen={!!pendingDelete}
+      onClose={() => setPendingDelete(null)}
+      onConfirm={confirmDelete}
+      title={pendingDelete ? `Delete "${pendingDelete.name}"?` : ""}
+      description={
+        pendingDelete
+          ? `This removes the list and its ${pendingDelete.count} ${pendingDelete.count === 1 ? "title" : "titles"}. You can undo it right after.`
+          : undefined
+      }
+      isDeleting={deleteList.isPending}
+    />
+  );
 
   if (selectedList) {
     return (
@@ -246,11 +284,13 @@ export function ListsClient({ userId }: Props) {
               key={list.id}
               list={list}
               onClick={() => setSelectedListId(list.id)}
-              onDelete={(e) => handleDelete(list.id, e)}
+              onDelete={(e) => { e.stopPropagation(); setPendingDelete(list); }}
             />
           ))}
         </div>
       )}
+
+      {deleteModal}
     </div>
   );
 }

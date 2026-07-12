@@ -314,6 +314,7 @@ export async function getMediaLists(userId: string): Promise<MediaList[]> {
     .from("media_lists")
     .select("*")
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: true });
   if (error) throw error;
   return (data ?? []) as MediaList[];
@@ -327,7 +328,11 @@ export async function getListsForMedia(mediaItemId: string): Promise<MediaList[]
     .select("list_id, media_lists(*)")
     .eq("media_item_id", mediaItemId);
   if (error) throw error;
-  return (data ?? []).map((d: any) => d.media_lists).filter(Boolean) as MediaList[];
+  // The join can't take `.is("deleted_at", null)` on the embedded table, so filter here:
+  // a soft-deleted list must not resurface as a chip on a title's detail page.
+  return (data ?? [])
+    .map((d: any) => d.media_lists)
+    .filter((l: any) => l && !l.deleted_at) as MediaList[];
 }
 
 export async function createMediaList(name: string, userId: string): Promise<MediaList> {
@@ -406,12 +411,31 @@ export async function removeMediaFromList(listId: string, mediaItemId: string): 
   }
 }
 
+/**
+ * SOFT delete. This used to be `.delete()`, and media_list_items cascades off the list — so a
+ * single stray click on a hover icon destroyed a list AND every title in it, irrecoverably.
+ * It happened. Meanwhile deleting one title has always asked for confirmation: the most
+ * destructive action in the module was the least protected.
+ *
+ * Now the row stays, its items stay, and it simply stops being read. Undo is one column write.
+ */
 export async function deleteMediaList(listId: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
     .schema("watching")
     .from("media_lists")
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", listId);
+  if (error) throw error;
+}
+
+/** Undo. The list and its items never left — they were only hidden. */
+export async function restoreMediaList(listId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("watching")
+    .from("media_lists")
+    .update({ deleted_at: null })
     .eq("id", listId);
   if (error) throw error;
 }
@@ -670,6 +694,7 @@ export async function getListsWithThumbnails(userId: string): Promise<MediaListW
     .from("media_lists")
     .select("*")
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: true });
   if (error) throw error;
   if (!lists?.length) return [];

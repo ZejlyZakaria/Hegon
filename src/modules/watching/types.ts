@@ -95,6 +95,8 @@ export interface MediaList {
   is_ranked: boolean;
   created_at: string;
   updated_at: string;
+  /** Soft delete. Non-null = hidden, not destroyed — its titles are still there. */
+  deleted_at?: string | null;
 }
 
 export interface MediaListItemWithMedia {

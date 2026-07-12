@@ -10,6 +10,7 @@ import {
   addMediaToList,
   removeMediaFromList,
   deleteMediaList,
+  restoreMediaList,
   updateMediaList,
   updateListItemNote,
   searchMediaForList,
@@ -105,6 +106,22 @@ export function useDeleteMediaList(userId: string) {
     mutationFn: (listId: string) => {
       if (isDemo) throw new DemoReadOnlyError();
       return deleteMediaList(listId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.lists(userId) });
+    },
+    onError: handledDemoError,
+  });
+}
+
+/** Undo a list deletion. The row and its items never left — they were only hidden. */
+export function useRestoreMediaList(userId: string) {
+  const queryClient = useQueryClient();
+  const isDemo = useIsDemo();
+  return useMutation({
+    mutationFn: (listId: string) => {
+      if (isDemo) throw new DemoReadOnlyError();
+      return restoreMediaList(listId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.lists(userId) });
