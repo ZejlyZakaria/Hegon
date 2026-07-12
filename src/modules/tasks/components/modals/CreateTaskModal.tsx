@@ -169,7 +169,6 @@ export function CreateTaskModal({
                   <FormControl>
                     <Input
                       {...field}
-                      variant="tasks"
                       placeholder="Task title..."
                       autoFocus
                       className="bg-surface-overlay focus:border-border-focus"
@@ -191,7 +190,6 @@ export function CreateTaskModal({
                   <FormControl>
                     <Textarea
                       {...field}
-                      variant="tasks"
                       placeholder="Add details..."
                       rows={3}
                       className="bg-surface-overlay focus:border-border-focus"
@@ -211,11 +209,11 @@ export function CreateTaskModal({
                     <FormLabel className="text-xs font-medium text-text-secondary">Priority</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
+                        <SelectTrigger variant="legacy" className="w-full bg-surface-overlay focus:border-border-focus">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent variant="tasks">
+                      <SelectContent variant="legacy" >
                         {(["critical", "high", "medium", "low"] as Priority[]).map((p) => (
                           <SelectItem key={p} value={p}>
                             <div className="flex items-center gap-2">
@@ -323,11 +321,11 @@ export function CreateTaskModal({
                       value={field.value ?? "none"}
                     >
                       <FormControl>
-                        <SelectTrigger variant="tasks" className="w-full bg-surface-overlay focus:border-border-focus">
+                        <SelectTrigger variant="legacy" className="w-full bg-surface-overlay focus:border-border-focus">
                           <SelectValue placeholder="No goal" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent variant="tasks">
+                      <SelectContent variant="legacy" >
                         <SelectItem value="none">No goal</SelectItem>
                         {goals
                           .filter((g) => g.status === "active")
@@ -418,7 +416,7 @@ export function CreateTaskModal({
               >
                 Cancel
               </Button>
-              <Button
+              <Button variant="legacy"
                 type="submit"
                 disabled={createTaskMutation.isPending}
                 className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"

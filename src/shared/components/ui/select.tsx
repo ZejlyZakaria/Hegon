@@ -32,7 +32,12 @@ const selectTriggerVariants = cva(
     variants: {
       variant: {
         // Default shadcn style
-        default: cn(
+        // ⚠️ `legacy` was `default` until the flip — so a bare field rendered SHADCN, and the
+        // app's real field had to be asked for by name at every call site. Worse, that name was
+        // `tasks`: the module it happened to be born in, fossilised into the API. Nobody would
+        // have known, in six months, why the canonical input of the app was called "tasks".
+        // Now the HEGON field IS the default and `legacy` is a call site awaiting review.
+        legacy: cn(
           "rounded-control border border-input bg-transparent shadow-xs",
           "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
           "aria-invalid:border-destructive aria-invalid:ring-destructive/20",
@@ -40,7 +45,7 @@ const selectTriggerVariants = cva(
         ),
         
         // HEGON field — matches the Input "tasks" variant exactly
-        tasks: cn(
+        default: cn(
           "rounded-control border border-border-default",
           "bg-surface-2",
           "text-text-primary",
@@ -91,10 +96,10 @@ const selectContentVariants = cva(
     variants: {
       variant: {
         // Default shadcn style
-        default: "bg-popover text-popover-foreground",
+        legacy: "bg-popover text-popover-foreground",
         
         // HEGON dropdown surface — popover stop (surface-3), strong border
-        tasks: "bg-surface-3 border-border-strong text-text-primary",
+        default: "bg-surface-3 border-border-strong text-text-primary",
       },
     },
     defaultVariants: {

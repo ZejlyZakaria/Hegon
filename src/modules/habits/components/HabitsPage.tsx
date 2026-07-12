@@ -147,7 +147,7 @@ export function HabitsPage() {
                     containerClassName="flex-1 sm:w-48"
                   />
                 )}
-                <Button
+                <Button variant="legacy"
                   onClick={() => setModalOpen(true)}
                   style={{ backgroundColor: ACCENT }}
                   className="h-9 shrink-0 px-3 text-sm font-medium text-white hover:opacity-90"
@@ -336,7 +336,7 @@ export function HabitsPage() {
           </p>
           <div className="flex flex-col gap-2 pt-2">
             {!deletingHabit?.archived && (
-              <Button
+              <Button variant="legacy"
                 onClick={() => {
                   if (deletingHabit) {
                     archiveHabit.mutate(deletingHabit.id);
@@ -350,7 +350,7 @@ export function HabitsPage() {
                 Archive (keep history)
               </Button>
             )}
-            <Button
+            <Button variant="legacy"
               onClick={() => {
                 if (deletingHabit) {
                   deleteHabitPermanently.mutate(deletingHabit.id);

@@ -67,7 +67,7 @@ export function DeleteTaskModal({
           >
             Cancel
           </Button>
-          <Button
+          <Button variant="legacy"
             type="button"
             onClick={handleDelete}
             disabled={deleteTaskMutation.isPending}

@@ -301,7 +301,6 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
-                      variant="tasks"
                       type="number"
                       min="0"
                       value={currentPage}
@@ -310,7 +309,7 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
                       placeholder="Page"
                     />
                     {book.total_pages && <span className="text-xs text-text-tertiary">/ {book.total_pages} pages</span>}
-                    <Button
+                    <Button variant="legacy"
                       type="button"
                       onClick={handleProgressUpdate}
                       disabled={updateProgress.isPending || updateBook.isPending}
@@ -375,7 +374,6 @@ export function BookDetailPage({ id }: BookDetailPageProps) {
                   {saveNotes.isPending && <span className="text-[11px] text-text-tertiary/60">Saving…</span>}
                 </div>
                 <Textarea
-                  variant="tasks"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Your thoughts, key ideas, takeaways…"

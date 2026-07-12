@@ -164,7 +164,7 @@ function AddForm({ nextPosition, onCreate, isPending, onCancel }: AddFormProps) 
       <p className="text-caption uppercase text-text-tertiary">
         New status
       </p>
-      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Status name..." variant="tasks" autoFocus className="h-8 text-xs" />
+      <Input variant="legacy" value={name} onChange={(e) => setName(e.target.value)} placeholder="Status name..." autoFocus className="h-8 text-xs" />
       <TypeLabel />
       <TypeSelector type={type} color={color} icon={icon} onChange={handleTypeChange} />
       <div>
@@ -174,7 +174,7 @@ function AddForm({ nextPosition, onCreate, isPending, onCancel }: AddFormProps) 
       <PaletteSection color={color} onChange={setColor} />
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="ghost" onClick={onCancel} className="h-7 px-3 text-xs text-text-secondary">Cancel</Button>
-        <Button
+        <Button variant="legacy"
           type="button"
           disabled={isPending || !name.trim()}
           onClick={() => onCreate({ name: name.trim(), type, color, icon, position: nextPosition })}
@@ -217,7 +217,7 @@ function EditForm({ status, onSave, isPending, onCancel }: EditFormProps) {
       <p className="text-caption uppercase text-text-tertiary">
         Edit status
       </p>
-      <Input value={name} onChange={(e) => setName(e.target.value)} variant="tasks" autoFocus className="h-8 text-xs" />
+      <Input variant="legacy" value={name} onChange={(e) => setName(e.target.value)} autoFocus className="h-8 text-xs" />
       <TypeLabel />
       <TypeSelector type={type} color={color} icon={icon} onChange={handleTypeChange} />
       <div>
@@ -227,7 +227,7 @@ function EditForm({ status, onSave, isPending, onCancel }: EditFormProps) {
       <PaletteSection color={color} onChange={setColor} />
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="ghost" onClick={onCancel} className="h-7 px-3 text-xs text-text-secondary">Cancel</Button>
-        <Button
+        <Button variant="legacy"
           type="button"
           disabled={isPending || !name.trim()}
           onClick={() => onSave({ name: name.trim(), type, color, icon })}

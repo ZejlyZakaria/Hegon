@@ -57,7 +57,7 @@ export function HabitsEmptyState({ onCreateClick }: Props) {
         Small consistent actions compound into big results.
         Start tracking your first habit today.
       </p>
-      <Button
+      <Button variant="legacy"
         type="button"
         onClick={onCreateClick}
         className="h-9 rounded-control px-4 text-sm font-medium text-white hover:opacity-90"

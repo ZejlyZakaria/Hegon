@@ -38,7 +38,7 @@ export function GoalsEmptyState({ onCreateClick }: Props) {
         Goals give direction to everything you track in HEGON.
         Each milestone brings you one step closer.
       </p>
-      <Button
+      <Button variant="legacy"
         type="button"
         onClick={onCreateClick}
         className="h-9 rounded-control px-4 text-sm font-medium text-white hover:opacity-90"

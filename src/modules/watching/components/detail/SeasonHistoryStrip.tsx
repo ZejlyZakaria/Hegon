@@ -110,10 +110,10 @@ export function SeasonHistoryStrip({
             {/* An action-select, not a filter: it has no persisted value, it applies a year to
                 every season at once. Same trigger shell as FilterSelect so it lines up. */}
             <Select onValueChange={(v) => setAll(Number(v))}>
-              <SelectTrigger className="h-8 w-auto gap-2 border-border-subtle bg-surface-2 px-3.5 text-xs text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary focus:ring-0">
+              <SelectTrigger variant="legacy" className="h-8 w-auto gap-2 border-border-subtle bg-surface-2 px-3.5 text-xs text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary focus:ring-0">
                 <SelectValue placeholder="Set all year" />
               </SelectTrigger>
-              <SelectContent className="border-border-strong bg-surface-3">
+              <SelectContent variant="legacy" className="border-border-strong bg-surface-3">
                 {setAllYears.map((y) => (
                   <SelectItem key={y} value={String(y)} className="text-xs focus:bg-surface-2 focus:text-text-primary">All in {y}</SelectItem>
                 ))}
@@ -237,10 +237,10 @@ export function SeasonHistoryStrip({
 
                 <label className="mb-1 block text-micro text-text-tertiary">Year watched</label>
                 <Select value={year ? String(year) : undefined} onValueChange={(v) => setYear(s, Number(v))}>
-                  <SelectTrigger className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0">
+                  <SelectTrigger variant="legacy" className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0">
                     <SelectValue placeholder="Pick a year" />
                   </SelectTrigger>
-                  <SelectContent className="bg-surface-3 border-border-strong">
+                  <SelectContent variant="legacy" className="bg-surface-3 border-border-strong">
                     {yearsFor(idx).map((yr) => (
                       <SelectItem key={yr} value={String(yr)} className="text-xs focus:bg-surface-2 focus:text-text-primary">{yr}</SelectItem>
                     ))}
@@ -249,10 +249,10 @@ export function SeasonHistoryStrip({
 
                 <label className="mb-1 mt-3 block text-micro text-text-tertiary">Rating</label>
                 <Select value={rating ? String(rating) : undefined} onValueChange={(v) => setRating(s, v)}>
-                  <SelectTrigger className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-accent-watching-vivid focus:ring-0">
+                  <SelectTrigger variant="legacy" className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-accent-watching-vivid focus:ring-0">
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
-                  <SelectContent className="bg-surface-3 border-border-strong">
+                  <SelectContent variant="legacy" className="bg-surface-3 border-border-strong">
                     <SelectItem value="none" className="text-xs focus:bg-surface-2 focus:text-text-primary">—</SelectItem>
                     {[10, 9.5, 9, 8.5, 8, 7.5, 7, 6.5, 6, 5.5, 5].map((n) => (
                       <SelectItem key={n} value={String(n)} className="text-xs focus:bg-surface-2 focus:text-text-primary">{n}/10</SelectItem>

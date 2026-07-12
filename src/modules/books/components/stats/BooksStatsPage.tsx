@@ -371,10 +371,10 @@ export function BooksStatsPage() {
             value={selectedYear === null ? "all" : String(selectedYear)}
             onValueChange={(v) => setSelectedYear(v === "all" ? null : Number(v))}
           >
-            <SelectTrigger className="h-9 w-full bg-surface-1 border-border-subtle text-text-secondary text-sm focus:ring-0 focus:ring-offset-0">
+            <SelectTrigger variant="legacy" className="h-9 w-full bg-surface-1 border-border-subtle text-text-secondary text-sm focus:ring-0 focus:ring-offset-0">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
+            <SelectContent variant="legacy" className="bg-surface-3 border-border-strong text-text-secondary">
               {showAllTime && (
                 <SelectItem value="all" className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">All time</SelectItem>
               )}

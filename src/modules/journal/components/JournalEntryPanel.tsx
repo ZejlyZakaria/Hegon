@@ -102,7 +102,7 @@ export function JournalEntryPanel({ entry, onClose }: Props) {
             >
               Cancel
             </Button>
-            <Button
+            <Button variant="legacy"
               onClick={handleDelete}
               disabled={del.isPending}
               className="h-9 text-white hover:opacity-90 disabled:opacity-50"

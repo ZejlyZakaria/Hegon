@@ -33,7 +33,7 @@ export function FilterSelect<T extends string>({
 
   return (
     <Select value={value} onValueChange={(v) => onChange(v as T)}>
-      <SelectTrigger
+      <SelectTrigger variant="legacy"
         aria-label={rest["aria-label"]}
         className={cn(
           h,
@@ -44,7 +44,7 @@ export function FilterSelect<T extends string>({
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent className="border-border-strong bg-surface-3 text-text-secondary">
+      <SelectContent variant="legacy" className="border-border-strong bg-surface-3 text-text-secondary">
         {options.map((o) => (
           <SelectItem
             key={o.value}

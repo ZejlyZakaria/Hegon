@@ -298,7 +298,6 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
 
                   <form onSubmit={handleInvite} className="flex gap-2">
                     <Input
-                      variant="tasks"
                       type="email"
                       value={email}
                       onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(null); }}

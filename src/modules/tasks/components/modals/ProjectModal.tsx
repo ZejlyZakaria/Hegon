@@ -142,7 +142,6 @@ export function ProjectModal({ open, onOpenChange, workspaceId, project }: Proje
                   <FormControl>
                     <Input
                       {...field}
-                      variant="tasks"
                       placeholder="e.g. Website Redesign, Q2 Goals..."
                       autoFocus
                       className="bg-surface-overlay focus:border-border-focus"
@@ -200,7 +199,7 @@ export function ProjectModal({ open, onOpenChange, workspaceId, project }: Proje
               >
                 Cancel
               </Button>
-              <Button
+              <Button variant="legacy"
                 type="submit"
                 disabled={isPending || (!isEdit && selectedKeys.size === 0)}
                 className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"

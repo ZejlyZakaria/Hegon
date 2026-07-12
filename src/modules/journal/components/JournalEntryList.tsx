@@ -67,7 +67,6 @@ export function JournalEntryList({ onSelectEntry }: JournalEntryListProps) {
         <div className="ml-auto relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
           <Input
-            variant="tasks"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

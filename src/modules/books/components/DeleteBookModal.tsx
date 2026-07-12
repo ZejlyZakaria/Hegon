@@ -62,7 +62,7 @@ export function DeleteBookModal({
           >
             Cancel
           </Button>
-          <Button
+          <Button variant="legacy"
             type="button"
             onClick={handleDelete}
             disabled={deleteMutation.isPending}

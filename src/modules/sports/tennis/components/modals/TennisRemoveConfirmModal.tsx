@@ -98,7 +98,7 @@ export default function TennisRemoveConfirmModal({
                 >
                   Cancel
                 </Button>
-                <Button
+                <Button variant="legacy"
                   size="sm"
                   onClick={handleConfirm}
                   disabled={loading}

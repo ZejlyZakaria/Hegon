@@ -95,7 +95,7 @@ export function ReviewPanel({ open, onClose }: Props) {
           >
             Cancel
           </Button>
-          <Button
+          <Button variant="legacy"
             type="button"
             onClick={handleSave}
             disabled={createReview.isPending}
@@ -173,7 +173,6 @@ function Field({
         {label}
       </label>
       <Textarea
-        variant="tasks"
         placeholder={hint}
         rows={2}
         value={value}

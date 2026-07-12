@@ -95,7 +95,7 @@ export default function FootballRemoveConfirmModal({
                 >
                   Cancel
                 </Button>
-                <Button
+                <Button variant="legacy"
                   size="sm"
                   onClick={handleConfirm}
                   disabled={loading}

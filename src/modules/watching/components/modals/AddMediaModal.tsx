@@ -688,10 +688,10 @@ export default function AddMediaModal({
                               value={watchedMonth !== null ? String(watchedMonth) : "none"}
                               onValueChange={(v) => setWatchedMonth(v === "none" ? null : parseInt(v))}
                             >
-                              <SelectTrigger className="flex-1 h-9 bg-surface-overlay border-border-subtle text-text-secondary text-xs focus:ring-0 focus:ring-offset-0 transition-colors">
+                              <SelectTrigger variant="legacy" className="flex-1 h-9 bg-surface-overlay border-border-subtle text-text-secondary text-xs focus:ring-0 focus:ring-offset-0 transition-colors">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
+                              <SelectContent variant="legacy" className="bg-surface-3 border-border-strong text-text-secondary">
                                 <SelectItem value="none" className="text-xs focus:bg-surface-2 focus:text-text-primary cursor-pointer">Month (optional)</SelectItem>
                                 {availableMonths.map((m) => (
                                   <SelectItem key={m} value={String(m)} className="text-xs focus:bg-surface-2 focus:text-text-primary cursor-pointer">
@@ -704,10 +704,10 @@ export default function AddMediaModal({
                               value={String(watchedYear)}
                               onValueChange={(v) => handleYearChange(parseInt(v))}
                             >
-                              <SelectTrigger className="w-24 h-9 bg-surface-overlay border-border-subtle text-text-secondary text-xs focus:ring-0 focus:ring-offset-0 transition-colors">
+                              <SelectTrigger variant="legacy" className="w-24 h-9 bg-surface-overlay border-border-subtle text-text-secondary text-xs focus:ring-0 focus:ring-offset-0 transition-colors">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
+                              <SelectContent variant="legacy" className="bg-surface-3 border-border-strong text-text-secondary">
                                 {availableYears.map((y) => (
                                   <SelectItem key={y} value={String(y)} className="text-xs focus:bg-surface-2 focus:text-text-primary cursor-pointer">
                                     {y}
@@ -835,7 +835,7 @@ export default function AddMediaModal({
             >
               Cancel
             </Button>
-            <Button
+            <Button variant="legacy"
               onClick={handleSubmit}
               disabled={isSubmitDisabled}
               className="gap-2 text-white disabled:opacity-40"

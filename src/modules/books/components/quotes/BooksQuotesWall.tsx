@@ -61,7 +61,6 @@ export function BooksQuotesWall() {
         <div className="relative flex flex-1 items-center sm:max-w-xs">
           <Search size={14} className="pointer-events-none absolute left-2.5 text-text-tertiary" />
           <Input
-            variant="tasks"
             type="text"
             placeholder="Search quotes…"
             value={search}

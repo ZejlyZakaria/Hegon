@@ -96,7 +96,6 @@ export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModal
                   <FormControl>
                     <Input
                       {...field}
-                      variant="tasks"
                       placeholder="e.g. Personal, Work, Side Projects..."
                       autoFocus
                       className="bg-surface-overlay focus:border-border-focus"
@@ -116,7 +115,7 @@ export function WorkspaceModal({ open, onOpenChange, workspace }: WorkspaceModal
               >
                 Cancel
               </Button>
-              <Button
+              <Button variant="legacy"
                 type="submit"
                 disabled={isPending}
                 className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"

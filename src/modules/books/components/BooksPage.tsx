@@ -87,7 +87,6 @@ export function BooksPage() {
       <div className="relative flex flex-1 items-center sm:w-48 sm:flex-none">
         <Search size={14} className="pointer-events-none absolute left-2.5 text-text-tertiary" />
         <Input
-          variant="tasks"
           type="text"
           placeholder="Search books…"
           value={search}
@@ -108,10 +107,10 @@ export function BooksPage() {
         <Heart size={14} className={favOnly ? "fill-red-400" : ""} />
       </button>
       <Select value={sort} onValueChange={(v) => setSort(v as BookSort)}>
-        <SelectTrigger variant="tasks" className="h-9 w-36 text-xs bg-surface-2 hover:bg-surface-3 focus:border-border-focus">
+        <SelectTrigger variant="legacy" className="h-9 w-36 text-xs bg-surface-2 hover:bg-surface-3 focus:border-border-focus">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent variant="tasks">
+        <SelectContent variant="legacy" >
           {SORT_OPTIONS.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
           ))}

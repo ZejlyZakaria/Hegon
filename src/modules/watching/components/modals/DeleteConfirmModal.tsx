@@ -52,7 +52,7 @@ export default function DeleteConfirmModal({
           >
             {cancelText}
           </Button>
-          <Button
+          <Button variant="legacy"
             type="button"
             onClick={onConfirm}
             disabled={isDeleting}

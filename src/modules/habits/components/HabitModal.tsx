@@ -205,7 +205,6 @@ export function HabitModal({ open, onClose, habit }: Props) {
                   <FormControl>
                     <Input
                       {...field}
-                      variant="tasks"
                       placeholder="e.g. Morning run"
                       autoFocus
                       className="bg-surface-2 focus:border-border-focus"
@@ -227,7 +226,6 @@ export function HabitModal({ open, onClose, habit }: Props) {
                   <FormControl>
                     <Textarea
                       {...field}
-                      variant="tasks"
                       placeholder="Why does this habit matter?"
                       rows={2}
                       className="bg-surface-2 focus:border-border-focus"
@@ -249,14 +247,13 @@ export function HabitModal({ open, onClose, habit }: Props) {
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger
-                          variant="tasks"
+                        <SelectTrigger variant="legacy"
                           className="w-full bg-surface-2 focus:border-border-focus"
                         >
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent variant="tasks">
+                      <SelectContent variant="legacy" >
                         <SelectItem value="daily">Daily</SelectItem>
                         <SelectItem value="weekly">Weekly</SelectItem>
                         <SelectItem value="custom">Custom days</SelectItem>
@@ -282,14 +279,13 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       value={field.value ?? "none"}
                     >
                       <FormControl>
-                        <SelectTrigger
-                          variant="tasks"
+                        <SelectTrigger variant="legacy"
                           className="w-full min-w-0 bg-surface-2 focus:border-border-focus **:data-[slot=select-value]:min-w-0"
                         >
                           <SelectValue placeholder="None" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent variant="tasks">
+                      <SelectContent variant="legacy" >
                         <SelectItem value="none">No goal</SelectItem>
                         {goals
                           .filter((g) => g.status !== "abandoned")
@@ -391,14 +387,13 @@ export function HabitModal({ open, onClose, habit }: Props) {
                       value={field.value ?? "manual"}
                     >
                       <FormControl>
-                        <SelectTrigger
-                          variant="tasks"
+                        <SelectTrigger variant="legacy"
                           className="w-full bg-surface-2 focus:border-border-focus"
                         >
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent variant="tasks">
+                      <SelectContent variant="legacy" >
                         <SelectItem value="manual">Manual</SelectItem>
                         <SelectItem value="watching">From Watching</SelectItem>
                       </SelectContent>
@@ -422,14 +417,13 @@ export function HabitModal({ open, onClose, habit }: Props) {
                         value={field.value ?? "any"}
                       >
                         <FormControl>
-                          <SelectTrigger
-                            variant="tasks"
+                          <SelectTrigger variant="legacy"
                             className="w-full bg-surface-2 focus:border-border-focus"
                           >
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent variant="tasks">
+                        <SelectContent variant="legacy" >
                           <SelectItem value="any">Anything</SelectItem>
                           <SelectItem value="film">Films</SelectItem>
                           <SelectItem value="serie">Series</SelectItem>
@@ -479,7 +473,7 @@ export function HabitModal({ open, onClose, habit }: Props) {
               >
                 Cancel
               </Button>
-              <Button
+              <Button variant="legacy"
                 type="submit"
                 disabled={isPending}
                 className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"

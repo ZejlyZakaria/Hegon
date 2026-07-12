@@ -193,7 +193,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
           >
             Cancel
           </Button>
-          <Button
+          <Button variant="legacy"
             type="submit"
             form={FORM_ID}
             disabled={isPending}
@@ -218,7 +218,6 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                 <FormControl>
                   <Input
                     {...field}
-                    variant="tasks"
                     placeholder="e.g. Launch HEGON beta"
                     autoFocus
                     className="bg-surface-2 focus:border-border-focus"
@@ -240,7 +239,6 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                 <FormControl>
                   <Textarea
                     {...field}
-                    variant="tasks"
                     placeholder="What does success look like?"
                     rows={2}
                     className="bg-surface-2 focus:border-border-focus"
@@ -262,7 +260,6 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                 <FormControl>
                   <Textarea
                     {...field}
-                    variant="tasks"
                     placeholder="Your north star — why do you really want this?"
                     rows={2}
                     className="bg-surface-2 focus:border-border-focus"
@@ -284,11 +281,11 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                   </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value ?? ""}>
                     <FormControl>
-                      <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
+                      <SelectTrigger variant="legacy" className="w-full bg-surface-2 focus:border-border-focus">
                         <SelectValue placeholder="None" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent variant="tasks">
+                    <SelectContent variant="legacy" >
                       <SelectItem value="none">No category</SelectItem>
                       <SelectItem value="career">Career</SelectItem>
                       <SelectItem value="health">Health</SelectItem>
@@ -313,11 +310,11 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                   </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
+                      <SelectTrigger variant="legacy" className="w-full bg-surface-2 focus:border-border-focus">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent variant="tasks">
+                    <SelectContent variant="legacy" >
                       <SelectItem value="low">Low</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
                       <SelectItem value="high">High</SelectItem>
@@ -391,11 +388,11 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                   </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
+                      <SelectTrigger variant="legacy" className="w-full bg-surface-2 focus:border-border-focus">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent variant="tasks">
+                    <SelectContent variant="legacy" >
                       <SelectItem value="manual">Manually</SelectItem>
                       <SelectItem value="tasks">From linked tasks</SelectItem>
                       <SelectItem value="activity">From an activity</SelectItem>
@@ -417,11 +414,11 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                     <FormLabel className="text-xs font-medium text-text-secondary">Source</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value ?? "watching"}>
                       <FormControl>
-                        <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
+                        <SelectTrigger variant="legacy" className="w-full bg-surface-2 focus:border-border-focus">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent variant="tasks">
+                      <SelectContent variant="legacy" >
                         <SelectItem value="watching">Watching</SelectItem>
                         <SelectItem value="books">Books</SelectItem>
                       </SelectContent>
@@ -447,11 +444,11 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                         <FormLabel className="text-xs font-medium text-text-secondary">Count</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value ?? "films"}>
                           <FormControl>
-                            <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
+                            <SelectTrigger variant="legacy" className="w-full bg-surface-2 focus:border-border-focus">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent variant="tasks">
+                          <SelectContent variant="legacy" >
                             <SelectItem value="films">Films</SelectItem>
                             <SelectItem value="series">TV Shows</SelectItem>
                             <SelectItem value="anime">Animes</SelectItem>
@@ -474,7 +471,6 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                           {...field}
                           type="number"
                           min={1}
-                          variant="tasks"
                           placeholder="50"
                           className="bg-surface-2 focus:border-border-focus"
                         />
@@ -491,11 +487,11 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                       <FormLabel className="text-xs font-medium text-text-secondary">Period</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value ?? "year"}>
                         <FormControl>
-                          <SelectTrigger variant="tasks" className="w-full bg-surface-2 focus:border-border-focus">
+                          <SelectTrigger variant="legacy" className="w-full bg-surface-2 focus:border-border-focus">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent variant="tasks">
+                        <SelectContent variant="legacy" >
                           <SelectItem value="year">This year ({currentYear})</SelectItem>
                           <SelectItem value="all_time">All time</SelectItem>
                         </SelectContent>

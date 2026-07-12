@@ -321,7 +321,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                 >
                   Back
                 </Button>
-                <Button
+                <Button variant="legacy"
                   type="button"
                   onClick={handleAdd}
                   disabled={adding}
@@ -339,7 +339,6 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
               <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
                 <Input
-                  variant="tasks"
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -437,7 +436,6 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                   Title <span style={{ color: ACCENT }}>*</span>
                 </label>
                 <Input
-                  variant="tasks"
                   value={manualTitle}
                   onChange={(e) => setManualTitle(e.target.value)}
                   placeholder="Enter book title"
@@ -449,7 +447,6 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-text-secondary">Author</label>
                 <Input
-                  variant="tasks"
                   value={manualAuthor}
                   onChange={(e) => setManualAuthor(e.target.value)}
                   placeholder="Enter author name"
@@ -459,7 +456,6 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-text-secondary">Total Pages</label>
                 <Input
-                  variant="tasks"
                   type="number"
                   min="1"
                   value={manualPages}
@@ -477,7 +473,7 @@ export function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                 >
                   Back
                 </Button>
-                <Button
+                <Button variant="legacy"
                   type="submit"
                   disabled={createBook.isPending || !manualTitle.trim()}
                   className="h-8 px-3 text-white hover:opacity-90 disabled:opacity-50"

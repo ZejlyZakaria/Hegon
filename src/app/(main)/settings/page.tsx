@@ -197,7 +197,7 @@ export default function SettingsPage() {
                   placeholder="Your name"
                   className="h-9 flex-1 rounded-lg border border-border-subtle bg-surface-overlay px-3 text-sm text-text-primary placeholder:text-text-tertiary transition-colors focus:border-border-focus focus:outline-none"
                 />
-                <Button
+                <Button variant="legacy"
                   onClick={handleSaveName}
                   disabled={!nameDirty || updateProfile.isPending}
                   className="shrink-0"
@@ -229,10 +229,10 @@ export default function SettingsPage() {
               value={settings?.default_module ?? "dashboard"}
               onValueChange={(v) => updateSettings.mutate({ default_module: v })}
             >
-              <SelectTrigger className="w-44 bg-surface-overlay border-border-subtle text-sm text-text-secondary focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger variant="legacy" className="w-44 bg-surface-overlay border-border-subtle text-sm text-text-secondary focus:ring-0 focus:ring-offset-0">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
+              <SelectContent variant="legacy" className="bg-surface-3 border-border-strong text-text-secondary">
                 {HOME_OPTIONS.map((m) => (
                   <SelectItem key={m.key} value={m.key} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
                     {m.label}
@@ -278,10 +278,10 @@ export default function SettingsPage() {
               value={settings?.date_format ?? "DD/MM/YYYY"}
               onValueChange={(v) => updateSettings.mutate({ date_format: v as DateFormat })}
             >
-              <SelectTrigger className="w-44 bg-surface-overlay border-border-subtle text-sm text-text-secondary focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger variant="legacy" className="w-44 bg-surface-overlay border-border-subtle text-sm text-text-secondary focus:ring-0 focus:ring-offset-0">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-surface-3 border-border-strong text-text-secondary">
+              <SelectContent variant="legacy" className="bg-surface-3 border-border-strong text-text-secondary">
                 {DATE_FORMATS.map((f) => (
                   <SelectItem key={f.value} value={f.value} className="text-sm focus:bg-surface-2 focus:text-text-primary cursor-pointer">
                     {f.label}

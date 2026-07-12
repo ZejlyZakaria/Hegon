@@ -145,7 +145,7 @@ function PasswordInput({
   const [show, setShow] = useState(false);
   return (
     <div className="relative">
-      <Input
+      <Input variant="legacy"
         type={show ? "text" : "password"}
         placeholder="••••••••••"
         value={value}
@@ -477,7 +477,7 @@ function AuthPageInner() {
                     >
                       Name
                     </Label>
-                    <Input
+                    <Input variant="legacy"
                       id="name"
                       type="text"
                       placeholder="Your name"
@@ -499,7 +499,7 @@ function AuthPageInner() {
               >
                 Email
               </Label>
-              <Input
+              <Input variant="legacy"
                 id="email"
                 type="email"
                 placeholder="you@example.com"
@@ -562,7 +562,7 @@ function AuthPageInner() {
             </AnimatePresence>
 
             {/* Submit */}
-            <Button
+            <Button variant="legacy"
               type="submit"
               disabled={loading || googleLoading || !email || !password}
               className="w-full h-11 mt-1 rounded-md text-sm font-semibold text-white transition-opacity duration-150 disabled:opacity-40"

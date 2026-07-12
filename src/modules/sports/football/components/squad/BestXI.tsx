@@ -471,10 +471,10 @@ export default function BestXI({
         {/* ligne 1 — formation + save */}
         <div className="flex items-center justify-between gap-3">
           <Select value={formation} onValueChange={handleFormationChange}>
-            <SelectTrigger className="w-28 h-9 bg-zinc-900 border-zinc-700/60 text-white text-sm font-bold focus:ring-0 focus:ring-offset-0 hover:border-zinc-600 transition-colors">
+            <SelectTrigger variant="legacy" className="w-28 h-9 bg-zinc-900 border-zinc-700/60 text-white text-sm font-bold focus:ring-0 focus:ring-offset-0 hover:border-zinc-600 transition-colors">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-700/60">
+            <SelectContent variant="legacy" className="bg-zinc-900 border-zinc-700/60">
               {Object.keys(FORMATIONS).map(f => (
                 <SelectItem key={f} value={f}
                   className={`text-sm font-semibold cursor-pointer focus:bg-zinc-800 ${f === formation ? "text-emerald-400" : "text-zinc-300"}`}>
@@ -484,7 +484,7 @@ export default function BestXI({
             </SelectContent>
           </Select>
 
-          <Button
+          <Button variant="legacy"
             onClick={handleSave}
             disabled={saving}
             size="sm"

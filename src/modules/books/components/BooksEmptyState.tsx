@@ -33,7 +33,7 @@ export function BooksEmptyState({ onAddClick }: Props) {
         Track what you read, what you want to read,
         and how far you&apos;ve come.
       </p>
-      <Button
+      <Button variant="legacy"
         type="button"
         onClick={onAddClick}
         className="h-9 rounded-control px-4 text-sm font-medium text-white hover:opacity-90"

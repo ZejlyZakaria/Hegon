@@ -142,7 +142,6 @@ export function GoalsPage() {
       <div className="relative flex flex-1 items-center sm:w-48 sm:flex-none">
         <Search size={14} className="pointer-events-none absolute left-2.5 text-text-tertiary" />
         <Input
-          variant="tasks"
           placeholder="Search goals…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -150,14 +149,14 @@ export function GoalsPage() {
         />
       </div>
       <Select value={category} onValueChange={(v) => setCategory(v as GoalCategory | "all")}>
-        <SelectTrigger variant="tasks" className="h-9 w-32 text-xs"><SelectValue /></SelectTrigger>
-        <SelectContent variant="tasks">
+        <SelectTrigger variant="legacy" className="h-9 w-32 text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent variant="legacy" >
           {CATEGORIES.map((c) => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}
         </SelectContent>
       </Select>
       <Select value={sort} onValueChange={(v) => setSort(v as GoalSort)}>
-        <SelectTrigger variant="tasks" className="h-9 w-28 text-xs"><SelectValue /></SelectTrigger>
-        <SelectContent variant="tasks">
+        <SelectTrigger variant="legacy" className="h-9 w-28 text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent variant="legacy" >
           {SORTS.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}
         </SelectContent>
       </Select>

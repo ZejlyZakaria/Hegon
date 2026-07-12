@@ -9,7 +9,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        // ⚠️ `legacy` was `default` until the flip. A bare <Button> therefore rendered the
+        // LOUDEST control in the app — a filled white CTA — and asking for the quiet one cost
+        // a prop at every call site. The system lost by default: muscle memory (and any
+        // codegen) types `<Button>`, and got shadcn. 31 of 123 call sites had drifted onto it.
+        // Now the default is `quiet` and shouting must be ASKED for. This variant is kept only
+        // so the flip changed zero pixels; every use of it is a call site awaiting review.
+        legacy: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
@@ -20,11 +26,10 @@ const buttonVariants = cva(
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
 
-        // ── HEGON variants (graphite). The shadcn ones above are legacy: they speak
-        // bg-primary/bg-accent, which is why every module hand-rolled its controls.
-        // These three cover what the app actually needs. Prefer them in new code.
+        // ── HEGON variants (graphite). The shadcn ones above speak bg-primary/bg-accent,
+        // which is why every module ended up hand-rolling its controls. These are the app.
         //
-        // quiet    — the default control on a page surface (filters, chevrons, ghost CTAs)
+        // quiet    — THE DEFAULT. The control on a page surface (filters, chevrons, ghost CTAs)
         // glass    — over a photo/backdrop (hero, poster overlays): reads on any image
         // contrast — a white CTA on a coloured surface (StatusCard's teal, accents)
         quiet:
@@ -53,7 +58,7 @@ const buttonVariants = cva(
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "quiet",
       size: "default",
     },
   },
@@ -61,7 +66,7 @@ const buttonVariants = cva(
 
 function Button({
   className,
-  variant = "default",
+  variant = "quiet",
   size = "default",
   asChild = false,
   ...props

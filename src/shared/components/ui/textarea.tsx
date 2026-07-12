@@ -9,7 +9,12 @@ const textareaVariants = cva(
     variants: {
       variant: {
         // Default shadcn style (inchangé)
-        default: cn(
+        // ⚠️ `legacy` was `default` until the flip — so a bare field rendered SHADCN, and the
+        // app's real field had to be asked for by name at every call site. Worse, that name was
+        // `tasks`: the module it happened to be born in, fossilised into the API. Nobody would
+        // have known, in six months, why the canonical input of the app was called "tasks".
+        // Now the HEGON field IS the default and `legacy` is a call site awaiting review.
+        legacy: cn(
           "field-sizing-content min-h-16 rounded-md border border-input bg-transparent shadow-xs",
           "text-base md:text-sm",
           "placeholder:text-muted-foreground",
@@ -19,7 +24,7 @@ const textareaVariants = cva(
         ),
         
         // HEGON field — matches the Input "tasks" variant exactly
-        tasks: cn(
+        default: cn(
           "min-h-20 resize-none rounded-control border border-border-default",
           "bg-surface-2",
           "text-text-primary placeholder:text-text-tertiary",

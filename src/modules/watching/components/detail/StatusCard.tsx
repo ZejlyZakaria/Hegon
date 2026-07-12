@@ -172,14 +172,14 @@ function RewatchDatePicker({ releaseISO, onAdd, onCancel, pending }: {
   return (
     <div className="mt-2 flex items-center gap-1.5">
       <Select value={y != null ? String(y) : undefined} onValueChange={(v) => { setY(Number(v)); setM(null); }}>
-        <SelectTrigger className={triggerCls}><SelectValue placeholder="Year" /></SelectTrigger>
-        <SelectContent className={contentCls}>
+        <SelectTrigger variant="legacy" className={triggerCls}><SelectValue placeholder="Year" /></SelectTrigger>
+        <SelectContent variant="legacy" className={contentCls}>
           {years.map((yr) => <SelectItem key={yr} value={String(yr)} className={itemCls}>{yr}</SelectItem>)}
         </SelectContent>
       </Select>
       <Select value={m != null ? String(m) : undefined} onValueChange={(v) => setM(Number(v))} disabled={y == null}>
-        <SelectTrigger className={triggerCls}><SelectValue placeholder="Month" /></SelectTrigger>
-        <SelectContent className={contentCls}>
+        <SelectTrigger variant="legacy" className={triggerCls}><SelectValue placeholder="Month" /></SelectTrigger>
+        <SelectContent variant="legacy" className={contentCls}>
           {months.map((mm) => <SelectItem key={mm} value={String(mm)} className={itemCls}>{MONTHS[mm - 1]}</SelectItem>)}
         </SelectContent>
       </Select>
@@ -449,10 +449,10 @@ export function StatusCard({
                           {media.type === "film" ? "Year watched" : "Year watched"}
                         </label>
                         <Select value={selectedYear ? String(selectedYear) : undefined} onValueChange={(v) => onWatchedYearChange(Number(v))}>
-                          <SelectTrigger className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0">
+                          <SelectTrigger variant="legacy" className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0">
                             <SelectValue placeholder="Pick a year" />
                           </SelectTrigger>
-                          <SelectContent className="border-border-strong bg-surface-3">
+                          <SelectContent variant="legacy" className="border-border-strong bg-surface-3">
                             {years.map((yr) => (
                               <SelectItem key={yr} value={String(yr)} className="text-xs focus:bg-surface-2 focus:text-text-primary">{yr}</SelectItem>
                             ))}
