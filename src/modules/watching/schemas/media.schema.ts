@@ -15,6 +15,9 @@ export const updateMediaSchema = z.object({
   notes: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
   watched_at: z.string().nullable().optional(),
+  /** Stamped on FORWARD progress only. A correction is not a viewing. */
+  last_watched_at: z.string().nullable().optional(),
+  caught_up_at: z.string().nullable().optional(),
   priority_level: z.enum(["high", "medium", "low"]).optional(),
   watched: z.boolean().optional(),
   in_progress: z.boolean().optional(),

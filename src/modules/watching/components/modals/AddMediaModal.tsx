@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { toast } from "@/shared/utils/toast";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
+import { airedFromTmdb } from "@/modules/watching/lib/series-state";
+import { HowFarDidYouGet, type Position, type Stance } from "./HowFarDidYouGet";
 import { useAddMedia } from "@/modules/watching/hooks/useAddMedia";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { RatingPicker } from "@/modules/watching/components/shared/RatingPicker";
@@ -91,6 +93,13 @@ export default function AddMediaModal({
   const [episodeInput, setEpisodeInput] = useState<string>("1");
   const [seasonError, setSeasonError] = useState<string | null>(null);
   const [episodeError, setEpisodeError] = useState<string | null>(null);
+  // For a SERIES, the position is the only honest input — the list you came from no longer
+  // decides your status. Null = not answered yet.
+  const [position, setPosition] = useState<Position | null>(null);
+  const [stance, setStance] = useState<Stance>("watching");
+  const [seasonAired, setSeasonAired] = useState<number[]>([]);
+  // When each season FINISHED airing (its last aired episode). Fetched on demand, cached.
+  const [seasonEnd, setSeasonEnd] = useState<Record<number, string>>({});
   const [runtime, setRuntime]         = useState<number | null>(null);
   const [directors, setDirectors]     = useState<{ id?: number; name: string; profile_url: string | null }[] | null>(null);
   const [cast, setCast]               = useState<{ id: number; name: string; character: string | null; profile_url: string | null }[]>([]);
@@ -98,6 +107,33 @@ export default function AddMediaModal({
   const [status, setStatus]           = useState<string | null>(null);
 
   const addMediaMutation = useAddMedia();
+
+  // YOU CANNOT HAVE WATCHED A SEASON BEFORE IT FINISHED AIRING. Season 3 of an anime that ran
+  // Oct 2019 → Mar 2020 cannot have been watched in 2014, and the year picker used to offer it
+  // (its floor was the SHOW's first air date). So the floor follows the season you claim: we
+  // fetch that season's last aired episode, once, and cache it.
+  useEffect(() => {
+    const season = position?.season;
+    if (!season || !selectedItem?.id || seasonEnd[season] !== undefined) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/tmdb?endpoint=tv/${selectedItem.id}/season/${season}&language=en-US`);
+        const data = await res.json();
+        const today = new Date().toISOString().slice(0, 10);
+        const aired = (data.episodes ?? [])
+          .map((e: any) => e.air_date as string | null)
+          .filter((d: string | null): d is string => !!d && d <= today);
+        if (!cancelled && aired.length) {
+          setSeasonEnd((prev) => ({ ...prev, [season]: aired[aired.length - 1] }));
+        }
+      } catch { /* fall back to the show's release year */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [position?.season, selectedItem?.id]);
+
+  const isSeries = defaultType === "serie" || defaultType === "anime";
 
   // ── Fetch taken priorities ─────────────────────────────────────────────────
 
@@ -125,6 +161,7 @@ export default function AddMediaModal({
         setPriority(null); setSeasonInput("1"); setEpisodeInput("1");
         setSeasonError(null); setEpisodeError(null); setConflict(null);
         setPriorityLevel("medium");
+        setPosition(null); setStance("watching"); setSeasonAired([]); setSeasonEnd({});
         setWatchedYear(new Date().getFullYear()); setWatchedMonth(null);
       }, 300);
       return () => clearTimeout(t);
@@ -224,6 +261,21 @@ export default function AddMediaModal({
       const extractedStudio  = isMovie ? (details.production_companies?.[0]?.name ?? null) : (details.networks?.[0]?.name ?? null);
       const rawStatus        = details.status?.toLowerCase() ?? null;
       const extractedStatus  = isMovie ? rawStatus : (rawStatus === "ended" ? "ended" : "ongoing");
+
+      // TMDB's `last_episode_to_air` is its own answer to "what is the newest episode that
+      // EXISTS" — House of the Dragon returns S3 E4. It rides along in the call we already make,
+      // so a title can be BORN knowing what has aired instead of waiting for the nightly sync.
+      setSeasonAired(
+        isMovie
+          ? []
+          : airedFromTmdb(
+              (details.seasons ?? []) as { season_number: number; episode_count: number }[],
+              details.last_episode_to_air as { season_number: number; episode_number: number } | undefined,
+            ),
+      );
+      setPosition(null);
+      setStance("watching");
+      setSeasonEnd({});
 
       setRuntime(runtimeMinutes);
       setDirectors(extractedDirectors);
@@ -345,6 +397,8 @@ export default function AddMediaModal({
         customPosterUrl: finalPosterUrl,
         genres: mapTmdbGenres(selectedItem.genre_ids),
         watchedAt,
+        position,
+        stance,
       });
 
       toast.success("Added to your collection.");
@@ -380,11 +434,20 @@ export default function AddMediaModal({
   const releaseYear  = releaseStr ? parseInt(releaseStr.slice(0, 4)) : 1900;
   const releaseMonth = releaseStr ? parseInt(releaseStr.slice(5, 7)) || 1 : 1;
 
+  // The earliest year you could POSSIBLY have watched what you claim: the year the season you
+  // picked finished airing. Falls back to the show's release year while the fetch is in flight.
+  const claimedEnd = position ? seasonEnd[position.season] : undefined;
+  const floorYear = claimedEnd ? parseInt(claimedEnd.slice(0, 4)) : releaseYear;
   const availableYears = Array.from(
-    { length: nowYear - releaseYear + 1 },
+    { length: Math.max(1, nowYear - floorYear + 1) },
     (_, i) => nowYear - i,
   );
-  const minMonth = watchedYear === releaseYear ? releaseMonth : 1;
+  useEffect(() => {
+    if (watchedYear < floorYear) setWatchedYear(floorYear);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [floorYear]);
+
+  const minMonth = watchedYear === floorYear ? (claimedEnd ? parseInt(claimedEnd.slice(5, 7)) || 1 : releaseMonth) : 1;
   const maxMonth = watchedYear === nowYear ? nowMonth : 12;
   const availableMonths = Array.from({ length: maxMonth - minMonth + 1 }, (_, i) => minMonth + i);
 
@@ -676,8 +739,28 @@ export default function AddMediaModal({
                       </div>
                     )}
 
-                    {/* library — watched date + info */}
-                    {listContext === "library" && (
+                    {/* THE QUESTION. Only where it was missing: the three doors that used to
+                        assert "watched" on your behalf (library / recentlyWatched / topTen).
+                        Want-to-watch and In-Progress already answer it by construction. */}
+                    {(defaultType === "serie" || defaultType === "anime") &&
+                      seasonAired.length > 0 &&
+                      (listContext === "library" || listContext === "recentlyWatched" || listContext === "topTen") && (
+                        <HowFarDidYouGet
+                          seasonAired={seasonAired}
+                          status={status}
+                          value={position}
+                          onChange={setPosition}
+                          stance={stance}
+                          onStanceChange={setStance}
+                        />
+                      )}
+
+                    {/* THE DATE. Removing it was a mistake: declaring "I watched three seasons" is a
+                        statement about the PAST, and the past must be datable. It isn't gone — it's
+                        re-pointed. The year you give now STAMPS the seasons you claimed (see
+                        useAddMedia), which is where a series' viewing dates have always lived.
+                        It appears as soon as you've said how far you got. */}
+                    {listContext === "library" && (!isSeries || !!position) && (
                       <div className="space-y-3">
                         <div className="space-y-2">
                           <label className="text-caption uppercase text-text-tertiary block">

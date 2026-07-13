@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Pencil, Tv, Lock, Clock } from "lucide-react";
+import { Check, Pencil, Tv, Lock, Clock } from "lucide-react";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/shared/components/ui/popover";
@@ -12,11 +12,17 @@ import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { Badge } from "@/shared/components/ui/badge";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
+import { isSeasonComplete, isSeasonDatable } from "@/modules/watching/lib/series-state";
 
 interface Props {
   seasonEpisodes: number[];
+  /** Episodes ACTUALLY AIRED per season. A season with 0 aired is not out, whatever TMDB announces. */
+  seasonAired: number[] | null | undefined;
+  currentEpisode: number;
   seasonPosters: (string | null)[] | null | undefined;
   seasonAirDates: (string | null)[] | null | undefined;
+  /** Last aired episode's date per season — null while a season is still coming out. */
+  seasonEndDates: (string | null)[] | null | undefined;
   seasonYears: Record<string, number> | null | undefined;
   seasonRatings: Record<string, number> | null | undefined;
   showPoster: string | null;        // fallback when a season has no poster
@@ -26,6 +32,8 @@ interface Props {
   incomplete: boolean;              // not fully watched (in progress / paused / dropped) → locks unreached seasons
   onYearChange: (next: Record<string, number>) => void;
   onRatingChange: (next: Record<string, number>) => void;
+  /** "I watched through this season" — moves where you stand. The page re-derives the status. */
+  onSetPosition: (season: number, episode: number) => void;
 }
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w300";
@@ -39,9 +47,39 @@ const fmtDate = (d: string) =>
 // it. Click a card → popover to set year & rating. Not-yet-started seasons of an
 // in-progress show are locked; seasons that haven't aired yet show "Coming soon".
 export function SeasonHistoryStrip({
-  seasonEpisodes, seasonPosters, seasonAirDates, seasonYears, seasonRatings,
-  showPoster, releaseYear, currentSeason, inProgress, incomplete, onYearChange, onRatingChange,
+  seasonEpisodes, seasonAired, seasonPosters, seasonAirDates, seasonEndDates, seasonYears, seasonRatings,
+  showPoster, releaseYear, currentSeason, currentEpisode, inProgress, incomplete, onYearChange, onRatingChange,
+  onSetPosition,
 }: Props) {
+  const airedIn = (idx: number) => (seasonAired ?? [])[idx] ?? 0;
+
+  // A season may carry a WATCH YEAR only once it has FULLY AIRED and you have watched it to the
+  // end. That rule now lives in series-state.ts and nowhere else — this component used to own a
+  // private version of it ("is it behind my position"), which called season 4 of FROM undatable
+  // though you'd watched every episode of it, while "Set all year" used no rule at all and would
+  // happily stamp a year on a season that is still coming out.
+  const facts = {
+    season_episodes: seasonEpisodes,
+    season_aired: seasonAired,
+    current_season: currentSeason,
+    current_episode: currentEpisode,
+    watched: !incomplete,
+  };
+  const datable = (idx: number) => isSeasonDatable(facts, idx + 1);
+
+  /**
+   * "I watched through this season." Offered on any FULLY AIRED season that isn't already exactly
+   * where you stand — in BOTH directions, because they're the same gesture:
+   *   · forward  — you'd seen three seasons of Seven Deadly Sins, and the app only knew of one.
+   *   · backward — you dropped it after season 2, not season 3.
+   * A season still coming out is never offered: you cannot have "watched through" it. Standing at
+   * the end of what's out is being CAUGHT UP, and the StatusCard owns that word.
+   */
+  const fullEps = (idx: number) => seasonEpisodes[idx] ?? 0;
+  const standingAt = (idx: number) => currentSeason === idx + 1 && currentEpisode >= fullEps(idx);
+  const jumpable = (idx: number) =>
+    !comingSoonAt(idx) && isSeasonComplete(facts, idx + 1) && !standingAt(idx);
+
   const now = new Date();
   const currentYear = now.getFullYear();
   const nowMs = now.getTime();
@@ -49,32 +87,46 @@ export function SeasonHistoryStrip({
 
   if (seasonEpisodes.length <= 1) return null;
 
-  // A season that hasn't aired yet (air_date in the future) → not watchable.
+  // A season nothing has aired from is not watchable — whatever TMDB has announced about it.
+  // (The air-date check is kept as a fallback for rows the sync hasn't reached yet.)
   const comingSoonAt = (idx: number) => {
+    if (seasonAired) return airedIn(idx) === 0;
     const d = seasonAirDates?.[idx];
     return !!d && new Date(d).getTime() > nowMs;
   };
   // Locked = unreleased OR (not-fully-watched show, season after where you stopped).
   const lockedAt = (idx: number) => comingSoonAt(idx) || (incomplete && idx + 1 > currentSeason);
-  const airYearOf = (idx: number) => {
-    const d = seasonAirDates?.[idx];
+  /**
+   * The earliest year you could have WATCHED this season — which is the year it ENDED, not the
+   * year it started. A season that premiered in December 2026 and closed in February 2027 could
+   * not have been watched through in 2026, yet the picker offered it, because the only date this
+   * component had was the start. `season_end_dates` is the sync's answer to that.
+   * (Fallback to the start date for rows the sync hasn't reached yet — a loose floor, never a
+   * wrong lock.)
+   */
+  const watchableFrom = (idx: number) => {
+    const d = seasonEndDates?.[idx] ?? seasonAirDates?.[idx];
     return (d ? new Date(d).getFullYear() : null) ?? releaseYear ?? 1900;
   };
 
-  // Year options for a given season — never before it aired, never after now.
+  // Year options for a given season — never before it finished airing, never after now.
   const yearsFor = (idx: number) => {
     const out: number[] = [];
-    for (let y = currentYear; y >= Math.min(airYearOf(idx), currentYear); y--) out.push(y);
+    for (let y = currentYear; y >= Math.min(watchableFrom(idx), currentYear); y--) out.push(y);
     return out;
   };
 
-  // "Set all" range — only years on/after the latest editable season aired.
+  // "Set all" applies a year to every season you may TRUTHFULLY date — not to every season that
+  // isn't visibly locked. Those are different sets, and the gap between them was the bug: the
+  // season you're in the middle of isn't locked (you're watching it), so one tap dated a season
+  // you haven't finished, and House of the Dragon read "2026" for a season with four of its eight
+  // episodes out.
+  const datableIdx = seasonEpisodes.map((_, idx) => idx).filter(datable);
+
+  // Range floors at the LATEST of those seasons' air years — you cannot have watched them all
+  // before the last one existed.
   const setAllYears = (() => {
-    let floor = releaseYear ?? 1900;
-    seasonEpisodes.forEach((_, idx) => {
-      if (lockedAt(idx)) return;
-      floor = Math.max(floor, airYearOf(idx));
-    });
+    const floor = datableIdx.reduce((f, idx) => Math.max(f, watchableFrom(idx)), releaseYear ?? 1900);
     const out: number[] = [];
     for (let y = currentYear; y >= Math.min(floor, currentYear); y--) out.push(y);
     return out;
@@ -85,9 +137,7 @@ export function SeasonHistoryStrip({
 
   const setAll = (year: number) => {
     const next = { ...(seasonYears ?? {}) };
-    seasonEpisodes.forEach((_, idx) => {
-      if (!lockedAt(idx)) next[String(idx + 1)] = year;
-    });
+    datableIdx.forEach((idx) => { next[String(idx + 1)] = year; });
     onYearChange(next);
   };
 
@@ -108,17 +158,20 @@ export function SeasonHistoryStrip({
         actions={
           <>
             {/* An action-select, not a filter: it has no persisted value, it applies a year to
-                every season at once. Same trigger shell as FilterSelect so it lines up. */}
-            <Select onValueChange={(v) => setAll(Number(v))}>
-              <SelectTrigger variant="legacy" className="h-8 w-auto gap-2 border-border-subtle bg-surface-2 px-3.5 text-xs text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary focus:ring-0">
-                <SelectValue placeholder="Set all year" />
-              </SelectTrigger>
-              <SelectContent variant="legacy" className="border-border-strong bg-surface-3">
-                {setAllYears.map((y) => (
-                  <SelectItem key={y} value={String(y)} className="text-xs focus:bg-surface-2 focus:text-text-primary">All in {y}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                every DATABLE season at once. With nothing to date — you've only started season 1,
+                say — it isn't a disabled control, it's simply absent: there is no action here. */}
+            {datableIdx.length > 0 && (
+              <Select onValueChange={(v) => setAll(Number(v))}>
+                <SelectTrigger variant="legacy" className="h-8 w-auto gap-2 border-border-subtle bg-surface-2 px-3.5 text-xs text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary focus:ring-0">
+                  <SelectValue placeholder="Set all year" />
+                </SelectTrigger>
+                <SelectContent variant="legacy" className="border-border-strong bg-surface-3">
+                  {setAllYears.map((y) => (
+                    <SelectItem key={y} value={String(y)} className="text-xs focus:bg-surface-2 focus:text-text-primary">All in {y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {seasonEpisodes.length > 6 && (
               <CarouselNav size="md" onPrev={() => scroll(-1)} onNext={() => scroll(1)} />
             )}
@@ -137,16 +190,30 @@ export function SeasonHistoryStrip({
           const s = idx + 1;
           const comingSoon = comingSoonAt(idx);
           const locked = lockedAt(idx);
-          const current = inProgress && s === currentSeason;
-          const year = seasonYears?.[String(s)];
-          const rating = seasonRatings?.[String(s)];
+          // The popover sets a YEAR and a RATING — both are verdicts on a season you have
+          // FINISHED. Offering them on the season you're halfway through was the same hole as
+          // "Set all year", one card at a time. The card stays visible and readable; only the
+          // claim is refused, and it opens by itself the moment you reach the end.
+          const editable = !locked && datable(idx);
+          const canJump = jumpable(idx);
+          const interactive = editable || canJump;
+          // "Now" = THE SEASON YOU ARE IN THE MIDDLE OF — not merely the season your position sits
+          // in. On FROM you're at S4 E10 of a fully-aired season 4: you're not watching it "now",
+          // you're waiting for season 5, and a badge saying otherwise is just false. It shows only
+          // while there is still something left to watch in that season.
+          const current = inProgress && s === currentSeason && currentEpisode < airedIn(idx);
+          // A stamp on a season you haven't reached is a claim you're no longer making. The data
+          // stays (it comes back when you advance again) — we just stop reading it.
+          const reached = !incomplete || s <= currentSeason;
+          const year = reached ? seasonYears?.[String(s)] : undefined;
+          const rating = reached ? seasonRatings?.[String(s)] : undefined;
           const posterPath = seasonPosters?.[idx] ?? null;
           const poster = posterPath ? `${TMDB_IMG}${posterPath}` : (showPoster ?? null);
           const airDate = seasonAirDates?.[idx] ?? null;
 
           const cardInner = (
             <div className={`relative aspect-2/3 w-full overflow-hidden rounded-tile border border-border-subtle bg-surface-1 transition-transform duration-300 ease-out ${
-              locked ? "" : "group-hover:z-10 group-hover:scale-[1.04]"
+              editable ? "group-hover:z-10 group-hover:scale-[1.04]" : ""
             }`}>
               {poster ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -157,9 +224,12 @@ export function SeasonHistoryStrip({
                 </div>
               )}
 
-              {/* Top-left = WHEN. A flag on artwork → the shared glass badge, not a hand-rolled
-                  black pill (this card had three different ones). */}
-              {!locked && (
+              {/* Top-left = WHEN.
+                  The "Year" placeholder is a CALL TO ACTION ("click to date this season") — and we
+                  refuse that action on a season that isn't fully aired and watched. Offering it
+                  anyway was the app inviting you to do something it would then decline. On a season
+                  still coming out, "Now" says everything that's true. */}
+              {!locked && (year != null || datable(idx)) && (
                 <Badge
                   variant="flag"
                   size="sm"
@@ -202,20 +272,27 @@ export function SeasonHistoryStrip({
                 <div className="absolute inset-0 flex items-center justify-center bg-black/65">
                   <Lock size={15} className="text-white/55" />
                 </div>
-              ) : (
+              ) : editable ? (
                 /* Hover edit affordance */
                 <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/25 group-hover:opacity-100">
                   <div className="on-artwork flex h-7 w-7 items-center justify-center rounded-full">
                     <Pencil size={12} className="text-white" />
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
           );
 
-          if (locked) {
+          // Nothing to say about this season → not a button. That's the season you're in the
+          // middle of (it carries "Now", which already says everything true) and the ones that
+          // haven't aired.
+          if (!interactive) {
             return (
-              <div key={s} className="w-(--rail-peek) shrink-0 cursor-not-allowed sm:w-(--poster-lg)" title={comingSoon ? "Not aired yet" : "Not started yet"}>
+              <div
+                key={s}
+                className={`w-(--rail-peek) shrink-0 sm:w-(--poster-lg) ${comingSoon ? "cursor-not-allowed" : "cursor-default"}`}
+                title={comingSoon ? "Not aired yet" : "Finish this season to date and rate it"}
+              >
                 {cardInner}
               </div>
             );
@@ -235,6 +312,8 @@ export function SeasonHistoryStrip({
                   {airDate && <p className="text-micro text-text-tertiary">Aired {fmtDate(airDate)} · {eps} ep{eps > 1 ? "s" : ""}</p>}
                 </div>
 
+                {editable && (
+                  <>
                 <label className="mb-1 block text-micro text-text-tertiary">Year watched</label>
                 <Select value={year ? String(year) : undefined} onValueChange={(v) => setYear(s, Number(v))}>
                   <SelectTrigger variant="legacy" className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0">
@@ -259,6 +338,32 @@ export function SeasonHistoryStrip({
                     ))}
                   </SelectContent>
                 </Select>
+                  </>
+                )}
+
+                {/* WHERE YOU STAND — the edit the page never had. It reads as a plain sentence
+                    because that's what it is: a claim about how far you got. The status follows
+                    from it (a show you'd called "watched" stops being watched when you say you
+                    stopped at season 3), and the years are deliberately left alone: claiming a
+                    season today doesn't mean you watched it today. */}
+                {canJump && (
+                  <>
+                    {editable && <div className="my-3 h-px bg-border-default" />}
+                    <button
+                      type="button"
+                      onClick={() => onSetPosition(s, eps)}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-control bg-surface-2 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-1 hover:text-text-primary"
+                    >
+                      <Check size={12} />
+                      Watched through S{s}
+                    </button>
+                    {!editable && (
+                      <p className="mt-1.5 text-center text-micro text-text-tertiary">
+                        You haven&apos;t marked this season as watched.
+                      </p>
+                    )}
+                  </>
+                )}
               </PopoverContent>
             </Popover>
           );

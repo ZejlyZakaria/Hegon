@@ -12,6 +12,7 @@ import { syncWatchingHabits } from "../lib/sync-habits";
 import { toast } from "@/shared/utils/toast";
 import { resolveTransition } from "../lib/resolve-transition";
 import { RESET_STATUS } from "../lib/status-flags";
+import { airedFromTmdb, seriesState } from "../lib/series-state";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import type { ListType, MediaType } from "../types";
@@ -37,6 +38,13 @@ interface AddMediaInput {
   customPosterUrl?: string | null;
   genres: string[];
   watchedAt?: string | null;
+  /**
+   * HOW FAR YOU GOT — for a series, the ONLY honest input. `null` = "not started".
+   * The list you came from no longer decides your status; this does. See below.
+   */
+  position?: { season: number; episode: number } | null;
+  /** What happened after you stopped partway: still watching, paused, or done with it. */
+  stance?: "watching" | "paused" | "dropped";
 }
 
 export function useAddMedia() {
@@ -72,7 +80,74 @@ export function useAddMedia() {
         customPosterUrl,
         genres,
         watchedAt,
+        position,
+        stance,
       } = input;
+
+      const isSeries = defaultType === "serie" || defaultType === "anime";
+
+      // ── THE GUARD ────────────────────────────────────────────────────────────────────────
+      // `watched` used to be decided by the DOOR you came through:
+      //     watched: listContext === "recentlyWatched" || "topTen" || "library"
+      // Three doors that simply ASSERTED you'd finished the thing. For a film that's fine — "seen
+      // it / haven't" is binary. For a SERIES it's a lie, and it is the line that manufactured 23
+      // rows claiming you'd watched shows that are still running. Adding an ongoing series to your
+      // Top 10 marked it finished, silently.
+      //
+      // Now the status is DERIVED from how far you got, by the same seriesState() the whole app
+      // uses. The word "watched" doesn't get refused for an ongoing series — it simply cannot be
+      // produced. No future door can re-open this, because there's nothing left to re-open.
+      const seasonAiredList = isSeries
+        ? airedFromTmdb(
+            (selectedItem.seasons ?? []) as { season_number: number; episode_count: number }[],
+            selectedItem.last_episode_to_air as { season_number: number; episode_number: number } | undefined,
+          )
+        : null;
+
+      const seriesFacts = {
+        season_aired: seasonAiredList,
+        season_episodes: seasonAiredList,
+        status,
+        current_season: position?.season ?? null,
+        current_episode: position?.episode ?? null,
+      };
+      const state = isSeries && position ? seriesState(seriesFacts) : null;
+
+      // A film keeps the old contract: the door knows. A series obeys its position.
+      const filmWatched =
+        listContext === "recentlyWatched" || listContext === "topTen" || listContext === "library";
+      const isWatched = isSeries ? state === "completed" : filmWatched;
+
+      // And the SECOND word that lied. `in_progress` means "I'm watching this NOW" — but a show
+      // you left behind three seasons in, five years ago, is not in progress. It's paused, or
+      // it's dropped. Exactly the disease `watched` had (it conflated caught-up with finished),
+      // and the app already owned the right words. It just never asked.
+      const stoppedPartway = isSeries && !!position && !isWatched && state !== "caught-up";
+      const isDropped = stoppedPartway && stance === "dropped";
+      const isPaused = stoppedPartway && stance === "paused";
+      const isInProgress = isSeries
+        ? !!position && !isWatched && !isDropped && !isPaused
+        : listContext === "inProgress";
+      const caughtUpAt = state === "caught-up" ? new Date().toISOString() : null;
+
+      // THE YEAR YOU GIVE BELONGS TO THE SEASONS YOU CLAIM. Declaring "I watched three seasons"
+      // is a statement about the PAST, so it must be datable — and the date has one honest home:
+      // the season years. Only FULLY watched seasons are stamped; the one you're in the middle of
+      // hasn't happened yet.
+      const claimedYear = watchedAt ? new Date(watchedAt).getFullYear() : null;
+      const seasonYears: Record<string, number> | null =
+        isSeries && position && claimedYear && seasonAiredList
+          ? Object.fromEntries(
+              seasonAiredList
+                .map((aired, i) => ({ season: i + 1, aired }))
+                .filter((s) =>
+                  s.aired > 0 &&
+                  (s.season < position.season ||
+                    (s.season === position.season && position.episode >= s.aired)),
+                )
+                .map((s) => [String(s.season), claimedYear]),
+            )
+          : null;
 
       const effectiveWatchedAt = watchedAt ?? new Date().toISOString();
       const thirtyDaysAgo = new Date();
@@ -110,15 +185,15 @@ export function useAddMedia() {
             : userRating > 0
               ? userRating
               : null,
-        watched:
-          listContext === "recentlyWatched" ||
-          listContext === "topTen" ||
-          listContext === "library",
-        recently_watched: listContext === "recentlyWatched" || isRecentLibraryAdd,
-        watched_at:
-          listContext === "recentlyWatched" || listContext === "topTen" || listContext === "library"
-            ? effectiveWatchedAt
-            : null,
+        watched: isWatched,
+        dropped: isDropped,
+        paused: isPaused,
+        caught_up_at: caughtUpAt,
+        season_aired: seasonAiredList,
+        ...(seasonYears ? { season_years: seasonYears } : {}),
+        recently_watched: isWatched && (listContext === "recentlyWatched" || isRecentLibraryAdd),
+        // A date of viewing belongs to something you actually finished.
+        watched_at: isWatched ? effectiveWatchedAt : null,
         want_to_watch: listContext === "wantToWatch",
         favorite: listContext === "topTen" ? true : favorite,
         priority: listContext === "topTen" ? priority : null,
@@ -144,9 +219,9 @@ export function useAddMedia() {
                 .filter((s: any) => s.season_number > 0)
                 .map((s: any) => (s.air_date ?? null) as string | null)
             : [],
-        current_episode: listContext === "inProgress" ? currentEpisode : null,
-        current_season: listContext === "inProgress" ? currentSeason : null,
-        in_progress: listContext === "inProgress",
+        current_episode: isSeries ? (position?.episode ?? (listContext === "inProgress" ? currentEpisode : null)) : null,
+        current_season: isSeries ? (position?.season ?? (listContext === "inProgress" ? currentSeason : null)) : null,
+        in_progress: isInProgress,
         episodes:
           defaultType === "serie" || defaultType === "anime" ? episodes : null,
         tmdb_id: selectedItem.id,

@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Bookmark, CalendarPlus, Check, ChevronDown, CircleSlash, Heart,
+  Bookmark, CalendarPlus, Check, ChevronDown, CircleSlash, Clock, Heart,
   Minus, MoreHorizontal, PauseCircle, Pencil, Play, Plus, Repeat, RotateCcw, Trash2, X,
 } from "lucide-react";
 import {
@@ -22,6 +22,7 @@ import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { useRewatches, useAddRewatch, useRemoveRewatch } from "../../hooks/useRewatches";
 import { dropReasonLabel } from "../../lib/drop-reasons";
+import { airedInSeason, caughtUpOn, hasFullyWatchedSeason, isFinished, lastAiredSeason, seriesState } from "../../lib/series-state";
 import type { WatchingMedia } from "../../types";
 import type { WatchProviderInfo } from "../../hooks/useWatchProviders";
 
@@ -82,9 +83,18 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function StepRow({ label, value, total, min = 0, onDelta }: {
-  label: string; value: number; total: number | null; min?: number; onDelta: (d: number) => void;
+/**
+ * `total` and `max` are NOT the same number, and conflating them was a real bug.
+ *   total → what the season IS. It INFORMS. (House of the Dragon season 3 has 8 episodes.)
+ *   max   → what has AIRED. It DECIDES. (Four of them exist. You may not claim the other four.)
+ * Showing "4 / 4" enforced the ceiling by DELETING the information — a season one-third watched
+ * looked complete, and you lost the one thing you wanted to know: how much is still coming.
+ * The rule was only ever about actions: the ANNOUNCED may be displayed, the AIRED decides.
+ */
+function StepRow({ label, value, total, max, min = 0, onDelta }: {
+  label: string; value: number; total: number | null; max?: number | null; min?: number; onDelta: (d: number) => void;
 }) {
+  const ceiling = max ?? total;
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-label text-white/45">{label}</span>
@@ -105,7 +115,7 @@ function StepRow({ label, value, total, min = 0, onDelta }: {
         <button
           type="button"
           onClick={() => onDelta(1)}
-          disabled={total != null && value >= total}
+          disabled={ceiling != null && value >= ceiling}
           className="flex h-6 w-6 items-center justify-center rounded-control bg-white/10 text-white/75 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
         >
           <Plus size={11} />
@@ -224,6 +234,7 @@ interface Props {
   favorite: boolean;
   onFavoriteToggle: () => void;
   onMarkWatched: () => void;
+  onMarkCaughtUp: () => void;                // series still running → the honest version of "watched"
   onStartWatching: () => void;
   onPause: () => void;
   onDrop: () => void;                        // opens the drop-reason CaptureSheet
@@ -236,12 +247,35 @@ interface Props {
 
 export function StatusCard({
   media, isSeries, providers, currentSeason, currentEpisode, onUpdateProgress,
-  favorite, onFavoriteToggle, onMarkWatched, onStartWatching, onPause, onDrop,
+  favorite, onFavoriteToggle, onMarkWatched, onMarkCaughtUp, onStartWatching, onPause, onDrop,
   onResume, onAddNote, onWatchedYearChange, onDelete, isUpdating,
 }: Props) {
   const status: CardStatus = media.is_reference ? "want_to_watch" : statusOf(media);
 
-  const { data: rewatches = [] } = useRewatches(status === "watched" ? media.id : "");
+  // "Mark as completed" used to appear when you reached the last ANNOUNCED episode — which for
+  // an ongoing show meant the app cheerfully offered to declare a story finished that isn't.
+  // The state is now derived from what has actually AIRED plus whether the show is over:
+  //   · completed → the show is over and you've seen it all. Only then may you complete it.
+  //   · caught-up → you've seen everything that exists, but it isn't over. You're WAITING, and
+  //     the card says so instead of pretending you have a decision to make.
+  // The live position (the stepper) wins over the stored row, so the state follows your taps.
+  const seriesFacts = { ...media, current_season: currentSeason, current_episode: currentEpisode };
+  const state = isSeries ? seriesState(seriesFacts) : null;
+  const atLastEpisode = state === "completed";
+  const caughtUp = state === "caught-up";
+
+  /**
+   * REWATCHING WAS TIED TO THE WRONG WORD.
+   *
+   * "Log rewatch" lived on `watched`, and only there — so The Last of Us, which you have seen
+   * every episode of and are waiting on, could not be rewatched. Not because rewatching it is
+   * meaningless (you did it last month), but because the app had filed it under "in progress" and
+   * that shelf has no such button. The condition was never `watched`; it was HAVE YOU SEEN IT
+   * ALL. Completed and caught-up both answer yes.
+   */
+  const canRewatch = isSeries ? atLastEpisode || caughtUp : media.watched;
+
+  const { data: rewatches = [] } = useRewatches(canRewatch ? media.id : "");
   const addRewatch = useAddRewatch(media.id);
   const removeRewatch = useRemoveRewatch(media.id);
   const [backdating, setBackdating] = useState(false);
@@ -250,14 +284,48 @@ export function StatusCard({
   // Series carry a full S1 air date; films only a year → floor to Jan 1.
   const releaseISO = media.season_air_dates?.[0] || (media.year ? `${media.year}-01-01` : null);
 
-  const maxSeason = media.seasons ?? null;
-  const episodesInSeason = media.season_episodes?.[currentSeason - 1] ?? null;
-  const episodesInLastSeason = maxSeason != null ? (media.season_episodes?.[maxSeason - 1] ?? null) : null;
-  const atLastEpisode =
-    maxSeason != null && episodesInLastSeason != null &&
-    currentSeason === maxSeason && currentEpisode === episodesInLastSeason;
+  // THE STEPPERS SHOW THE ANNOUNCED AND STOP AT THE AIRED. Two numbers, two jobs — see StepRow.
+  // "4 / 8" with a dead "+" tells you both truths at once: the season has eight episodes, and
+  // only four of them exist. "4 / 4" told you neither.
+  const announcedSeasons = isSeries ? (media.season_episodes?.length ?? media.seasons ?? null) : null;
+  const announcedInSeason = isSeries ? (media.season_episodes?.[currentSeason - 1] ?? null) : null;
+  const lastSeasonOut = isSeries ? lastAiredSeason(media) : null;
+  const airedInThisSeason = isSeries ? airedInSeason(media, currentSeason) : null;
 
   const reason = dropReasonLabel(media.drop_reason);
+
+  // "Season 3" when you finished it, "S3 · E4" when you walked out mid-season. Both are true
+  // sentences; which one applies is a fact about your position, not a formatting choice.
+  const stoppedAfter = !isSeries
+    ? null
+    : hasFullyWatchedSeason(seriesFacts, currentSeason)
+      ? `Season ${currentSeason}`
+      : currentEpisode > 0
+        ? `S${currentSeason} · E${currentEpisode}`
+        : null;
+
+  /**
+   * THE SIDE DOOR.
+   *
+   * The front door was locked — "Mark as completed" only appears when the show is really over —
+   * and then this menu offered "Mark as watched" from FOUR different states, on any show, running
+   * or not. One tap, and you'd declared House of the Dragon finished. That's the third time this
+   * exact shape of bug has appeared: bolt the main entrance, leave the service door swinging.
+   *
+   * What you CAN truthfully say about a show that isn't over is "I've seen everything that's out".
+   * So on a running series that's what the item says — and it does the honest thing: it puts your
+   * position at the last AIRED episode instead of writing `watched = true` over a blank position.
+   */
+  const canComplete = !isSeries || isFinished(media.status);
+  const markItem = canComplete ? (
+    <DropdownMenuItem onClick={onMarkWatched} className={menuItemClass}>
+      <Check size={13} /> Mark as watched
+    </DropdownMenuItem>
+  ) : (
+    <DropdownMenuItem onClick={onMarkCaughtUp} className={menuItemClass}>
+      <Clock size={13} /> Mark as caught up
+    </DropdownMenuItem>
+  );
 
   // Year is editable where no Watch History strip owns it: films + 1-season shows.
   const seasonCount = media.season_episodes?.length ?? 0;
@@ -290,6 +358,70 @@ export function StatusCard({
   };
 
   const lastRewatch = rewatches[0]?.watched_on ?? null;
+
+  // The rewatch record — the same instrument wherever you've seen the whole thing, finished or
+  // merely caught up. It used to be welded into the `watched` body, which is precisely why a
+  // caught-up show couldn't have one.
+  const rewatchRows = (
+    <>
+      {rewatches.length > 0 && (
+        <>
+          <div className="h-px bg-white/10" />
+          <Row
+            label="Rewatches"
+            value={
+              /* The dates live one tap away — a quiet list, removable per entry */
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="group inline-flex items-center gap-1 text-label font-medium text-white transition-colors hover:text-white/90"
+                  >
+                    {rewatches.length === 1 && lastRewatch
+                      ? fmtDate(lastRewatch)
+                      : `${rewatches.length} times`}
+                    <ChevronDown size={11} className="text-white/40 transition-colors group-hover:text-white/70" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-52 border-border-strong bg-surface-3 p-1.5">
+                  {rewatches.map((r) => (
+                    <div
+                      key={r.id}
+                      className="group flex items-center justify-between gap-2 rounded-chip px-2 py-1.5 transition-colors hover:bg-surface-2"
+                    >
+                      <span className="inline-flex items-center gap-2 text-xs text-text-secondary">
+                        <Repeat size={11} className="text-accent-watching-vivid" />
+                        {fmtDate(r.watched_on)}
+                      </span>
+                      <Hint label="Remove this rewatch">
+                        <button
+                          type="button"
+                          aria-label="Remove this rewatch"
+                          onClick={() => handleRemoveRewatch(r.id)}
+                          className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary opacity-0 transition-[opacity,color] hover:text-red-400 group-hover:opacity-100"
+                        >
+                          <X size={11} />
+                        </button>
+                      </Hint>
+                    </div>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            }
+          />
+        </>
+      )}
+
+      {backdating && (
+        <RewatchDatePicker
+          releaseISO={releaseISO}
+          pending={addRewatch.isPending}
+          onAdd={(iso) => logRewatch(iso)}
+          onCancel={() => setBackdating(false)}
+        />
+      )}
+    </>
+  );
 
   return (
     <section
@@ -356,11 +488,7 @@ export function StatusCard({
             <DropdownMenuContent align="end" className="w-52 rounded-card border-border-default bg-surface-3 p-1 shadow-md">
               {status === "want_to_watch" && (
                 <>
-                  {isSeries && (
-                    <DropdownMenuItem onClick={onMarkWatched} className={menuItemClass}>
-                      <Check size={13} /> Mark as watched
-                    </DropdownMenuItem>
-                  )}
+                  {isSeries && markItem}
                   <DropdownMenuItem onClick={onAddNote} className={menuItemClass}>
                     <Pencil size={13} /> Add a note
                   </DropdownMenuItem>
@@ -374,9 +502,25 @@ export function StatusCard({
                   <DropdownMenuItem onClick={onDrop} className={menuItemClass}>
                     <CircleSlash size={13} /> Drop
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onMarkWatched} className={menuItemClass}>
-                    <Check size={13} /> Mark as watched
-                  </DropdownMenuItem>
+                  {/* Hidden when you're already standing at the frontier — the card says
+                      "All caught up" two inches below, and a menu item offering to do it again
+                      is noise pretending to be an action. */}
+                  {!caughtUp && markItem}
+                  {/* Caught up = you've seen every episode that exists. Watching it again is a
+                      thing people do (The Last of Us, while waiting) and the app simply had no
+                      door for it — "Log rewatch" was welded to the word `watched`. The primary
+                      slot is taken by the "All caught up" line, which is the more important
+                      truth, so both rewatch actions live here. */}
+                  {caughtUp && (
+                    <>
+                      <DropdownMenuItem onClick={() => logRewatch(todayISO())} className={menuItemClass}>
+                        <Repeat size={13} /> Log rewatch
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setBackdating((v) => !v)} className={menuItemClass}>
+                        <CalendarPlus size={13} /> Log a past rewatch
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </>
               )}
               {status === "paused" && (
@@ -384,16 +528,12 @@ export function StatusCard({
                   <DropdownMenuItem onClick={onDrop} className={menuItemClass}>
                     <CircleSlash size={13} /> Drop
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onMarkWatched} className={menuItemClass}>
-                    <Check size={13} /> Mark as watched
-                  </DropdownMenuItem>
+                  {markItem}
                 </>
               )}
               {status === "dropped" && (
                 <>
-                  <DropdownMenuItem onClick={onMarkWatched} className={menuItemClass}>
-                    <Check size={13} /> Mark as watched
-                  </DropdownMenuItem>
+                  {markItem}
                   <DropdownMenuItem onClick={onDrop} className={menuItemClass}>
                     <Pencil size={13} /> Change reason
                   </DropdownMenuItem>
@@ -465,62 +605,7 @@ export function StatusCard({
                   )
                 }
               />
-              {rewatches.length > 0 && (
-                <>
-                  <div className="h-px bg-white/10" />
-                  <Row
-                    label="Rewatches"
-                    value={
-                      /* The dates live one tap away — a quiet list, removable per entry */
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button
-                            type="button"
-                            className="group inline-flex items-center gap-1 text-label font-medium text-white transition-colors hover:text-white/90"
-                          >
-                            {rewatches.length === 1 && lastRewatch
-                              ? fmtDate(lastRewatch)
-                              : `${rewatches.length} times`}
-                            <ChevronDown size={11} className="text-white/40 transition-colors group-hover:text-white/70" />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent align="end" className="w-52 border-border-strong bg-surface-3 p-1.5">
-                          {rewatches.map((r) => (
-                            <div
-                              key={r.id}
-                              className="group flex items-center justify-between gap-2 rounded-chip px-2 py-1.5 transition-colors hover:bg-surface-2"
-                            >
-                              <span className="inline-flex items-center gap-2 text-xs text-text-secondary">
-                                <Repeat size={11} className="text-accent-watching-vivid" />
-                                {fmtDate(r.watched_on)}
-                              </span>
-                              <Hint label="Remove this rewatch">
-                                <button
-                                  type="button"
-                                  aria-label="Remove this rewatch"
-                                  onClick={() => handleRemoveRewatch(r.id)}
-                                  className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary opacity-0 transition-[opacity,color] hover:text-red-400 group-hover:opacity-100"
-                                >
-                                  <X size={11} />
-                                </button>
-                              </Hint>
-                            </div>
-                          ))}
-                        </PopoverContent>
-                      </Popover>
-                    }
-                  />
-                </>
-              )}
-
-              {backdating && (
-                <RewatchDatePicker
-                  releaseISO={releaseISO}
-                  pending={addRewatch.isPending}
-                  onAdd={(iso) => logRewatch(iso)}
-                  onCancel={() => setBackdating(false)}
-                />
-              )}
+              {rewatchRows}
             </div>
           )}
 
@@ -529,34 +614,51 @@ export function StatusCard({
               <StepRow
                 label="Season"
                 value={currentSeason}
-                total={maxSeason}
+                total={announcedSeasons}
+                max={lastSeasonOut}
                 min={1}
                 onDelta={(d) => {
-                  const next = Math.max(1, Math.min(currentSeason + d, maxSeason ?? Infinity));
+                  const next = Math.max(1, Math.min(currentSeason + d, lastSeasonOut ?? Infinity));
                   if (next !== currentSeason) onUpdateProgress(next, 0);
                 }}
               />
               <StepRow
                 label="Episode"
                 value={currentEpisode}
-                total={episodesInSeason}
+                total={announcedInSeason}
+                max={airedInThisSeason}
                 onDelta={(d) => {
-                  const max = episodesInSeason ?? Infinity;
-                  const next = Math.max(0, Math.min(currentEpisode + d, max));
+                  const ceiling = airedInThisSeason ?? Infinity;
+                  const next = Math.max(0, Math.min(currentEpisode + d, ceiling));
                   if (next !== currentEpisode) onUpdateProgress(currentSeason, next);
                 }}
               />
+              {/* You've seen it all — so the record of having seen it AGAIN belongs here too. */}
+              {caughtUp && rewatchRows}
             </div>
           )}
 
           {status === "paused" && (
-            <p className="mt-3 text-label leading-relaxed text-white/60">
-              It kept its position{isSeries ? ` — S${currentSeason} · E${currentEpisode}` : ""}. Pick it back up any time.
-            </p>
+            <div className="mt-2.5">
+              {stoppedAfter && <Row label="Stopped after" value={stoppedAfter} />}
+              <p className={cn("text-label leading-relaxed text-white/60", stoppedAfter ? "mt-1.5" : "mt-0.5")}>
+                Pick it back up any time.
+              </p>
+            </div>
           )}
 
           {status === "dropped" && (
             <div className="mt-2.5">
+              {/* WHERE you left is the fact that was missing. "Dropped" alone doesn't say whether
+                  you bailed in the pilot or left after three seasons — and those are different
+                  memories. It's derived from your position, so correcting the position in Watch
+                  History corrects this line too. */}
+              {stoppedAfter && (
+                <>
+                  <Row label="Stopped after" value={stoppedAfter} />
+                  <div className="h-px bg-white/10" />
+                </>
+              )}
               <Row
                 label="Reason"
                 value={
@@ -600,6 +702,21 @@ export function StatusCard({
             <PrimaryAction icon={<Check size={13} />} onClick={onMarkWatched} disabled={isUpdating}>
               Mark as completed
             </PrimaryAction>
+          </motion.div>
+        )}
+
+        {/* You've seen everything that's out — but the story isn't over. There's nothing to decide
+            here, and a button would only invite you to say something false.
+            WHAT you're waiting for matters: with 4 of season 3's 8 episodes aired, you're waiting
+            a WEEK, not a year. Saying "the next season" there would be plain wrong. */}
+        {status === "in_progress" && caughtUp && (
+          <motion.div key="f-caught" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
+            <div className="flex items-center gap-2 rounded-control bg-white/10 px-3 py-2 text-xs font-medium text-white/80">
+              <Clock size={13} />
+              {caughtUpOn(seriesFacts) === "episode"
+                ? "All caught up — the next episode hasn't aired yet."
+                : "All caught up — waiting on the next season."}
+            </div>
           </motion.div>
         )}
 

@@ -29,8 +29,22 @@ export interface WatchingMedia {
   seasons?: number;
   episodes?: number;
   season_episodes?: number[] | null;
+  /** Episodes ACTUALLY AIRED per season. The only source of truth for progress. */
+  season_aired?: number[] | null;
+  /** When you last saw everything that had aired. Non-null = you were caught up once. */
+  caught_up_at?: string | null;
+  last_synced_at?: string | null;
+  /** When you last moved FORWARD through this title. Null = never captured. */
+  last_watched_at?: string | null;
   season_posters?: (string | null)[] | null;   // TMDB poster_path per season (season-1 indexed)
   season_air_dates?: (string | null)[] | null;  // TMDB air_date per season (season-1 indexed)
+  /**
+   * Air date of the LAST AIRED episode of each season — null while a season is still coming out.
+   * This, not the START date, is the earliest you could have finished a season: one that premiered
+   * in December and ended in February was not watchable "from December" in any useful sense.
+   * Filled by the series sync.
+   */
+  season_end_dates?: (string | null)[] | null;
   current_episode?: number;
   current_season?: number;
   season_years?: Record<string, number> | null;    // { "<season>": <year watched> }
@@ -53,7 +67,8 @@ export interface WatchingMedia {
   // the DB with no extra TMDB call. Matches CastMember from useMediaCredits.
   cast_members?: { id: number; name: string; character: string | null; profile_url: string | null }[];
   studio?: string;
-  status?: "ended" | "ongoing";
+  /** TMDB, normalised. "canceled" is FINISHED — no episode is ever coming. */
+  status?: "ended" | "ongoing" | "canceled";
   
   // Champs booléens (compatibilité avec Supabase)
   watched: boolean;
@@ -196,7 +211,8 @@ export interface TmdbModalResult {
   production_companies?: { name: string }[];
   networks?: { name: string }[];
   status?: string;
-  last_episode_to_air?: { runtime?: number };
+  /** TMDB's own answer to "what is the newest episode that EXISTS". Free airing data. */
+  last_episode_to_air?: { runtime?: number; season_number?: number; episode_number?: number };
 }
 
 export interface TmdbListResult {

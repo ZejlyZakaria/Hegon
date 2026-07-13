@@ -2,10 +2,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, MoreVertical, Star } from "lucide-react";
+import { BarChart3, Clock, MoreVertical, Star } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { cn } from "@/shared/utils/utils";
+import { isEpisodeActionable } from "../../lib/series-state";
 import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
@@ -28,6 +29,27 @@ import type { WatchingMedia } from "../../types";
 type View = "all" | "highlights";
 const HIGHLIGHT = "var(--color-gold)";                              // gold — "best episode"
 const RATE_COLOR = "var(--color-accent-watching-vivid)"; // teal — your rating
+
+const TODAY = () => new Date().toISOString().slice(0, 10);
+const fmtAir = (d: string) =>
+  new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+/** Not aired = no date at all, or a date still ahead of us. An unknown date is not a past date. */
+const isUnaired = (airDate: string | null) => !airDate || airDate > TODAY();
+
+/**
+ * "In 3 days" answers the real question — is it soon? — but only while the answer is USEFUL.
+ * "In 65 days" is arithmetic nobody asked for: past a fortnight you want to know WHEN, not how
+ * many nights to sleep. So the relative form is reserved for what's imminent (which is exactly
+ * the weekly rhythm of a season still coming out); everything further away shows its date.
+ */
+const SOON_DAYS = 14;
+function airLabel(d: string): { lead: string; sub: string | null } {
+  const days = Math.ceil((new Date(d + "T00:00:00").getTime() - new Date(TODAY() + "T00:00:00").getTime()) / 86400000);
+  if (days <= 0) return { lead: fmtAir(d), sub: null };
+  if (days === 1) return { lead: "Airs tomorrow", sub: fmtAir(d) };
+  if (days <= SOON_DAYS) return { lead: `Airs in ${days} days`, sub: fmtAir(d) };
+  return { lead: `Airs ${fmtAir(d)}`, sub: null };
+}
 const MAX_HIGHLIGHTS = 20;
 const TMDB_STILL = "https://image.tmdb.org/t/p/w300";
 // Same scale as the season rating in Watch History (5 → 10 in half-steps).
@@ -49,6 +71,8 @@ function StillCard({
   rating,
   onToggle,
   onRate,
+  unairedOn,
+  backdrop,
 }: {
   still: string | null;
   line1: string;
@@ -58,20 +82,68 @@ function StillCard({
   rating?: number | null;
   onToggle: () => void;
   onRate?: (rating: number | null) => void;
+  /** Set when the episode HASN'T AIRED: its air date, or null if TMDB doesn't even know yet. */
+  unairedOn?: string | null | undefined;
+  /** The SHOW's backdrop — stands in for the still an unaired episode cannot have. */
+  backdrop?: string | null;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const rated = rating != null;
-  const hasActions = !!onRate;
+  // AN EPISODE THAT HASN'T AIRED CANNOT BE RATED OR STARRED. TMDB lists announced episodes —
+  // House of the Dragon shows 8 in season 3, three of which exist. You cannot have an opinion
+  // about something you could not have seen, so the app doesn't offer you the chance to claim
+  // one. It unlocks on its air date, by itself: it's the DATE that decides, so nobody has to
+  // remember to unlock anything.
+  const unaired = unairedOn !== undefined;
+  const hasActions = !!onRate && !unaired;
 
   return (
     <div className="group relative w-66 shrink-0">
       <div className="relative aspect-video overflow-hidden rounded-card border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.03]">
         {still ? (
           <img src={still} alt={line2} loading="lazy" className="h-full w-full object-cover" />
-        ) : (
+        ) : !unaired ? (
           <div className="flex h-full w-full items-center justify-center bg-surface-2 text-xs text-text-tertiary">
             No image
           </div>
+        ) : (
+          <div className="h-full w-full bg-surface-2" />
+        )}
+
+        {/* NOT OUT YET. There is no still, because there is no episode — and "No image" reads as a
+            bug when it's actually information. So the card borrows the SHOW's backdrop, blurred and
+            desaturated: it plainly belongs to this series, and it is just as plainly NOT a
+            photograph of the episode. An episode still is sharp; this can't be mistaken for one.
+            The blur says "not here yet" without a word. */}
+        {unaired && (
+          <>
+            {backdrop && (
+              <img
+                src={backdrop}
+                alt=""
+                aria-hidden
+                loading="lazy"
+                // Blurred, desaturated — but still READABLE as the show. Fully grayscaling a dark
+                // backdrop behind a 65% mask left a black rectangle: technically a placeholder,
+                // visually nothing. Keep some colour and some light; the blur alone already says
+                // "this isn't a photograph of the episode".
+                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-90 blur-[5px] saturate-50"
+              />
+            )}
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 bg-black/45 px-2 text-center [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
+              <Clock size={14} className="text-white/70" />
+              {unairedOn ? (
+                <>
+                  <span className="text-micro font-semibold text-white/90">{airLabel(unairedOn).lead}</span>
+                  {airLabel(unairedOn).sub && (
+                    <span className="text-[11px] text-white/45">{airLabel(unairedOn).sub}</span>
+                  )}
+                </>
+              ) : (
+                <span className="text-micro font-semibold text-white/85">Not scheduled</span>
+              )}
+            </div>
+          </>
         )}
 
         {/* Top-right — best-ep indicator (gold star) + "…" menu = single control surface */}
@@ -191,15 +263,30 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
   const removeHighlight = useRemoveEpisodeHighlight(media.id);
   const setRating = useSetEpisodeRating(media.id);
 
-  // Rows are per-episode marks: highlighted (best ep) and/or rated.
-  const highlightRows = useMemo(() => marks.filter((h) => h.highlighted), [marks]);
+  /**
+   * STOP READING A CLAIM YOU AREN'T MAKING.
+   *
+   * Closing the actions was only half the job. The marks themselves were still read: the
+   * Highlights tab listed every starred episode of every season — including seasons you have
+   * never reached — counted them in its badge, and let you edit them there, because that rail
+   * never asked the question the All rail now asks. True Detective is an anthology: you watched
+   * season 1, and season 4's starred episode sat in your highlights with its gold star on.
+   *
+   * Nothing is deleted. Your star is a true fact the day you get there, and it comes back by
+   * itself when you do — the same rule as `reachedEntries` for season years, applied to episodes.
+   */
+  const claimable = useMemo(
+    () => marks.filter((h) => isEpisodeActionable(media, h.season, h.episode)),
+    [marks, media],
+  );
+  const highlightRows = useMemo(() => claimable.filter((h) => h.highlighted), [claimable]);
   const highlightMap = useMemo(
     () => new Map(highlightRows.map((h) => [`${h.season}-${h.episode}`, h.id])),
     [highlightRows],
   );
   const ratingMap = useMemo(
-    () => new Map(marks.filter((h) => h.rating != null).map((h) => [`${h.season}-${h.episode}`, h.rating as number])),
-    [marks],
+    () => new Map(claimable.filter((h) => h.rating != null).map((h) => [`${h.season}-${h.episode}`, h.rating as number])),
+    [claimable],
   );
 
   const handleRate = async (
@@ -342,11 +429,19 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
                 overview={ep.overview}
                 highlighted={highlightMap.has(`${season}-${ep.number}`)}
                 rating={ratingMap.get(`${season}-${ep.number}`) ?? null}
+                unairedOn={isUnaired(ep.air_date) ? ep.air_date : undefined}
+                backdrop={media.backdrop_url}
                 onToggle={readOnly ? () => {} : () => toggleHighlight(season, ep.number)}
-                onRate={readOnly ? undefined : (r) => handleRate(season, ep.number, {
-                  title: ep.name,
-                  still_path: ep.still_url ? ep.still_url.replace(TMDB_STILL, "") : null,
-                }, r)}
+                // A rating is a VERDICT, not a bookmark. You may score an episode only if it has
+                // AIRED *and* you have REACHED it — True Detective's seasons 2-4 are locked in
+                // Watch History, yet this rail happily let you star any episode inside them.
+                // The title and the still stay visible; only the actions close.
+                onRate={readOnly || !isEpisodeActionable(media, season, ep.number)
+                  ? undefined
+                  : (r) => handleRate(season, ep.number, {
+                      title: ep.name,
+                      still_path: ep.still_url ? ep.still_url.replace(TMDB_STILL, "") : null,
+                    }, r)}
               />
             ))}
           </div>

@@ -88,7 +88,7 @@ export async function uploadCustomPoster(file: File): Promise<string | null> {
 // into `undefined`, and writing the result REPLACES the jsonb column with a single entry.
 // Every year you'd ever set by hand would be gone. Load it, or don't write it.
 const SECTION_COLUMNS =
-  "id, type, title, original_title, poster_url, backdrop_url, year, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, in_progress, current_season, current_episode, season_episodes, season_years";
+  "id, type, title, original_title, poster_url, backdrop_url, year, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
 
 export async function getMediaItems(
   userId: string,

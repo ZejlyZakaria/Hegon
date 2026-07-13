@@ -3,6 +3,7 @@
 import { Panel } from "@/shared/components/ui/panel";
 import { useRewatches } from "../../hooks/useRewatches";
 import { useRatingStanding } from "../../hooks/useRatingPercentile";
+import { lastWatched, reachedEntries, seriesState } from "../../lib/series-state";
 import type { WatchingMedia } from "../../types";
 
 const TYPE_WORD: Record<string, string> = { film: "films", serie: "series", anime: "animes" };
@@ -34,37 +35,73 @@ export function QuickStats({ media }: { media: WatchingMedia }) {
   const standing = useRatingStanding(media.user_id ?? null, media.type, media.user_rating ?? 0);
 
   const isSeries = media.type !== "film";
-  const seasonEps = media.season_episodes ?? [];
-  const totalEps = seasonEps.reduce((a, b) => a + b, 0) || media.episodes || 0;
+  // TWO numbers, TWO jobs.
+  //   airedEps → what you could have watched. It's the ceiling on `watchedEps` and on watch time:
+  //              you cannot have spent hours on episodes that don't exist.
+  //   totalEps → what the show IS. It's the DENOMINATOR, and it has to stay honest: "22 / 22"
+  //              reads as finished on a series that's a third of the way through its season.
+  //              "22 / 26" says the true thing — you're up to date, and more is coming.
+  const airedList = media.season_aired ?? media.season_episodes ?? [];
+  const airedEps = airedList.reduce((a, b) => a + b, 0);
+  const announcedList = media.season_episodes ?? [];
+  const totalEps = announcedList.reduce((a, b) => a + b, 0) || media.episodes || airedEps;
 
-  // Episodes you've actually gone through: everything for a finished show, and the seasons
-  // behind you + your position in the current one otherwise.
+  // Episodes you've actually gone through. A completed show = everything that AIRED (which, for
+  // a finished show, is everything); otherwise the seasons behind you plus your place in this one.
   let watchedEps = 0;
   if (isSeries) {
-    if (media.watched) watchedEps = totalEps;
+    if (media.watched) watchedEps = airedEps;
     else if (media.in_progress || media.paused || media.dropped) {
       const s = media.current_season ?? 1;
       watchedEps =
-        seasonEps.slice(0, Math.max(0, s - 1)).reduce((a, b) => a + b, 0) + (media.current_episode ?? 0);
+        airedList.slice(0, Math.max(0, s - 1)).reduce((a, b) => a + b, 0) +
+        Math.min(media.current_episode ?? 0, airedList[s - 1] ?? 0);
     }
   }
 
   // Runtime on a series is PER EPISODE — multiplying it by the whole show would be nonsense.
+  // A rewatch replays what EXISTS, not what's been announced: you can't rewatch episode 8 of a
+  // season that has four.
   const runtime = media.runtime ?? 0;
   const firstPass = isSeries ? watchedEps * runtime : media.watched ? runtime : 0;
-  const perRewatch = isSeries ? totalEps * runtime : runtime;
+  const perRewatch = isSeries ? airedEps * runtime : runtime;
   const minutes = firstPass + rewatches.length * perRewatch;
 
-  const seasonScores = Object.values(media.season_ratings ?? {}).filter((n) => typeof n === "number");
+  // `season_years` and `season_ratings` only ever GROW. Step your position back — a correction,
+  // an un-drop — and the stamps for seasons you no longer claim just sit there. One-Punch Man
+  // kept reporting 2019 (season 2) after you moved back to season 1. The data isn't wrong and
+  // isn't deleted; it simply must not be READ for a season you haven't reached.
+  const seasonScores = reachedEntries(media, media.season_ratings);
   const meanSeason = seasonScores.length
     ? seasonScores.reduce((a, b) => a + b, 0) / seasonScores.length
     : null;
 
-  // season_years is a { "<season>": <year> } map, not a list.
-  const years = Object.values(media.season_years ?? {}).filter((y): y is number => typeof y === "number");
+  const years = reachedEntries(media, media.season_years);
   const watchedYear = media.watched_at ? new Date(media.watched_at).getFullYear() : null;
   const firstYear = years.length ? Math.min(...years) : watchedYear;
-  const lastYear = years.length ? Math.max(...years) : watchedYear;
+
+  // "FINISHED" BELONGS TO EXACTLY ONE STATE — completed. On House of the Dragon this row read
+  // "Finished 2024" — the year you finished SEASON 2, on a series that is still running. The
+  // number was right; the word was a lie.
+  const finished = seriesState({ ...media }) === "completed" || (media.type === "film" && media.watched);
+
+  // "Last watched" has TWO possible sources, and which one is true depends on where you stand —
+  // see lastWatched() in series-state.ts. In short: the year of a season you finished always
+  // beats a timestamp (a timestamp only records when you CLICKED, and correcting a position with
+  // the stepper is a forward move, so it dates itself "today"). The timestamp only speaks when
+  // you're mid-season, where no year exists yet.
+  const last = lastWatched(media);
+  const lastValue =
+    last?.kind === "date"
+      ? new Date(last.value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+      : last?.kind === "year"
+        ? String(last.value)
+        : null;
+
+  // "Started" is only a fact when there's a SPAN. A show you watched inside a single year reduces
+  // it to a lone "Started 2019" — which repeats the year the StatusCard already gives you, and
+  // implies an ongoing stretch that ended the same year. One number, one row, no echo.
+  const spansYears = !!lastValue && lastValue !== String(firstYear);
 
   const rows = [
     totalEps > 0 && (watchedEps > 0 || media.watched)
@@ -72,8 +109,10 @@ export function QuickStats({ media }: { media: WatchingMedia }) {
       : null,
     minutes > 0 ? { label: "Watch time", value: hours(minutes) } : null,
     rewatches.length > 0 ? { label: "Rewatches", value: rewatches.length } : null,
-    firstYear ? { label: "Started", value: firstYear } : null,
-    lastYear && lastYear !== firstYear ? { label: "Finished", value: lastYear } : null,
+    firstYear && spansYears ? { label: "Started", value: firstYear } : null,
+    spansYears
+      ? { label: finished ? "Finished" : "Last watched", value: lastValue }
+      : null,
     meanSeason != null ? { label: "Mean season score", value: `${meanSeason.toFixed(1)} / 10` } : null,
     standing
       ? {
