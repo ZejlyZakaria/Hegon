@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Supabase Edge Functions are DENO, not Next. They import over https://, they use `Deno.serve`,
+    // and this config cannot type any of it — so it reported them as broken, permanently, no matter
+    // what they contained. `npm run lint` therefore exited 1 on a clean tree, which trains everyone
+    // to ignore the colour red. Deno lints them; ESLint should not pretend to.
+    "supabase/functions/**",
   ]),
 ]);
 

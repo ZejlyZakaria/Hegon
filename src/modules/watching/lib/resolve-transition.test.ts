@@ -21,6 +21,38 @@ const wantToWatch = flags({ want_to_watch: true });
 const paused = flags({ paused: true });
 const dropped = flags({ dropped: true });
 
+// THE BANNER USED TO INFER THE OUTCOME FROM THE DOOR YOU CAME THROUGH — the same line we deleted
+// from the write path (`watched = listContext === …`), surviving in the sentences. So the modal
+// congratulated you on finishing House of the Dragon, a show that is still airing.
+describe("resolveTransition — it must not assert a completion it cannot know", () => {
+  const airing = flags({ in_progress: true, type: "serie", status: "ongoing" });
+  const over = flags({ in_progress: true, type: "serie", status: "ended" });
+
+  // The assertion is about the CLAIM, not the word: "titles you've finished" describes the rail,
+  // which is fair. "You finished this one!" attributes the completion to you, which is the lie.
+  const claimsCompletion = /you finished this one/i;
+
+  it("does NOT tell you that you finished a series that is still airing", () => {
+    const t = resolveTransition(airing, "recentlyWatched");
+    expect(t.allowed).toBe(true);
+    expect(t.message).not.toMatch(claimsCompletion);
+    expect(t.message).toMatch(/still airing/i);
+  });
+
+  it("says so plainly when the show really is over", () => {
+    expect(resolveTransition(over, "recentlyWatched").message).toMatch(claimsCompletion);
+  });
+
+  it("ranking is not watching — the Top 10 stops declaring a running show finished", () => {
+    expect(resolveTransition(airing, "topTen").message).not.toMatch(claimsCompletion);
+    expect(resolveTransition(over, "topTen").message).toMatch(claimsCompletion);
+  });
+
+  it("a caller that omits the facts keeps the old behaviour rather than crashing", () => {
+    expect(resolveTransition(inProgress, "recentlyWatched").message).toMatch(claimsCompletion);
+  });
+});
+
 describe("resolveTransition — no existing entry", () => {
   it("is a clean insert with no banner", () => {
     const t = resolveTransition(null, "wantToWatch");

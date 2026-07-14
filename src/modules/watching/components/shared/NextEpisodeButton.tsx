@@ -5,11 +5,9 @@ import { Check, Clock, Plus } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { toast } from "@/shared/utils/toast";
-import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
-import { useUpdateMedia } from "../../hooks/useUpdateMedia";
-import { nextStep, isSeasonComplete, caughtUpAt } from "../../lib/series-state";
+import { useWatchActions } from "../../hooks/useWatchActions";
+import { nextStep } from "../../lib/series-state";
 import { formatPosition } from "../../lib/progress";
-import { stampSeasons, seasonRange } from "../../lib/season-years";
 import type { WatchingMedia } from "../../types";
 
 /**
@@ -32,7 +30,7 @@ import type { WatchingMedia } from "../../types";
  */
 export function NextEpisodeButton({ item }: { item: WatchingMedia }) {
   const router = useRouter();
-  const updateMedia = useUpdateMedia();
+  const actions = useWatchActions(item);
 
   const step = nextStep(item);
   if (!step) return null;
@@ -72,57 +70,29 @@ export function NextEpisodeButton({ item }: { item: WatchingMedia }) {
     e.stopPropagation();
     const from = { season: item.current_season ?? 1, episode: item.current_episode ?? 0 };
 
-    // A season's year is only stamped when the season is BOTH fully aired and behind you.
-    // And `season_years` MUST be loaded: stampSeasons merges into the existing map, so merging
-    // into `undefined` and writing the result would REPLACE the jsonb column with one entry and
-    // wipe every year you'd set by hand.
-    const crossed = step.kind === "season" ? seasonRange(from.season, step.season - 1) : [];
-    const stampable = crossed.filter((s) => isSeasonComplete(item, s));
-    const seasonYears =
-      stampable.length > 0 && item.season_years !== undefined
-        ? stampSeasons(item.season_years, stampable, new Date().getFullYear())
-        : null;
+    // A VIEWING: it dates the move and stamps the year of any season it just carried you past.
+    // Everything else — the caught_up_at stamp, the "you cannot claim what hasn't aired" clamp —
+    // comes from `positionPatch`, which is now the only thing in the app that writes a position.
+    const patch = await actions.setPosition(step.season, step.episode, "viewing");
+    if (!patch) return;
 
-    try {
-      await updateMedia.mutateAsync({
-        id: item.id,
-        current_season: step.season,
-        current_episode: step.episode,
-        // Reaching the frontier by tapping "+1" is how most people get there — and it was the one
-        // path that never recorded it. Without this stamp the title can never light up as NEW when
-        // the next season drops: `seriesState` would only ever see "behind", never "behind AFTER
-        // being caught up". A position write recomputes it, always.
-        caught_up_at: caughtUpAt({ ...item, current_season: step.season, current_episode: step.episode }, item.caught_up_at),
-        ...(seasonYears ? { season_years: seasonYears } : {}),
-        // This button only ever moves forward, so it always dates the viewing.
-        last_watched_at: new Date().toISOString(),
-      });
-
-      toast(
-        step.kind === "season"
-          ? `Season ${step.season} started — ${formatPosition(step.season, step.episode)}`
-          : formatPosition(step.season, step.episode),
-        {
-          duration: 6000,
-          action: {
-            label: "Undo",
-            // Put the position back. The year stamped on the way through is left alone: you did
-            // finish that season, and un-clicking a button doesn't un-watch it.
-            onClick: () => {
-              // No `last_watched_at` here: undoing is a correction, not a viewing.
-              updateMedia.mutate({
-                id: item.id,
-                current_season: from.season,
-                current_episode: from.episode,
-              });
-            },
-          },
+    toast(
+      step.kind === "season"
+        ? `Season ${step.season} started — ${formatPosition(step.season, step.episode)}`
+        : formatPosition(step.season, step.episode),
+      {
+        duration: 6000,
+        action: {
+          label: "Undo",
+          // A CORRECTION — and that word is doing real work. The Undo used to write the position
+          // back and nothing else, leaving `caught_up_at` stamped: a show you'd never caught up to
+          // would announce "New episodes" the next time one aired. Going through the same patch
+          // builder makes that unforgettable rather than merely remembered. (The year stamped on
+          // the way through stays: you did finish that season, and un-clicking doesn't un-watch it.)
+          onClick: () => { void actions.setPosition(from.season, from.episode, "correction"); },
         },
-      );
-    } catch (err) {
-      if (isDemoReadOnlyError(err)) return;
-      // useUpdateMedia already rolls the optimistic update back and toasts.
-    }
+      },
+    );
   };
 
   return (
@@ -130,7 +100,7 @@ export function NextEpisodeButton({ item }: { item: WatchingMedia }) {
       variant="overlay"
       size="xs"
       onClick={advance}
-      disabled={updateMedia.isPending}
+      disabled={actions.isPending}
       aria-label={`Mark ${formatPosition(step.season, step.episode)} as watched`}
       className="shrink-0"
     >

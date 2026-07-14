@@ -23,7 +23,8 @@ import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { useRewatches, useAddRewatch, useRemoveRewatch } from "../../hooks/useRewatches";
 import { dropReasonLabel } from "../../lib/drop-reasons";
 import { airedInSeason, caughtUpOn, hasFullyWatchedSeason, isFinished, lastAiredSeason, seriesState } from "../../lib/series-state";
-import type { WatchingMedia } from "../../types";
+import { deriveWatchStatus } from "../../lib/watch-status";
+import type { WatchingMedia, WatchStatus } from "../../types";
 import type { WatchProviderInfo } from "../../hooks/useWatchProviders";
 
 // Design-system §9.1 — physical, not linear.
@@ -34,14 +35,21 @@ const TEAL = "var(--color-accent-watching-vivid)";
 
 type CardStatus = "want_to_watch" | "in_progress" | "watched" | "paused" | "dropped";
 
-// Priority mirrors deriveWatchStatus: watched > dropped > paused > in_progress.
-function statusOf(media: WatchingMedia): CardStatus {
-  if (media.watched) return "watched";
-  if (media.dropped) return "dropped";
-  if (media.paused) return "paused";
-  if (media.in_progress) return "in_progress";
-  return "want_to_watch";
-}
+/**
+ * This card used to derive the status itself, under a comment claiming it "mirrored"
+ * deriveWatchStatus. It did not: it read `watched` BEFORE the stances, where the service reads it
+ * after. So a row carrying both flags said "Watched" here and "Dropped" in a list — two rules, two
+ * truths, one screen, on the module's most central word. There is one rule now, and this maps it
+ * onto the five chips the card can draw.
+ */
+const CARD_STATUS: Record<WatchStatus, CardStatus> = {
+  reference: "want_to_watch",
+  plan_to_watch: "want_to_watch",
+  dropped: "dropped",
+  paused: "paused",
+  completed: "watched",
+  watching: "in_progress",
+};
 
 // "Watched" label: films → the watched_at year; series → the season-year range.
 function watchedLabel(media: WatchingMedia): string | null {
@@ -250,7 +258,7 @@ export function StatusCard({
   favorite, onFavoriteToggle, onMarkWatched, onMarkCaughtUp, onStartWatching, onPause, onDrop,
   onResume, onAddNote, onWatchedYearChange, onDelete, isUpdating,
 }: Props) {
-  const status: CardStatus = media.is_reference ? "want_to_watch" : statusOf(media);
+  const status: CardStatus = CARD_STATUS[deriveWatchStatus(media)];
 
   // "Mark as completed" used to appear when you reached the last ANNOUNCED episode — which for
   // an ongoing show meant the app cheerfully offered to declare a story finished that isn't.
@@ -322,8 +330,12 @@ export function StatusCard({
       <Check size={13} /> Mark as watched
     </DropdownMenuItem>
   ) : (
+    // NOT "Mark as caught up". Being caught up is a state the app DERIVES from two numbers; you do
+    // not raise it like a flag, and offering to would re-teach the exact confusion that made
+    // `watched` a lie. What the action really does is claim a POSITION — the last episode that
+    // exists — so it says that instead, as a sentence about you.
     <DropdownMenuItem onClick={onMarkCaughtUp} className={menuItemClass}>
-      <Clock size={13} /> Mark as caught up
+      <Clock size={13} /> Seen everything that&apos;s out
     </DropdownMenuItem>
   );
 
@@ -436,7 +448,7 @@ export function StatusCard({
       <div className="flex items-center justify-between gap-2">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
-            key={`chip-${status}`}
+            key={`chip-${status}-${caughtUp}`}
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
@@ -448,7 +460,16 @@ export function StatusCard({
                 {media.is_reference ? "Unwatched" : "Want to Watch"}
               </StateChip>
             )}
-            {status === "in_progress" && (
+            {/* CAUGHT UP IS NOT "IN PROGRESS", AND THE CHIP SHOULD NOT SAY SO.
+                A series you have seen every existing episode of is not something you are in the
+                middle of — it is finished, for now. The card knew this and said it in a pill at the
+                bottom, while the chip at the top went on contradicting it. An app that files a
+                state under the name of another state is the disease this whole module has been
+                treated for; the last place it survived was the label. */}
+            {status === "in_progress" && caughtUp && (
+              <StateChip icon={<Clock size={11} />}>Caught Up</StateChip>
+            )}
+            {status === "in_progress" && !caughtUp && (
               <StateChip icon={<span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: TEAL, boxShadow: `0 0 6px ${TEAL}` }} />}>
                 In Progress
               </StateChip>

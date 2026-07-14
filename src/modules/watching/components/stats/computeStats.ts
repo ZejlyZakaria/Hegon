@@ -60,7 +60,12 @@ function countedSeasonYear(i: StatsRawItem, season: number): number | null {
 // attributed to its year. Completed → counted seasons; in-progress → finished
 // counted seasons + the current season's watched episodes (always counted, live).
 function seasonContributions(i: StatsRawItem): { episodes: number; year: number | null }[] {
-  const seasons = i.season_episodes ?? [];
+  // WHAT AIRED, not what was announced. This page billed you for episodes that do not exist:
+  // "watched" a show whose next season is already listed on TMDB and it counted that season's
+  // hours, and the current-season clamp was against the announced count too. So the same title
+  // reported one number of hours on the detail page and another here — the module's oldest disease,
+  // surviving in the one place nobody looked. (Rows the sync hasn't reached fall back, loosely.)
+  const seasons = i.season_aired ?? i.season_episodes ?? [];
 
   // No per-season breakdown → single bucket on the title's year.
   if (seasons.length === 0) {

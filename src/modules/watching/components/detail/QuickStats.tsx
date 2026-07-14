@@ -3,7 +3,7 @@
 import { Panel } from "@/shared/components/ui/panel";
 import { useRewatches } from "../../hooks/useRewatches";
 import { useRatingStanding } from "../../hooks/useRatingPercentile";
-import { lastWatched, reachedEntries, seriesState } from "../../lib/series-state";
+import { airedCount, lastWatched, reachedEntries, seriesState, watchedCount } from "../../lib/series-state";
 import type { WatchingMedia } from "../../types";
 
 const TYPE_WORD: Record<string, string> = { film: "films", serie: "series", anime: "animes" };
@@ -41,23 +41,17 @@ export function QuickStats({ media }: { media: WatchingMedia }) {
   //   totalEps → what the show IS. It's the DENOMINATOR, and it has to stay honest: "22 / 22"
   //              reads as finished on a series that's a third of the way through its season.
   //              "22 / 26" says the true thing — you're up to date, and more is coming.
-  const airedList = media.season_aired ?? media.season_episodes ?? [];
-  const airedEps = airedList.reduce((a, b) => a + b, 0);
+  //
+  // Both come from series-state.ts. This component used to carry its own copy of the counting —
+  // a third implementation of it, next to the canonical one and the Stats page's (which counted
+  // the announced). Three copies of "how many episodes have I watched" is how one screen ends up
+  // disagreeing with the next about the same title.
+  const airedEps = airedCount(media);
   const announcedList = media.season_episodes ?? [];
   const totalEps = announcedList.reduce((a, b) => a + b, 0) || media.episodes || airedEps;
 
-  // Episodes you've actually gone through. A completed show = everything that AIRED (which, for
-  // a finished show, is everything); otherwise the seasons behind you plus your place in this one.
-  let watchedEps = 0;
-  if (isSeries) {
-    if (media.watched) watchedEps = airedEps;
-    else if (media.in_progress || media.paused || media.dropped) {
-      const s = media.current_season ?? 1;
-      watchedEps =
-        airedList.slice(0, Math.max(0, s - 1)).reduce((a, b) => a + b, 0) +
-        Math.min(media.current_episode ?? 0, airedList[s - 1] ?? 0);
-    }
-  }
+  const engaged = media.in_progress || media.paused || media.dropped;
+  const watchedEps = !isSeries ? 0 : media.watched ? airedEps : engaged ? watchedCount(media) : 0;
 
   // Runtime on a series is PER EPISODE — multiplying it by the whole show would be nonsense.
   // A rewatch replays what EXISTS, not what's been announced: you can't rewatch episode 8 of a

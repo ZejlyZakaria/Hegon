@@ -731,8 +731,13 @@ export default function AddMediaModal({
                       </button>
                     )}
 
-                    {/* recentlyWatched info */}
-                    {listContext === "recentlyWatched" && (
+                    {/* "Marked as watched today." — said flatly, from the button you pressed, on
+                        anything you added here. On a series that is still airing it is simply false,
+                        and it was sitting three centimetres above the very question ("How far did
+                        you get?") whose answer decides the truth. A film has no such question, so it
+                        keeps its line; a series gets its answer from HowFarDidYouGet's live
+                        "Recorded as …", which reads your position instead of your intent. */}
+                    {listContext === "recentlyWatched" && !isSeries && (
                       <div className="p-3 rounded-card border border-border-subtle bg-surface-overlay flex items-center gap-2">
                         <Eye size={13} style={{ color: "var(--color-accent-watching-vivid)" }} />
                         <p className="text-micro text-text-tertiary">Marked as watched today.</p>

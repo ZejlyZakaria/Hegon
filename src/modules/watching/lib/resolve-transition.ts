@@ -7,7 +7,8 @@
 // banner) and useAddMedia (write guard + branch selection) so the two can
 // never diverge.
 
-import type { ListType } from "../types";
+import { isFinished } from "./series-state";
+import type { ListType, MediaType } from "../types";
 
 /** Minimal flag set needed to decide a transition. Both `ExistingMediaEntry`
  *  (modal) and the `getExistingMediaItem` row (mutation) satisfy this. */
@@ -24,6 +25,18 @@ export interface MediaStateFlags {
   /** Optional — only used to enrich the (allowed) banner text in the UI.
    *  The write side never reads allowed-message text, so it can omit this. */
   user_rating?: number | null;
+  /**
+   * THE FACTS. This resolver used to reason from the LISTS alone — "you are In Progress and you are
+   * heading for Recently Watched, therefore YOU FINISHED IT" — which is, word for word, the line we
+   * deleted from the write path (`watched = listContext === …`). It survived here, in the sentences.
+   * So the app stopped lying to the database and went on lying to your face: it told you that you
+   * had finished House of the Dragon, a show that is still airing.
+   *
+   * A destination is a CONSEQUENCE, never a promise. Give the resolver what is true, and it stops
+   * having to guess. (Optional: an older caller that omits them gets the previous behaviour.)
+   */
+  type?: MediaType;
+  status?: string | null;
 }
 
 export type TransitionAction =
@@ -122,15 +135,36 @@ export function resolveTransition(
   const ratingText = existing.user_rating ? ` (rated ${existing.user_rating}/10)` : "";
   let contextualMessage = "";
 
+  /**
+   * CAN THE APP HONESTLY SAY YOU FINISHED IT?
+   * A film: yes, always — you saw it or you didn't. A series: only once it is OVER. Every sentence
+   * below that asserted completion did so purely because of the button you pressed, which is how a
+   * modal came to congratulate you on finishing a show whose next episode airs on Sunday.
+   * Where the app cannot assert, it describes — and the live "Recorded as …" line under "How far did
+   * you get?" says what will actually happen, because it reads your position instead of your intent.
+   */
+  const canFinish = !existing.type || existing.type === "film" || isFinished(existing.status);
+
   if (target === "topTen") {
+    // RANKING IS NOT WATCHING. It never was — the Top 10 is a favourite and a rank, and asserting
+    // "watched" alongside it was the fourth door: it declared a running show finished, silently,
+    // for the crime of being loved.
     if (isInLibrary) contextualMessage = `This media is in your Library${ratingText}. It will be added to your Top 10.`;
-    else if (isInWantToWatch) contextualMessage = `You're marking this as watched AND ranking it in your Top 10.`;
-    else if (isInProgress) contextualMessage = `You finished this one! It will be ranked in your Top 10.`;
+    else if (isInWantToWatch) contextualMessage = canFinish
+      ? `You're marking this as watched AND ranking it in your Top 10.`
+      : `You're ranking this in your Top 10 — tell us how far you got.`;
+    else if (isInProgress) contextualMessage = canFinish
+      ? `You finished this one! It will be ranked in your Top 10.`
+      : `It's still airing — your progress is kept, and it will be ranked in your Top 10.`;
     else if (isInRecentlyWatched) contextualMessage = `This recently watched media will be ranked in your Top 10.`;
   } else if (target === "recentlyWatched") {
     if (isInLibrary) contextualMessage = `This media is in your Library${ratingText}. It will appear in Recently Watched.`;
     else if (isInTopTen) contextualMessage = `This Top 10 media will also appear in Recently Watched.`;
-    else if (isInProgress) contextualMessage = `You finished this one! It will be added to Recently Watched.`;
+    else if (isInProgress) contextualMessage = canFinish
+      ? `You finished this one! It will be added to Recently Watched.`
+      // Recently Watched means recently FINISHED. This show isn't. Saying otherwise was the lie;
+      // saying where it will really land is the truth, and it costs nothing.
+      : `Recently Watched is for titles you've finished — this one is still airing, so it stays In Progress.`;
   } else if (target === "inProgress") {
     if (isInLibrary) contextualMessage = `This media is in your Library. It will be moved to In Progress.`;
     else if (isInRecentlyWatched) contextualMessage = `This recently watched media will be marked In Progress — set where you are.`;

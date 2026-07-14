@@ -40,8 +40,7 @@ import {
   useSearchTmdbForList,
   useAddTmdbItemToList,
 } from "../../hooks/useMediaLists";
-import { useUpdateMedia } from "../../hooks/useUpdateMedia";
-import { RESET_STATUS } from "../../lib/status-flags";
+import { useWatchActions } from "../../hooks/useWatchActions";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { ListGlyph, LIST_ICON_KEYS } from "./list-glyph";
 import type { MediaListWithThumbnails } from "../../service";
@@ -383,7 +382,10 @@ function MoreMenu({ onDelete }: { onDelete: () => void }) {
 function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const updateMedia = useUpdateMedia();
+  // The third copy of "mark as watched" — same rules as the detail page and the poster menus now,
+  // because there is only one copy left. It too was writing `watched: true` with no position on
+  // shows that are still airing.
+  const actions = useWatchActions(item.media);
 
   const status = STATUS_CONFIG[item.media.watch_status ?? "plan_to_watch"] ?? STATUS_CONFIG.plan_to_watch;
   const isSeries = item.media.type === "serie" || item.media.type === "anime";
@@ -399,49 +401,17 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
     return () => document.removeEventListener("mousedown", fn);
   }, [open]);
 
-  const handleAction = async (action: "watched" | "in_progress" | "want_to_watch") => {
+  const handleAction = (action: "watched" | "in_progress" | "want_to_watch") => {
     setOpen(false);
-    try {
-      if (action === "watched") {
-        await updateMedia.mutateAsync({
-          id: item.media.id,
-          watched: true,
-          recently_watched: true,
-          in_progress: false,
-          want_to_watch: false,
-          is_reference: false,
-          ...RESET_STATUS,
-          watched_at: new Date().toISOString(),
-        });
-      } else if (action === "in_progress") {
-        await updateMedia.mutateAsync({
-          id: item.media.id,
-          in_progress: true,
-          watched: false,
-          want_to_watch: false,
-          is_reference: false,
-          ...RESET_STATUS,
-        });
-      } else {
-        await updateMedia.mutateAsync({
-          id: item.media.id,
-          want_to_watch: true,
-          watched: false,
-          in_progress: false,
-          is_reference: false,
-          ...RESET_STATUS,
-        });
-      }
-      toast("Updated.");
-    } catch (err) {
-      if (isDemoReadOnlyError(err)) return;
-      toast.error("Failed to update.");
-    }
+    if (action === "in_progress") return void actions.startWatching();
+    if (action === "want_to_watch") return void actions.wantToWatch();
+    // A running series cannot be "watched". It can be CAUGHT UP — and that is what the row says.
+    void (actions.canComplete ? actions.markWatched() : actions.markCaughtUp());
   };
 
   const pill = (
     <div className="flex items-center gap-1.5">
-      {updateMedia.isPending
+      {actions.isPending
         ? <Loader2 size={9} className="animate-spin text-text-tertiary" />
         : <div className={cn("h-1.5 w-1.5 shrink-0 rounded-full", status.dotClass)} />
       }
@@ -458,7 +428,7 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen((p) => !p); }}
-        disabled={updateMedia.isPending}
+        disabled={actions.isPending}
         className={cn(
           "rounded px-1.5 py-1 transition-colors hover:bg-surface-2",
           open && "bg-surface-2",
@@ -475,7 +445,7 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
             className="flex w-full items-center gap-2 px-3 py-1.5 text-label text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
             <Check size={11} className="shrink-0 text-emerald-400" />
-            Mark as watched
+            {actions.canComplete ? "Mark as watched" : "Seen everything that's out"}
           </button>
           {isSeries && currentStatus !== "watching" && (
             <button

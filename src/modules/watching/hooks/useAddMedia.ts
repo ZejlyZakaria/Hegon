@@ -12,7 +12,8 @@ import { syncWatchingHabits } from "../lib/sync-habits";
 import { toast } from "@/shared/utils/toast";
 import { resolveTransition } from "../lib/resolve-transition";
 import { RESET_STATUS } from "../lib/status-flags";
-import { airedFromTmdb, seriesState } from "../lib/series-state";
+import { airedFromTmdb } from "../lib/series-state";
+import { claimedStatus } from "../lib/watch-status";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import type { ListType, MediaType } from "../types";
@@ -97,38 +98,39 @@ export function useAddMedia() {
       // Now the status is DERIVED from how far you got, by the same seriesState() the whole app
       // uses. The word "watched" doesn't get refused for an ongoing series — it simply cannot be
       // produced. No future door can re-open this, because there's nothing left to re-open.
+      const tmdbSeasons = (selectedItem.seasons ?? []).filter((s: any) => s.season_number > 0);
       const seasonAiredList = isSeries
         ? airedFromTmdb(
-            (selectedItem.seasons ?? []) as { season_number: number; episode_count: number }[],
+            tmdbSeasons as { season_number: number; episode_count: number }[],
             selectedItem.last_episode_to_air as { season_number: number; episode_number: number } | undefined,
           )
         : null;
+      // ANNOUNCED, not aired. These two were the same array here — a copy-paste that quietly told
+      // every rule downstream that a season still coming out had already finished.
+      const seasonEpisodesList: number[] | null = isSeries
+        ? tmdbSeasons.map((s: any) => (s.episode_count ?? 0) as number)
+        : null;
 
-      const seriesFacts = {
+      // The status of a claim is DERIVED, by the same function the detail page, the poster menus
+      // and the lists all use. This hook used to own a fourth copy of that derivation.
+      const claimFacts = {
+        type: defaultType,
         season_aired: seasonAiredList,
-        season_episodes: seasonAiredList,
+        season_episodes: seasonEpisodesList,
         status,
-        current_season: position?.season ?? null,
-        current_episode: position?.episode ?? null,
+        caught_up_at: null,
       };
-      const state = isSeries && position ? seriesState(seriesFacts) : null;
+      const claim = isSeries ? claimedStatus(claimFacts, position ?? null, stance) : null;
 
-      // A film keeps the old contract: the door knows. A series obeys its position.
+      // A film keeps the old contract: the door knows — "seen it / haven't" is binary, and you
+      // cannot rank or recently-watch a film you haven't seen. A series obeys its position.
       const filmWatched =
         listContext === "recentlyWatched" || listContext === "topTen" || listContext === "library";
-      const isWatched = isSeries ? state === "completed" : filmWatched;
-
-      // And the SECOND word that lied. `in_progress` means "I'm watching this NOW" — but a show
-      // you left behind three seasons in, five years ago, is not in progress. It's paused, or
-      // it's dropped. Exactly the disease `watched` had (it conflated caught-up with finished),
-      // and the app already owned the right words. It just never asked.
-      const stoppedPartway = isSeries && !!position && !isWatched && state !== "caught-up";
-      const isDropped = stoppedPartway && stance === "dropped";
-      const isPaused = stoppedPartway && stance === "paused";
-      const isInProgress = isSeries
-        ? !!position && !isWatched && !isDropped && !isPaused
-        : listContext === "inProgress";
-      const caughtUpAt = state === "caught-up" ? new Date().toISOString() : null;
+      const isWatched = isSeries ? !!claim?.watched : filmWatched;
+      const isDropped = !!claim?.dropped;
+      const isPaused = !!claim?.paused;
+      const isInProgress = isSeries ? !!claim?.in_progress : listContext === "inProgress";
+      const caughtUpAt = claim?.caught_up_at ?? null;
 
       // THE YEAR YOU GIVE BELONGS TO THE SEASONS YOU CLAIM. Declaring "I watched three seasons"
       // is a statement about the PAST, so it must be datable — and the date has one honest home:
@@ -276,22 +278,35 @@ export function useAddMedia() {
             priority: existing!.priority,
           });
 
-        // topTen: update top10 fields only, preserve in_progress state entirely
-        case "update:topTen":
+        /**
+         * topTen — RANKING IS NOT WATCHING.
+         *
+         * This branch wrote `watched: true`, unconditionally, forever. So putting House of the
+         * Dragon in your Top 10 declared a running show FINISHED — the fourth door, wide open,
+         * underneath a comment claiming the doors were shut. A Top 10 is a favourite and a rank;
+         * loving something is not having seen the end of it.
+         *
+         * The rank is written. The STATUS only moves if you claimed a position (the modal asks) —
+         * and then it is derived, by the same function every other door uses. Claim nothing, change
+         * nothing: an existing In Progress stays exactly as it was.
+         */
+        case "update:topTen": {
+          const claimed = isSeries
+            ? claimedStatus({ ...existing!, season_aired: seasonAiredList, status }, position ?? null, stance)
+            : { watched: true, watched_at: existing!.watched_at ?? new Date().toISOString(), ...RESET_STATUS, in_progress: false };
+
           return updateMediaItem(existing!.id, {
-            watched: true,
+            ...(claimed ?? {}),
             recently_watched: existing!.recently_watched,
-            watched_at: existing!.watched_at ?? new Date().toISOString(),
+            season_aired: seasonAiredList,
+            ...(seasonYears ? { season_years: seasonYears } : {}),
             favorite: true,
             priority,
             user_rating: userRating > 0 ? userRating : null,
             rating: selectedItem.vote_average,
             want_to_watch: false,
-            ...RESET_STATUS,
-            in_progress: existing!.in_progress ?? false,
-            current_episode: existing!.current_episode ?? null,
-            current_season: existing!.current_season ?? null,
           });
+        }
 
         // recentlyWatched, library, wantToWatch onto an existing entry
         case "update:merge": {

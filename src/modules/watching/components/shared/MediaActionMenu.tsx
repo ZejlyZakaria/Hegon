@@ -6,6 +6,7 @@ import {
   MoreVertical,
   Eye,
   Check,
+  Clock,
   Play,
   Heart,
   PauseCircle,
@@ -14,17 +15,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { OVERLAY_CIRCLE } from "./Marks";
-import { useUpdateMedia } from "../../hooks/useUpdateMedia";
-import { useWatchingGoals } from "../../hooks/useWatchingGoals";
-import { goalWouldCount } from "../../lib/goal-contribution";
-import { GoalRippleToast } from "../detail/GoalRippleToast";
-import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
+import { useWatchActions } from "../../hooks/useWatchActions";
+import { seriesState } from "../../lib/series-state";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 import { CaptureSheet } from "./CaptureSheet";
 import { DROP_REASONS } from "../../lib/drop-reasons";
-import { RESET_STATUS } from "../../lib/status-flags";
 import type { WatchingMedia } from "../../types";
-import { toast } from "@/shared/utils/toast";
 
 // ── MenuItem ──────────────────────────────────────────────────────────────────
 
@@ -76,8 +72,17 @@ export function MediaActionMenu({
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const updateMedia = useUpdateMedia();
-  const { data: watchingGoals = [] } = useWatchingGoals();
+  // THE SAME ACTIONS AS THE DETAIL PAGE — because they must be the same actions.
+  // This menu used to hand-write its own status patches, and it had drifted: it offered
+  // "Mark as finished" on a series that is still airing and wrote `watched: true` over a blank
+  // position, manufacturing the exact rows a migration had just spent a day repairing. It is on
+  // every poster in the app, so it was the widest door of the lot.
+  const actions = useWatchActions(item);
+
+  // An action that asserts something ALREADY TRUE is not an action, it's noise. The menu was
+  // offering to put your position at the last aired episode on a title whose position is already
+  // there — nothing would have happened, and the item was there to tell you so.
+  const alreadyCaughtUp = seriesState(item) === "caught-up";
 
   // Close on outside click
   useEffect(() => {
@@ -113,72 +118,7 @@ export function MediaActionMenu({
     setOpen((p) => !p);
   };
 
-  const run = async (action: () => Promise<void>) => {
-    setOpen(false);
-    try {
-      await action();
-    } catch (err) {
-      if (isDemoReadOnlyError(err)) return;
-      toast.error("Failed to update.");
-    }
-  };
-
-  const handleMarkWatched = () =>
-    run(async () => {
-      await updateMedia.mutateAsync({
-        id: item.id,
-        watched: true,
-        recently_watched: true,
-        in_progress: false,
-        want_to_watch: false,
-        is_reference: false,
-        ...RESET_STATUS,
-        watched_at: new Date().toISOString(),
-      });
-      // Ripple: the animated cross-module moment, same as the detail page.
-      const matched = watchingGoals.filter((g) => goalWouldCount(g, item.type));
-      if (matched.length > 0) {
-        matched.forEach((g) => {
-          const old = g.metric_current;
-          toast.custom(() => (
-            <GoalRippleToast title={g.title} oldCount={old} newCount={old + 1} target={g.metric_target ?? 0} />
-          ));
-        });
-      } else {
-        toast("Marked as watched.");
-      }
-    });
-
-  const handleStartWatching = () =>
-    run(async () => {
-      await updateMedia.mutateAsync({
-        id: item.id,
-        in_progress: true,
-        watched: false,
-        want_to_watch: false,
-        is_reference: false,
-        ...RESET_STATUS,
-      });
-      toast("Started watching.");
-    });
-
-  const handleFavoriteToggle = () =>
-    run(async () => {
-      await updateMedia.mutateAsync({ id: item.id, favorite: !item.favorite });
-      toast(item.favorite ? "Removed from favorites." : "Added to favorites.");
-    });
-
-  const handlePause = () =>
-    run(async () => {
-      await updateMedia.mutateAsync({ id: item.id, paused: true, dropped: false, drop_reason: null, in_progress: false });
-      toast("Paused.");
-    });
-
-  const handleDrop = (reason: string | null) =>
-    run(async () => {
-      await updateMedia.mutateAsync({ id: item.id, dropped: true, drop_reason: reason, paused: false, in_progress: false });
-      toast("Marked as dropped.");
-    });
+  const run = (action: () => Promise<unknown>) => { setOpen(false); void action(); };
 
   const handleConfirmDelete = async () => {
     if (!onDelete) return;
@@ -228,15 +168,30 @@ export function MediaActionMenu({
               </MenuItem>
             )}
 
-            {!item.watched && (
+            {/* "Mark as finished" on a show that is still airing was the app's oldest lie, and this
+                menu was still telling it on every poster. You cannot finish a story that is still
+                being told — what you CAN truthfully say is that you've seen everything that's out,
+                so on a running series that is what it offers, and it lands your position on the
+                last aired episode instead of writing `watched` over a blank one. */}
+            {!item.watched && !alreadyCaughtUp && (
               <MenuItem
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleMarkWatched();
+                  run(actions.canComplete ? actions.markWatched : actions.markCaughtUp);
                 }}
-                icon={<Check size={13} className="text-emerald-400" />}
+                icon={
+                  actions.canComplete
+                    ? <Check size={13} className="text-emerald-400" />
+                    : <Clock size={13} className="text-emerald-400" />
+                }
               >
-                {item.in_progress ? "Mark as finished" : "Mark as watched"}
+                {/* NOT "Mark as caught up". You do not MARK a derived state — being caught up falls
+                    out of two numbers, and dressing it as a flag to raise is how `watched` became a
+                    lie in the first place. What this actually does is claim a POSITION: the last
+                    episode that exists. So it says that, as a sentence about you. It is the
+                    one-gesture version of "Watched through S3", and it is the only honest thing to
+                    offer someone who is genuinely up to date on a show that isn't over. */}
+                {actions.canComplete ? "Mark as watched" : "Seen everything that's out"}
               </MenuItem>
             )}
 
@@ -244,7 +199,7 @@ export function MediaActionMenu({
               <MenuItem
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleStartWatching();
+                  run(actions.startWatching);
                 }}
                 icon={
                   <Play
@@ -262,7 +217,7 @@ export function MediaActionMenu({
               <MenuItem
                 onClick={(e) => {
                   e.stopPropagation();
-                  handlePause();
+                  run(actions.pause);
                 }}
                 icon={<PauseCircle size={13} className="text-sky-400" />}
               >
@@ -287,7 +242,7 @@ export function MediaActionMenu({
               <MenuItem
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleFavoriteToggle();
+                  run(actions.toggleFavorite);
                 }}
                 icon={
                   <Heart
@@ -335,8 +290,8 @@ export function MediaActionMenu({
         title="Why did you drop it?"
         subtitle="Optional — helps you remember later."
         options={DROP_REASONS}
-        onPick={(reason) => handleDrop(reason)}
-        onSkip={() => handleDrop(null)}
+        onPick={(reason) => actions.drop(reason)}
+        onSkip={() => actions.drop(null)}
         skipLabel="Drop without a reason"
       />
     </>

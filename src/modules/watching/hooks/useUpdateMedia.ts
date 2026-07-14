@@ -6,7 +6,7 @@ import { syncWatchingHabits } from "../lib/sync-habits";
 import { toast } from "@/shared/utils/toast";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
-import type { UpdateMediaInput } from "../schemas/media.schema";
+import { toColumns, updateMediaSchema, type UpdateMediaInput } from "../schemas/media.schema";
 
 const STATUS_FIELDS = ["watched", "in_progress", "want_to_watch", "is_reference", "recently_watched", "dropped", "paused"] as const;
 
@@ -41,14 +41,18 @@ export function useUpdateMedia() {
   return useMutation({
     mutationFn: (rawInput: UpdateMediaInput) => {
       if (isDemo) throw new DemoReadOnlyError();
-      const { id, ...updates } = withRecency(rawInput);
-      return updateMediaItem(id, updates);
+      // The schema was a TYPE and nothing else — declared, never run, so its rules were suggestions.
+      // Parsing it here turns it into a gate: an update that moves a position without recomputing
+      // `caught_up_at` now fails loudly, at the door, instead of quietly poisoning a row.
+      const input = withRecency(updateMediaSchema.parse(rawInput));
+      return updateMediaItem(input.id, toColumns(input));
     },
 
     onMutate: async (rawInput) => {
       if (isDemo) return; // read-only demo: skip the optimistic update
       const input = withRecency(rawInput);
-      const { id, ...updates } = input;
+      const { id } = input;
+      const updates = toColumns(input);
 
       // Cancel only the detail query + list-items — avoid disrupting sections/ForYou
       await queryClient.cancelQueries({ queryKey: WATCHING_KEYS.detail(id) });
@@ -100,28 +104,31 @@ export function useUpdateMedia() {
       const { id } = input;
       const isStatusChange = STATUS_FIELDS.some((f) => input[f] != null);
 
+      // Only the type that actually moved. A caller that doesn't say falls back to all three —
+      // correct, just wasteful, so nothing breaks while surfaces adopt it.
+      const touched = input.type ? [input.type] : (["film", "serie", "anime"] as const);
+      const sectionKey = { film: WATCHING_KEYS.movies, serie: WATCHING_KEYS.series, anime: WATCHING_KEYS.animes };
+
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.detail(id) });
       queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "list-items"] });
 
       if (isStatusChange) {
-        // refetchType "all" so the main-page section carousels refetch even while
-        // INACTIVE (e.g. you marked watched from the detail route → the movies page
-        // is unmounted). Without it they'd only refetch on remount, but Next's Router
-        // Cache (staleTimes) restores the page from cache on Back → stale sections.
-        queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.movies(), refetchType: "all" });
-        queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.series(), refetchType: "all" });
-        queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.animes(), refetchType: "all" });
-        // Library shows watched/in-progress/paused/dropped with a status badge, so a
-        // status change must refresh it live too (it can be unmounted → refetch "all",
-        // and Next's Router Cache restores it stale on Back without this). Prefix-match
-        // hits library(userId).
-        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "library"], refetchType: "all" });
-        for (const type of ["film", "serie", "anime"] as const) {
+        for (const type of touched) {
+          // refetchType "all" so the main-page section carousels refetch even while
+          // INACTIVE (e.g. you marked watched from the detail route → the movies page
+          // is unmounted). Without it they'd only refetch on remount, but Next's Router
+          // Cache (staleTimes) restores the page from cache on Back → stale sections.
+          queryClient.invalidateQueries({ queryKey: sectionKey[type](), refetchType: "all" });
           queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.inProgress(type), refetchType: "all" });
           queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.recentlyWatched(type), refetchType: "all" });
           queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.wantToWatch(type), refetchType: "all" });
           queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.topRated(type), refetchType: "all" });
         }
+        // Library shows watched/in-progress/paused/dropped with a status badge, so a
+        // status change must refresh it live too (it can be unmounted → refetch "all",
+        // and Next's Router Cache restores it stale on Back without this). Prefix-match
+        // hits library(userId). One list, all types → never scoped.
+        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "library"], refetchType: "all" });
         // Cross-module: a watched-status change can move a Goal's progress and
         // auto-tick a Watching-linked habit.
         void syncWatchingGoals(queryClient);
@@ -131,7 +138,7 @@ export function useUpdateMedia() {
       // A season/episode progress change must refresh the In Progress carousels so
       // their progress bar reflects the new position (status change already does).
       if (!isStatusChange && (input.current_season != null || input.current_episode != null)) {
-        for (const type of ["film", "serie", "anime"] as const) {
+        for (const type of touched) {
           queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.inProgress(type) });
         }
       }

@@ -2,7 +2,8 @@
 
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
-import type { WatchingMedia, MediaType, WatchStatus, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, ThemeFavorite, ThemeFavoriteInput, Rewatch } from "./types";
+import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, ThemeFavorite, ThemeFavoriteInput, Rewatch } from "./types";
+import { deriveWatchStatus } from "./lib/watch-status";
 
 // =====================================================
 // WATCHING SERVICE (SUPABASE)
@@ -21,6 +22,9 @@ export interface GetMediaOptions {
 
 export interface ExistingMediaEntry {
   id: string;
+  /** THE FACTS the banner needs, so it stops inferring the outcome from the button you pressed. */
+  type: MediaType;
+  status: string | null;
   favorite: boolean;
   priority: number | null;
   in_progress: boolean;
@@ -58,7 +62,7 @@ export async function getExistingMediaEntry(
   if (!user) return null;
   const { data } = await supabase
     .schema("watching").from("media_items")
-    .select("id,favorite,priority,in_progress,want_to_watch,watched,recently_watched,paused,dropped,user_rating,notes,current_season,current_episode")
+    .select("id,type,status,favorite,priority,in_progress,want_to_watch,watched,recently_watched,paused,dropped,user_rating,notes,current_season,current_episode")
     .eq("user_id", user.id)
     .eq("type", type)
     .eq("tmdb_id", tmdbId)
@@ -137,8 +141,13 @@ export async function getMediaItems(
 // select("*"). At a few hundred titles, dropping description/notes/backdrop/season
 // arrays cuts the payload several-fold. Keep in sync with the server seed in
 // library/page.tsx. (Status flags + current S/E power the Watching/Dropped badges.)
+// The airing columns are here for a reason that is not display: the "…" menu on a Library card
+// offers to mark a title watched, and it CANNOT do that honestly without knowing whether the show
+// is over (`status`) and where its last aired episode is (`season_aired`). Starved of those, the
+// menu wrote `watched: true` over a blank position — manufacturing the exact rows a migration had
+// just repaired. A surface that may act on a fact must be given the fact.
 const LIBRARY_COLUMNS =
-  "id, type, title, original_title, poster_url, favorite, year, user_rating, watched_at, updated_at, tags, watched, in_progress, dropped, drop_reason, paused, current_season, current_episode";
+  "id, type, title, original_title, poster_url, favorite, year, user_rating, watched_at, updated_at, tags, watched, in_progress, dropped, drop_reason, paused, current_season, current_episode, status, season_episodes, season_aired, season_years, caught_up_at";
 
 export async function getLibraryMedia(userId: string): Promise<WatchingMedia[]> {
   const supabase = createClient();
@@ -181,6 +190,12 @@ export interface StatsRawItem {
   year: number;
   runtime: number | null;        // films = total mins ; series/anime = per-episode mins
   season_episodes: number[] | null;
+  /**
+   * Episodes ACTUALLY AIRED per season. Stats used to count hours from `season_episodes` — the
+   * ANNOUNCED counts — so it billed you for episodes that do not exist yet, and disagreed with the
+   * detail page's Quick Stats about the same title. The rule does not stop at this page's door.
+   */
+  season_aired: number[] | null;
   episodes: number | null;
   user_rating: number | null;
   favorite: boolean;
@@ -205,7 +220,7 @@ export async function getWatchingStatsData(userId: string): Promise<StatsRawItem
   const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("id, type, title, original_title, poster_url, backdrop_url, year, runtime, season_episodes, episodes, user_rating, favorite, watched_at, tags, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters")
+    .select("id, type, title, original_title, poster_url, backdrop_url, year, runtime, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters")
     .eq("user_id", userId)
     // Anything you spent time on — completed, watching, paused, or dropped. The
     // episodes you actually watched are real hours regardless of current status.
@@ -274,7 +289,9 @@ export async function getExistingMediaItem(
   const { data } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("id, favorite, priority, watched, recently_watched, watched_at, in_progress, want_to_watch, paused, dropped, current_episode, current_season")
+    // `type` and `status` are what let resolveTransition stop GUESSING the outcome from the list you
+    // came through. Without them it congratulated you on finishing a show that is still airing.
+    .select("id, type, status, favorite, priority, watched, recently_watched, watched_at, in_progress, want_to_watch, paused, dropped, current_episode, current_season, season_episodes, season_aired, season_years, caught_up_at")
     .eq("user_id", userId)
     .eq("type", type)
     .eq("tmdb_id", tmdbId)
@@ -483,15 +500,9 @@ export async function getForYouRecommendations(
   return (data?.items ?? []) as ForYouItem[];
 }
 
-function deriveWatchStatus(item: any): WatchStatus {
-  if (item.is_reference) return "reference";
-  if (item.dropped) return "dropped";
-  if (item.paused) return "paused";
-  if (item.watched) return "completed";
-  if (item.in_progress) return "watching";
-  if (item.want_to_watch) return "plan_to_watch";
-  return "plan_to_watch";
-}
+// `deriveWatchStatus` lived HERE, and a second copy lived in StatusCard.tsx with its priorities in
+// a different order (watched before the stances) under a comment claiming the two matched. They
+// did not. It now has exactly one home: lib/watch-status.ts.
 
 export async function getListItems(listId: string): Promise<MediaListItemWithMedia[]> {
   const supabase = createClient();
@@ -513,12 +524,16 @@ export async function getListItems(listId: string): Promise<MediaListItemWithMed
     }));
 }
 
+// Typeahead — it runs on every keystroke. `select("*")` dragged back the description, your notes
+// and the whole cached `cast_members` jsonb blob to draw a row that shows a poster and a title.
+const LIST_SEARCH_COLUMNS = "id, type, title, original_title, poster_url, year, user_rating, tmdb_id";
+
 export async function searchMediaForList(userId: string, query: string): Promise<WatchingMedia[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("*")
+    .select(LIST_SEARCH_COLUMNS)
     .eq("user_id", userId)
     // Reference stubs aren't really "in your library" — exclude them so a title left
     // over from a removed list routes through the enriching TMDB add path instead of
