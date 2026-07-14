@@ -21,35 +21,50 @@ const wantToWatch = flags({ want_to_watch: true });
 const paused = flags({ paused: true });
 const dropped = flags({ dropped: true });
 
-// THE BANNER USED TO INFER THE OUTCOME FROM THE DOOR YOU CAME THROUGH — the same line we deleted
-// from the write path (`watched = listContext === …`), surviving in the sentences. So the modal
-// congratulated you on finishing House of the Dragon, a show that is still airing.
-describe("resolveTransition — it must not assert a completion it cannot know", () => {
-  const airing = flags({ in_progress: true, type: "serie", status: "ongoing" });
-  const over = flags({ in_progress: true, type: "serie", status: "ended" });
+/**
+ * RECENTLY WATCHED IS A CONSEQUENCE OF HAVING FINISHED SOMETHING.
+ *
+ * The banner used to infer the outcome from the door you came through — the same line we deleted
+ * from the write path (`watched = listContext === …`), surviving in the sentences. It congratulated
+ * you on finishing House of the Dragon, a show that is still airing. Making the sentence honest was
+ * only half of it: the door itself is called "Add to Recently Watched", and the name of a door is a
+ * promise. A title that cannot be `watched` cannot be recently watched, so the door is shut.
+ */
+describe("resolveTransition — Recently Watched refuses what it cannot hold", () => {
+  const airing = { type: "serie" as const, status: "ongoing" };
+  const over = { type: "serie" as const, status: "ended" };
 
-  // The assertion is about the CLAIM, not the word: "titles you've finished" describes the rail,
-  // which is fair. "You finished this one!" attributes the completion to you, which is the lie.
-  const claimsCompletion = /you finished this one/i;
+  it("refuses an ongoing series you already own", () => {
+    const t = resolveTransition(inProgress, "recentlyWatched", airing);
+    expect(t.allowed).toBe(false);
+    expect(t.action).toBe("blocked");
+    expect(t.message).toMatch(/isn't over yet/i);
+  });
 
-  it("does NOT tell you that you finished a series that is still airing", () => {
-    const t = resolveTransition(airing, "recentlyWatched");
-    expect(t.allowed).toBe(true);
-    expect(t.message).not.toMatch(claimsCompletion);
+  it("refuses an ongoing series you DON'T own yet — the same lie, told about a new title", () => {
+    const t = resolveTransition(null, "recentlyWatched", airing);
+    expect(t.allowed).toBe(false);
     expect(t.message).toMatch(/still airing/i);
   });
 
-  it("says so plainly when the show really is over", () => {
-    expect(resolveTransition(over, "recentlyWatched").message).toMatch(claimsCompletion);
+  it("accepts a series that is really over, and calls it what it is: a completion", () => {
+    const t = resolveTransition(inProgress, "recentlyWatched", over);
+    expect(t.allowed).toBe(true);
+    expect(t.message).toMatch(/marks it as finished/i);
   });
 
-  it("ranking is not watching — the Top 10 stops declaring a running show finished", () => {
-    expect(resolveTransition(airing, "topTen").message).not.toMatch(claimsCompletion);
-    expect(resolveTransition(over, "topTen").message).toMatch(claimsCompletion);
+  it("lets a film through, always — a film is binary", () => {
+    expect(resolveTransition(null, "recentlyWatched", { type: "film", status: null }).allowed).toBe(true);
   });
 
-  it("a caller that omits the facts keeps the old behaviour rather than crashing", () => {
-    expect(resolveTransition(inProgress, "recentlyWatched").message).toMatch(claimsCompletion);
+  it("RANKING IS NOT WATCHING — the Top 10 stays open to a show that is still airing", () => {
+    const t = resolveTransition(inProgress, "topTen", airing);
+    expect(t.allowed).toBe(true);
+    expect(t.message).not.toMatch(/you finished this one/i);
+  });
+
+  it("never blocks on ignorance — a caller that omits the facts keeps the old behaviour", () => {
+    expect(resolveTransition(inProgress, "recentlyWatched").allowed).toBe(true);
   });
 });
 

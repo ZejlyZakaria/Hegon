@@ -237,9 +237,10 @@ export function useAddMedia() {
 
       const existing = await getExistingMediaItem(userId, defaultType, selectedItem.id);
 
-      // Single source of truth for what's allowed and which write branch to run
-      // (shared with AddMediaModal's conflict banner via resolveTransition).
-      const transition = resolveTransition(existing, listContext);
+      // Single source of truth for what's allowed and which write branch to run (shared with
+      // AddMediaModal's conflict banner). It gets the world's facts too — the UI can be bypassed,
+      // the write cannot: an ongoing series never enters Recently Watched, whoever asks.
+      const transition = resolveTransition(existing, listContext, { type: defaultType, status });
       if (!transition.allowed) {
         const err = new Error(transition.message ?? "Transition not allowed.");
         err.name = "TransitionError";

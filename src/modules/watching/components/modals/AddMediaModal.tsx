@@ -303,17 +303,24 @@ export default function AddMediaModal({
       // Check for existing entry
       const existing = await getExistingMediaEntry(defaultType, result.id);
 
-      if (!existing) { setConflict(null); return; }
-
-      setUserRating(existing.user_rating ?? 0);
-      setNotes(existing.notes ?? "");
-      setFavorite(existing.favorite ?? false);
-      if (listContext === "inProgress") {
-        setSeasonInput(String(existing.current_season ?? 1));
-        setEpisodeInput(String(existing.current_episode ?? 1));
+      if (existing) {
+        setUserRating(existing.user_rating ?? 0);
+        setNotes(existing.notes ?? "");
+        setFavorite(existing.favorite ?? false);
+        if (listContext === "inProgress") {
+          setSeasonInput(String(existing.current_season ?? 1));
+          setEpisodeInput(String(existing.current_episode ?? 1));
+        }
       }
 
-      const transition = resolveTransition(existing, listContext);
+      // The resolver runs even for a title you DON'T own — a brand-new series that is still airing,
+      // arriving through the "Recently Watched" door, is the same impossible claim as an owned one.
+      // It needs the world's facts (is it over?), and `extractedStatus` is them: the state setter
+      // above hasn't landed yet, so we hand it the value, not the stale state.
+      const transition = resolveTransition(existing, listContext, {
+        type: defaultType,
+        status: extractedStatus,
+      });
       setConflict(
         transition.message
           ? { existingLists: transition.existingLists, canAdd: transition.allowed, message: transition.message }

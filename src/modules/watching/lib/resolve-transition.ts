@@ -73,10 +73,67 @@ function actionFor(target: ListType): Exclude<TransitionAction, "insert" | "bloc
   return "update:merge"; // recentlyWatched, library, wantToWatch
 }
 
+/** The facts about the SHOW — true whether or not you own it. From the row, or from TMDB. */
+export interface WorldFacts {
+  type?: MediaType;
+  status?: string | null;
+}
+
+/** Can this title HONESTLY be called watched? A film: always. A series: only once it is over. */
+function canFinish(facts: WorldFacts | null | undefined): boolean {
+  // Unknown facts → the old, permissive behaviour. We never block on ignorance.
+  if (!facts?.type) return true;
+  return facts.type === "film" || isFinished(facts.status);
+}
+
 export function resolveTransition(
   existing: MediaStateFlags | null,
   target: ListType,
+  /** The candidate's facts, for a title you don't own yet. Falls back to the row's own. */
+  world?: WorldFacts,
 ): TransitionResult {
+  const facts = world ?? existing ?? null;
+
+  const listsOf = (e: MediaStateFlags): string[] => {
+    const out: string[] = [];
+    if (e.priority != null) out.push("Top 10");
+    if (e.in_progress) out.push("In Progress");
+    if (e.paused) out.push("Paused");
+    if (e.dropped) out.push("Dropped");
+    if (e.want_to_watch) out.push("Want to Watch");
+    if (e.recently_watched) out.push("Recently Watched");
+    if (e.watched && !e.recently_watched && e.priority == null) out.push("Library");
+    return out;
+  };
+
+  /**
+   * ⛔ RECENTLY WATCHED IS A CONSEQUENCE OF HAVING FINISHED SOMETHING.
+   *
+   * It is derived from `watched_at`, and `watched_at` belongs to a title you actually finished. So a
+   * series that is still airing cannot be recently watched — not awkwardly, IMPOSSIBLY. Letting the
+   * button through and quietly filing the title somewhere else was still a lie: the modal is called
+   * "Add to Recently Watched", and the name of a door is a promise.
+   *
+   * This door exists for the show you binged in a week and never tracked — you record it after the
+   * fact. There is nothing to record after the fact about a show whose next episode airs on Sunday.
+   *
+   * It applies BEFORE the "no existing entry" shortcut, because a brand-new ongoing series arriving
+   * through this door is the same lie, told about a title you don't own yet.
+   *
+   * (The Top 10 is deliberately NOT covered: ranking is not watching. You may love a show that
+   * isn't over.)
+   */
+  if (target === "recentlyWatched" && !canFinish(facts)) {
+    return {
+      allowed: false,
+      action: "blocked",
+      message: existing
+        ? `You're already watching this, and it isn't over yet. Track it from its page — it'll land here when it ends.`
+        : `Recently Watched is for titles you've finished. This one is still airing — add it from In Progress.`,
+      existingLists: existing ? listsOf(existing) : [],
+    };
+  }
+
   // No existing entry → clean insert, nothing to warn about.
   if (!existing) {
     return { allowed: true, action: "insert", message: null, existingLists: [] };
@@ -90,14 +147,7 @@ export function resolveTransition(
   const isPaused = !!existing.paused;
   const isDropped = !!existing.dropped;
 
-  const existingLists: string[] = [];
-  if (isInTopTen) existingLists.push("Top 10");
-  if (isInProgress) existingLists.push("In Progress");
-  if (isPaused) existingLists.push("Paused");
-  if (isDropped) existingLists.push("Dropped");
-  if (isInWantToWatch) existingLists.push("Want to Watch");
-  if (isInRecentlyWatched) existingLists.push("Recently Watched");
-  if (isInLibrary) existingLists.push("Library");
+  const existingLists = listsOf(existing);
 
   const blocked = (message: string): TransitionResult => ({
     allowed: false,
@@ -135,36 +185,28 @@ export function resolveTransition(
   const ratingText = existing.user_rating ? ` (rated ${existing.user_rating}/10)` : "";
   let contextualMessage = "";
 
-  /**
-   * CAN THE APP HONESTLY SAY YOU FINISHED IT?
-   * A film: yes, always — you saw it or you didn't. A series: only once it is OVER. Every sentence
-   * below that asserted completion did so purely because of the button you pressed, which is how a
-   * modal came to congratulate you on finishing a show whose next episode airs on Sunday.
-   * Where the app cannot assert, it describes — and the live "Recorded as …" line under "How far did
-   * you get?" says what will actually happen, because it reads your position instead of your intent.
-   */
-  const canFinish = !existing.type || existing.type === "film" || isFinished(existing.status);
+  const finishable = canFinish(facts);
 
   if (target === "topTen") {
     // RANKING IS NOT WATCHING. It never was — the Top 10 is a favourite and a rank, and asserting
-    // "watched" alongside it was the fourth door: it declared a running show finished, silently,
-    // for the crime of being loved.
+    // "watched" alongside it was a door that declared a running show finished, silently, for the
+    // crime of being loved. So this target stays open to a series that is still airing.
     if (isInLibrary) contextualMessage = `This media is in your Library${ratingText}. It will be added to your Top 10.`;
-    else if (isInWantToWatch) contextualMessage = canFinish
+    else if (isInWantToWatch) contextualMessage = finishable
       ? `You're marking this as watched AND ranking it in your Top 10.`
       : `You're ranking this in your Top 10 — tell us how far you got.`;
-    else if (isInProgress) contextualMessage = canFinish
+    else if (isInProgress) contextualMessage = finishable
       ? `You finished this one! It will be ranked in your Top 10.`
       : `It's still airing — your progress is kept, and it will be ranked in your Top 10.`;
     else if (isInRecentlyWatched) contextualMessage = `This recently watched media will be ranked in your Top 10.`;
   } else if (target === "recentlyWatched") {
+    // An ongoing series never reaches here — it was refused above. So everything below is a title
+    // the app CAN honestly call finished.
     if (isInLibrary) contextualMessage = `This media is in your Library${ratingText}. It will appear in Recently Watched.`;
     else if (isInTopTen) contextualMessage = `This Top 10 media will also appear in Recently Watched.`;
-    else if (isInProgress) contextualMessage = canFinish
-      ? `You finished this one! It will be added to Recently Watched.`
-      // Recently Watched means recently FINISHED. This show isn't. Saying otherwise was the lie;
-      // saying where it will really land is the truth, and it costs nothing.
-      : `Recently Watched is for titles you've finished — this one is still airing, so it stays In Progress.`;
+    // NOT an "add" — you already own it and you're already watching it. What this does is FINISH
+    // it, and the sentence should be the one the button is actually about.
+    else if (isInProgress) contextualMessage = `You're in the middle of this one — adding it here marks it as finished.`;
   } else if (target === "inProgress") {
     if (isInLibrary) contextualMessage = `This media is in your Library. It will be moved to In Progress.`;
     else if (isInRecentlyWatched) contextualMessage = `This recently watched media will be marked In Progress — set where you are.`;
