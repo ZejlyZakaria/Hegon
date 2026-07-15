@@ -4,7 +4,6 @@ import { resolveTransition, type MediaStateFlags } from "./resolve-transition";
 function flags(o: Partial<MediaStateFlags> = {}): MediaStateFlags {
   return {
     watched: false,
-    recently_watched: false,
     priority: null,
     in_progress: false,
     want_to_watch: false,
@@ -86,15 +85,6 @@ describe("resolveTransition — already in target", () => {
     const t = resolveTransition(library, "library");
     expect(t.allowed).toBe(false);
     expect(t.message).toContain('"Library"');
-  });
-
-  // Recently Watched is a VIEW now, not a bucket. A watched title's legacy `recently_watched`
-  // flag must not change how the resolver sees it: it is simply in your Library, either way.
-  it("ignores the deprecated recently_watched flag — a watched title is Library, flag or not", () => {
-    const flagged = resolveTransition(flags({ watched: true, recently_watched: true }), "library");
-    const plain = resolveTransition(flags({ watched: true, recently_watched: false }), "library");
-    expect(flagged).toEqual(plain);
-    expect(flagged.message).toContain('"Library"');
   });
 });
 

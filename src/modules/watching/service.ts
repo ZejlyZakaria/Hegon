@@ -30,7 +30,6 @@ export interface ExistingMediaEntry {
   in_progress: boolean;
   want_to_watch: boolean;
   watched: boolean;
-  recently_watched: boolean;
   paused: boolean;
   dropped: boolean;
   user_rating: number | null;
@@ -62,7 +61,7 @@ export async function getExistingMediaEntry(
   if (!user) return null;
   const { data } = await supabase
     .schema("watching").from("media_items")
-    .select("id,type,status,favorite,priority,in_progress,want_to_watch,watched,recently_watched,paused,dropped,user_rating,notes,current_season,current_episode")
+    .select("id,type,status,favorite,priority,in_progress,want_to_watch,watched,paused,dropped,user_rating,notes,current_season,current_episode")
     .eq("user_id", user.id)
     .eq("type", type)
     .eq("tmdb_id", tmdbId)
@@ -298,7 +297,7 @@ export async function getExistingMediaItem(
     .from("media_items")
     // `type` and `status` are what let resolveTransition stop GUESSING the outcome from the list you
     // came through. Without them it congratulated you on finishing a show that is still airing.
-    .select("id, type, status, favorite, priority, watched, recently_watched, watched_at, in_progress, want_to_watch, paused, dropped, current_episode, current_season, season_episodes, season_aired, season_years, caught_up_at")
+    .select("id, type, status, favorite, priority, watched, watched_at, in_progress, want_to_watch, paused, dropped, current_episode, current_season, season_episodes, season_aired, season_years, caught_up_at")
     .eq("user_id", userId)
     .eq("type", type)
     .eq("tmdb_id", tmdbId)
@@ -672,7 +671,6 @@ export async function addTmdbItemToList(
       watched: false,
       in_progress: false,
       want_to_watch: false,
-      recently_watched: false,
       favorite: false,
       notes: null,
       ...meta,

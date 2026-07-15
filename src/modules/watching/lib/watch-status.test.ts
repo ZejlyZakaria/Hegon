@@ -194,7 +194,6 @@ describe("positionPatch — a viewing is not a correction", () => {
     // Seven Deadly Sins: marked watched (the only word on offer), but you saw three of four seasons.
     const p = positionPatch(sds(), 3, 24, "correction");
     expect(p.watched).toBe(false);
-    expect(p.recently_watched).toBe(false);
     expect(p.in_progress).toBe(true);
   });
 

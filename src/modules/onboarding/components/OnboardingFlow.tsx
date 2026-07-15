@@ -901,7 +901,6 @@ function WatchingStep({
         in_progress: true,
         watched: false,
         want_to_watch: false,
-        recently_watched: false,
         favorite: false,
         current_season: type === "serie" ? 1 : null,
         current_episode: type === "serie" ? 1 : null,

@@ -14,9 +14,6 @@ import type { ListType, MediaType } from "../types";
  *  (modal) and the `getExistingMediaItem` row (mutation) satisfy this. */
 export interface MediaStateFlags {
   watched: boolean;
-  /** @deprecated No longer read for any decision — Recently Watched is derived from `watched_at`.
-   *  Optional so callers can stop threading it; the DB column awaits a cleanup migration. */
-  recently_watched?: boolean;
   priority: number | null;
   in_progress: boolean;
   want_to_watch: boolean;

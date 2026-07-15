@@ -32,7 +32,6 @@ const updateMediaFields = z.object({
   in_progress: z.boolean().optional(),
   want_to_watch: z.boolean().optional(),
   is_reference: z.boolean().optional(),
-  recently_watched: z.boolean().optional(),
   dropped: z.boolean().optional(),
   drop_reason: z.string().nullable().optional(),
   paused: z.boolean().optional(),

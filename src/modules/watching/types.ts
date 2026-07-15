@@ -74,7 +74,6 @@ export interface WatchingMedia {
   watched: boolean;
   in_progress: boolean;
   want_to_watch: boolean;
-  recently_watched: boolean;
   dropped: boolean;
   drop_reason?: string | null;
   paused: boolean;

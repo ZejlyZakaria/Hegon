@@ -8,31 +8,19 @@ import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { toColumns, updateMediaSchema, type UpdateMediaInput } from "../schemas/media.schema";
 
-const STATUS_FIELDS = ["watched", "in_progress", "want_to_watch", "is_reference", "recently_watched", "dropped", "paused"] as const;
+// A status change → the browse sections must refetch. `watched_at` counts too now: "Last Watched"
+// is DERIVED from it (ordered by the date), so back-dating a title on its detail page must move it
+// in the rail. There is no `recently_watched` flag here any more — the column is dead, the section
+// reads the date directly.
+const STATUS_FIELDS = ["watched", "in_progress", "want_to_watch", "is_reference", "dropped", "paused", "watched_at"] as const;
 
-// Any field whose change can move a number on the Stats page (counts, hours,
-// ratings, genres, top picks, activity). Notes are the only common edit that does
-// NOT affect Stats, so we skip the stats refetch for a notes-only save.
+// Any field whose change can move a number on the Stats page (counts, hours, ratings, genres, top
+// picks, activity). Notes are the only common edit that does NOT affect Stats.
 const STATS_FIELDS = [
-  "watched", "in_progress", "recently_watched", "want_to_watch", "is_reference",
+  "watched", "in_progress", "want_to_watch", "is_reference",
   "user_rating", "favorite", "watched_at", "season_years", "season_ratings",
   "current_season", "current_episode",
 ] as const;
-
-// "Recently Watched" must follow the watch DATE, not a sticky flag. Whenever an
-// update sets `watched_at` (e.g. back-dating from the detail page), recompute
-// `recently_watched` from it — same 30-day window as the add flow's recency. This
-// also makes it a status change → the Recently Watched query re-fetches, so a
-// back-dated item correctly leaves the section. (Skip if the caller set the flag
-// explicitly.)
-const RECENT_MS = 30 * 24 * 60 * 60 * 1000;
-
-function withRecency(input: UpdateMediaInput): UpdateMediaInput {
-  if (!("watched_at" in input) || "recently_watched" in input) return input;
-  const wa = input.watched_at;
-  const recent = !!wa && new Date(wa).getTime() >= Date.now() - RECENT_MS;
-  return { ...input, recently_watched: recent };
-}
 
 export function useUpdateMedia() {
   const queryClient = useQueryClient();
@@ -44,13 +32,13 @@ export function useUpdateMedia() {
       // The schema was a TYPE and nothing else — declared, never run, so its rules were suggestions.
       // Parsing it here turns it into a gate: an update that moves a position without recomputing
       // `caught_up_at` now fails loudly, at the door, instead of quietly poisoning a row.
-      const input = withRecency(updateMediaSchema.parse(rawInput));
+      const input = updateMediaSchema.parse(rawInput);
       return updateMediaItem(input.id, toColumns(input));
     },
 
     onMutate: async (rawInput) => {
       if (isDemo) return; // read-only demo: skip the optimistic update
-      const input = withRecency(rawInput);
+      const input = rawInput;
       const { id } = input;
       const updates = toColumns(input);
 
@@ -100,7 +88,7 @@ export function useUpdateMedia() {
     },
 
     onSuccess: (_, rawInput) => {
-      const input = withRecency(rawInput);
+      const input = rawInput;
       const { id } = input;
       const isStatusChange = STATUS_FIELDS.some((f) => input[f] != null);
 

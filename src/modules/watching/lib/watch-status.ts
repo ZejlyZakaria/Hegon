@@ -155,7 +155,6 @@ export function markWatchedPatch(m: StatusFacts): StatusPatch {
 
   return {
     watched: true,
-    recently_watched: true,
     in_progress: false,
     want_to_watch: false,
     is_reference: false,
@@ -325,9 +324,9 @@ export function positionPatch(
         }
       : {}),
     ...(revokes
-      // It was "finished". It isn't any more — and it must leave the finished rails too, or it
-      // keeps surfacing in Recently Watched as a show you completed.
-      ? { watched: false, recently_watched: false, in_progress: !m.paused && !m.dropped }
+      // It was "finished". It isn't any more — and it must leave the finished rails too (its
+      // watched_at stops mattering because `watched` is false), or it keeps surfacing as completed.
+      ? { watched: false, in_progress: !m.paused && !m.dropped }
       : {}),
   };
 }

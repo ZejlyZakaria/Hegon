@@ -152,9 +152,6 @@ export function useAddMedia() {
           : null;
 
       const effectiveWatchedAt = watchedAt ?? new Date().toISOString();
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const isRecentLibraryAdd = listContext === "library" && new Date(effectiveWatchedAt) >= thirtyDaysAgo;
 
       const posterUrl =
         customPosterUrl ||
@@ -193,8 +190,8 @@ export function useAddMedia() {
         caught_up_at: caughtUpAt,
         season_aired: seasonAiredList,
         ...(seasonYears ? { season_years: seasonYears } : {}),
-        recently_watched: isWatched && (listContext === "recentlyWatched" || isRecentLibraryAdd),
-        // A date of viewing belongs to something you actually finished.
+        // A date of viewing belongs to something you actually finished. "Last Watched" derives from
+        // it — there is no `recently_watched` flag to set any more.
         watched_at: isWatched ? effectiveWatchedAt : null,
         want_to_watch: listContext === "wantToWatch",
         favorite: listContext === "topTen" ? true : favorite,
@@ -274,7 +271,6 @@ export function useAddMedia() {
                 : undefined,
             in_progress: true,
             watched: false,
-            recently_watched: false,
             want_to_watch: false,
             ...RESET_STATUS,
             priority: existing!.priority,
@@ -299,7 +295,6 @@ export function useAddMedia() {
 
           return updateMediaItem(existing!.id, {
             ...(claimed ?? {}),
-            recently_watched: existing!.recently_watched,
             season_aired: seasonAiredList,
             ...(seasonYears ? { season_years: seasonYears } : {}),
             favorite: true,
@@ -316,10 +311,6 @@ export function useAddMedia() {
           if (existing!.priority != null) {
             updateData.priority = existing!.priority;
             updateData.favorite = true;
-          }
-          if (existing!.recently_watched) {
-            updateData.recently_watched = true;
-            updateData.watched_at = existing!.watched_at;
           }
           return updateMediaItem(existing!.id, updateData);
         }
