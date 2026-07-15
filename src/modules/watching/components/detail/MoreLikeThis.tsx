@@ -36,6 +36,10 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
       <div className="-mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 py-1 scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-6">
         {items.slice(0, 6).map((sim) => {
           const title = sim.title || sim.name || "";
+          // The year earns its place here: in a franchise it's the fastest way to read the order —
+          // "which one comes next" is answered by a date, not a plot summary.
+          const date = sim.release_date || sim.first_air_date;
+          const year = date ? new Date(date).getFullYear() : null;
           return (
             <button
               key={sim.id}
@@ -65,6 +69,7 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
               <p className="mt-2 line-clamp-2 min-h-9 text-xs leading-snug text-text-secondary transition-colors group-hover:text-text-primary">
                 {title}
               </p>
+              {year && <p className="text-micro tabular-nums text-text-tertiary">{year}</p>}
             </button>
           );
         })}

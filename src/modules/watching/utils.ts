@@ -17,13 +17,24 @@ export function displayTitle(item: { title: string; original_title: string | nul
  * by year stamps `Dec 31` of that year, which is ahead of us for the current year — we don't claim
  * you watched something you haven't).
  */
-export function watchedAgo(iso: string | null | undefined): string | null {
+export function watchedAgo(iso: string | null | undefined, opts?: { short?: boolean }): string | null {
   if (!iso) return null;
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return null;
 
   const days = Math.floor((Date.now() - then) / 86_400_000);
   if (days < 0) return null;
+
+  // Compact form for a narrow poster (mobile), where "2 weeks ago" is heavier than the card can
+  // carry: "Today · 3d · 2w · 1mo · 1y". Same thresholds, fewer pixels.
+  if (opts?.short) {
+    if (days === 0) return "Today";
+    if (days < 7) return `${days}d`;
+    if (days < 30) return `${Math.floor(days / 7)}w`;
+    if (days < 365) return `${Math.floor(days / 30)}mo`;
+    return `${Math.floor(days / 365)}y`;
+  }
+
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 7) return `${days} days ago`;

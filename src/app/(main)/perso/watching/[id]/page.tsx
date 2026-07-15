@@ -30,6 +30,7 @@ import { DROP_REASONS } from "@/modules/watching/lib/drop-reasons";
 import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
 import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import type { StatusPatch } from "@/modules/watching/lib/watch-status";
+import { buildWatchedAt, type WatchDateParts } from "@/modules/watching/lib/watched-date";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { QuickStats } from "@/modules/watching/components/detail/QuickStats";
 import { InList } from "@/modules/watching/components/detail/InList";
@@ -201,25 +202,31 @@ export default function MediaDetailPage() {
     }
   };
 
-  // "Watched" year edit for titles without a Watch History strip — films stamp
-  // watched_at (Dec 31 noon of that year, like the backfill), single-season shows
-  // stamp season_years["1"]. Lets Stats attribute them to the real year.
+  // A FILM's date is a real timestamp. The shared picker (month + day) feeds buildWatchedAt, the
+  // same construction the add flow uses, so a corrected date sorts precisely in Recently Watched.
+  const handleWatchedDateChange = async (parts: WatchDateParts) => {
+    if (!media) return;
+    try {
+      await updateMedia.mutateAsync({ id: media.id, type: media.type, watched_at: buildWatchedAt(parts) });
+      toast("Date updated.");
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
+      toast.error("Failed to update.");
+    }
+  };
+
+  // A ONE-SEASON series keeps its year in `season_years` (Stats reads that). We move `watched_at`
+  // with it too, so the Recently Watched rail — which orders by watched_at — agrees with Stats
+  // instead of stranding a back-dated show at "now".
   const handleWatchedYearChange = async (yr: number) => {
     if (!media) return;
     try {
-      if (media.type === "film") {
-        // watched_at moves → useUpdateMedia recomputes `recently_watched` from it
-        await updateMedia.mutateAsync({ id: media.id, watched_at: `${yr}-12-31T12:00:00Z` });
-      } else {
-        // series/anime keep their year in season_years (Stats reads that, not
-        // watched_at) — so recompute `recently_watched` here from the year, else a
-        // back-dated show would stay stuck in "Recently Watched".
-        await updateMedia.mutateAsync({
-          id: media.id,
-          season_years: { ...(media.season_years ?? {}), "1": yr },
-          recently_watched: yr >= new Date().getFullYear(),
-        });
-      }
+      await updateMedia.mutateAsync({
+        id: media.id,
+        type: media.type,
+        season_years: { ...(media.season_years ?? {}), "1": yr },
+        watched_at: buildWatchedAt({ year: yr, month: null, day: null }),
+      });
       toast("Year updated.");
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
@@ -298,6 +305,7 @@ export default function MediaDetailPage() {
       onResume={actions.resume}
       onAddNote={() => setForceTakeOpen(true)}
       onWatchedYearChange={handleWatchedYearChange}
+      onWatchedDateChange={handleWatchedDateChange}
       onDelete={() => setDeleteOpen(true)}
       isUpdating={actions.isPending}
     />

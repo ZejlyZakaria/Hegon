@@ -68,8 +68,23 @@ describe("canComplete — you cannot finish a story that is still being told", (
   it("refuses a running series", () => {
     expect(canComplete(hotd())).toBe(false);
   });
-  it("allows a finished one, and any film", () => {
+  it("allows a finished one", () => {
     expect(canComplete(hotd({ status: "ended" }))).toBe(true);
+  });
+
+  // A FILM must have been RELEASED — the person pages list unreleased credits under "Not seen yet",
+  // and nothing used to stop you claiming to have watched a film that does not exist.
+  it("refuses an unreleased film (TMDB status)", () => {
+    expect(canComplete({ type: "film", status: "post production" })).toBe(false);
+    expect(canComplete({ type: "film", status: "planned" })).toBe(false);
+    expect(canComplete({ type: "film", status: "canceled" })).toBe(false);
+  });
+  it("refuses a film whose release YEAR is still ahead (legacy row, no status)", () => {
+    expect(canComplete({ type: "film", status: null, year: new Date().getFullYear() + 1 })).toBe(false);
+  });
+  it("allows a released film, and stays permissive when nothing is known", () => {
+    expect(canComplete({ type: "film", status: "released" })).toBe(true);
+    expect(canComplete({ type: "film", status: null })).toBe(true);      // legacy, no future year → don't block on ignorance
     expect(canComplete({ type: "film", status: undefined })).toBe(true);
   });
 });

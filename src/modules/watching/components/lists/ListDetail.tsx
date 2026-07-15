@@ -439,14 +439,17 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
 
       {open && (
         <div className="absolute left-0 top-full z-30 mt-1 min-w-40 overflow-hidden rounded-card border border-border-strong bg-surface-3 py-1 shadow-md">
-          <button
-            type="button"
-            onClick={() => handleAction("watched")}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-label text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
-          >
-            <Check size={11} className="shrink-0 text-emerald-400" />
-            {actions.canComplete ? "Mark as watched" : "Seen everything that's out"}
-          </button>
+          {/* No completion affordance on an unreleased film — there is nothing to mark. */}
+          {actions.canMark && (
+            <button
+              type="button"
+              onClick={() => handleAction("watched")}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-label text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            >
+              <Check size={11} className="shrink-0 text-emerald-400" />
+              {actions.canComplete ? "Mark as watched" : "Seen everything that's out"}
+            </button>
+          )}
           {isSeries && currentStatus !== "watching" && (
             <button
               type="button"

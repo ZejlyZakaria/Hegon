@@ -41,8 +41,8 @@ export default function RecentlyWatchedSectionClient({ userId, config }: Props) 
 
   return (
     <MediaCarousel
-      title="Recently Watched"
-      subtitle={`Your 10 most recently watched ${config.labelPlural}`}
+      title="Last Watched"
+      subtitle={`The last 10 ${config.labelPlural} you finished`}
       items={items}
       onAddClick={() => openModal("recentlyWatched")}
       onDelete={handleDelete}

@@ -4,11 +4,13 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, TrendingUp } from "lucide-react";
+import { Check, Plus, TrendingUp } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
 import { useWatchingHero } from "@/modules/watching/hooks/useWatchingHero";
+import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
+import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { DontMissSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import type { WatchingConfig } from "@/modules/watching/types";
@@ -27,6 +29,7 @@ function DontMissCard({
   isActive,
   isTrending,
   isFirst,
+  isOwned,
   onHover,
   onAdd,
 }: {
@@ -34,6 +37,7 @@ function DontMissCard({
   isActive: boolean;
   isTrending: boolean;
   isFirst: boolean;
+  isOwned: boolean;
   onHover: () => void;
   onAdd: () => void;
 }) {
@@ -128,14 +132,23 @@ function DontMissCard({
                 </p>
               )}
 
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                className="self-start flex items-center gap-1.5 rounded-control bg-white px-3 py-2 text-xs font-semibold text-accent-watching transition-[transform,opacity] duration-150 ease-out hover:opacity-90 active:scale-[0.98]"
-              >
-                <Plus size={12} />
-                Add to collection
-              </button>
+              {/* Already yours → don't offer to "add" it. A trending rail that invites you to add a
+                  film you finished last week is the app not knowing what you own. */}
+              {isOwned ? (
+                <div className="self-start flex items-center gap-1.5 rounded-control bg-white/12 px-3 py-2 text-xs font-semibold text-white/75">
+                  <Check size={12} />
+                  In your library
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onAdd(); }}
+                  className="self-start flex items-center gap-1.5 rounded-control bg-white px-3 py-2 text-xs font-semibold text-accent-watching transition-[transform,opacity] duration-150 ease-out hover:opacity-90 active:scale-[0.98]"
+                >
+                  <Plus size={12} />
+                  Add to collection
+                </button>
+              )}
 
             </div>
           </motion.div>
@@ -185,10 +198,12 @@ function DontMissCard({
 function TrendingMobileCard({
   item,
   isTrending,
+  isOwned,
   onAdd,
 }: {
   item: any;
   isTrending: boolean;
+  isOwned: boolean;
   onAdd: () => void;
 }) {
   const posterUrl = item.poster_path ? `${TMDB_W500}${item.poster_path}` : null;
@@ -205,6 +220,12 @@ function TrendingMobileCard({
         <Image src={posterUrl} alt={title} fill unoptimized sizes="128px" className="object-cover" />
       )}
       <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/10 to-transparent" />
+      {/* Owned → a quiet check, top-right, so the rail doesn't pretend it's new to you. */}
+      {isOwned && (
+        <span className="on-artwork absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full">
+          <Check size={12} className="text-white" />
+        </span>
+      )}
       {isTrending && (
         <Badge
           variant="flag"
@@ -230,6 +251,9 @@ function TrendingMobileCard({
 export default function DontMissSectionClient({ config }: { config: WatchingConfig }) {
   const { data } = useWatchingHero(config.type);
   const { openModalWithItem } = useWatching();
+  const userId = useCurrentUserId();
+  const { data: ownedIds = [] } = useOwnedTmdbIds(userId ?? "", config.type, !!userId);
+  const owned = new Set(ownedIds);
   const [activeIndex, setActiveIndex] = useState(0);
 
   if (!data) return <DontMissSkeleton />;
@@ -255,6 +279,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
             key={`m-${item.id}-${i}`}
             item={item}
             isTrending={i === 0}
+            isOwned={owned.has(item.id)}
             onAdd={() => openModalWithItem("wantToWatch", item)}
           />
         ))}
@@ -271,6 +296,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
               isActive={activeIndex === i}
               isTrending={i === 0}
               isFirst={i < 3}
+              isOwned={owned.has(item.id)}
               onHover={() => setActiveIndex(i)}
               onAdd={() => openModalWithItem("wantToWatch", item)}
             />

@@ -173,7 +173,7 @@ export function MediaActionMenu({
                 being told — what you CAN truthfully say is that you've seen everything that's out,
                 so on a running series that is what it offers, and it lands your position on the
                 last aired episode instead of writing `watched` over a blank one. */}
-            {!item.watched && !alreadyCaughtUp && (
+            {!item.watched && !alreadyCaughtUp && actions.canMark && (
               <MenuItem
                 onClick={(e) => {
                   e.stopPropagation();

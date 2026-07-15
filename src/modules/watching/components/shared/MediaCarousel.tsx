@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useMemo, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -65,7 +65,8 @@ function MovieCard({
 }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const isPoster = orientation === "poster";
-  const ago = showWatchedAgo ? watchedAgo(item.watched_at) : null;
+  // Compact on the narrow poster (mobile): "2w" instead of "2 weeks ago", which crowds the tile.
+  const ago = showWatchedAgo ? watchedAgo(item.watched_at, { short: isPoster }) : null;
 
   return (
     <div
@@ -128,7 +129,9 @@ function MovieCard({
           {showEpisodeBadge &&
             ((item.current_episode ?? 0) > 0 || (item.current_season ?? 1) > 1) && (
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
+                {/* flex-wrap: on a narrow mobile poster, the position chip + a wide state chip
+                    ("Caught up") overflowed the card edge. They now stack instead of spilling. */}
+                <div className="flex flex-wrap items-center gap-2">
                   <span
                     className="inline-flex h-6 shrink-0 items-center rounded-chip px-2 text-micro font-semibold leading-none"
                     style={{
@@ -234,11 +237,12 @@ export function MediaCarousel({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const sortedItems = useMemo(
-    () =>
-      [...localItems].sort((a, b) => (a.priority || 999) - (b.priority || 999)),
-    [localItems],
-  );
+  // NO client-side re-sort. Each section already arrives in the order it MEANS: Recently Watched by
+  // watched_at, Top Rated by rank, In Progress by recency. A blanket `sort by priority` here quietly
+  // overrode all of them — it shoved every Top-10 title to the front of Recently Watched (Chernobyl,
+  // rank 3, jumped above Arcane despite being watched a year earlier). The server's order is the
+  // truth; we keep it.
+  const sortedItems = localItems;
 
   // Auto-scroll back to the start when a NEW item takes position 1 — covers both
   // adding (Want to Watch) AND a freshly-watched title entering Recently Watched

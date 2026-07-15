@@ -78,16 +78,34 @@ export function useWatchActions(media: Target) {
     }
   };
 
+  // "Not out yet" — the one truth an unreleased film reduces to. Both the mark-watched and the
+  // caught-up paths must refuse it: you can neither finish nor be caught up on a film that doesn't
+  // exist. This is the backstop; the surfaces also hide the buttons (see `canMark`).
+  const notOutYet = () => {
+    toast.error(media?.type === "film" ? "This film isn't out yet." : "This isn't over yet.");
+    return Promise.resolve(null);
+  };
+
   return {
     isPending: updateMedia.isPending,
 
-    /** True when calling `markWatched` would be an honest claim. A series: only once it's over. */
+    /** True when calling `markWatched` would be an honest claim. Film: released. Series: over. */
     canComplete: !!media && canComplete(media),
 
-    markWatched: () => (media ? write(markWatchedPatch(media), "") : Promise.resolve(null)),
+    /** Whether to OFFER a completion affordance at all. An unreleased film gets none — there is
+     *  nothing to mark. A series always does (watched, or caught up). */
+    canMark: !!media && (canComplete(media) || media.type !== "film"),
+
+    markWatched: () => {
+      if (!media) return Promise.resolve(null);
+      if (!canComplete(media)) return notOutYet();
+      return write(markWatchedPatch(media), "");
+    },
 
     markCaughtUp: async () => {
       if (!media) return null;
+      // A film is never "caught up" — it's watched or it isn't. An unreleased one isn't even that.
+      if (media.type === "film") return notOutYet();
       const patch = markCaughtUpPatch(media);
       if (!patch) {
         toast.error("We don't know what has aired for this title yet.");

@@ -2,9 +2,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/shared/components/ui/select";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
@@ -19,6 +16,8 @@ import { HowFarDidYouGet, type Position, type Stance } from "./HowFarDidYouGet";
 import { useAddMedia } from "@/modules/watching/hooks/useAddMedia";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { RatingPicker } from "@/modules/watching/components/shared/RatingPicker";
+import { WatchDatePicker } from "@/modules/watching/components/shared/WatchDatePicker";
+import { buildWatchedAt, type WatchDateParts } from "@/modules/watching/lib/watched-date";
 import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
 import { getTakenPriorities, getExistingMediaEntry, uploadCustomPoster } from "@/modules/watching/service";
@@ -34,9 +33,6 @@ type AddMediaModalProps = {
   initialItem?: any;
 };
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const PRIORITY_CONFIG = {
   high:   { dot: "bg-red-400",   text: "text-red-400",   activeBg: "bg-red-400/10 border-red-400/30"   },
@@ -84,8 +80,7 @@ export default function AddMediaModal({
   const [priorityLevel, setPriorityLevel] = useState<"high" | "medium" | "low">("medium");
   const [takenPriorities, setTakenPriorities] = useState<number[]>([]);
 
-  const [watchedYear, setWatchedYear]   = useState<number>(new Date().getFullYear());
-  const [watchedMonth, setWatchedMonth] = useState<number | null>(null);
+  const [watchDate, setWatchDate] = useState<WatchDateParts>({ year: new Date().getFullYear(), month: null, day: null });
 
   const [seasons, setSeasons]         = useState<number | null>(null);
   const [episodes, setEpisodes]       = useState<number | null>(null);
@@ -162,7 +157,7 @@ export default function AddMediaModal({
         setSeasonError(null); setEpisodeError(null); setConflict(null);
         setPriorityLevel("medium");
         setPosition(null); setStance("watching"); setSeasonAired([]); setSeasonEnd({});
-        setWatchedYear(new Date().getFullYear()); setWatchedMonth(null);
+        setWatchDate({ year: new Date().getFullYear(), month: null, day: null });
       }, 300);
       return () => clearTimeout(t);
     } else {
@@ -317,9 +312,11 @@ export default function AddMediaModal({
       // arriving through the "Recently Watched" door, is the same impossible claim as an owned one.
       // It needs the world's facts (is it over?), and `extractedStatus` is them: the state setter
       // above hasn't landed yet, so we hand it the value, not the stale state.
+      const releaseSource = isMovie ? details.release_date : details.first_air_date;
       const transition = resolveTransition(existing, listContext, {
         type: defaultType,
         status: extractedStatus,
+        year: releaseSource ? new Date(releaseSource).getFullYear() : null,
       });
       setConflict(
         transition.message
@@ -384,16 +381,8 @@ export default function AddMediaModal({
         if (url) finalPosterUrl = url;
       }
 
-      // No month picked → "watched now" for the current year (so it lands first in
-      // Recently Watched), else end-of-year for a back-dated year.
-      const now = new Date();
-      const watchedAt = listContext === "library"
-        ? (watchedMonth !== null
-            ? new Date(watchedYear, watchedMonth - 1, 1).toISOString()
-            : watchedYear === now.getFullYear()
-              ? now.toISOString()
-              : new Date(watchedYear, 11, 31).toISOString())
-        : null;
+      // One construction rule, shared with the detail-page edit — see buildWatchedAt.
+      const watchedAt = listContext === "library" ? buildWatchedAt(watchDate) : null;
 
       const result = await addMediaMutation.mutateAsync({
         selectedItem, defaultType, listContext,
@@ -433,39 +422,23 @@ export default function AddMediaModal({
     }
   }, [defaultType, listContext]);
 
-  // ── Watched date helpers (library only) ──────────────────────────────────
+  // ── Watched-date floor (library only) — the picker owns the rest of the bounds ──────────
 
-  const nowYear  = new Date().getFullYear();
-  const nowMonth = new Date().getMonth() + 1;
   const releaseStr  = selectedItem?.release_date || selectedItem?.first_air_date || "";
   const releaseYear  = releaseStr ? parseInt(releaseStr.slice(0, 4)) : 1900;
   const releaseMonth = releaseStr ? parseInt(releaseStr.slice(5, 7)) || 1 : 1;
 
   // The earliest year you could POSSIBLY have watched what you claim: the year the season you
   // picked finished airing. Falls back to the show's release year while the fetch is in flight.
+  // (The month/day bounds now live inside WatchDatePicker.)
   const claimedEnd = position ? seasonEnd[position.season] : undefined;
   const floorYear = claimedEnd ? parseInt(claimedEnd.slice(0, 4)) : releaseYear;
-  const availableYears = Array.from(
-    { length: Math.max(1, nowYear - floorYear + 1) },
-    (_, i) => nowYear - i,
-  );
+  const floorMonth = claimedEnd ? (parseInt(claimedEnd.slice(5, 7)) || 1) : releaseMonth;
+
   useEffect(() => {
-    if (watchedYear < floorYear) setWatchedYear(floorYear);
+    if (watchDate.year < floorYear) setWatchDate((d) => ({ ...d, year: floorYear, month: null, day: null }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floorYear]);
-
-  const minMonth = watchedYear === floorYear ? (claimedEnd ? parseInt(claimedEnd.slice(5, 7)) || 1 : releaseMonth) : 1;
-  const maxMonth = watchedYear === nowYear ? nowMonth : 12;
-  const availableMonths = Array.from({ length: maxMonth - minMonth + 1 }, (_, i) => minMonth + i);
-
-  const handleYearChange = (year: number) => {
-    setWatchedYear(year);
-    if (watchedMonth !== null) {
-      const newMin = year === releaseYear ? releaseMonth : 1;
-      const newMax = year === nowYear ? nowMonth : 12;
-      if (watchedMonth < newMin || watchedMonth > newMax) setWatchedMonth(null);
-    }
-  };
 
   // ── Disable logic (aligned between footer and handleSubmit) ───────────────
 
@@ -778,39 +751,7 @@ export default function AddMediaModal({
                           <label className="text-caption uppercase text-text-tertiary block">
                             When did you watch it?
                           </label>
-                          <div className="flex gap-2">
-                            <Select
-                              value={watchedMonth !== null ? String(watchedMonth) : "none"}
-                              onValueChange={(v) => setWatchedMonth(v === "none" ? null : parseInt(v))}
-                            >
-                              <SelectTrigger variant="legacy" className="flex-1 h-9 bg-surface-overlay border-border-subtle text-text-secondary text-xs focus:ring-0 focus:ring-offset-0 transition-colors">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent variant="legacy" className="bg-surface-3 border-border-strong text-text-secondary">
-                                <SelectItem value="none" className="text-xs focus:bg-surface-2 focus:text-text-primary cursor-pointer">Month (optional)</SelectItem>
-                                {availableMonths.map((m) => (
-                                  <SelectItem key={m} value={String(m)} className="text-xs focus:bg-surface-2 focus:text-text-primary cursor-pointer">
-                                    {MONTH_NAMES[m - 1]}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Select
-                              value={String(watchedYear)}
-                              onValueChange={(v) => handleYearChange(parseInt(v))}
-                            >
-                              <SelectTrigger variant="legacy" className="w-24 h-9 bg-surface-overlay border-border-subtle text-text-secondary text-xs focus:ring-0 focus:ring-offset-0 transition-colors">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent variant="legacy" className="bg-surface-3 border-border-strong text-text-secondary">
-                                {availableYears.map((y) => (
-                                  <SelectItem key={y} value={String(y)} className="text-xs focus:bg-surface-2 focus:text-text-primary cursor-pointer">
-                                    {y}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+                          <WatchDatePicker value={watchDate} onChange={setWatchDate} minYear={floorYear} minMonth={floorMonth} />
                         </div>
                         <div className="p-3 rounded-card border border-border-subtle bg-surface-overlay flex items-center gap-2">
                           <Film size={13} style={{ color: "var(--color-accent-watching-vivid)" }} />

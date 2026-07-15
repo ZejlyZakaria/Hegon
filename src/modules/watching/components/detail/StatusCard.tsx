@@ -22,8 +22,10 @@ import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { useRewatches, useAddRewatch, useRemoveRewatch } from "../../hooks/useRewatches";
 import { dropReasonLabel } from "../../lib/drop-reasons";
-import { airedInSeason, caughtUpOn, hasFullyWatchedSeason, isFinished, lastAiredSeason, seriesState } from "../../lib/series-state";
-import { deriveWatchStatus } from "../../lib/watch-status";
+import { airedInSeason, caughtUpOn, hasFullyWatchedSeason, lastAiredSeason, seriesState } from "../../lib/series-state";
+import { canComplete, deriveWatchStatus } from "../../lib/watch-status";
+import { WatchDatePicker } from "../shared/WatchDatePicker";
+import { partsFromISO, type WatchDateParts } from "../../lib/watched-date";
 import type { WatchingMedia, WatchStatus } from "../../types";
 import type { WatchProviderInfo } from "../../hooks/useWatchProviders";
 
@@ -248,7 +250,8 @@ interface Props {
   onDrop: () => void;                        // opens the drop-reason CaptureSheet
   onResume: () => void;
   onAddNote: () => void;                     // want_to_watch → reveals the My Take editor
-  onWatchedYearChange: (year: number) => void;
+  onWatchedYearChange: (year: number) => void;      // one-season series → season_years["1"]
+  onWatchedDateChange: (parts: WatchDateParts) => void;   // film → precise watched_at
   onDelete: () => void;                      // opens the shared delete-confirm modal
   isUpdating?: boolean;
 }
@@ -256,7 +259,7 @@ interface Props {
 export function StatusCard({
   media, isSeries, providers, currentSeason, currentEpisode, onUpdateProgress,
   favorite, onFavoriteToggle, onMarkWatched, onMarkCaughtUp, onStartWatching, onPause, onDrop,
-  onResume, onAddNote, onWatchedYearChange, onDelete, isUpdating,
+  onResume, onAddNote, onWatchedYearChange, onWatchedDateChange, onDelete, isUpdating,
 }: Props) {
   const status: CardStatus = CARD_STATUS[deriveWatchStatus(media)];
 
@@ -301,6 +304,12 @@ export function StatusCard({
   const airedInThisSeason = isSeries ? airedInSeason(media, currentSeason) : null;
 
   const reason = dropReasonLabel(media.drop_reason);
+  // ONE truth for "can this honestly be called watched": a series that is over, or a film that has
+  // been released. Drives both the "…" menu item below and the want-to-watch primary action — this
+  // card used to keep its own `!isSeries || isFinished` copy, which called every film completable
+  // and let you mark an unreleased one as watched.
+  const completable = canComplete(media);
+  const releaseKnown = isSeries || completable;
 
   // "Season 3" when you finished it, "S3 · E4" when you walked out mid-season. Both are true
   // sentences; which one applies is a fact about your position, not a formatting choice.
@@ -324,8 +333,7 @@ export function StatusCard({
    * So on a running series that's what the item says — and it does the honest thing: it puts your
    * position at the last AIRED episode instead of writing `watched = true` over a blank position.
    */
-  const canComplete = !isSeries || isFinished(media.status);
-  const markItem = canComplete ? (
+  const markItem = completable ? (
     <DropdownMenuItem onClick={onMarkWatched} className={menuItemClass}>
       <Check size={13} /> Mark as watched
     </DropdownMenuItem>
@@ -592,7 +600,10 @@ export function StatusCard({
               <Row
                 // NOT "Watched" — the badge above already says that. A row exists to add a
                 // fact, not to echo the header. What it adds is WHEN.
-                label={isSeries ? "Finished" : "First watched"}
+                // "First watched" PROMISES a second — but there usually isn't one. It only earns
+                // the word "first" once a rewatch has actually been logged; otherwise it's just
+                // "Watched" (the WHEN still follows in the value).
+                label={isSeries ? "Finished" : rewatches.length > 0 ? "First watched" : "Watched"}
                 value={
                   yearEditable ? (
                     <Popover>
@@ -605,20 +616,29 @@ export function StatusCard({
                           <Pencil size={10} className="text-white/40 transition-colors group-hover:text-white/70" />
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent align="end" className="w-44 border-border-strong bg-surface-3 p-3">
-                        <label className="mb-1 block text-micro text-text-tertiary">
-                          {media.type === "film" ? "Year watched" : "Year watched"}
-                        </label>
-                        <Select value={selectedYear ? String(selectedYear) : undefined} onValueChange={(v) => onWatchedYearChange(Number(v))}>
-                          <SelectTrigger variant="legacy" className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0">
-                            <SelectValue placeholder="Pick a year" />
-                          </SelectTrigger>
-                          <SelectContent variant="legacy" className="border-border-strong bg-surface-3">
-                            {years.map((yr) => (
-                              <SelectItem key={yr} value={String(yr)} className="text-xs focus:bg-surface-2 focus:text-text-primary">{yr}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      <PopoverContent align="end" className={media.type === "film" ? "w-72 border-border-strong bg-surface-3 p-3" : "w-44 border-border-strong bg-surface-3 p-3"}>
+                        <label className="mb-1.5 block text-micro text-text-tertiary">When did you watch it?</label>
+                        {media.type === "film" ? (
+                          // A film's date is a real timestamp → the shared picker, month and day and
+                          // all, so it can be ordered precisely in Recently Watched. (A one-season
+                          // series keeps a year: `season_years` is year-only by design.)
+                          <WatchDatePicker
+                            value={partsFromISO(media.watched_at) ?? { year: selectedYear ?? new Date().getFullYear(), month: null, day: null }}
+                            onChange={onWatchedDateChange}
+                            minYear={media.year ?? 1900}
+                          />
+                        ) : (
+                          <Select value={selectedYear ? String(selectedYear) : undefined} onValueChange={(v) => onWatchedYearChange(Number(v))}>
+                            <SelectTrigger variant="legacy" className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0">
+                              <SelectValue placeholder="Pick a year" />
+                            </SelectTrigger>
+                            <SelectContent variant="legacy" className="border-border-strong bg-surface-3">
+                              {years.map((yr) => (
+                                <SelectItem key={yr} value={String(yr)} className="text-xs focus:bg-surface-2 focus:text-text-primary">{yr}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </PopoverContent>
                     </Popover>
                   ) : (
@@ -710,10 +730,17 @@ export function StatusCard({
               <PrimaryAction icon={<Play size={13} className="fill-current" />} onClick={onStartWatching} disabled={isUpdating}>
                 Start watching
               </PrimaryAction>
-            ) : (
+            ) : releaseKnown ? (
               <PrimaryAction icon={<Check size={13} />} onClick={onMarkWatched} disabled={isUpdating}>
                 Mark as watched
               </PrimaryAction>
+            ) : (
+              // An unreleased film: there is nothing to mark. Not an error, a fact — so the slot
+              // states it plainly instead of offering an action that would have to be refused.
+              <div className="flex h-8 w-full items-center justify-center gap-1.5 rounded-control bg-white/10 text-label font-medium text-white/60">
+                <Clock size={13} />
+                Not released yet
+              </div>
             )}
           </motion.div>
         )}

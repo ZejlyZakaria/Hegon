@@ -112,11 +112,14 @@ export default function LibraryClient({ initialItems, userId }: Props) {
     }
 
     if (debouncedSearch.trim()) {
+      // TITLE only — not genres. Searching `tags` too meant "fantas" matched every Fantasy-tagged
+      // title (GoT, HotD, most anime): ~80 "impossible" results for a three-word query. A title box
+      // must search titles; genre belongs to a filter, not to free text where a substring of
+      // "Fantasy" silently floods the grid.
       const q = debouncedSearch.toLowerCase();
       result = result.filter(item =>
         item.title.toLowerCase().includes(q) ||
-        item.original_title?.toLowerCase().includes(q) ||
-        item.tags?.some(t => t.toLowerCase().includes(q))
+        item.original_title?.toLowerCase().includes(q)
       );
     }
 

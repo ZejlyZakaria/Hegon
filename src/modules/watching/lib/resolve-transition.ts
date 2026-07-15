@@ -7,7 +7,7 @@
 // banner) and useAddMedia (write guard + branch selection) so the two can
 // never diverge.
 
-import { isFinished } from "./series-state";
+import { canComplete } from "./watch-status";
 import type { ListType, MediaType } from "../types";
 
 /** Minimal flag set needed to decide a transition. Both `ExistingMediaEntry`
@@ -39,6 +39,7 @@ export interface MediaStateFlags {
    */
   type?: MediaType;
   status?: string | null;
+  year?: number | null;
 }
 
 export type TransitionAction =
@@ -79,13 +80,8 @@ function actionFor(target: ListType): Exclude<TransitionAction, "insert" | "bloc
 export interface WorldFacts {
   type?: MediaType;
   status?: string | null;
-}
-
-/** Can this title HONESTLY be called watched? A film: always. A series: only once it is over. */
-function canFinish(facts: WorldFacts | null | undefined): boolean {
-  // Unknown facts → the old, permissive behaviour. We never block on ignorance.
-  if (!facts?.type) return true;
-  return facts.type === "film" || isFinished(facts.status);
+  /** Release year — coarse guard for an unreleased film whose status we never stored. */
+  year?: number | null;
 }
 
 export function resolveTransition(
@@ -111,31 +107,41 @@ export function resolveTransition(
   };
 
   /**
-   * ⛔ RECENTLY WATCHED IS A CONSEQUENCE OF HAVING FINISHED SOMETHING.
+   * ⛔ YOU CANNOT SHELVE, AS WATCHED, SOMETHING YOU CANNOT HAVE WATCHED.
    *
-   * It is derived from `watched_at`, and `watched_at` belongs to a title you actually finished. So a
-   * series that is still airing cannot be recently watched — not awkwardly, IMPOSSIBLY. Letting the
-   * button through and quietly filing the title somewhere else was still a lie: the modal is called
-   * "Add to Recently Watched", and the name of a door is a promise.
+   * `canComplete` is the single truth for "can this honestly be called watched" (shared with the
+   * detail page and the cards — this resolver used to keep a private copy of it). Two shapes of
+   * "no", each with its own honest door:
    *
-   * This door exists for the show you binged in a week and never tracked — you record it after the
-   * fact. There is nothing to record after the fact about a show whose next episode airs on Sunday.
+   *   · AN UNRELEASED FILM — it does not exist yet, so nothing about it is yours. It can only be a
+   *     plan. Every watched-ish door (Library, Recently Watched, Top 10) is refused; only Want to
+   *     Watch is open. (One day this is the "Waiting for" shelf.) Runs BEFORE the "no existing
+   *     entry" shortcut, because the person pages let you add a future film you don't own yet.
    *
-   * It applies BEFORE the "no existing entry" shortcut, because a brand-new ongoing series arriving
-   * through this door is the same lie, told about a title you don't own yet.
-   *
-   * (The Top 10 is deliberately NOT covered: ranking is not watching. You may love a show that
-   * isn't over.)
+   *   · AN ONGOING SERIES — you've watched PART of it, so it's welcome in Top 10 (ranking isn't
+   *     watching) and In Progress; only "Recently Watched" (which means recently FINISHED) is the
+   *     lie, and only that door is shut.
    */
-  if (target === "recentlyWatched" && !canFinish(facts)) {
-    return {
-      allowed: false,
-      action: "blocked",
-      message: existing
-        ? `You're already watching this, and it isn't over yet. Track it from its page — it'll land here when it ends.`
-        : `Recently Watched is for titles you've finished. This one is still airing — add it from In Progress.`,
-      existingLists: existing ? listsOf(existing) : [],
-    };
+  if (!canComplete(facts ?? {})) {
+    const isFilm = (facts?.type ?? "film") === "film";
+    if (isFilm && target !== "wantToWatch") {
+      return {
+        allowed: false,
+        action: "blocked",
+        message: `This film isn't out yet — you can only add it to Want to Watch.`,
+        existingLists: existing ? listsOf(existing) : [],
+      };
+    }
+    if (!isFilm && target === "recentlyWatched") {
+      return {
+        allowed: false,
+        action: "blocked",
+        message: existing
+          ? `You're already watching this, and it isn't over yet. Track it from its page — it'll land here when it ends.`
+          : `Recently Watched is for titles you've finished. This one is still airing — add it from In Progress.`,
+        existingLists: existing ? listsOf(existing) : [],
+      };
+    }
   }
 
   // No existing entry → clean insert, nothing to warn about.
@@ -191,7 +197,7 @@ export function resolveTransition(
   const ratingText = existing.user_rating ? ` (rated ${existing.user_rating}/10)` : "";
   let contextualMessage = "";
 
-  const finishable = canFinish(facts);
+  const finishable = canComplete(facts ?? {});
 
   if (target === "topTen") {
     // RANKING IS NOT WATCHING. It never was — the Top 10 is a favourite and a rank, and asserting

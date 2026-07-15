@@ -240,7 +240,8 @@ export function useAddMedia() {
       // Single source of truth for what's allowed and which write branch to run (shared with
       // AddMediaModal's conflict banner). It gets the world's facts too — the UI can be bypassed,
       // the write cannot: an ongoing series never enters Recently Watched, whoever asks.
-      const transition = resolveTransition(existing, listContext, { type: defaultType, status });
+      const releaseYear = new Date(selectedItem.release_date || selectedItem.first_air_date).getFullYear() || null;
+      const transition = resolveTransition(existing, listContext, { type: defaultType, status, year: releaseYear });
       if (!transition.allowed) {
         const err = new Error(transition.message ?? "Transition not allowed.");
         err.name = "TransitionError";

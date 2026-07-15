@@ -31,6 +31,7 @@
 
 import { stampSeasons, seasonRange } from "./season-years";
 import { RESET_STATUS } from "./status-flags";
+import { buildWatchedAt } from "./watched-date";
 import {
   caughtUpAt,
   isFinished,
@@ -48,7 +49,10 @@ export type StatusFacts = Pick<
   | "type" | "status" | "watched" | "in_progress" | "paused" | "dropped" | "favorite"
   | "current_season" | "current_episode"
   | "season_episodes" | "season_aired" | "season_years" | "caught_up_at"
->;
+> & {
+  /** Release year — optional so card-level callers and tests need not always supply it. */
+  year?: number | null;
+};
 
 /** The patch to hand to `useUpdateMedia` — everything but the id. */
 export type StatusPatch = Omit<UpdateMediaInput, "id">;
@@ -81,11 +85,32 @@ export function deriveWatchStatus(item: {
 
 /**
  * May this title honestly be called WATCHED?
- * A film: always — you either saw it or you didn't. A series: only once it is over. You cannot
- * finish a story that is still being told, and no button in this app may pretend otherwise.
+ *
+ *   · A SERIES — only once it is over. You cannot finish a story still being told.
+ *   · A FILM   — only once it has been RELEASED. This was "always", which let you mark a film that
+ *     does not exist yet as watched: the person pages list unreleased credits under "Not seen yet",
+ *     and nothing stopped you claiming to have seen a 2027 film. TMDB gives movies a real status
+ *     ("Released", "Post Production", "Planned", "Canceled"…); an unreleased one is not watchable.
+ *     A future release YEAR is a second, coarser guard for legacy rows whose status we never stored.
+ *     Unknown status AND no future year → permissive: we never block on ignorance.
  */
-export function canComplete(m: Pick<StatusFacts, "type" | "status">): boolean {
-  return m.type === "film" || isFinished(m.status);
+export function canComplete(m: { type?: string | null; status?: string | null; year?: number | null }): boolean {
+  if (m.type == null) return true;                       // unknown type → don't block on ignorance
+  if (m.type !== "film") return isFinished(m.status);
+  if (m.year != null && m.year > new Date().getFullYear()) return false;   // a future year cannot be watched
+  const s = (m.status ?? "").toLowerCase();
+  return s === "" || s === "released";                   // released, or a legacy row with no status
+}
+
+/** The latest year stamped across a season-years map — the year you finished the show. */
+export function maxYear(map: Record<string, number> | null | undefined): number | null {
+  const years = Object.values(map ?? {}).filter((y): y is number => typeof y === "number");
+  return years.length ? Math.max(...years) : null;
+}
+
+/** `watched_at` for a series, from its finish year — or `now` when we have no year (finishing live). */
+function dateFromFinishYear(year: number | null): string {
+  return year ? buildWatchedAt({ year, month: null, day: null }) : new Date().toISOString();
 }
 
 // ── The transitions ───────────────────────────────────────────────────────────────────────────
@@ -121,7 +146,13 @@ export function markWatchedPatch(m: StatusFacts): StatusPatch {
       ? stampSeasons(m.season_years, stampable, new Date().getFullYear())
       : undefined;
 
-  const at = new Date().toISOString();
+  // WHEN did you watch it — and for a series that is NOT the moment you clicked. The truth is the
+  // year you finished the last season (`season_years`), so `watched_at` follows it: a show you
+  // finished in 2014 gets a 2014 timestamp, not "now", and it no longer sits atop Recently Watched
+  // with a "2 weeks ago" badge. `buildWatchedAt` maps the current year back to `now`, so finishing
+  // something today still stamps today. A film keeps `now` (the date picker refines it).
+  const watchedAt = isSeries ? dateFromFinishYear(maxYear(seasonYears ?? m.season_years)) : new Date().toISOString();
+
   return {
     watched: true,
     recently_watched: true,
@@ -129,7 +160,7 @@ export function markWatchedPatch(m: StatusFacts): StatusPatch {
     want_to_watch: false,
     is_reference: false,
     ...RESET_STATUS,
-    watched_at: at,
+    watched_at: watchedAt,
     ...(last
       ? { current_season: last.season, current_episode: last.episode, caught_up_at: caughtUpAt({ ...m, current_season: last.season, current_episode: last.episode }, m.caught_up_at) }
       : {}),
@@ -285,7 +316,13 @@ export function positionPatch(
     ...(kind === "viewing" && forward ? { last_watched_at: new Date().toISOString() } : {}),
     ...(seasonYears ? { season_years: seasonYears } : {}),
     ...(completes
-      ? { watched: true, in_progress: false, want_to_watch: false, is_reference: false, ...RESET_STATUS, watched_at: new Date().toISOString() }
+      ? {
+          watched: true, in_progress: false, want_to_watch: false, is_reference: false, ...RESET_STATUS,
+          // Same as markWatchedPatch: a series is finished WHEN its last season aired, not when you
+          // corrected the record. The finish year (from season_years) dates it; buildWatchedAt maps
+          // the current year back to now.
+          watched_at: dateFromFinishYear(maxYear(seasonYears ?? m.season_years)),
+        }
       : {}),
     ...(revokes
       // It was "finished". It isn't any more — and it must leave the finished rails too, or it
