@@ -437,7 +437,7 @@ export default function AddMediaModal({
     switch (listContext) {
       case "topTen":          return { title: `Add ${typeLabel} to Top 10`,            icon: <Trophy   size={16} className="text-amber-400" /> };
       case "inProgress":      return { title: `Add ${typeLabel} to In Progress`,        icon: <Play     size={16} style={{ color: "var(--color-accent-watching-vivid)" }} /> };
-      case "recentlyWatched": return { title: `Add ${typeLabel} to Recently Watched`,   icon: <History  size={16} style={{ color: "var(--color-accent-watching-vivid)" }} /> };
+      case "recentlyWatched": return { title: `Add ${typeLabel} to Last Watched`,        icon: <History  size={16} style={{ color: "var(--color-accent-watching-vivid)" }} /> };
       case "wantToWatch":     return { title: `Add ${typeLabel} to Want to Watch`,      icon: <Bookmark size={16} style={{ color: "var(--color-accent-watching-vivid)" }} /> };
       case "library":         return { title: `Add to Library`,                          icon: <Film     size={16} style={{ color: "var(--color-accent-watching-vivid)" }} /> };
       default:                return { title: "Add Media",                               icon: <Plus     size={16} style={{ color: "var(--color-accent-watching-vivid)" }} /> };

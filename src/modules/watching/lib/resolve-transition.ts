@@ -60,7 +60,7 @@ export interface TransitionResult {
 /** Human labels for each list context. */
 export const LIST_NAMES: Record<ListType, string> = {
   library: "Library",
-  recentlyWatched: "Recently Watched",
+  recentlyWatched: "Last Watched",
   topTen: "Top 10",
   inProgress: "In Progress",
   wantToWatch: "Want to Watch",
@@ -135,7 +135,7 @@ export function resolveTransition(
         action: "blocked",
         message: existing
           ? `You're already watching this, and it isn't over yet. Track it from its page — it'll land here when it ends.`
-          : `Recently Watched is for titles you've finished. This one is still airing — add it from In Progress.`,
+          : `Last Watched is for titles you've finished. This one is still airing — add it from In Progress.`,
         existingLists: existing ? listsOf(existing) : [],
       };
     }
@@ -210,8 +210,8 @@ export function resolveTransition(
   } else if (target === "recentlyWatched") {
     // An ongoing series never reaches here — it was refused above. So everything below is a title
     // the app CAN honestly call finished.
-    if (isInLibrary) contextualMessage = `This media is in your Library${ratingText}. It will appear in Recently Watched.`;
-    else if (isInTopTen) contextualMessage = `This Top 10 media will also appear in Recently Watched.`;
+    if (isInLibrary) contextualMessage = `This media is in your Library${ratingText}. It will appear in Last Watched.`;
+    else if (isInTopTen) contextualMessage = `This Top 10 media will also appear in Last Watched.`;
     // NOT an "add" — you already own it and you're already watching it. What this does is FINISH
     // it, and the sentence should be the one the button is actually about.
     else if (isInProgress) contextualMessage = `You're in the middle of this one — adding it here marks it as finished.`;

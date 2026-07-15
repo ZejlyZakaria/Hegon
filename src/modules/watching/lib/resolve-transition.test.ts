@@ -117,7 +117,7 @@ describe("resolveTransition — allowed contextual transitions", () => {
     const t = resolveTransition(library, "recentlyWatched");
     expect(t.allowed).toBe(true);
     expect(t.action).toBe("update:merge");
-    expect(t.message).toContain("Recently Watched");
+    expect(t.message).toContain("Last Watched");
   });
 
   it("want to watch → in progress starts the item", () => {
