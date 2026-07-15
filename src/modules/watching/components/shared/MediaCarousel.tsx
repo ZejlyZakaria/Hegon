@@ -21,7 +21,8 @@ const PRIORITY_COLOR: Record<string, string> = {
   medium: "#fcd34d",
   low: "rgba(255,255,255,0.75)",
 };
-import { displayTitle } from "@/modules/watching/utils";
+import { displayTitle, watchedAgo } from "@/modules/watching/utils";
+import { Clock } from "lucide-react";
 import { formatPosition, overallProgress } from "@/modules/watching/lib/progress";
 import { NextEpisodeButton } from "./NextEpisodeButton";
 import { MediaActionMenu } from "./MediaActionMenu";
@@ -36,6 +37,8 @@ type MediaCarouselProps = {
   onDelete?: (itemId: string) => Promise<void>;
   showEpisodeBadge?: boolean;
   showRankBadge?: boolean;
+  /** Recently Watched only — surface WHEN you watched it, the ordering made legible. */
+  showWatchedAgo?: boolean;
 };
 
 
@@ -47,6 +50,7 @@ function MovieCard({
   onDelete,
   showEpisodeBadge,
   showRankBadge,
+  showWatchedAgo,
   eagerLoad,
   orientation = "backdrop",
 }: {
@@ -55,11 +59,13 @@ function MovieCard({
   onDelete?: (id: string) => Promise<void>;
   showEpisodeBadge?: boolean;
   showRankBadge?: boolean;
+  showWatchedAgo?: boolean;
   eagerLoad?: boolean;
   orientation?: "poster" | "backdrop";
 }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const isPoster = orientation === "poster";
+  const ago = showWatchedAgo ? watchedAgo(item.watched_at) : null;
 
   return (
     <div
@@ -93,6 +99,15 @@ function MovieCard({
           {item.want_to_watch && item.priority_level && (
             <Badge variant="flag" size="sm" uppercase color={PRIORITY_COLOR[item.priority_level]}>
               {item.priority_level}
+            </Badge>
+          )}
+          {/* WHEN you watched it — a factual timestamp, not a verdict, so it's neutral white, not
+              the teal of a rating or the gold of the world. It has this cluster to itself: rank and
+              priority never apply to a watched title. */}
+          {ago && (
+            <Badge variant="flag" size="sm" color="rgba(255,255,255,0.92)">
+              <Clock size={11} />
+              {ago}
             </Badge>
           )}
         </div>
@@ -189,6 +204,7 @@ export function MediaCarousel({
   onDelete,
   showEpisodeBadge = false,
   showRankBadge = false,
+  showWatchedAgo = false,
 }: MediaCarouselProps) {
   const router = useRouter();
   // Add IS shown in the read-only demo — clicking it runs the full add flow, then
@@ -351,6 +367,7 @@ export function MediaCarousel({
               onDelete={onDelete}
               showEpisodeBadge={showEpisodeBadge}
               showRankBadge={showRankBadge}
+              showWatchedAgo={showWatchedAgo}
               eagerLoad={i < cardsPerView}
             />
           </motion.div>
@@ -375,6 +392,7 @@ export function MediaCarousel({
               onDelete={onDelete}
               showEpisodeBadge={showEpisodeBadge}
               showRankBadge={showRankBadge}
+              showWatchedAgo={showWatchedAgo}
               eagerLoad={i < 3}
             />
           </motion.div>

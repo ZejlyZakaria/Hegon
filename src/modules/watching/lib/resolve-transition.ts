@@ -14,7 +14,9 @@ import type { ListType, MediaType } from "../types";
  *  (modal) and the `getExistingMediaItem` row (mutation) satisfy this. */
 export interface MediaStateFlags {
   watched: boolean;
-  recently_watched: boolean;
+  /** @deprecated No longer read for any decision — Recently Watched is derived from `watched_at`.
+   *  Optional so callers can stop threading it; the DB column awaits a cleanup migration. */
+  recently_watched?: boolean;
   priority: number | null;
   in_progress: boolean;
   want_to_watch: boolean;
@@ -101,8 +103,10 @@ export function resolveTransition(
     if (e.paused) out.push("Paused");
     if (e.dropped) out.push("Dropped");
     if (e.want_to_watch) out.push("Want to Watch");
-    if (e.recently_watched) out.push("Recently Watched");
-    if (e.watched && !e.recently_watched && e.priority == null) out.push("Library");
+    // "Recently Watched" is no longer a membership — it's a VIEW, a date-sorted slice of your
+    // watched titles. A watched title is simply in your Library; whether it also shows in the
+    // Recently Watched rail depends on how recent it is, not on a flag. So there is one label.
+    if (e.watched && e.priority == null) out.push("Library");
     return out;
   };
 
@@ -139,8 +143,10 @@ export function resolveTransition(
     return { allowed: true, action: "insert", message: null, existingLists: [] };
   }
 
-  const isInLibrary = existing.watched && !existing.recently_watched && existing.priority == null;
-  const isInRecentlyWatched = existing.recently_watched;
+  // "In your Library" = watched, and not ranked in the Top 10. That is the whole watched
+  // collection; Recently Watched is a date-sorted window onto it, not a separate place, so the
+  // stale `recently_watched` boolean no longer partitions this.
+  const isInLibrary = existing.watched && existing.priority == null;
   const isInTopTen = existing.priority != null;
   const isInProgress = existing.in_progress;
   const isInWantToWatch = existing.want_to_watch;
@@ -162,10 +168,10 @@ export function resolveTransition(
     existingLists,
   });
 
-  // 1. Already in the target list → nothing to do.
+  // 1. Already in the target list → nothing to do. (There is no "already in Recently Watched": it's
+  // a view, not a membership. Re-adding a watched title there just re-affirms it — handled below.)
   const isAlreadyInTarget =
     (target === "library" && isInLibrary) ||
-    (target === "recentlyWatched" && isInRecentlyWatched) ||
     (target === "topTen" && isInTopTen) ||
     (target === "inProgress" && isInProgress) ||
     (target === "wantToWatch" && isInWantToWatch);
@@ -198,7 +204,6 @@ export function resolveTransition(
     else if (isInProgress) contextualMessage = finishable
       ? `You finished this one! It will be ranked in your Top 10.`
       : `It's still airing — your progress is kept, and it will be ranked in your Top 10.`;
-    else if (isInRecentlyWatched) contextualMessage = `This recently watched media will be ranked in your Top 10.`;
   } else if (target === "recentlyWatched") {
     // An ongoing series never reaches here — it was refused above. So everything below is a title
     // the app CAN honestly call finished.
@@ -209,7 +214,6 @@ export function resolveTransition(
     else if (isInProgress) contextualMessage = `You're in the middle of this one — adding it here marks it as finished.`;
   } else if (target === "inProgress") {
     if (isInLibrary) contextualMessage = `This media is in your Library. It will be moved to In Progress.`;
-    else if (isInRecentlyWatched) contextualMessage = `This recently watched media will be marked In Progress — set where you are.`;
     else if (isInTopTen) contextualMessage = `This Top 10 media will be marked In Progress — set where you are.`;
     else if (isInWantToWatch) contextualMessage = `You're starting this one — set which episode you're on.`;
   }
@@ -224,10 +228,11 @@ export function resolveTransition(
     return blocked(`Use the "Mark as watched" button from your Want to Watch list.`);
   }
 
-  // 4. Forbidden combinations.
+  // 4. Forbidden combinations. (A plain watched title is `isInLibrary`, which the checks above
+  // already catch for its own targets — so the old `isInRecentlyWatched` clauses folded in here.)
   const forbidden =
-    (target === "library" && (isInRecentlyWatched || isInTopTen || isInProgress)) ||
-    (target === "wantToWatch" && (isInLibrary || isInRecentlyWatched || isInTopTen));
+    (target === "library" && (isInTopTen || isInProgress)) ||
+    (target === "wantToWatch" && (isInLibrary || isInTopTen));
 
   if (forbidden) {
     return blocked(`This transition is not allowed (currently in: ${existingLists.join(", ")}).`);

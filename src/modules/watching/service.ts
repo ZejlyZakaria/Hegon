@@ -92,7 +92,7 @@ export async function uploadCustomPoster(file: File): Promise<string | null> {
 // into `undefined`, and writing the result REPLACES the jsonb column with a single entry.
 // Every year you'd ever set by hand would be gone. Load it, or don't write it.
 const SECTION_COLUMNS =
-  "id, type, title, original_title, poster_url, backdrop_url, year, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
+  "id, type, title, original_title, poster_url, backdrop_url, year, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
 
 export async function getMediaItems(
   userId: string,
@@ -108,7 +108,14 @@ export async function getMediaItems(
     .eq("type", type);
 
   if (options.inProgress) query = query.eq("in_progress", true);
-  if (options.recentlyWatched) query = query.eq("recently_watched", true);
+  // RECENTLY WATCHED IS DERIVED, NOT STAMPED. It used to filter on a boolean `recently_watched`
+  // set once at add time by an arbitrary 30-day window — and never cleared. So a film watched last
+  // month with the flag unset never appeared, while films watched years ago sat there forever: the
+  // section showed "what came through this door", not "what I watched recently". It is now simply
+  // your watched titles, newest first, capped by the limit — the recency is the ORDER, and old ones
+  // fall off the bottom on their own. (The section already promised "your 10 most recently watched";
+  // now it delivers it.)
+  if (options.recentlyWatched) query = query.eq("watched", true);
   if (options.wantToWatch) query = query.eq("want_to_watch", true);
   if (options.watched) query = query.eq("watched", true);
 
@@ -118,9 +125,9 @@ export async function getMediaItems(
       .not("priority", "is", null)
       .order("priority", { ascending: true });
   } else if (options.recentlyWatched) {
-    // "Recently Watched" = by actual watch date, not updated_at (which moves on
-    // any rating/favorite edit). watched_at is set when the item is marked watched.
-    query = query.order("watched_at", { ascending: false });
+    // By actual watch date, not updated_at (which moves on any rating/favorite edit). Undated
+    // watched rows (legacy) sort last rather than hijacking the top.
+    query = query.order("watched_at", { ascending: false, nullsFirst: false });
   } else {
     query = query.order("updated_at", { ascending: false });
   }

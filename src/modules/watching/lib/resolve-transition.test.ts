@@ -14,7 +14,6 @@ function flags(o: Partial<MediaStateFlags> = {}): MediaStateFlags {
 
 // Membership shorthands used across the suite.
 const library = flags({ watched: true });
-const recentlyWatched = flags({ watched: true, recently_watched: true });
 const topTen = flags({ watched: true, priority: 1 });
 const inProgress = flags({ in_progress: true });
 const wantToWatch = flags({ want_to_watch: true });
@@ -83,10 +82,19 @@ describe("resolveTransition — already in target", () => {
     expect(t.message).toContain("already in");
   });
 
-  it("recognises library membership (watched, not recently, no priority)", () => {
+  it("recognises library membership (watched, no priority)", () => {
     const t = resolveTransition(library, "library");
     expect(t.allowed).toBe(false);
     expect(t.message).toContain('"Library"');
+  });
+
+  // Recently Watched is a VIEW now, not a bucket. A watched title's legacy `recently_watched`
+  // flag must not change how the resolver sees it: it is simply in your Library, either way.
+  it("ignores the deprecated recently_watched flag — a watched title is Library, flag or not", () => {
+    const flagged = resolveTransition(flags({ watched: true, recently_watched: true }), "library");
+    const plain = resolveTransition(flags({ watched: true, recently_watched: false }), "library");
+    expect(flagged).toEqual(plain);
+    expect(flagged.message).toContain('"Library"');
   });
 });
 
@@ -149,15 +157,20 @@ describe("resolveTransition — explicit blocks", () => {
 });
 
 describe("resolveTransition — forbidden combinations", () => {
-  it("blocks moving a recently watched item into the library", () => {
-    const t = resolveTransition(recentlyWatched, "library");
+  it("blocks pushing a watched title back to want to watch", () => {
+    const t = resolveTransition(library, "wantToWatch");
     expect(t.allowed).toBe(false);
-    expect(t.message).toContain("not allowed");
   });
 
   it("blocks pushing a top 10 item back to want to watch", () => {
     const t = resolveTransition(topTen, "wantToWatch");
     expect(t.allowed).toBe(false);
+  });
+
+  it("blocks moving a top 10 item down to the plain library", () => {
+    const t = resolveTransition(topTen, "library");
+    expect(t.allowed).toBe(false);
+    expect(t.message).toContain("not allowed");
   });
 });
 

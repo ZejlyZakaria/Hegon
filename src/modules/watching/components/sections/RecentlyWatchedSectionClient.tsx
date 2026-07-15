@@ -46,6 +46,7 @@ export default function RecentlyWatchedSectionClient({ userId, config }: Props) 
       items={items}
       onAddClick={() => openModal("recentlyWatched")}
       onDelete={handleDelete}
+      showWatchedAgo
     />
   );
 }
