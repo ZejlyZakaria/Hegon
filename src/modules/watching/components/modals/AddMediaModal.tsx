@@ -2,7 +2,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useDebounce } from "@/shared/hooks/useDebounce";
+import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
+import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   Search, X, Upload, Star, Heart, Bookmark,
@@ -60,6 +63,13 @@ export default function AddMediaModal({
   listContext = "recentlyWatched",
   initialItem,
 }: AddMediaModalProps) {
+  const router = useRouter();
+  const userId = useCurrentUserId();
+  // Which of these results you ALREADY own — so a search doesn't invite you to re-add a title you
+  // have, it sends you to manage it where all its actions live: its detail page.
+  const { data: ownedIds = [] } = useOwnedTmdbIds(userId ?? "", defaultType, isOpen && !!userId);
+  const ownedSet = useMemo(() => new Set(ownedIds), [ownedIds]);
+
   const [searchQuery, setSearchQuery]     = useState("");
   const [searchResults, setSearchResults] = useState<TmdbModalResult[]>([]);
   const [selectedItem, setSelectedItem]   = useState<TmdbModalResult | null>(null);
@@ -328,6 +338,18 @@ export default function AddMediaModal({
     }
   };
 
+  // A title you already own → go MANAGE it, don't re-add it. Its detail page is where every action
+  // lives (mark watched, rate, rank, drop). The one exception is the Top 10 door: ranking an owned
+  // title is a real transition the detail page can't yet do, so that context keeps the add flow.
+  // (Moving "Rank in Top 10" to the detail page would retire this exception — noted as follow-up.)
+  const seeDetails = async (res: TmdbModalResult) => {
+    const existing = await getExistingMediaEntry(defaultType, res.id);
+    if (existing) { onClose(); router.push(`/perso/watching/${existing.id}`); }
+    else selectResult(res);   // ownership set was stale — fall back to the add flow
+  };
+
+  const routeToDetails = (res: TmdbModalResult) => ownedSet.has(res.id) && listContext !== "topTen";
+
   // Auto-select initialItem when modal opens
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (isOpen && initialItem) selectResult(initialItem); }, [isOpen]);
@@ -505,12 +527,23 @@ export default function AddMediaModal({
 
               {searchResults.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1.5 z-20 overflow-hidden rounded-control border border-border-strong bg-surface-3 shadow-md max-h-64 overflow-y-auto custom-scrollbar">
-                  {searchResults.map((res) => (
+                  {searchResults.map((res) => {
+                    const owned = ownedSet.has(res.id);
+                    const toDetails = routeToDetails(res);
+                    // A film whose release YEAR is still ahead cannot be watched — so it cannot enter
+                    // a watched door (library / recently watched / top 10). We say why, right on the
+                    // row, and refuse the click, instead of accepting it and then apologising in a
+                    // banner. (Want to Watch stays open — you can plan for it.)
+                    const resYear = (res.release_date || res.first_air_date)?.slice(0, 4);
+                    const unreleased = defaultType === "film" && !!resYear && Number(resYear) > new Date().getFullYear();
+                    const blocked = !owned && unreleased && listContext !== "wantToWatch";
+                    return (
                     <button
                       key={res.id}
                       type="button"
-                      onClick={() => selectResult(res)}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-surface-2 text-left transition-colors border-b border-border-subtle last:border-0"
+                      disabled={blocked}
+                      onClick={() => (toDetails ? seeDetails(res) : selectResult(res))}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-surface-2 text-left transition-colors border-b border-border-subtle last:border-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
                     >
                       <div className="relative w-9 h-13 shrink-0 overflow-hidden rounded-chip bg-surface-2">
                         {res.poster_path
@@ -518,14 +551,25 @@ export default function AddMediaModal({
                           : <Film size={14} className="text-text-tertiary absolute inset-0 m-auto" />
                         }
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-text-primary line-clamp-1">{res.title || res.name}</p>
                         <p className="text-xs text-text-tertiary mt-0.5">
                           {res.release_date?.slice(0, 4) || res.first_air_date?.slice(0, 4)}
                         </p>
                       </div>
+                      {/* Already yours → say so, and point at the door that manages it. */}
+                      {owned && (
+                        <span className="shrink-0 inline-flex items-center gap-1 text-micro font-medium text-accent-watching-vivid">
+                          <Check size={11} />
+                          {toDetails ? "See details" : "In library"}
+                        </span>
+                      )}
+                      {blocked && (
+                        <span className="shrink-0 text-micro font-medium text-text-tertiary">Not out yet</span>
+                      )}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
