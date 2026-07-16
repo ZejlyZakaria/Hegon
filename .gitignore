@@ -66,5 +66,8 @@ next-env.d.ts
 /src/app/(main)/icon-lab/
 /src/shared/components/app-icon/
 
-# Migration Folder
-/supabase/
+# Supabase — local CLI state, migrations and demo seeds stay out of git…
+/supabase/*
+# …but the edge functions are SOURCE CODE and live nowhere else: they exist only
+# in the cloud. Downloading them is not a backup — committing them is.
+!/supabase/functions/
