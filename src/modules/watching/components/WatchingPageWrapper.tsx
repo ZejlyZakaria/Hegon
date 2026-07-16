@@ -5,6 +5,7 @@ import DontMissSectionClient from "./sections/DontMissSectionClient";
 import ForYouSectionClient from "./sections/ForYouSectionClient";
 import InProgressSectionClient from "./sections/InProgressSectionClient";
 import RecentlyWatchedSectionClient from "./sections/RecentlyWatchedSectionClient";
+import WaitingForSectionClient from "./sections/WaitingForSectionClient";
 import WantToWatchSectionClient from "./sections/WantToWatchSectionClient";
 import TopTenSectionClient from "./sections/TopTenSectionClient";
 import MyThemesSectionClient from "./sections/MyThemesSectionClient";
@@ -25,6 +26,7 @@ export default function WatchingPageWrapper({ type }: { type: MediaType }) {
       {config.hasInProgress && <InProgressSectionClient userId={userId} config={config} />}
       <RecentlyWatchedSectionClient userId={userId} config={config} />
       {config.type === "anime" && <MyThemesSectionClient />}
+      {config.type === "film" && <WaitingForSectionClient userId={userId} config={config} />}
       <WantToWatchSectionClient userId={userId} config={config} />
       <TopTenSectionClient userId={userId} config={config} />
     </WatchingClient>

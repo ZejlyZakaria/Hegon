@@ -99,7 +99,12 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
           {isSeries && media.episodes ? <DetailRow label="Episodes" value={media.episodes} /> : null}
           {isSeries
             ? (omdb?.yearRange ? <DetailRow label="Aired" value={omdb.yearRange} /> : null)
-            : (omdb?.released ? <DetailRow label="Released" value={omdb.released} /> : null)}
+            // Films: one source of truth for the date — our stored TMDB `release_date`, the same value
+            // the "Waiting for" rail reads. OMDb no longer supplies it (it kept giving a DIFFERENT day
+            // than the rail). OMDb still complements with ratings, awards and box office below.
+            : (media.release_date
+                ? <DetailRow label="Released" value={new Date(media.release_date + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} />
+                : null)}
           {omdb?.country ? <DetailRow label="Country" value={omdb.country} /> : null}
           {omdb?.language ? <DetailRow label="Language" value={omdb.language} /> : null}
           {media.studio ? <DetailRow label="Studio" value={media.studio} /> : null}

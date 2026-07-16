@@ -24,6 +24,9 @@ export interface WatchingMedia {
   poster_url: string | null;
   backdrop_url: string | null;
   year: number;
+  /** FILM only — TMDB release date ('YYYY-MM-DD'). The truth behind the derived "Waiting for" rail:
+   *  release_date in the future = not out yet. Null for series/anime and legacy rows. */
+  release_date?: string | null;
   runtime: number | null;
   episode_runtime?: number;
   seasons?: number;
@@ -49,6 +52,10 @@ export interface WatchingMedia {
   current_season?: number;
   season_years?: Record<string, number> | null;    // { "<season>": <year watched> }
   season_ratings?: Record<string, number> | null;  // { "<season>": <rating 1–10> }
+  // Anime v2 — per-COUR year/rating (keyed by cour number), for AniList-overlaid anime. Distinct
+  // from season_years/season_ratings (TMDB seasons, read by Stats).
+  cour_years?: Record<string, number> | null;
+  cour_ratings?: Record<string, number> | null;
   rating: number;
   user_rating: number | null;
   watch_status?: WatchStatus;
@@ -265,6 +272,29 @@ export interface ThemeFavorite {
   anime_poster: string | null;
   media_tmdb_id: number | null;
   created_at: string;
+}
+
+// ── Anime v2 — AniList season overlay ──
+// One real season (cour) of an anime TMDB lumps into a single flat season. `start_episode`/
+// `end_episode` are TMDB FLAT episode numbers (S2 of Jujutsu = ep 25-47). `poster_url` is an
+// absolute AniList URL. `episodes`/`end_episode` are null while a season is still airing.
+export interface AnimeCour {
+  season: number;
+  anilist_id: number;
+  title: string;
+  poster_url: string | null;
+  year: number | null;       // START year (what the season "is" — e.g. a 2023 cour)
+  end_year: number | null;   // year the cour FINISHED airing — floors "year watched" (a cour that
+                             // ran Oct 2023→Mar 2024 could not have been finished before 2024)
+  episodes: number | null;
+  start_episode: number;
+  end_episode: number | null;
+}
+
+export interface AnimeCoursRow {
+  tmdb_id: number;
+  cours: AnimeCour[];
+  source: "anilist" | "mismatch" | "none";
 }
 
 // ── Rewatches ──

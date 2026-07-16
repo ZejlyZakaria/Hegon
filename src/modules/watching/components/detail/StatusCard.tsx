@@ -254,12 +254,17 @@ interface Props {
   onWatchedDateChange: (parts: WatchDateParts) => void;   // film → precise watched_at
   onDelete: () => void;                      // opens the shared delete-confirm modal
   isUpdating?: boolean;
+  /** Anime v2: TMDB lumps this anime into one flat season, so its "Season 1/1" stepper is both
+   *  meaningless AND contradicts the real seasons shown in Watch History → hide it. Progress is
+   *  tracked by the (flat) episode stepper, and seasons are jumped from the Watch History strip. */
+  hideSeasonStepper?: boolean;
 }
 
 export function StatusCard({
   media, isSeries, providers, currentSeason, currentEpisode, onUpdateProgress,
   favorite, onFavoriteToggle, onMarkWatched, onMarkCaughtUp, onStartWatching, onPause, onDrop,
   onResume, onAddNote, onWatchedYearChange, onWatchedDateChange, onDelete, isUpdating,
+  hideSeasonStepper = false,
 }: Props) {
   const status: CardStatus = CARD_STATUS[deriveWatchStatus(media)];
 
@@ -652,6 +657,7 @@ export function StatusCard({
 
           {status === "in_progress" && (
             <div className="mt-3 space-y-2.5">
+              {!hideSeasonStepper && (
               <StepRow
                 label="Season"
                 value={currentSeason}
@@ -663,6 +669,7 @@ export function StatusCard({
                   if (next !== currentSeason) onUpdateProgress(next, 0);
                 }}
               />
+              )}
               <StepRow
                 label="Episode"
                 value={currentEpisode}
@@ -736,10 +743,15 @@ export function StatusCard({
               </PrimaryAction>
             ) : (
               // An unreleased film: there is nothing to mark. Not an error, a fact — so the slot
-              // states it plainly instead of offering an action that would have to be refused.
+              // states it plainly, and names the day, instead of offering an action to be refused.
               <div className="flex h-8 w-full items-center justify-center gap-1.5 rounded-control bg-white/10 text-label font-medium text-white/60">
                 <Clock size={13} />
                 Not released yet
+                {media.release_date && (
+                  <span className="text-white/50">
+                    · {new Date(media.release_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                )}
               </div>
             )}
           </motion.div>

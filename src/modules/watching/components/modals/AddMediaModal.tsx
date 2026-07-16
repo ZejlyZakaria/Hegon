@@ -327,6 +327,7 @@ export default function AddMediaModal({
         type: defaultType,
         status: extractedStatus,
         year: releaseSource ? new Date(releaseSource).getFullYear() : null,
+        release_date: isMovie ? (details.release_date ?? null) : null,
       });
       setConflict(
         transition.message

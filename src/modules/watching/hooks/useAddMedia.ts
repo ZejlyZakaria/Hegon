@@ -176,6 +176,9 @@ export function useAddMedia() {
           new Date(
             selectedItem.release_date || selectedItem.first_air_date,
           ).getFullYear() || null,
+        // FILM release date → the "Waiting for" rail derives from it (future = not out yet). One
+        // source of truth: TMDB's own release_date, the same value shown on the detail page.
+        release_date: defaultType === "film" ? (selectedItem.release_date || null) : null,
         runtime,
         rating: selectedItem.vote_average,
         user_rating:
@@ -238,7 +241,12 @@ export function useAddMedia() {
       // AddMediaModal's conflict banner). It gets the world's facts too — the UI can be bypassed,
       // the write cannot: an ongoing series never enters Recently Watched, whoever asks.
       const releaseYear = new Date(selectedItem.release_date || selectedItem.first_air_date).getFullYear() || null;
-      const transition = resolveTransition(existing, listContext, { type: defaultType, status, year: releaseYear });
+      const transition = resolveTransition(existing, listContext, {
+        type: defaultType,
+        status,
+        year: releaseYear,
+        release_date: defaultType === "film" ? (selectedItem.release_date ?? null) : null,
+      });
       if (!transition.allowed) {
         const err = new Error(transition.message ?? "Transition not allowed.");
         err.name = "TransitionError";

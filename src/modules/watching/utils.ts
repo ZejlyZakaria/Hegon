@@ -45,3 +45,56 @@ export function watchedAgo(iso: string | null | undefined, opts?: { short?: bool
   const years = Math.floor(days / 365);
   return years === 1 ? "Last year" : `${years} years ago`;
 }
+
+/**
+ * A film in your watchlist that hasn't come out yet — the basis of the "Waiting for" rail.
+ *
+ * "Waiting for" is DERIVED, never stored: a film is waiting because its release date is in the FUTURE,
+ * not because a flag was flipped. The day it releases it crosses the line on its own and rejoins plain
+ * "Want to Watch" — no trigger, no move. `release_date` is the truth; rows that predate the column fall
+ * back to the TMDB `status` snapshot taken at add time ("Released" or not).
+ */
+export function isAwaitingRelease(item: {
+  type: string;
+  release_date?: string | null;
+  status?: string | null;
+  year?: number | null;
+}): boolean {
+  if (item.type !== "film") return false;
+  if (item.release_date) return new Date(item.release_date).getTime() > Date.now();
+  // Legacy rows with no stored date: fall back to the TMDB status snapshot, then to a coarse
+  // future-year guard. This is THE single "is a film out?" predicate — the Waiting for rail and the
+  // "can I mark it watched?" guard both read it, so they can never disagree.
+  if (item.status) return item.status.toLowerCase() !== "released";
+  return item.year != null && item.year > new Date().getFullYear();
+}
+
+/**
+ * How long until a film comes out, the way a person would say it — the cue on a Waiting for card.
+ * Null when the date is unknown (legacy row) or already past. Short form for the narrow mobile poster.
+ */
+export function releaseCountdown(
+  dateStr: string | null | undefined,
+  opts?: { short?: boolean },
+): string | null {
+  if (!dateStr) return null;
+  const rel = new Date(dateStr).getTime();
+  if (Number.isNaN(rel)) return null;
+  const days = Math.ceil((rel - Date.now()) / 86_400_000);
+  if (days <= 0) return null;
+
+  if (opts?.short) {
+    if (days < 7) return `${days}d`;
+    if (days < 30) return `${Math.round(days / 7)}w`;
+    if (days < 365) return `${Math.round(days / 30)}mo`;
+    return `${Math.round(days / 365)}y`;
+  }
+  if (days === 1) return "Tomorrow";
+  if (days < 7) return `${days} days`;
+  if (days < 14) return "Next week";
+  if (days < 30) return `${Math.round(days / 7)} weeks`;
+  if (days < 60) return "Next month";
+  if (days < 365) return `${Math.round(days / 30)} months`;
+  const years = Math.round(days / 365);
+  return years === 1 ? "Next year" : `${years} years`;
+}

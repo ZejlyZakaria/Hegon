@@ -24,7 +24,7 @@ import {
   useSetEpisodeRating,
 } from "../../hooks/useEpisodeHighlights";
 import { EpisodeHeatmapModal } from "./EpisodeHeatmapModal";
-import type { WatchingMedia } from "../../types";
+import type { WatchingMedia, AnimeCour } from "../../types";
 
 type View = "all" | "highlights";
 const HIGHLIGHT = "var(--color-gold)";                              // gold — "best episode"
@@ -239,8 +239,12 @@ function StillCard({
   );
 }
 
-export function Episodes({ media, currentSeason, readOnly = false }: { media: WatchingMedia; currentSeason?: number; readOnly?: boolean }) {
-  const seasonCount = media.season_episodes?.length ?? media.seasons ?? 1;
+export function Episodes({ media, currentSeason, readOnly = false, cours }: { media: WatchingMedia; currentSeason?: number; readOnly?: boolean; cours?: AnimeCour[] }) {
+  // Anime v2: seasons are AniList cours. TMDB has one flat season, so we always FETCH season 1 and
+  // slice it by the selected cour's flat episode range. Marks stay in TMDB coordinates (season 1 +
+  // the flat episode number); only the displayed episode number is per-cour.
+  const overlayOn = !!cours && cours.length > 0;
+  const seasonCount = overlayOn ? cours!.length : (media.season_episodes?.length ?? media.seasons ?? 1);
   const [view, setView] = useState<View>("all");
   const [season, setSeason] = useState(
     currentSeason && currentSeason <= seasonCount ? currentSeason : 1,
@@ -253,11 +257,18 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
     scrollRef.current?.scrollTo({ left: 0 });
   }, [season, view]);
 
-  const { data: episodes = [], isLoading } = useSeasonEpisodes(
+  const { data: episodesRaw = [], isLoading } = useSeasonEpisodes(
     media.tmdb_id ?? 0,
-    season,
+    overlayOn ? 1 : season,   // overlay → always TMDB season 1, then slice by cour below
     !!media.tmdb_id && view === "all",
   );
+  // The selected cour, and the episodes that fall in its flat range. `markSeason` is the coordinate
+  // marks/ratings are stored under: TMDB season 1 for an overlay anime, else the picked season.
+  const cour = overlayOn ? (cours!.find((c) => c.season === season) ?? cours![0]) : null;
+  const episodes = cour
+    ? episodesRaw.filter((e) => e.number >= cour.start_episode && (cour.end_episode == null || e.number <= cour.end_episode))
+    : episodesRaw;
+  const markSeason = overlayOn ? 1 : season;
   const { data: marks = [] } = useEpisodeHighlights(media.id);
   const addHighlight = useAddEpisodeHighlight(media.id);
   const removeHighlight = useRemoveEpisodeHighlight(media.id);
@@ -420,30 +431,35 @@ export function Episodes({ media, currentSeason, readOnly = false }: { media: Wa
           <p className="py-6 text-center text-xs text-text-tertiary">No episodes found.</p>
         ) : (
           <div ref={scrollRef} className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:mx-0 sm:px-0">
-            {episodes.map((ep) => (
+            {episodes.map((ep) => {
+              // Display number is per-cour (S2 starts at "Episode 1"); the stored coordinate stays
+              // the TMDB flat number, so marks and progress never shift under the overlay.
+              const dispNum = cour ? ep.number - cour.start_episode + 1 : ep.number;
+              return (
               <StillCard
                 key={ep.number}
                 still={ep.still_url}
-                line1={`Episode ${ep.number}`}
+                line1={`Episode ${dispNum}`}
                 line2={ep.name}
                 overview={ep.overview}
-                highlighted={highlightMap.has(`${season}-${ep.number}`)}
-                rating={ratingMap.get(`${season}-${ep.number}`) ?? null}
+                highlighted={highlightMap.has(`${markSeason}-${ep.number}`)}
+                rating={ratingMap.get(`${markSeason}-${ep.number}`) ?? null}
                 unairedOn={isUnaired(ep.air_date) ? ep.air_date : undefined}
                 backdrop={media.backdrop_url}
-                onToggle={readOnly ? () => {} : () => toggleHighlight(season, ep.number)}
+                onToggle={readOnly ? () => {} : () => toggleHighlight(markSeason, ep.number)}
                 // A rating is a VERDICT, not a bookmark. You may score an episode only if it has
                 // AIRED *and* you have REACHED it — True Detective's seasons 2-4 are locked in
                 // Watch History, yet this rail happily let you star any episode inside them.
                 // The title and the still stay visible; only the actions close.
-                onRate={readOnly || !isEpisodeActionable(media, season, ep.number)
+                onRate={readOnly || !isEpisodeActionable(media, markSeason, ep.number)
                   ? undefined
-                  : (r) => handleRate(season, ep.number, {
+                  : (r) => handleRate(markSeason, ep.number, {
                       title: ep.name,
                       still_path: ep.still_url ? ep.still_url.replace(TMDB_STILL, "") : null,
                     }, r)}
               />
-            ))}
+              );
+            })}
           </div>
         )
       ) : (

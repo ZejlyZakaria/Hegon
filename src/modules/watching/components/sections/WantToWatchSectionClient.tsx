@@ -9,6 +9,7 @@ import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import { useMovies } from "@/modules/watching/hooks/useMovies";
 import { useSeries } from "@/modules/watching/hooks/useSeries";
 import { useAnimes } from "@/modules/watching/hooks/useAnimes";
+import { isAwaitingRelease } from "@/modules/watching/utils";
 import type { WatchingConfig } from "@/modules/watching/types";
 
 interface Props {
@@ -29,6 +30,10 @@ export default function WantToWatchSectionClient({ userId, config }: Props) {
 
   if (isLoading) return <CarouselSkeleton />;
 
+  // Unreleased films live in their own "Waiting for" rail — so a title is in exactly one place.
+  // (Series/anime never match `isAwaitingRelease`, so this is a no-op for them.)
+  const ready = items.filter((it) => !isAwaitingRelease(it));
+
   const handleDelete = async (itemId: string) => {
     try {
       await deleteMediaMutation.mutateAsync(itemId);
@@ -42,8 +47,8 @@ export default function WantToWatchSectionClient({ userId, config }: Props) {
   return (
     <MediaCarousel
       title="Want to Watch"
-      subtitle={`Your watchlist — ${items.length}/50`}
-      items={items}
+      subtitle={`Your watchlist — ${ready.length}`}
+      items={ready}
       onAddClick={items.length < 50 ? () => openModal("wantToWatch") : undefined}
       onDelete={handleDelete}
     />

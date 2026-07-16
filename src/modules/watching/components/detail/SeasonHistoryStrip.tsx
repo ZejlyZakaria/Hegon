@@ -65,6 +65,9 @@ export function SeasonHistoryStrip({
     current_episode: currentEpisode,
     watched: !incomplete,
   };
+  // Datable = fully aired AND fully watched — computed from the (cour, under the overlay) facts, so
+  // it works identically in either coordinate space. The year/rating the popover writes come from
+  // whichever maps the caller passes: season_years (TMDB seasons) or cour_years (AniList cours).
   const datable = (idx: number) => isSeasonDatable(facts, idx + 1);
 
   /**
@@ -208,7 +211,10 @@ export function SeasonHistoryStrip({
           const year = reached ? seasonYears?.[String(s)] : undefined;
           const rating = reached ? seasonRatings?.[String(s)] : undefined;
           const posterPath = seasonPosters?.[idx] ?? null;
-          const poster = posterPath ? `${TMDB_IMG}${posterPath}` : (showPoster ?? null);
+          // AniList cours store an ABSOLUTE url; TMDB seasons store a path fragment. Detect which.
+          const poster = posterPath
+            ? (posterPath.startsWith("http") ? posterPath : `${TMDB_IMG}${posterPath}`)
+            : (showPoster ?? null);
           const airDate = seasonAirDates?.[idx] ?? null;
 
           const cardInner = (

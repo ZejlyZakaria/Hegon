@@ -20,6 +20,9 @@ const updateMediaFields = z.object({
   current_season: z.number().optional(),
   season_years: z.record(z.string(), z.number()).nullable().optional(),
   season_ratings: z.record(z.string(), z.number()).nullable().optional(),
+  // Anime v2 — per-cour year/rating for AniList-overlaid anime.
+  cour_years: z.record(z.string(), z.number()).nullable().optional(),
+  cour_ratings: z.record(z.string(), z.number()).nullable().optional(),
   favorite: z.boolean().optional(),
   notes: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),

@@ -90,8 +90,10 @@ export async function uploadCustomPoster(file: File): Promise<string | null> {
 // year. stampSeasons MERGES into the existing map — so if the map isn't loaded, it merges
 // into `undefined`, and writing the result REPLACES the jsonb column with a single entry.
 // Every year you'd ever set by hand would be gone. Load it, or don't write it.
+// `release_date` + `status` ride along so the film sections can split want_to_watch into
+// "Waiting for" (unreleased) vs ready-to-watch, all client-side from one cached fetch.
 const SECTION_COLUMNS =
-  "id, type, title, original_title, poster_url, backdrop_url, year, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
+  "id, type, title, original_title, poster_url, backdrop_url, year, release_date, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
 
 export async function getMediaItems(
   userId: string,
@@ -640,6 +642,9 @@ export async function addTmdbItemToList(
     runtime,
     tags: genres,
     status,
+    // FILM release date → powers the "Waiting for" split. Details first (freshest), then the
+    // search-result field. Null for series/anime.
+    release_date: isFilm ? (details?.release_date ?? tmdbItem.release_date ?? null) : null,
     studio,
     seasons: isFilm ? null : (details?.number_of_seasons ?? realSeasons.length ?? null),
     episodes: isFilm ? null : (details?.number_of_episodes ?? null),
@@ -1372,6 +1377,23 @@ export async function getPeopleCounts(
     bump(directing, row.directors);
   }
   return { acting, directing };
+}
+
+// ── Anime v2 — AniList season overlay (read-only) ──
+// The real per-season breakdown of an anime TMDB lumps into one flat season, resolved by the
+// `resolve-anime-cours` job into the SHARED watching.anime_cours table (keyed by tmdb_id, same for
+// every user). The app only trusts source 'anilist'; 'mismatch'/'none'/missing → the caller falls
+// back to TMDB's flat structure. One instant DB read, no AniList call at request time.
+export async function getAnimeCours(tmdbId: number): Promise<import("./types").AnimeCoursRow | null> {
+  if (!tmdbId) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("anime_cours")
+    .select("tmdb_id, cours, source")
+    .eq("tmdb_id", tmdbId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as import("./types").AnimeCoursRow | null) ?? null;
 }
 
 // Hero data (trending + recommendations) — read from the GLOBAL trending cache

@@ -21,8 +21,8 @@ const PRIORITY_COLOR: Record<string, string> = {
   medium: "#fcd34d",
   low: "rgba(255,255,255,0.75)",
 };
-import { displayTitle, watchedAgo } from "@/modules/watching/utils";
-import { Clock } from "lucide-react";
+import { displayTitle, watchedAgo, releaseCountdown } from "@/modules/watching/utils";
+import { Clock, CalendarClock } from "lucide-react";
 import { formatPosition, overallProgress } from "@/modules/watching/lib/progress";
 import { NextEpisodeButton } from "./NextEpisodeButton";
 import { MediaActionMenu } from "./MediaActionMenu";
@@ -39,6 +39,8 @@ type MediaCarouselProps = {
   showRankBadge?: boolean;
   /** Recently Watched only — surface WHEN you watched it, the ordering made legible. */
   showWatchedAgo?: boolean;
+  /** Waiting for only — surface WHEN a film comes out, the anticipation made legible. */
+  showCountdown?: boolean;
 };
 
 
@@ -51,6 +53,7 @@ function MovieCard({
   showEpisodeBadge,
   showRankBadge,
   showWatchedAgo,
+  showCountdown,
   eagerLoad,
   orientation = "backdrop",
 }: {
@@ -60,6 +63,7 @@ function MovieCard({
   showEpisodeBadge?: boolean;
   showRankBadge?: boolean;
   showWatchedAgo?: boolean;
+  showCountdown?: boolean;
   eagerLoad?: boolean;
   orientation?: "poster" | "backdrop";
 }) {
@@ -67,6 +71,9 @@ function MovieCard({
   const isPoster = orientation === "poster";
   // Compact on the narrow poster (mobile): "2w" instead of "2 weeks ago", which crowds the tile.
   const ago = showWatchedAgo ? watchedAgo(item.watched_at, { short: isPoster }) : null;
+  // "Waiting for" cards: the countdown to release. Legacy rows with no stored date still belong here
+  // (via status) but can't count — they say "Soon" rather than nothing.
+  const countdown = showCountdown ? (releaseCountdown(item.release_date, { short: isPoster }) ?? "Soon") : null;
 
   return (
     <div
@@ -97,7 +104,9 @@ function MovieCard({
             instead of by three separate `top-2` / `top-3` guesses. */}
         <div className={cn(OVERLAY_CLUSTER, "left-2.5")}>
           {showRankBadge && item.priority && <RankMark rank={item.priority} />}
-          {item.want_to_watch && item.priority_level && (
+          {/* Priority is "how badly do I want to watch this" — meaningless for a film that isn't out
+              yet. In the Waiting for rail (showCountdown) the countdown is the only mark that belongs. */}
+          {item.want_to_watch && item.priority_level && !showCountdown && (
             <Badge variant="flag" size="sm" uppercase color={PRIORITY_COLOR[item.priority_level]}>
               {item.priority_level}
             </Badge>
@@ -109,6 +118,14 @@ function MovieCard({
             <Badge variant="flag" size="sm" color="rgba(255,255,255,0.92)">
               <Clock size={11} />
               {ago}
+            </Badge>
+          )}
+          {/* Time until release — a world fact about the future, so neutral white like the watched-ago
+              stamp, not the teal of something that's yours yet. */}
+          {countdown && (
+            <Badge variant="flag" size="sm" color="rgba(255,255,255,0.92)">
+              <CalendarClock size={11} />
+              {countdown}
             </Badge>
           )}
         </div>
@@ -208,6 +225,7 @@ export function MediaCarousel({
   showEpisodeBadge = false,
   showRankBadge = false,
   showWatchedAgo = false,
+  showCountdown = false,
 }: MediaCarouselProps) {
   const router = useRouter();
   // Add IS shown in the read-only demo — clicking it runs the full add flow, then
@@ -372,6 +390,7 @@ export function MediaCarousel({
               showEpisodeBadge={showEpisodeBadge}
               showRankBadge={showRankBadge}
               showWatchedAgo={showWatchedAgo}
+              showCountdown={showCountdown}
               eagerLoad={i < cardsPerView}
             />
           </motion.div>
@@ -397,6 +416,7 @@ export function MediaCarousel({
               showEpisodeBadge={showEpisodeBadge}
               showRankBadge={showRankBadge}
               showWatchedAgo={showWatchedAgo}
+              showCountdown={showCountdown}
               eagerLoad={i < 3}
             />
           </motion.div>

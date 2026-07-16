@@ -65,6 +65,10 @@ export const WATCHING_KEYS = {
   rewatches: (mediaItemId: string) =>
     [...WATCHING_KEYS.all, 'rewatches', mediaItemId] as const,
 
+  // Anime v2 — the AniList season overlay (shared, per tmdb_id)
+  animeCours: (tmdbId: number) =>
+    [...WATCHING_KEYS.all, 'anime-cours', tmdbId] as const,
+
   // Your collection titles featuring a person (actor/director)
   titlesByPerson: (userId: string, personId: number) =>
     [...WATCHING_KEYS.all, 'by-person', userId, personId] as const,

@@ -37,6 +37,8 @@ export interface MediaStateFlags {
   type?: MediaType;
   status?: string | null;
   year?: number | null;
+  /** FILM release date — the truth behind "is it out?", above the coarse year/status guards. */
+  release_date?: string | null;
 }
 
 export type TransitionAction =
@@ -79,6 +81,8 @@ export interface WorldFacts {
   status?: string | null;
   /** Release year — coarse guard for an unreleased film whose status we never stored. */
   year?: number | null;
+  /** FILM release date — the primary "is it out?" signal, above year/status. */
+  release_date?: string | null;
 }
 
 export function resolveTransition(

@@ -40,6 +40,7 @@ import {
   seriesState,
   type SeriesFacts,
 } from "./series-state";
+import { isAwaitingRelease } from "../utils";
 import type { UpdateMediaInput } from "../schemas/media.schema";
 import type { WatchingMedia, WatchStatus } from "../types";
 
@@ -87,19 +88,22 @@ export function deriveWatchStatus(item: {
  * May this title honestly be called WATCHED?
  *
  *   · A SERIES — only once it is over. You cannot finish a story still being told.
- *   · A FILM   — only once it has been RELEASED. This was "always", which let you mark a film that
- *     does not exist yet as watched: the person pages list unreleased credits under "Not seen yet",
- *     and nothing stopped you claiming to have seen a 2027 film. TMDB gives movies a real status
- *     ("Released", "Post Production", "Planned", "Canceled"…); an unreleased one is not watchable.
- *     A future release YEAR is a second, coarser guard for legacy rows whose status we never stored.
- *     Unknown status AND no future year → permissive: we never block on ignorance.
+ *   · A FILM   — only once it has been RELEASED. "Released" is the exact inverse of the Waiting for
+ *     rail's `isAwaitingRelease`, and it reads the SAME predicate on purpose: the Mark-as-watched
+ *     button and the rail derive from one source (`release_date`), so they can never contradict each
+ *     other. TMDB's `status` is NOT trusted as the primary signal — it flips to "Released" before a
+ *     film is actually out (The Odyssey read "Released" the day before opening). release_date is the
+ *     truth; status/year are fallbacks only for legacy rows that predate the column.
  */
-export function canComplete(m: { type?: string | null; status?: string | null; year?: number | null }): boolean {
+export function canComplete(m: {
+  type?: string | null;
+  status?: string | null;
+  year?: number | null;
+  release_date?: string | null;
+}): boolean {
   if (m.type == null) return true;                       // unknown type → don't block on ignorance
   if (m.type !== "film") return isFinished(m.status);
-  if (m.year != null && m.year > new Date().getFullYear()) return false;   // a future year cannot be watched
-  const s = (m.status ?? "").toLowerCase();
-  return s === "" || s === "released";                   // released, or a legacy row with no status
+  return !isAwaitingRelease({ type: "film", release_date: m.release_date, status: m.status, year: m.year });
 }
 
 /** The latest year stamped across a season-years map — the year you finished the show. */
