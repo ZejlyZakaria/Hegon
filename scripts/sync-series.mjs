@@ -117,7 +117,8 @@ const lastAired = (aired) => {
 // ── Run ───────────────────────────────────────────────────────────────────────
 
 let query = db.from("media_items")
-  .select("id,title,type,tmdb_id,status,watched,recently_watched,in_progress,paused,dropped,current_season,current_episode,season_episodes,season_aired,season_end_dates,caught_up_at,watched_at,is_reference")
+  // `recently_watched` was dropped (Last Watched derives from watched_at) — selecting it kills the run.
+  .select("id,title,type,tmdb_id,status,watched,in_progress,paused,dropped,current_season,current_episode,season_episodes,season_aired,season_end_dates,caught_up_at,watched_at,is_reference")
   .neq("type", "film")
   .eq("is_reference", false)
   .not("tmdb_id", "is", null);
@@ -179,7 +180,6 @@ for (const m of items) {
   if (m.watched && !isFinished(status) && airedTotal > 0) {
     Object.assign(next, {
       watched: false,
-      recently_watched: false,
       in_progress: true,
       paused: false,
       dropped: false,
@@ -201,7 +201,6 @@ for (const m of items) {
   else if (m.watched && isFinished(status) && m.season_aired != null && airedTotal > total(m.season_aired)) {
     Object.assign(next, {
       watched: false,
-      recently_watched: false,
       in_progress: true,
       // You stopped where the show used to end.
       current_season: m.current_season ?? 1,
