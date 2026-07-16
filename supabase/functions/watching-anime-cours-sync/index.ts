@@ -83,7 +83,7 @@ function buildCours(media: any[]) {
 Deno.serve(async () => {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    Deno.env.get("HEGON_SECRET_KEY")!,
     { db: { schema: "watching" } },
   );
 

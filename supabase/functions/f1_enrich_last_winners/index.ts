@@ -9,7 +9,7 @@ interface Circuit {
 Deno.serve(async () => {
   try {
     const supabaseUrl        = Deno.env.get("SUPABASE_URL")!
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    const supabaseServiceKey = Deno.env.get("HEGON_SECRET_KEY")!
     const supabase           = createClient(supabaseUrl, supabaseServiceKey, {
       db: { schema: "sport" },
     })

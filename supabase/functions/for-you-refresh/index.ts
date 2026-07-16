@@ -14,9 +14,10 @@
 //   6. flags newcomers vs the previous rotation (is_new) and upserts the row.
 // The app just reads that table → For You is always instant.
 //
-// Env (function secrets): TMDB_API_KEY, CRON_SECRET.
-//   SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are auto-injected.
-// Deploy:  supabase functions deploy for-you-refresh --no-verify-jwt
+// Env (function secrets): TMDB_API_KEY, HEGON_SECRET_KEY. SUPABASE_URL is auto-injected.
+//   HEGON_SECRET_KEY replaces the auto-injected SUPABASE_SERVICE_ROLE_KEY, whose value IS the legacy
+//   JWT — disabling JWT-based API keys kills it, so nothing may read it any more.
+// Deploy:  supabase functions deploy for-you-refresh
 //
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -221,18 +222,13 @@ async function refreshUserType(
   return true;
 }
 
-Deno.serve(async (req: Request) => {
-  const secret = Deno.env.get("CRON_SECRET");
-  if (secret && req.headers.get("x-cron-secret") !== secret) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
+Deno.serve(async () => {
   const tmdbKey = Deno.env.get("TMDB_API_KEY");
   if (!tmdbKey) return new Response("TMDB_API_KEY missing", { status: 500 });
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    Deno.env.get("HEGON_SECRET_KEY")!,
   );
 
   // Users with at least one favorite (single-user today, but kept generic).

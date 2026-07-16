@@ -4,7 +4,7 @@ serve(async () => {
   try {
     const FOOTBALL_KEY         = Deno.env.get("FOOTBALL_DATA_KEY")
     const SUPABASE_URL         = Deno.env.get("SUPABASE_URL")
-    const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    const SUPABASE_SERVICE_KEY = Deno.env.get("HEGON_SECRET_KEY")
 
     if (!FOOTBALL_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
       return new Response("Missing environment variables", { status: 500 })

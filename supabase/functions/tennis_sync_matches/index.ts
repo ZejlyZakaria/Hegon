@@ -596,7 +596,7 @@ Deno.serve(async () => {
     console.log('🎾 Starting Tennis Matches Sync...\n');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseKey = Deno.env.get('HEGON_SECRET_KEY')!;
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
       db: { schema: 'sport' },
