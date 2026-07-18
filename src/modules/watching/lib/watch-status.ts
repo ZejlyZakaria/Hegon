@@ -302,6 +302,15 @@ export function positionPatch(
   const completes = kind === "correction" && completed && !m.watched;
   const revokes = !!m.watched && !completed;
 
+  // Reaching the last AIRED episode makes "paused" a lie: paused means there is more you are not
+  // watching, and now there isn't — you are Caught up. DROPPED survives this (it is a decision not
+  // to continue, still true when you have seen everything out — you watched all of House of the
+  // Dragon that aired and chose to stop); PAUSED does not, because it says nothing "caught up"
+  // doesn't already say. Forward only: a backward correction is fixing where you stopped, not
+  // resuming.
+  const resumesFromPause =
+    !!m.paused && forward && !completed && seriesState(facts) === "caught-up";
+
   // Seasons you have just travelled PAST, and only those that have fully aired. A correction
   // stamps nothing: you are claiming to have watched them, not to have watched them TODAY.
   const crossed = kind === "viewing" && forward && season > from.season
@@ -332,5 +341,6 @@ export function positionPatch(
       // watched_at stops mattering because `watched` is false), or it keeps surfacing as completed.
       ? { watched: false, in_progress: !m.paused && !m.dropped }
       : {}),
+    ...(resumesFromPause ? { paused: false, in_progress: true } : {}),
   };
 }

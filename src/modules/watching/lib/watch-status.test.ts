@@ -214,6 +214,40 @@ describe("positionPatch — a viewing is not a correction", () => {
     expect(p.watched).toBeUndefined();
   });
 
+  it("reaching the frontier drops 'paused' — you're Caught up, not paused", () => {
+    // Paused on House of the Dragon at S1; you come back and mark yourself through the last aired
+    // episode. "Paused" means there is more you are not watching — and now there isn't.
+    const p = positionPatch(hotd({ paused: true, in_progress: false, current_season: 1, current_episode: 5 }), 3, 3, "correction");
+    expect(p.paused).toBe(false);
+    expect(p.in_progress).toBe(true);
+    expect(p.caught_up_at).toMatch(/^\d{4}-/);
+  });
+
+  it("but DROPPED survives being caught up — a decision not to continue, not a position", () => {
+    // The House of the Dragon case the owner lived: watched all that aired, chose to stop.
+    const p = positionPatch(hotd({ dropped: true, in_progress: false, current_season: 1, current_episode: 5 }), 3, 3, "correction");
+    expect("paused" in p).toBe(false);
+    expect(p.dropped).toBeUndefined();       // untouched → stays dropped
+    expect(p.in_progress).toBeUndefined();   // not resumed
+  });
+
+  it("a paused show still SHORT of the frontier stays paused", () => {
+    // S3 has aired; you jump forward only to the end of S2 — there is still more, so still paused.
+    const p = positionPatch(hotd({ paused: true, in_progress: false, current_season: 1, current_episode: 5 }), 2, 8, "correction");
+    expect("paused" in p).toBe(false);       // untouched
+    expect(p.in_progress).toBeUndefined();
+  });
+
+  it("a BACKWARD correction never resumes a paused show", () => {
+    const p = positionPatch(hotd({ paused: true, in_progress: false, current_season: 3, current_episode: 3 }), 2, 4, "correction");
+    expect("paused" in p).toBe(false);       // fixing where you stopped, not coming back
+  });
+
+  it("dropped, then you finish a show that has ENDED → watched (completion outranks the stance)", () => {
+    const p = positionPatch(sds({ watched: false, dropped: true, in_progress: false, current_season: 3, current_episode: 24 }), 4, 24, "correction");
+    expect(p.watched).toBe(true);
+  });
+
   it("EVERY position write recomputes caught_up_at — including the Undo that used to skip it", () => {
     // Tap "+1" to the frontier → stamped. Undo → you are behind again, and the stamp must go, or
     // the next episode to air announces itself as "New" to someone who was never caught up.

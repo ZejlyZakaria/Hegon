@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Check, Pencil, Tv, Lock, Clock } from "lucide-react";
+import { Check, Pencil, Tv, Lock, Clock, EyeOff } from "lucide-react";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/shared/components/ui/popover";
@@ -11,6 +11,7 @@ import {
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { Badge } from "@/shared/components/ui/badge";
+import { Hint } from "@/shared/components/ui/tooltip";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { isSeasonComplete, isSeasonDatable } from "@/modules/watching/lib/series-state";
 
@@ -273,8 +274,16 @@ export function SeasonHistoryStrip({
                   <span className="text-micro font-semibold text-white/85">Coming soon</span>
                   {airDate && <span className="text-[9px] text-white/50">{fmtDate(airDate)}</span>}
                 </div>
+              ) : canJump && !editable ? (
+                /* Aired, ahead of where you stand — NOT seen yet, but you may claim it. An eye-off
+                   states that plainly; a padlock said "forbidden" and a check would say "done". */
+                <div className="absolute inset-0 flex items-center justify-center bg-black/45 transition-colors group-hover:bg-black/25">
+                  <div className="on-artwork flex h-7 w-7 items-center justify-center rounded-full">
+                    <EyeOff size={13} className="text-white" />
+                  </div>
+                </div>
               ) : locked ? (
-                /* Mask — released but not started yet */
+                /* Mask — genuinely unreachable (a later season still airing, so not yet claimable) */
                 <div className="absolute inset-0 flex items-center justify-center bg-black/65">
                   <Lock size={15} className="text-white/55" />
                 </div>
@@ -294,13 +303,13 @@ export function SeasonHistoryStrip({
           // haven't aired.
           if (!interactive) {
             return (
-              <div
-                key={s}
-                className={`w-(--rail-peek) shrink-0 sm:w-(--poster-lg) ${comingSoon ? "cursor-not-allowed" : "cursor-default"}`}
-                title={comingSoon ? "Not aired yet" : "Finish this season to date and rate it"}
-              >
-                {cardInner}
-              </div>
+              <Hint key={s} label={comingSoon ? "Not aired yet" : "Finish this season to date and rate it"}>
+                <div
+                  className={`w-(--rail-peek) shrink-0 sm:w-(--poster-lg) ${comingSoon ? "cursor-not-allowed" : "cursor-default"}`}
+                >
+                  {cardInner}
+                </div>
+              </Hint>
             );
           }
 
@@ -365,7 +374,7 @@ export function SeasonHistoryStrip({
                     </button>
                     {!editable && (
                       <p className="mt-1.5 text-center text-micro text-text-tertiary">
-                        You haven&apos;t marked this season as watched.
+                        Mark it watched to rate this season.
                       </p>
                     )}
                   </>
