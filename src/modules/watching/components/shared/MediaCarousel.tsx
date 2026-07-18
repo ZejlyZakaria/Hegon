@@ -181,10 +181,13 @@ function MovieCard({
                 text-overflow only applies to the element that HOLDS the text. So the label gets
                 its own span — "Science Fiction" ellipsises instead of shoving the year and the
                 score off the card. */}
+            {/* Genres, styled like the detail hero's — a quiet rounded pill, not the `overlay` badge
+                (that variant is built to sit ON artwork; here it's on the card body, where its bright
+                fill read as louder than the title). Same soft pill both places now. */}
             {!isPoster && item.tags?.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="overlay" size="sm" color="rgba(255,255,255,0.8)" className="max-w-24 shrink">
-                <span className="min-w-0 truncate">{tag}</span>
-              </Badge>
+              <span key={tag} className="max-w-24 shrink truncate rounded-full bg-white/6 px-2 py-0.5 text-micro text-white/40 ring-1 ring-white/6">
+                {tag}
+              </span>
             ))}
             <span className="shrink-0 text-xs text-text-tertiary">{item.year}</span>
 

@@ -8,6 +8,36 @@ import { useOmdbRatings } from "../../hooks/useOmdbRatings";
 import { useAgeRating } from "../../hooks/useAgeRating";
 import type { WatchingMedia } from "../../types";
 
+// A certification code is a shorthand only the initiated read — "TV-MA", "R", "-16" say nothing to
+// most people. The badge stays (it's compact and recognisable), and hovering it spells out the rule.
+const AGE_RATING_HINT: Record<string, string> = {
+  // US — film (MPAA)
+  "G": "General audiences — all ages admitted",
+  "PG": "Parental guidance suggested",
+  "PG-13": "Some material may be unsuitable for children under 13",
+  "R": "Restricted — under 17 requires an accompanying adult",
+  "NC-17": "Adults only — no one 17 and under admitted",
+  // US — TV
+  "TV-Y": "Suitable for all children",
+  "TV-Y7": "Suitable for children 7 and older",
+  "TV-G": "Suitable for all ages",
+  "TV-PG": "Parental guidance suggested",
+  "TV-14": "Unsuitable for children under 14",
+  "TV-MA": "Mature audiences — 17 and older",
+  // UK — BBFC
+  "U": "Suitable for all ages",
+  "12": "Suitable for 12 and older",
+  "12A": "Under 12 must be accompanied by an adult",
+  "15": "Suitable for 15 and older",
+  "18": "Suitable for adults only",
+  // FR — CNC
+  "-10": "Not recommended for under 10",
+  "-12": "Prohibited for under 12",
+  "-16": "Prohibited for under 16",
+  "-18": "Prohibited for under 18",
+  "Tous publics": "Suitable for all audiences",
+};
+
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-border-subtle py-2.5 last:border-0">
@@ -89,11 +119,18 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
           {ageRating ? (
             <DetailRow
               label="Age rating"
-              value={
-                <span className="inline-flex items-center rounded border border-border-default px-1.5 py-0.5 text-micro font-semibold text-text-primary">
-                  {ageRating}
-                </span>
-              }
+              value={(() => {
+                const badge = (
+                  <span
+                    className={`inline-flex items-center rounded border border-border-default px-1.5 py-0.5 text-micro font-semibold text-text-primary ${AGE_RATING_HINT[ageRating] ? "cursor-help" : ""}`}
+                  >
+                    {ageRating}
+                  </span>
+                );
+                return AGE_RATING_HINT[ageRating]
+                  ? <Hint label={AGE_RATING_HINT[ageRating]}>{badge}</Hint>
+                  : badge;
+              })()}
             />
           ) : null}
           {isSeries && media.episodes ? <DetailRow label="Episodes" value={media.episodes} /> : null}

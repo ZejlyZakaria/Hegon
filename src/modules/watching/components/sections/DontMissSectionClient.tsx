@@ -109,9 +109,10 @@ function DontMissCard({
               {genres.length > 0 && (
                 <div className="flex gap-1.5 flex-wrap mb-2">
                   {genres.map((g) => (
-                    <Badge key={g} variant="overlay" size="sm" color="rgba(255,255,255,0.8)">
+                    // Same quiet pill as the detail hero — genres read as one style across the app.
+                    <span key={g} className="rounded-full bg-white/6 px-2 py-0.5 text-micro text-white/40 ring-1 ring-white/6">
                       {g}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               )}
