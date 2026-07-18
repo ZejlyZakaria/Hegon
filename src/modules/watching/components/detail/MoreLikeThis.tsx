@@ -66,7 +66,7 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
                   </div>
                 )}
               </div>
-              <p className="mt-2 line-clamp-2 min-h-9 text-xs leading-snug text-text-secondary transition-colors group-hover:text-text-primary">
+              <p className="mt-2 truncate text-xs text-text-secondary transition-colors group-hover:text-text-primary">
                 {title}
               </p>
               {year && <p className="text-micro tabular-nums text-text-tertiary">{year}</p>}

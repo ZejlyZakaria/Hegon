@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Heart, Loader2, Maximize2, Music, Pause, Play, SkipBack, SkipForward, Video, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/shared/components/ui/dialog";
 import { Hint } from "@/shared/components/ui/tooltip";
+import { LOVE } from "./shared/Marks";
 import { useThemePlayer } from "../store/theme-player";
 import { useThemeFavorites, useToggleThemeFavorite } from "../hooks/useThemeFavorites";
 import { themeTrackKey } from "../service";
@@ -135,7 +136,7 @@ export function ThemePlayer() {
             {/* Progress — under the track, times flanking it (like the expanded card) */}
             <div className="px-3 pb-2.5">
               <div className="group/prog h-1 w-full cursor-pointer rounded-full bg-white/10" onClick={seek}>
-                <div className="h-full rounded-full bg-accent-watching transition-[width] duration-100" style={{ width: `${pct}%` }} />
+                <div className="h-full rounded-full bg-white transition-[width] duration-100" style={{ width: `${pct}%` }} />
               </div>
               <div className="mt-1 flex justify-between text-micro tabular-nums text-white/35">
                 <span>{fmt(time)}</span>
@@ -206,7 +207,7 @@ export function ThemePlayer() {
                       </p>
                     </div>
                     <button type="button" onClick={() => toggleFavMutation.mutate({ track: current, faved })} className="mt-1 shrink-0 text-white/60 transition-colors hover:text-white">
-                      <Heart size={22} className={faved ? "fill-accent-watching-vivid text-accent-watching-vivid" : ""} />
+                      <Heart size={22} style={faved ? { color: LOVE, fill: LOVE } : undefined} />
                     </button>
                   </div>
 
