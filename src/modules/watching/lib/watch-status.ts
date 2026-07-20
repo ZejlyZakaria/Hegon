@@ -320,6 +320,8 @@ export interface AddStatus {
   current_episode: number | null;
   /** Only when the claim dates seasons — a fresh row has no map to merge into. */
   season_years?: Record<string, number> | null;
+  /** The same stamp, in cour space, when the title is overlaid. One of the two, never both. */
+  cour_years?: Record<string, number> | null;
 }
 
 /** What a door collected. `position: null` means "I am claiming nothing". */
@@ -364,6 +366,13 @@ export function addStatusPatch(
   door: ListType,
   claim: AddClaim,
   type: MediaType,
+  /**
+   * The lens for the title being added. `claim.position` stays in STORAGE units (the modal converts
+   * at its own boundary); this decides WHICH SEASONS the claim just finished, and therefore which
+   * column the year lands in. Without it an overlaid anime stamped `season_years` — one entry for a
+   * whole show, in a map its own Watch History never reads.
+   */
+  view?: MediaView | null,
 ): AddStatus | null {
   const now = () => new Date().toISOString();
 
@@ -392,20 +401,28 @@ export function addStatusPatch(
   // year on every season you complete. Same claim, same position, two different histories.
   // The year is a default, not a verdict: the season is datable, so one click corrects it.
   const claimedYear = new Date(claim.watchedAt ?? Date.now()).getFullYear();
-  const stamped = { ...claim.facts, current_season: claim.position.season, current_episode: claim.position.episode };
-  const seasonYears = Object.fromEntries(
-    (claim.facts.season_episodes ?? [])
-      .map((_, idx) => idx + 1)
+  // Which seasons this claim just finished — answered in DISPLAY space, so a claim of "through
+  // cour 1" dates cour 1 rather than nothing (a lumped anime has a single TMDB season, which is
+  // only ever datable once the WHOLE show is watched).
+  const posV = view ? view.fromStorage(claim.position.season, claim.position.episode) : claim.position;
+  const facts = view ? view.seriesFacts : claim.facts;
+  const count = view ? view.seasons.length : (claim.facts.season_episodes ?? []).length;
+  const stamped = { ...facts, current_season: posV.season, current_episode: posV.episode };
+  const years = Object.fromEntries(
+    Array.from({ length: count }, (_, idx) => idx + 1)
       .filter((season) => isSeasonDatable(stamped, season))
       .map((season) => [String(season), claimedYear]),
   );
+  const seasonYears = Object.keys(years).length
+    ? (view ? view.writeYears(years) : { season_years: years })
+    : null;
 
   return {
     ...NO_STATUS,
     ...claimed,
     // `claimedStatus` dates a completion "now"; a door that asked WHEN overrules it.
     watched_at: claimed.watched ? (claim.watchedAt ?? claimed.watched_at ?? now()) : null,
-    ...(Object.keys(seasonYears).length ? { season_years: seasonYears } : {}),
+    ...(seasonYears ?? {}),
   };
 }
 

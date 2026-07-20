@@ -8,6 +8,7 @@ import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { useAnimeCours } from "@/modules/watching/hooks/useAnimeCours";
 import { shouldOverlay, courToFlat, tmdbFromFlat } from "@/modules/watching/lib/anime-overlay";
+import { buildMediaView } from "@/modules/watching/lib/media-view";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   Search, X, Upload, Star, Heart, Bookmark,
@@ -27,7 +28,7 @@ import { cn } from "@/shared/utils/utils";
 import { Button } from "@/shared/components/ui/button";
 import { getTakenPriorities, getExistingMediaEntry, uploadCustomPoster } from "@/modules/watching/service";
 import { resolveTransition } from "@/modules/watching/lib/resolve-transition";
-import type { ListType, MediaType, TmdbModalResult } from "@/modules/watching/types";
+import type { ListType, MediaType, TmdbModalResult, WatchingMedia } from "@/modules/watching/types";
 
 type AddMediaModalProps = {
   isOpen: boolean;
@@ -380,6 +381,38 @@ export default function AddMediaModal({
     ? coursRow.cours
     : null;
 
+  /**
+   * THE LENS, FOR A TITLE THAT IS NOT YOURS YET.
+   *
+   * Everywhere else the view is built from your row; here there is no row — so we build it from the
+   * TMDB payload plus the shared cours. Same object, same rules, so this door speaks cours like the
+   * rest of the app: "Through S1" of a lumped anime means cour 1, and the year it stamps lands in
+   * `cour_years` instead of a `season_years` map the Watch History never reads.
+   */
+  const addView = useMemo(
+    () =>
+      buildMediaView(
+        {
+          type: defaultType,
+          status: (status ?? undefined) as WatchingMedia["status"],
+          caught_up_at: null,
+          episodes: undefined,
+          season_episodes: tmdbSeasonEpisodes,
+          season_aired: seasonAired,
+          season_posters: null,
+          season_end_dates: null,
+          current_season: undefined,
+          current_episode: undefined,
+          season_years: null,
+          season_ratings: null,
+          cour_years: null,
+          cour_ratings: null,
+        },
+        coursRow,
+      ),
+    [defaultType, status, tmdbSeasonEpisodes, seasonAired, coursRow],
+  );
+
   const maxSeason = overlayCours ? overlayCours.length : seasons;
 
   const getMaxEpisode = (season: number): number | null => {
@@ -445,7 +478,15 @@ export default function AddMediaModal({
       // status derivation answered "you claimed nothing", every flag fell to false, and a series
       // added here landed in no rail at all. Same fields, same numbers; they are simply routed to
       // the input that means something. (Cour coordinates in, TMDB coordinates out — storedPosition.)
-      const claimedPosition = listContext === "inProgress" && isSeries ? storedPosition() : position;
+      // Both doors now speak DISPLAY units — the In Progress fields via `storedPosition` (which has
+      // always converted), and HowFarDidYouGet because it is fed the lens's seasons. One conversion
+      // at this boundary and storage gets what it expects.
+      const claimedPosition =
+        listContext === "inProgress" && isSeries
+          ? storedPosition()
+          : position
+            ? addView.toStorage(position.season, position.episode)
+            : null;
 
       const result = await addMediaMutation.mutateAsync({
         selectedItem, defaultType, listContext,
@@ -456,6 +497,7 @@ export default function AddMediaModal({
         watchedAt,
         position: claimedPosition,
         stance,
+        view: addView,
       });
 
       toast.success("Added to your collection.");
@@ -829,7 +871,7 @@ export default function AddMediaModal({
                       seasonAired.length > 0 &&
                       (listContext === "library" || listContext === "recentlyWatched" || listContext === "topTen") && (
                         <HowFarDidYouGet
-                          seasonAired={seasonAired}
+                          seasonAired={addView.seasons.map((s) => s.aired)}
                           status={status}
                           value={position}
                           onChange={setPosition}

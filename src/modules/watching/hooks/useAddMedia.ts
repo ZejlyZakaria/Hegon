@@ -14,6 +14,7 @@ import { resolveTransition } from "../lib/resolve-transition";
 import { RESET_STATUS } from "../lib/status-flags";
 import { airedFromTmdb } from "../lib/series-state";
 import { addStatusPatch, claimedStatus } from "../lib/watch-status";
+import type { MediaView } from "../lib/media-view";
 import { insertMediaSchema, toColumns, updateMediaSchema } from "../schemas/media.schema";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
@@ -45,6 +46,12 @@ interface AddMediaInput {
   position?: { season: number; episode: number } | null;
   /** What happened after you stopped partway: still watching, paused, or done with it. */
   stance?: "watching" | "paused" | "dropped";
+  /**
+   * The lens for the title being added, built by the modal from the TMDB payload + its cours (the
+   * row does not exist yet, so there is nothing else to build it from). `position` above is already
+   * in STORAGE units — this only decides which seasons the claim finished, and which year column.
+   */
+  view?: MediaView | null;
 }
 
 export function useAddMedia() {
@@ -80,6 +87,7 @@ export function useAddMedia() {
         watchedAt,
         position,
         stance,
+        view,
       } = input;
 
       const isSeries = defaultType === "serie" || defaultType === "anime";
@@ -129,6 +137,7 @@ export function useAddMedia() {
         listContext,
         { position: position ?? null, stance, facts: claimFacts, watchedAt },
         defaultType,
+        view,
       );
       if (!claim) {
         // The door needs a claim and the UI failed to collect one. Refusing is the only honest
@@ -137,7 +146,10 @@ export function useAddMedia() {
         err.name = "TransitionError";
         throw err;
       }
-      const { season_years: seasonYears, ...statusColumns } = claim;
+      // The year map goes to whichever column the lens chose — season_years, or cour_years for an
+      // overlaid anime. Kept as one opaque patch so no call site has to know which.
+      const { season_years, cour_years, ...statusColumns } = claim;
+      const yearPatch = season_years ? { season_years } : cour_years ? { cour_years } : {};
 
       const posterUrl =
         customPosterUrl ||
@@ -152,7 +164,7 @@ export function useAddMedia() {
         // and `is_reference` are stated here — none is left to a default, because re-adding a
         // title MERGES onto its existing row and an omitted flag is not a cleared one.
         ...statusColumns,
-        ...(seasonYears ? { season_years: seasonYears } : {}),
+        ...yearPatch,
         title: selectedItem.title || selectedItem.name,
         original_title: selectedItem.original_title || selectedItem.original_name,
         description: selectedItem.overview,
@@ -299,7 +311,7 @@ export function useAddMedia() {
           return guarded({
             ...(claimed ?? {}),
             season_aired: seasonAiredList ?? undefined,
-            ...(seasonYears ? { season_years: seasonYears } : {}),
+            ...yearPatch,
             favorite: true,
             priority,
             user_rating: userRating > 0 ? userRating : null,

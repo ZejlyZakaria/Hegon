@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildMediaView } from "./media-view";
-import { markWatchedPatch, positionPatch, type StatusFacts } from "./watch-status";
+import { addStatusPatch, markWatchedPatch, positionPatch, type StatusFacts } from "./watch-status";
 import type { AnimeCoursRow, WatchingMedia } from "../types";
 
 // Real rows, read out of the live database on 2026-07-20. Invented cases prove invented things.
@@ -187,6 +187,31 @@ describe("the stamping functions, through the lens", () => {
     expect("season_years" in p).toBe(false);
     // Position still lands at the last aired episode in storage space.
     expect(p.current_episode).toBe(38);
+  });
+
+  it("ADDING an overlaid anime dates the cour, not the whole show", () => {
+    // Claim "I watched through cour 1" of Blue Lock (flat episode 24 of 38). In storage space the
+    // single TMDB season is only datable once ALL 38 are watched, so the add path stamped nothing.
+    const world = { season_aired: [38], season_episodes: [38], status: "ended", caught_up_at: null };
+    const view = buildMediaView(blueLock({ current_season: 1, current_episode: 24, cour_years: {} }), blueLockCours);
+
+    const withLens = addStatusPatch(
+      "library",
+      { position: { season: 1, episode: 24 }, facts: world, watchedAt: "2024-05-01T00:00:00.000Z" },
+      "anime",
+      view,
+    )!;
+    expect(withLens.cour_years).toEqual({ "1": 2024 });
+    expect("season_years" in withLens).toBe(false);
+
+    // Same claim without the lens: nothing datable, so nothing recorded. The bug it replaces.
+    const withoutLens = addStatusPatch(
+      "library",
+      { position: { season: 1, episode: 24 }, facts: world, watchedAt: "2024-05-01T00:00:00.000Z" },
+      "anime",
+    )!;
+    expect(withoutLens.season_years).toBeUndefined();
+    expect("cour_years" in withoutLens).toBe(false);
   });
 
   it("a plain series is completely unaffected by passing its (identity) lens", () => {
