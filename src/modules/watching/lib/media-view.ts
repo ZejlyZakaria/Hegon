@@ -64,6 +64,19 @@ export interface MediaView {
   /** The raw row, in STORAGE coordinates — for the pure libs that still reason on it. */
   media: MediaViewSource;
   overlaid: boolean;
+  /**
+   * WE DO NOT KNOW YET — and that is not the same fact as "no overlay".
+   *
+   * The cours arrive asynchronously. While they are in flight `shouldOverlay` answers "no" and the
+   * lens falls back to the identity, so a lumped anime printed its FLAT position ("S01 E59") and
+   * then corrected itself to "S03 E12" a moment later. The user watched the app change its mind.
+   *
+   * That is the module's signature bug, rebuilt inside the thing meant to cure it: one word standing
+   * for two different facts. So "unknown" gets its own flag, and the rule that follows is the same
+   * one we apply to years — DO NOT SHOW A CLAIM YOU MAY HAVE TO WITHDRAW. A surface renders no
+   * position at all until this is false. Never true for a non-anime: its lens is resolved at birth.
+   */
+  pending: boolean;
   cours: AnimeCour[] | null;
   /** Where you stand, in DISPLAY space. */
   position: { season: number; episode: number };
@@ -108,6 +121,8 @@ const withKey = (
 export function buildMediaView(
   media: MediaViewSource,
   coursRow: AnimeCoursRow | null | undefined,
+  /** True while this title's cours are still in flight — see `MediaView.pending`. */
+  pending = false,
 ): MediaView {
   // `shouldOverlay` is the ONE gate: anime + cleanly resolved by AniList + TMDB lumps it flat.
   // Anything else falls back to storage-is-display, so a title can never end up broken — the worst
@@ -126,6 +141,7 @@ export function buildMediaView(
     return {
       media,
       overlaid: true,
+      pending: false,
       cours,
       position: { season: ov.currentSeason, episode: ov.currentEpisode },
       seasons,
@@ -163,6 +179,7 @@ export function buildMediaView(
   return {
     media,
     overlaid: false,
+    pending,
     cours: null,
     position: { season: media.current_season ?? 1, episode: media.current_episode ?? 0 },
     seasons,

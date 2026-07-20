@@ -76,10 +76,14 @@ export function NextEpisodeButton({ item }: { item: WatchingMedia }) {
     const patch = await actions.setPosition(step.season, step.episode, "viewing");
     if (!patch) return;
 
+    // SAY IT THE WAY THE APP SAYS IT EVERYWHERE ELSE. `nextStep` reasons in storage coordinates, so
+    // on a lumped anime this toast used to announce "S01 E48" for a move the detail page calls
+    // "S03 E01". Same tap, two sentences.
+    const said = actions.view ? actions.view.fromStorage(step.season, step.episode) : step;
     toast(
       step.kind === "season"
-        ? `Season ${step.season} started — ${formatPosition(step.season, step.episode)}`
-        : formatPosition(step.season, step.episode),
+        ? `Season ${said.season} started — ${formatPosition(said.season, said.episode)}`
+        : formatPosition(said.season, said.episode),
       {
         duration: 6000,
         action: {

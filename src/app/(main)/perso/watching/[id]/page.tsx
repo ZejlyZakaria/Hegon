@@ -252,7 +252,11 @@ export default function MediaDetailPage() {
     return media.type === "film" ? "Movie" : media.type === "serie" ? "TV Show" : "Anime";
   }, [media]);
 
-  if (isLoading) return <DetailSkeleton />;
+  // Hold the skeleton until the LENS is resolved too, not just the row. Painting with the flat
+  // position and re-rendering into cour coordinates a beat later made the hero visibly change its
+  // mind ("Episode 59 / 59" → "Season 3 · Episode 12"). The cours are a tiny, hour-cached read, so
+  // this costs one round trip on a cold open and nothing afterwards.
+  if (isLoading || view?.pending) return <DetailSkeleton />;
 
   if (!media) {
     return (

@@ -93,8 +93,11 @@ export async function uploadCustomPoster(file: File): Promise<string | null> {
 // Every year you'd ever set by hand would be gone. Load it, or don't write it.
 // `release_date` + `status` ride along so the film sections can split want_to_watch into
 // "Waiting for" (unreleased) vs ready-to-watch, all client-side from one cached fetch.
+// `tmdb_id` is here for the LENS, not for display: without it a card cannot look up its AniList
+// cours, so a lumped anime printed its flat episode ("S01 E59") on the tile while its own detail
+// page said "S03 E12". A surface can only speak the right coordinates if it carries the key to them.
 const SECTION_COLUMNS =
-  "id, type, title, original_title, poster_url, backdrop_url, year, release_date, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
+  "id, type, tmdb_id, title, original_title, poster_url, backdrop_url, year, release_date, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
 
 export async function getMediaItems(
   userId: string,
@@ -1514,6 +1517,28 @@ export async function getAnimeCours(tmdbId: number): Promise<import("./types").A
     .maybeSingle();
   if (error) throw error;
   return (data as import("./types").AnimeCoursRow | null) ?? null;
+}
+
+/**
+ * The cours for a whole RAIL, in ONE read.
+ *
+ * A carousel renders twenty cards; asking per card would be twenty round trips for a table of a few
+ * dozen rows. The lens is supposed to make the overlay free at every surface — it must not make the
+ * cheapest surfaces the most expensive.
+ */
+export async function getAnimeCoursMany(
+  tmdbIds: number[],
+): Promise<Map<number, import("./types").AnimeCoursRow>> {
+  const ids = [...new Set(tmdbIds.filter(Boolean))];
+  if (ids.length === 0) return new Map();
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("anime_cours")
+    .select("tmdb_id, cours, source")
+    .in("tmdb_id", ids);
+  if (error) throw error;
+  const rows = (data ?? []) as import("./types").AnimeCoursRow[];
+  return new Map(rows.map((r) => [r.tmdb_id, r]));
 }
 
 // Hero data (trending + recommendations) — read from the GLOBAL trending cache

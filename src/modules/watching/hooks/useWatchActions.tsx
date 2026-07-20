@@ -117,6 +117,9 @@ export function useWatchActions(media: Target) {
   return {
     isPending: updateMedia.isPending,
 
+    /** The lens this surface is writing through — so it can SAY the position the way it wrote it. */
+    view,
+
     /** True when calling `markWatched` would be an honest claim. Film: released. Series: over. */
     canComplete: !!media && canComplete(media),
 

@@ -24,6 +24,8 @@ const PRIORITY_COLOR: Record<string, string> = {
 import { displayTitle, watchedAgo, releaseCountdown } from "@/modules/watching/utils";
 import { Clock, CalendarClock } from "lucide-react";
 import { formatPosition, overallProgress } from "@/modules/watching/lib/progress";
+import { useMediaViews } from "@/modules/watching/hooks/useMediaView";
+import type { MediaView } from "@/modules/watching/lib/media-view";
 import { NextEpisodeButton } from "./NextEpisodeButton";
 import { MediaActionMenu } from "./MediaActionMenu";
 
@@ -48,6 +50,7 @@ type MediaCarouselProps = {
 
 function MovieCard({
   item,
+  view,
   onView,
   onDelete,
   showEpisodeBadge,
@@ -58,6 +61,9 @@ function MovieCard({
   orientation = "backdrop",
 }: {
   item: WatchingMedia;
+  /** The lens. Without it a lumped anime prints its FLAT episode ("S01 E59") on the tile while its
+   *  own detail page says "S03 E12" — the same position, two different sentences. */
+  view?: MediaView | null;
   onView: () => void;
   onDelete?: (id: string) => Promise<void>;
   showEpisodeBadge?: boolean;
@@ -149,6 +155,10 @@ function MovieCard({
                 {/* flex-wrap: on a narrow mobile poster, the position chip + a wide state chip
                     ("Caught up") overflowed the card edge. They now stack instead of spilling. */}
                 <div className="flex flex-wrap items-center gap-2">
+                  {/* Nothing until the lens is resolved. Showing the flat position and correcting it
+                      a beat later meant the card visibly changed its mind — an anime read "S01 E59"
+                      then "S03 E12". No position is honest; a retracted one is not. */}
+                  {!view?.pending && (
                   <span
                     className="inline-flex h-6 shrink-0 items-center rounded-chip px-2 text-micro font-semibold leading-none"
                     style={{
@@ -156,8 +166,12 @@ function MovieCard({
                       color: "var(--color-accent-watching-vivid)",
                     }}
                   >
-                    {formatPosition(item.current_season ?? 1, item.current_episode ?? 0)}
+                    {formatPosition(
+                      view?.position.season ?? item.current_season ?? 1,
+                      view?.position.episode ?? item.current_episode ?? 0,
+                    )}
                   </span>
+                  )}
                   <span onClick={(e) => e.stopPropagation()}>
                     <NextEpisodeButton item={item} />
                   </span>
@@ -240,6 +254,9 @@ export function MediaCarousel({
   const [localItems, setLocalItems] = useState(items);
   const prevFirstIdRef = useRef<string | null>(null);
   const gap = 16;
+  // One batched read for the whole rail, then a lens per card — the overlay costs a single query,
+  // not one per tile.
+  const views = useMediaViews(localItems);
 
   useEffect(() => {
     setLocalItems(items);
@@ -388,6 +405,7 @@ export function MediaCarousel({
           >
             <MovieCard
               item={item}
+              view={views.get(item.id)}
               onView={() => router.push(`/perso/watching/${item.id}`)}
               onDelete={onDelete}
               showEpisodeBadge={showEpisodeBadge}
@@ -414,6 +432,7 @@ export function MediaCarousel({
             <MovieCard
               orientation="poster"
               item={item}
+              view={views.get(item.id)}
               onView={() => router.push(`/perso/watching/${item.id}`)}
               onDelete={onDelete}
               showEpisodeBadge={showEpisodeBadge}

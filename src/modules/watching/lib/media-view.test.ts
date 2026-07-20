@@ -116,6 +116,23 @@ describe("buildMediaView — the fallback is always safe", () => {
     expect(buildMediaView(blueLock(), undefined).overlaid).toBe(false);
   });
 
+  it("says PENDING rather than pretending there is no overlay", () => {
+    // The cours arrive async. Treating "not loaded yet" as "no overlay" made the card print the flat
+    // position and then correct itself — the app visibly changing its mind. Surfaces read this flag
+    // and render no position at all until it clears.
+    const waiting = buildMediaView(blueLock(), undefined, true);
+    expect(waiting.pending).toBe(true);
+    expect(waiting.overlaid).toBe(false);      // we genuinely don't know yet
+    const resolved = buildMediaView(blueLock(), blueLockCours, false);
+    expect(resolved.pending).toBe(false);
+    // A resolved overlay is never pending, even if a caller passes the flag by mistake.
+    expect(buildMediaView(blueLock(), blueLockCours, true).pending).toBe(false);
+  });
+
+  it("a plain series is never pending — its lens is resolved at birth", () => {
+    expect(buildMediaView(hotd(), null).pending).toBe(false);
+  });
+
   it("refuses to overlay an anime TMDB already cuts into real seasons", () => {
     // A multi-season TMDB anime has genuine episode coordinates — re-cutting would fight them.
     const view = buildMediaView(blueLock({ season_episodes: [24, 14], season_aired: [24, 14] }), blueLockCours);
