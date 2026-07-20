@@ -4,6 +4,7 @@ import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, ThemeFavorite, ThemeFavoriteInput, Rewatch } from "./types";
 import { deriveWatchStatus } from "./lib/watch-status";
+import { insertMediaSchema, updateMediaSchema } from "./schemas/media.schema";
 
 // =====================================================
 // WATCHING SERVICE (SUPABASE)
@@ -266,6 +267,16 @@ export async function updateMediaItem(
   id: string,
   data: Record<string, any>
 ): Promise<WatchingMedia> {
+  // THE UPDATE BARRIER, IN THE PIPE — the twin of insertMediaItem's guard. Until now the invariant
+  // (a position write must recompute caught_up_at) lived only in useUpdateMedia's memory, and one
+  // caller — addTmdbItemToList's heal branch — already walked around it. Enforced here, no update
+  // path can skip it, including ones not written yet.
+  //
+  // VALIDATION ONLY — we parse to make superRefine THROW on a broken invariant, and then write the
+  // original `data`, never the parse output. So the schema stripping unknown "world fact" columns
+  // (runtime, status, studio…) from its return is harmless: those columns still reach the database,
+  // because `data` is what we write. The parse is a gate, not a filter.
+  updateMediaSchema.parse({ id, ...data });
   const supabase = createClient();
   const { data: result, error } = await supabase
     .schema("watching")
@@ -309,6 +320,11 @@ export async function getExistingMediaItem(
 
 export async function insertMediaItem(data: Record<string, any>): Promise<WatchingMedia> {
   const supabase = createClient();
+  // THE BARRIER, IN THE PIPE — not in the caller's memory. The update path has been gated since the
+  // day a comment stating its rule was broken twenty lines below itself; this door had nothing, so
+  // a row with no status at all (in your library, in none of its rails) was insertable from any
+  // caller, including ones not written yet. It is not, now. Build the status with `addStatusPatch`.
+  insertMediaSchema.parse(data);
   const orgId = await getCurrentOrgId();
   const { data: result, error } = await supabase
     .schema("watching")
@@ -579,6 +595,116 @@ export async function searchTmdbForList(query: string): Promise<TmdbListResult[]
     .slice(0, 8);
 }
 
+/**
+ * The row you own for a tmdb_id, or null. One lookup on the (user_id, tmdb_id, type) unique
+ * index — it exists so a discover page can hand you straight to your REAL fiche, which has your
+ * history, your rating and every action a stranger's copy cannot offer.
+ */
+export async function findOwnedMediaId(userId: string, tmdbId: number): Promise<{ id: string; type: MediaType } | null> {
+  // POSSESSION IS DECIDED BY tmdb_id, NOT type. The type is a routing hint (`tmdbResultType` GUESSES
+  // it from genre/country) — two authorities for one fact. If it guessed "anime" while your row is a
+  // "serie", filtering `.eq("type")` misses your row, discover thinks the title is new, and the
+  // unique index (user_id, tmdb_id, type) happily lets a SECOND row of the same show be created.
+  // So we match on tmdb_id alone and return the type we found. A bare list stub (is_reference) is not
+  // "owned" — redirecting to it would land you on a fiche with no history.
+  const supabase = createClient();
+  const { data } = await supabase
+    .schema("watching")
+    .from("media_items")
+    .select("id, type")
+    .eq("user_id", userId)
+    .eq("tmdb_id", tmdbId)
+    .not("is_reference", "is", true)
+    .limit(1);
+  return (data as { id: string; type: MediaType }[] | null)?.[0] ?? null;
+}
+
+/**
+ * The world's facts about a title you do NOT own — a VIRTUAL row.
+ *
+ * The detail page is really "a tmdb_id + your row": the hero, the genres, the cast, the episodes
+ * and the recommendations all derive from the tmdb_id alone. So a title you have never added can
+ * render that same page — provided someone builds the row those components expect. This is that.
+ *
+ * `id` is empty and every personal field is null/false, because none of them are true yet: the
+ * discover page mounts only the world half, and the components that need a real row (My Take,
+ * Quick Stats, Watch History) simply aren't there. The TMDB mapping is the SAME one
+ * `addTmdbItemToList` uses — anime detection, status normalisation, per-season arrays — so what
+ * you see before adding is exactly what you get after.
+ */
+export async function getTmdbDetails(tmdbId: number, type: MediaType): Promise<WatchingMedia | null> {
+  const isFilm = type === "film";
+  const res = await fetch(`/api/tmdb?endpoint=${isFilm ? "movie" : "tv"}/${tmdbId}&language=en-US`);
+  if (!res.ok) return null;
+  const d: any = await res.json();
+  if (!d || d.success === false) return null;
+
+  type SeasonLite = { season_number: number; episode_count?: number; poster_path?: string | null; air_date?: string | null };
+  // Season 0 is "Specials" — never part of the run, same rule as the add path.
+  const seasons: SeasonLite[] = !isFilm && Array.isArray(d.seasons)
+    ? (d.seasons as SeasonLite[]).filter((s) => s.season_number > 0)
+    : [];
+
+  const rawStatus: string | null = d.status?.toLowerCase() ?? null;
+  const date: string | null = isFilm ? (d.release_date ?? null) : (d.first_air_date ?? null);
+
+  return {
+    // ── Not yours (yet): no row, no org, no personal state. ──
+    id: "", org_id: "", user_id: "",
+    watched: false, in_progress: false, want_to_watch: false, dropped: false, paused: false,
+    favorite: false, user_rating: null, watched_at: null, priority: null, notes: null,
+    created_at: "", updated_at: "",
+
+    // ── The world. ──
+    tmdb_id: tmdbId,
+    type,
+    title: d.title ?? d.name ?? "",
+    original_title: d.original_title ?? d.original_name ?? null,
+    description: d.overview || null,
+    poster_url: d.poster_path ? `https://image.tmdb.org/t/p/w500${d.poster_path}` : null,
+    backdrop_url: d.backdrop_path ? `https://image.tmdb.org/t/p/original${d.backdrop_path}` : null,
+    year: date ? new Date(date).getFullYear() : 0,
+    release_date: isFilm ? (d.release_date ?? null) : null,
+    runtime: isFilm ? (d.runtime ?? null) : (d.episode_run_time?.[0] ?? null),
+    rating: d.vote_average ?? 0,
+    tags: Array.isArray(d.genres) ? d.genres.map((g: { name: string }) => g.name) : [],
+    studio: (isFilm ? d.production_companies?.[0]?.name : d.networks?.[0]?.name) ?? undefined,
+    // Films keep the raw TMDB status ("released"…); series normalise to ongoing/ended.
+    status: (isFilm ? rawStatus : rawStatus === "ended" ? "ended" : "ongoing") as WatchingMedia["status"],
+    seasons: isFilm ? undefined : (d.number_of_seasons ?? seasons.length),
+    episodes: isFilm ? undefined : (d.number_of_episodes ?? undefined),
+    season_episodes: isFilm ? null : seasons.map((s) => s.episode_count ?? 0),
+    season_posters: isFilm ? [] : seasons.map((s) => s.poster_path ?? null),
+    season_air_dates: isFilm ? [] : seasons.map((s) => s.air_date ?? null),
+  };
+}
+
+/**
+ * The path back out of a TMDB image URL ("…/t/p/w500/abc.jpg" → "/abc.jpg"). We build those URLs
+ * ourselves, so recovering the path is safe — and it lets a virtual row hand a real `poster_path`
+ * to anything that still speaks TMDB's shape (the add modal, which renders its own sizes).
+ */
+export function tmdbPathFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const marker = url.indexOf("/t/p/");
+  if (marker === -1) return null;
+  const afterSize = url.slice(marker + 5).indexOf("/");
+  return afterSize === -1 ? null : url.slice(marker + 5 + afterSize);
+}
+
+/**
+ * movie/tv + genre/country → our three types. "Anime" here = ASIAN animation (Japanese, plus
+ * donghua/Korean, which TMDB also tags genre 16); animation from anywhere else stays a regular
+ * series. ONE rule, in one place, so search, discover and add can never disagree about what a
+ * title IS — a disagreement that would send you to an /anime/ page for something you'd added as
+ * a series.
+ */
+export function tmdbResultType(r: Pick<TmdbListResult, "media_type" | "genre_ids" | "origin_country">): MediaType {
+  const ASIAN_ANIMATION = ["JP", "KR", "CN"];
+  if (r.media_type === "movie") return "film";
+  return r.genre_ids.includes(16) && r.origin_country.some((c) => ASIAN_ANIMATION.includes(c)) ? "anime" : "serie";
+}
+
 export async function addTmdbItemToList(
   listId: string,
   userId: string,
@@ -586,13 +712,7 @@ export async function addTmdbItemToList(
 ): Promise<MediaListItem> {
   const supabase = createClient();
 
-  // "Anime" here = Asian animation (Japanese, plus donghua/Korean which TMDB also
-  // tags genre 16). Animation from elsewhere stays a regular series.
-  const ASIAN_ANIMATION = ["JP", "KR", "CN"];
-  const type: MediaType =
-    tmdbItem.media_type === "movie" ? "film"
-    : tmdbItem.genre_ids.includes(16) && tmdbItem.origin_country.some((c) => ASIAN_ANIMATION.includes(c)) ? "anime"
-    : "serie";
+  const type: MediaType = tmdbResultType(tmdbItem);
 
   // Match by tmdb_id. A REAL tracked item links as-is; a bare `is_reference` stub
   // (e.g. left over from a previous list add) gets re-enriched in place so it's never

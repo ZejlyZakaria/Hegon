@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { insertMediaSchema, updateMediaSchema } from "../schemas/media.schema";
 import {
+  addStatusPatch,
   canComplete,
   claimedStatus,
   deriveWatchStatus,
   markCaughtUpPatch,
   markWatchedPatch,
   positionPatch,
+  type AddStatus,
   type StatusFacts,
 } from "./watch-status";
 
@@ -256,5 +259,238 @@ describe("positionPatch — a viewing is not a correction", () => {
 
     const undone = positionPatch(hotd({ current_season: 3, current_episode: 3, caught_up_at: "2026-01-01T00:00:00Z" }), 3, 2, "correction");
     expect(undone.caught_up_at).toBeNull();
+  });
+});
+
+// ── THE ADD PATH ──────────────────────────────────────────────────────────────────────────────
+// The update path had one derivation and a zod barrier. The add path had neither — and that is
+// where the limbo row came from. Every case below is a row the app could produce yesterday.
+
+describe("addStatusPatch — a series takes its status from its POSITION, at every door", () => {
+  const world = (facts: StatusFacts) => ({
+    season_aired: facts.season_aired,
+    season_episodes: facts.season_episodes,
+    status: facts.status,
+    caught_up_at: null,
+  });
+
+  const live = (p: AddStatus | null) =>
+    (["watched", "in_progress", "want_to_watch", "paused", "dropped"] as const).filter((k) => p?.[k] === true);
+
+  it("THE LIMBO ROW — a claim door with no claim is refused, not silently blanked", () => {
+    // The bug, exactly: the "In Progress" door never collected a position, `claimedStatus` answered
+    // null ("you claimed nothing"), every flag fell to false, and the row landed in no rail at all.
+    for (const door of ["inProgress", "library", "recentlyWatched", "topTen"] as const) {
+      expect(addStatusPatch(door, { position: null, facts: world(hotd()) }, "serie")).toBeNull();
+    }
+  });
+
+  it("the In Progress door, given the position it should always have asked for, STARTS the show", () => {
+    const p = addStatusPatch("inProgress", { position: { season: 2, episode: 4 }, facts: world(hotd()) }, "serie")!;
+    expect(live(p)).toEqual(["in_progress"]);
+    expect(p.current_season).toBe(2);
+    expect(p.current_episode).toBe(4);
+    expect(p.caught_up_at).toBeNull();      // behind the frontier — no lie in either direction
+  });
+
+  it("claiming the last AIRED episode of a running show is CAUGHT UP, never watched", () => {
+    const p = addStatusPatch("library", { position: { season: 3, episode: 3 }, facts: world(hotd()) }, "serie")!;
+    expect(live(p)).toEqual(["in_progress"]);
+    expect(p.watched).toBe(false);
+    expect(p.caught_up_at).toMatch(/^\d{4}-/);   // stood at the frontier → can light up as NEW later
+  });
+
+  it("claiming the end of a show that is OVER is watched — and takes the date you gave", () => {
+    const p = addStatusPatch(
+      "library",
+      { position: { season: 4, episode: 24 }, facts: world(sds()), watchedAt: "2019-06-15T00:00:00.000Z" },
+      "anime",
+    )!;
+    expect(live(p)).toEqual(["watched"]);
+    expect(p.watched_at).toBe("2019-06-15T00:00:00.000Z");
+  });
+
+  it("RANKING IS NOT WATCHING — Top 10 on a running show you are partway through", () => {
+    const p = addStatusPatch("topTen", { position: { season: 2, episode: 2 }, facts: world(hotd()) }, "serie")!;
+    expect(live(p)).toEqual(["in_progress"]);
+  });
+
+  it("stopping partway is paused or dropped, as you said — never in_progress", () => {
+    const paused = addStatusPatch("library", { position: { season: 2, episode: 2 }, stance: "paused", facts: world(hotd()) }, "serie")!;
+    const dropped = addStatusPatch("library", { position: { season: 2, episode: 2 }, stance: "dropped", facts: world(hotd()) }, "serie")!;
+    expect(live(paused)).toEqual(["paused"]);
+    expect(live(dropped)).toEqual(["dropped"]);
+  });
+
+  it("Want to Watch claims nothing, so it needs nothing — and writes no position", () => {
+    const p = addStatusPatch("wantToWatch", { position: null, facts: world(hotd()) }, "serie")!;
+    expect(live(p)).toEqual(["want_to_watch"]);
+    expect(p.current_episode).toBeNull();
+  });
+
+  it("a FILM still lets the door decide — it always could", () => {
+    const facts = { season_aired: null, season_episodes: null, status: "released", caught_up_at: null };
+    expect(live(addStatusPatch("library", { position: null, facts }, "film")!)).toEqual(["watched"]);
+    expect(live(addStatusPatch("recentlyWatched", { position: null, facts }, "film")!)).toEqual(["watched"]);
+    expect(live(addStatusPatch("topTen", { position: null, facts }, "film")!)).toEqual(["watched"]);
+    expect(live(addStatusPatch("inProgress", { position: null, facts }, "film")!)).toEqual(["in_progress"]);
+    expect(live(addStatusPatch("wantToWatch", { position: null, facts }, "film")!)).toEqual(["want_to_watch"]);
+  });
+
+  it("stamps a year only on seasons that are OVER — the add path had a fourth copy of that rule", () => {
+    // It stamped against what had AIRED, so standing at HotD S3 E3 (3 of 8 out) dated a season
+    // still coming out. `isSeasonDatable` — the rule "Set all year" and the season strip share —
+    // needs it fully aired AND fully watched.
+    const p = addStatusPatch(
+      "library",
+      { position: { season: 3, episode: 3 }, facts: world(hotd()), watchedAt: "2024-05-01T00:00:00.000Z" },
+      "serie",
+    )!;
+    expect(p.season_years).toEqual({ "1": 2024, "2": 2024 });
+  });
+
+  it("no date asked → the CURRENT year, because that door is talking about now", () => {
+    // Blue Lock added through "Start watching" at S2 E4: season 1 is plainly finished, and it
+    // showed an empty "Year" placeholder because no door but `library` collects a date. Meanwhile
+    // walking the same route with the "+1" stamps the current year. Same claim, two histories.
+    const p = addStatusPatch("inProgress", { position: { season: 2, episode: 4 }, facts: world(hotd()) }, "serie")!;
+    expect(p.season_years).toEqual({ "1": new Date().getFullYear() });
+  });
+});
+
+describe("season years — a stamp you no longer claim is a leftover, not a memory", () => {
+  const thisYear = new Date().getFullYear();
+
+  it("FINISHING a season dates it — it used to date only the ones you LEFT", () => {
+    // Watching the last episode of season 2 stamped nothing: the year appeared only once you
+    // started season 3. A show you are caught up on never gets there at all.
+    const p = positionPatch(sds({ watched: false, current_season: 2, current_episode: 23 }), 2, 24, "viewing");
+    expect(p.season_years).toEqual({ "2": thisYear });
+  });
+
+  it("mid-season progress still stamps nothing — the season is not over", () => {
+    const p = positionPatch(sds({ watched: false, current_season: 2, current_episode: 5 }), 2, 6, "viewing");
+    expect(p.season_years).toBeUndefined();
+  });
+
+  it("THE CASE STUDY — un-claim a season, claim it again, and it re-dates", () => {
+    // Blue Lock: finished, season 2 hand-set to 2025. Back to "through S1" → season 2 is not
+    // watched any more and the app already stops READING its year. Mark it finished again and
+    // 2025 came back: the poster remembering a viewing that had been retracted.
+    const retracted = sds({
+      watched: false, current_season: 1, current_episode: 24,
+      season_years: { "1": 2024, "2": 2025 },
+    });
+    const p = markWatchedPatch(retracted);
+    expect(p.season_years).toMatchObject({ "1": 2024, "2": thisYear });
+  });
+
+  it("…and a year you DO claim is still protected — the reason the rule exists", () => {
+    // Same map, but you are standing at season 4: season 2 is behind you, so 2025 is a claim you
+    // are actively making. Finishing the show must not rewrite it.
+    const standing = sds({
+      watched: false, current_season: 4, current_episode: 10,
+      season_years: { "1": 2024, "2": 2025 },
+    });
+    const p = markWatchedPatch(standing);
+    expect(p.season_years).toMatchObject({ "1": 2024, "2": 2025 });
+  });
+
+  it("a CORRECTION never stamps, so back-and-forth by mistake loses nothing", () => {
+    const p = positionPatch(sds({ watched: false, season_years: { "2": 2025 }, current_season: 1, current_episode: 24 }), 3, 24, "correction");
+    expect(p.season_years).toBeUndefined();
+  });
+});
+
+describe("insertMediaSchema — the barrier the add door never had", () => {
+  const row = (over: Record<string, unknown> = {}) => ({
+    user_id: "u1", type: "serie", tmdb_id: 94997,
+    watched: false, in_progress: false, want_to_watch: false,
+    ...over,
+  });
+  const fails = (over: Record<string, unknown>, path: string) => {
+    const r = insertMediaSchema.safeParse(row(over));
+    expect(r.success).toBe(false);
+    expect(r.error?.issues.some((i) => i.path[0] === path)).toBe(true);
+  };
+
+  it("refuses the LIMBO row — no status at all", () => {
+    fails({}, "watched");
+  });
+
+  it("refuses two statuses at once — the drift deriveWatchStatus exists to arbitrate", () => {
+    fails({ watched: true, current_season: 4, current_episode: 24, caught_up_at: null, dropped: true }, "watched");
+  });
+
+  it("refuses a series you claim to be watching with no position", () => {
+    fails({ in_progress: true }, "current_episode");
+    fails({ watched: true }, "current_episode");
+  });
+
+  it("refuses a position that does not state caught_up_at", () => {
+    const r = insertMediaSchema.safeParse({ ...row({ in_progress: true }), current_season: 2, current_episode: 4 });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues.some((i) => i.path[0] === "caught_up_at")).toBe(true);
+  });
+
+  it("accepts the bare list stub — `is_reference` is a status, and a deliberate one", () => {
+    expect(insertMediaSchema.safeParse(row({ is_reference: true })).success).toBe(true);
+  });
+
+  it("accepts what claims no viewing: want_to_watch, and a watched FILM", () => {
+    expect(insertMediaSchema.safeParse(row({ want_to_watch: true })).success).toBe(true);
+    expect(insertMediaSchema.safeParse(row({ type: "film", watched: true, watched_at: "2024-01-01T00:00:00.000Z" })).success).toBe(true);
+  });
+});
+
+describe("updateMediaSchema — the barrier is now in the pipe (updateMediaItem parses this)", () => {
+  // Fable's find: the invariant "a position write recomputes caught_up_at" lived only in
+  // useUpdateMedia's memory, and addTmdbItemToList walked around it. It now runs inside
+  // updateMediaItem, so every update path is gated — including doors not written yet.
+  it("refuses a position write that forgets caught_up_at", () => {
+    const r = updateMediaSchema.safeParse({ id: "x", current_season: 2, current_episode: 4 });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues.some((i) => i.path[0] === "caught_up_at")).toBe(true);
+  });
+
+  it("accepts a position write that carries caught_up_at (null is a valid answer)", () => {
+    expect(updateMediaSchema.safeParse({ id: "x", current_season: 2, current_episode: 4, caught_up_at: null }).success).toBe(true);
+  });
+
+  it("accepts a non-position update — a heal writing only world facts", () => {
+    // addTmdbItemToList's `meta`: runtime/status/season arrays, no position. The gate must pass it.
+    expect(updateMediaSchema.safeParse({ id: "x", season_episodes: [10, 8], season_air_dates: ["2022-08-21", null] }).success).toBe(true);
+  });
+
+  it("does not THROW on undeclared world-fact columns — updateMediaItem writes `data`, not this output", () => {
+    // `runtime`/`status`/`studio` are not declared here; a stripping parse drops them from its
+    // RETURN, which updateMediaItem ignores. What matters: it must not reject the write.
+    const r = updateMediaSchema.safeParse({ id: "x", runtime: 66, status: "ended", studio: "HBO" });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe("insertMediaSchema — the two locks agree (continued)", () => {
+  it("every door x type that addStatusPatch answers passes the barrier", () => {
+    const worlds = {
+      film:  { season_aired: null, season_episodes: null, status: "released", caught_up_at: null },
+      serie: { season_aired: [10, 8, 3], season_episodes: [10, 8, 8], status: "ongoing", caught_up_at: null },
+      anime: { season_aired: [24, 24, 24, 24], season_episodes: [24, 24, 24, 24], status: "ended", caught_up_at: null },
+    };
+    const doors = ["topTen", "inProgress", "recentlyWatched", "wantToWatch", "library"] as const;
+    const positions = { film: null, serie: { season: 2, episode: 4 }, anime: { season: 4, episode: 24 } } as const;
+
+    for (const type of ["film", "serie", "anime"] as const) {
+      for (const door of doors) {
+        const patch = addStatusPatch(
+          door,
+          { position: positions[type], facts: worlds[type], watchedAt: "2024-05-01T00:00:00.000Z" },
+          type,
+        );
+        expect(patch, `${type} / ${door}`).not.toBeNull();
+        const parsed = insertMediaSchema.safeParse({ user_id: "u1", type, tmdb_id: 1, ...patch! });
+        expect(parsed.success, `${type} / ${door}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);
+      }
+    }
   });
 });

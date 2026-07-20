@@ -13,7 +13,8 @@ import { toast } from "@/shared/utils/toast";
 import { resolveTransition } from "../lib/resolve-transition";
 import { RESET_STATUS } from "../lib/status-flags";
 import { airedFromTmdb } from "../lib/series-state";
-import { claimedStatus } from "../lib/watch-status";
+import { addStatusPatch, claimedStatus } from "../lib/watch-status";
+import { insertMediaSchema, toColumns, updateMediaSchema } from "../schemas/media.schema";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import type { ListType, MediaType } from "../types";
@@ -27,8 +28,6 @@ interface AddMediaInput {
   favorite: boolean;
   priority: number | null;
   priorityLevel: "high" | "medium" | "low";
-  currentSeason: number;
-  currentEpisode: number;
   seasons: number | null;
   episodes: number | null;
   runtime: number | null;
@@ -69,8 +68,6 @@ export function useAddMedia() {
         favorite,
         priority,
         priorityLevel,
-        currentSeason,
-        currentEpisode,
         seasons,
         episodes,
         runtime,
@@ -111,47 +108,36 @@ export function useAddMedia() {
         ? tmdbSeasons.map((s: any) => (s.episode_count ?? 0) as number)
         : null;
 
-      // The status of a claim is DERIVED, by the same function the detail page, the poster menus
-      // and the lists all use. This hook used to own a fourth copy of that derivation.
-      const claimFacts = {
-        type: defaultType,
+      // The world's facts about this title — what aired, and whether it is over. A claim is
+      // answered by these and by your position; the row's own flags have no say.
+      const worldFacts = {
         season_aired: seasonAiredList,
         season_episodes: seasonEpisodesList,
         status,
-        caught_up_at: null,
       };
-      const claim = isSeries ? claimedStatus(claimFacts, position ?? null, stance) : null;
+      // A BRAND-NEW row has never been caught up — but an EXISTING one may have been, and that
+      // stamp records WHEN YOU GOT THERE, not when you last looked. The update branches below
+      // therefore keep the row's own value; only a fresh add starts from null.
+      const claimFacts = { ...worldFacts, caught_up_at: null };
 
-      // A film keeps the old contract: the door knows — "seen it / haven't" is binary, and you
-      // cannot rank or recently-watch a film you haven't seen. A series obeys its position.
-      const filmWatched =
-        listContext === "recentlyWatched" || listContext === "topTen" || listContext === "library";
-      const isWatched = isSeries ? !!claim?.watched : filmWatched;
-      const isDropped = !!claim?.dropped;
-      const isPaused = !!claim?.paused;
-      const isInProgress = isSeries ? !!claim?.in_progress : listContext === "inProgress";
-      const caughtUpAt = claim?.caught_up_at ?? null;
-
-      // THE YEAR YOU GIVE BELONGS TO THE SEASONS YOU CLAIM. Declaring "I watched three seasons"
-      // is a statement about the PAST, so it must be datable — and the date has one honest home:
-      // the season years. Only FULLY watched seasons are stamped; the one you're in the middle of
-      // hasn't happened yet.
-      const claimedYear = watchedAt ? new Date(watchedAt).getFullYear() : null;
-      const seasonYears: Record<string, number> | null =
-        isSeries && position && claimedYear && seasonAiredList
-          ? Object.fromEntries(
-              seasonAiredList
-                .map((aired, i) => ({ season: i + 1, aired }))
-                .filter((s) =>
-                  s.aired > 0 &&
-                  (s.season < position.season ||
-                    (s.season === position.season && position.episode >= s.aired)),
-                )
-                .map((s) => [String(s.season), claimedYear]),
-            )
-          : null;
-
-      const effectiveWatchedAt = watchedAt ?? new Date().toISOString();
+      // THE WHOLE STATUS, DERIVED, IN ONE CALL. This hook used to assemble it one boolean at a
+      // time from the DOOR you came through — and for a series that is the lie the model exists to
+      // kill. Worse, it did so via a `claimedStatus` that answers `null` to "you claimed nothing":
+      // the In Progress door never collected a position, so every flag fell to false and the row
+      // landed in LIMBO — in your library, in no rail, reading "Want to Watch" on its own page.
+      const claim = addStatusPatch(
+        listContext,
+        { position: position ?? null, stance, facts: claimFacts, watchedAt },
+        defaultType,
+      );
+      if (!claim) {
+        // The door needs a claim and the UI failed to collect one. Refusing is the only honest
+        // answer: we will not invent a status, and the barrier below would refuse it anyway.
+        const err = new Error("Tell us how far you got before adding this one.");
+        err.name = "TransitionError";
+        throw err;
+      }
+      const { season_years: seasonYears, ...statusColumns } = claim;
 
       const posterUrl =
         customPosterUrl ||
@@ -162,9 +148,11 @@ export function useAddMedia() {
       const insertData = {
         user_id: userId,
         type: defaultType,
-        // Re-adding a paused/dropped title merges onto its existing row — always
-        // clear those flags so it never ends up watched/in-progress AND paused/dropped.
-        ...RESET_STATUS,
+        // THE STATUS, WHOLE, FROM ONE PLACE. Every flag, the position, `caught_up_at`, `watched_at`
+        // and `is_reference` are stated here — none is left to a default, because re-adding a
+        // title MERGES onto its existing row and an omitted flag is not a cleared one.
+        ...statusColumns,
+        ...(seasonYears ? { season_years: seasonYears } : {}),
         title: selectedItem.title || selectedItem.name,
         original_title: selectedItem.original_title || selectedItem.original_name,
         description: selectedItem.overview,
@@ -187,16 +175,8 @@ export function useAddMedia() {
             : userRating > 0
               ? userRating
               : null,
-        watched: isWatched,
-        dropped: isDropped,
-        paused: isPaused,
-        caught_up_at: caughtUpAt,
         season_aired: seasonAiredList,
-        ...(seasonYears ? { season_years: seasonYears } : {}),
-        // A date of viewing belongs to something you actually finished. "Last Watched" derives from
-        // it — there is no `recently_watched` flag to set any more.
-        watched_at: isWatched ? effectiveWatchedAt : null,
-        want_to_watch: listContext === "wantToWatch",
+        // Ranking and rating are NOT status: you may love a show you are three seasons into.
         favorite: listContext === "topTen" ? true : favorite,
         priority: listContext === "topTen" ? priority : null,
         priority_level: listContext === "wantToWatch" ? priorityLevel : null,
@@ -221,9 +201,6 @@ export function useAddMedia() {
                 .filter((s: any) => s.season_number > 0)
                 .map((s: any) => (s.air_date ?? null) as string | null)
             : [],
-        current_episode: isSeries ? (position?.episode ?? (listContext === "inProgress" ? currentEpisode : null)) : null,
-        current_season: isSeries ? (position?.season ?? (listContext === "inProgress" ? currentSeason : null)) : null,
-        in_progress: isInProgress,
         episodes:
           defaultType === "serie" || defaultType === "anime" ? episodes : null,
         tmdb_id: selectedItem.id,
@@ -253,36 +230,54 @@ export function useAddMedia() {
         throw err;
       }
 
+      // The world's season facts, refreshed from the TMDB payload this door just read. Undefined
+      // for a film — an update must not blank columns it has nothing to say about.
+      const seasonMeta = isSeries && Array.isArray(selectedItem.seasons)
+        ? {
+            season_episodes: seasonEpisodesList ?? undefined,
+            season_posters: selectedItem.seasons
+              .filter((s: any) => s.season_number > 0)
+              .map((s: any) => (s.poster_path ?? null) as string | null),
+            season_air_dates: selectedItem.seasons
+              .filter((s: any) => s.season_number > 0)
+              .map((s: any) => (s.air_date ?? null) as string | null),
+          }
+        : {};
+
+      // THE UPDATE BRANCHES GO THROUGH THE BARRIER TOO. They called `updateMediaItem` directly —
+      // the one gate in the module, walked around by three of its own callers. `update:inProgress`
+      // wrote a POSITION without recomputing `caught_up_at`: precisely the write the gate exists to
+      // refuse, performed by the hook that documents it.
+      const guarded = (patch: Record<string, unknown>) =>
+        updateMediaItem(existing!.id, toColumns(updateMediaSchema.parse({ id: existing!.id, type: defaultType, ...patch })));
+
       switch (transition.action) {
-        // in_progress: clear want_to_watch, preserve top10 fields
-        case "update:inProgress":
-          return updateMediaItem(existing!.id, {
-            current_episode: currentEpisode,
-            current_season: currentSeason,
-            season_episodes:
-              (defaultType === "serie" || defaultType === "anime") && Array.isArray(selectedItem.seasons)
-                ? selectedItem.seasons
-                    .filter((s: any) => s.season_number > 0)
-                    .map((s: any) => s.episode_count as number)
-                : undefined,
-            season_posters:
-              (defaultType === "serie" || defaultType === "anime") && Array.isArray(selectedItem.seasons)
-                ? selectedItem.seasons
-                    .filter((s: any) => s.season_number > 0)
-                    .map((s: any) => (s.poster_path ?? null) as string | null)
-                : undefined,
-            season_air_dates:
-              (defaultType === "serie" || defaultType === "anime") && Array.isArray(selectedItem.seasons)
-                ? selectedItem.seasons
-                    .filter((s: any) => s.season_number > 0)
-                    .map((s: any) => (s.air_date ?? null) as string | null)
-                : undefined,
-            in_progress: true,
-            watched: false,
+        /**
+         * in_progress onto a row you already own.
+         *
+         * "Same gesture, opposite result depending on whether you already owned the row": the fresh
+         * insert derived nothing and landed in limbo, while this branch forced `in_progress: true`
+         * regardless of where you said you were — so typing the last episode of a finished show
+         * into this door left it "watching" forever. One derivation now answers both.
+         */
+        case "update:inProgress": {
+          const claimed = isSeries
+            ? claimedStatus({ ...existing!, ...worldFacts, type: defaultType }, position ?? null, stance)
+            : { in_progress: true, watched: false, ...RESET_STATUS };
+          if (!claimed) {
+            const err = new Error("Tell us how far you got before adding this one.");
+            err.name = "TransitionError";
+            throw err;
+          }
+          return guarded({
+            ...claimed,
+            ...seasonMeta,
+            season_aired: seasonAiredList ?? undefined,
             want_to_watch: false,
-            ...RESET_STATUS,
+            is_reference: false,
             priority: existing!.priority,
           });
+        }
 
         /**
          * topTen — RANKING IS NOT WATCHING.
@@ -298,28 +293,33 @@ export function useAddMedia() {
          */
         case "update:topTen": {
           const claimed = isSeries
-            ? claimedStatus({ ...existing!, season_aired: seasonAiredList, status }, position ?? null, stance)
+            ? claimedStatus({ ...existing!, ...worldFacts, type: defaultType }, position ?? null, stance)
             : { watched: true, watched_at: existing!.watched_at ?? new Date().toISOString(), ...RESET_STATUS, in_progress: false };
 
-          return updateMediaItem(existing!.id, {
+          return guarded({
             ...(claimed ?? {}),
-            season_aired: seasonAiredList,
+            season_aired: seasonAiredList ?? undefined,
             ...(seasonYears ? { season_years: seasonYears } : {}),
             favorite: true,
             priority,
             user_rating: userRating > 0 ? userRating : null,
             rating: selectedItem.vote_average,
             want_to_watch: false,
+            // Claiming nothing leaves the status alone — but a bare list stub is not a status you
+            // keep: you have just ranked this title, so it is yours.
+            is_reference: false,
           });
         }
 
-        // recentlyWatched, library, wantToWatch onto an existing entry
+        // recentlyWatched, library, wantToWatch onto an existing entry. The row is rebuilt whole,
+        // so the INSERT barrier is the right shape — and the same three invariants apply.
         case "update:merge": {
           const updateData: Record<string, unknown> = { ...insertData };
           if (existing!.priority != null) {
             updateData.priority = existing!.priority;
             updateData.favorite = true;
           }
+          insertMediaSchema.parse(updateData);
           return updateMediaItem(existing!.id, updateData);
         }
 

@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
+import { useAnimeCours } from "@/modules/watching/hooks/useAnimeCours";
+import { shouldOverlay, courToFlat, tmdbFromFlat } from "@/modules/watching/lib/anime-overlay";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   Search, X, Upload, Star, Heart, Bookmark,
@@ -357,12 +359,42 @@ export default function AddMediaModal({
 
   // ── Season / episode validation ───────────────────────────────────────────
 
-  const maxSeason = seasons;
+  // ── ANIME v2 — the AniList cour overlay, at THIS door too. ─────────────────────────────────
+  // TMDB flattens many anime into a single season (Blue Lock: 1 season, 38 episodes) while the
+  // rest of the app shows the real cours (2 seasons). This modal read TMDB directly, so "Start
+  // watching" offered "Season (max 1)" on a title whose fiche displays two — the same position
+  // meaning different things depending on which door you came through. That is exactly the drift
+  // watch-status.ts killed for STATUSES; this is its equivalent for POSITIONS.
+  // The inputs now speak COUR coordinates. Storage stays TMDB-flat, converted once on save.
+  const tmdbSeasonEpisodes: number[] = useMemo(
+    () =>
+      Array.isArray(selectedItem?.seasons)
+        ? selectedItem.seasons
+            .filter((s: { season_number: number }) => s.season_number > 0)
+            .map((s: { episode_count?: number }) => s.episode_count ?? 0)
+        : [],
+    [selectedItem],
+  );
+  const { data: coursRow } = useAnimeCours(selectedItem?.id ?? 0, defaultType === "anime" && !!selectedItem?.id);
+  const overlayCours = shouldOverlay({ type: defaultType, season_episodes: tmdbSeasonEpisodes }, coursRow)
+    ? coursRow.cours
+    : null;
+
+  const maxSeason = overlayCours ? overlayCours.length : seasons;
 
   const getMaxEpisode = (season: number): number | null => {
+    if (overlayCours) return overlayCours.find((c) => c.season === season)?.episodes ?? null;
     if (!selectedItem?.seasons || !Array.isArray(selectedItem.seasons)) return null;
     const s = selectedItem.seasons.find((s) => s.season_number === season);
     return s?.episode_count ?? null;
+  };
+
+  /** What the inputs claim, in TMDB coordinates — the only shape storage accepts. */
+  const storedPosition = (): { season: number; episode: number } => {
+    const season = parseInt(seasonInput) || 1;
+    const episode = parseInt(episodeInput) || 1;
+    if (!overlayCours) return { season, episode };
+    return tmdbFromFlat(tmdbSeasonEpisodes, courToFlat(season, episode, overlayCours));
   };
 
   const handleSeasonChange = (val: string) => {
@@ -406,17 +438,23 @@ export default function AddMediaModal({
 
       // One construction rule, shared with the detail-page edit — see buildWatchedAt.
       const watchedAt = listContext === "library" ? buildWatchedAt(watchDate) : null;
+      // THE IN PROGRESS DOOR STATES A CLAIM TOO — it always collected one and threw it away.
+      //
+      // Its season/episode fields went off as `currentSeason/currentEpisode`, a channel that decided
+      // nothing, while `position` — the only input the status is derived from — stayed null. So the
+      // status derivation answered "you claimed nothing", every flag fell to false, and a series
+      // added here landed in no rail at all. Same fields, same numbers; they are simply routed to
+      // the input that means something. (Cour coordinates in, TMDB coordinates out — storedPosition.)
+      const claimedPosition = listContext === "inProgress" && isSeries ? storedPosition() : position;
 
       const result = await addMediaMutation.mutateAsync({
         selectedItem, defaultType, listContext,
         userRating, notes, favorite, priority, priorityLevel,
-        currentSeason: parseInt(seasonInput) || 1,
-        currentEpisode: parseInt(episodeInput) || 1,
         seasons, episodes, runtime, directors, cast, studio, status,
         customPosterUrl: finalPosterUrl,
         genres: mapTmdbGenres(selectedItem.genre_ids),
         watchedAt,
-        position,
+        position: claimedPosition,
         stance,
       });
 
@@ -465,10 +503,22 @@ export default function AddMediaModal({
 
   // ── Disable logic (aligned between footer and handleSubmit) ───────────────
 
+  // A SERIES MAY NOT BE ADDED WITHOUT SAYING HOW FAR YOU GOT.
+  //
+  // The status of a series comes from its POSITION and nothing else — so a claim door with no claim
+  // has no status to write. The write refuses it (addStatusPatch returns null, insertMediaSchema
+  // refuses the row), and this is that same rule said EARLY, where it is a sentence instead of an
+  // error: the question is right there on screen, unanswered.
+  const needsClaim =
+    isSeries &&
+    (listContext === "library" || listContext === "recentlyWatched" || listContext === "topTen") &&
+    !position;
+
   const isSubmitDisabled =
     submitLoading ||
     !selectedItem ||
     conflict?.canAdd === false ||
+    needsClaim ||
     (listContext === "topTen" && priority === null);
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -594,13 +644,16 @@ export default function AddMediaModal({
 
                 {/* Poster + metadata */}
                 <div className="relative overflow-hidden rounded-card bg-surface-2/50 border border-border-subtle p-4 flex flex-col sm:flex-row gap-5">
-                  {/* blurred bg */}
-                  <div className="absolute inset-0 -z-10 opacity-50 blur-3xl scale-110 pointer-events-none">
-                    <img
-                      src={previewUrl || (selectedItem.poster_path ? `https://image.tmdb.org/t/p/w500${selectedItem.poster_path}` : "")}
-                      alt="" className="w-full h-full object-cover"
-                    />
-                  </div>
+                  {/* blurred bg — rendered ONLY when there is a source. `src=""` makes the browser
+                      re-request the whole page, so an absent poster must mean an absent <img>. */}
+                  {(previewUrl || selectedItem.poster_path) && (
+                    <div className="absolute inset-0 -z-10 opacity-50 blur-3xl scale-110 pointer-events-none">
+                      <img
+                        src={previewUrl || `https://image.tmdb.org/t/p/w500${selectedItem.poster_path}`}
+                        alt="" className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
 
                   {/* Poster */}
                   <div className="relative group shrink-0 mx-auto sm:mx-0">
@@ -909,6 +962,9 @@ export default function AddMediaModal({
 
           {/* ── Footer ── */}
           <div className="shrink-0 flex items-center justify-end gap-3 border-t border-border-subtle px-6 py-4">
+            {needsClaim && selectedItem && (
+              <p className="mr-auto text-micro text-text-tertiary">Tell us how far you got first.</p>
+            )}
             <Button
               variant="ghost"
               onClick={onClose}

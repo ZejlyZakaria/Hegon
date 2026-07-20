@@ -201,6 +201,21 @@ export function SeasonHistoryStrip({
           const editable = !locked && datable(idx);
           const canJump = jumpable(idx);
           const interactive = editable || canJump;
+          /**
+           * THE SEASON YOU ARE IN IS NOT UNSEEN.
+           *
+           * The eye-off says "this aired ahead of you — you haven't watched it". True of a season
+           * you have not started. False, and visibly so, of the one you are IN THE MIDDLE OF: it
+           * is fully aired (so it can be claimed) and not fully watched (so it can't be dated),
+           * and those two facts together were the whole mask condition. So the season you were
+           * actively watching wore "not seen" — right next to the "Now" badge saying you were
+           * watching it — until you finished it and it flipped straight to done.
+           *
+           * Three states, not two: ahead of you (unseen), under you (in progress), behind you
+           * (seen). Only the first is a claim to make. The CLICK stays available on all of them —
+           * "watched through S2" is still a legitimate thing to say about the season you are in.
+           */
+          const unseenAhead = canJump && !editable && s !== currentSeason;
           // "Now" = THE SEASON YOU ARE IN THE MIDDLE OF — not merely the season your position sits
           // in. On FROM you're at S4 E10 of a fully-aired season 4: you're not watching it "now",
           // you're waiting for season 5, and a badge saying otherwise is just false. It shows only
@@ -274,7 +289,7 @@ export function SeasonHistoryStrip({
                   <span className="text-micro font-semibold text-white/85">Coming soon</span>
                   {airDate && <span className="text-[9px] text-white/50">{fmtDate(airDate)}</span>}
                 </div>
-              ) : canJump && !editable ? (
+              ) : unseenAhead ? (
                 /* Aired, ahead of where you stand — NOT seen yet, but you may claim it. An eye-off
                    states that plainly; a padlock said "forbidden" and a check would say "done". */
                 <div className="absolute inset-0 flex items-center justify-center bg-black/45 transition-colors group-hover:bg-black/25">

@@ -97,6 +97,11 @@ export const TMDB_KEYS = {
     ['tmdb', 'similar', type, tmdbId] as const,
   credits: (type: MediaType, tmdbId: number) =>
     ['tmdb', 'credits', type, tmdbId] as const,
+  // A NON-owned title's full facts (discover). Deliberately OUTSIDE WATCHING_KEYS: it is TMDB data,
+  // not your library, and every add invalidates WATCHING_KEYS.all with refetchType:"all" — which
+  // used to force a refetch of every cached TMDB detail on each add.
+  details: (type: MediaType, tmdbId: number) =>
+    ['tmdb', 'details', type, tmdbId] as const,
   trailer: (type: MediaType, tmdbId: number) =>
     ['tmdb', 'trailer', type, tmdbId] as const,
   providers: (type: MediaType, tmdbId: number) =>

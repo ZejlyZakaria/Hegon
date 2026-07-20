@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import SectionHeader from "@/shared/components/layout/SectionHeader";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import { ThemePlayer } from "@/modules/watching/components/ThemePlayer";
+import { WatchingSearch } from "@/modules/watching/components/shared/WatchingSearch";
 
 // Primary = content types (always inline); More = views (dropdown on mobile).
 const TABS = [
@@ -39,6 +40,7 @@ export default function WatchingLayout({ children }: { children: React.ReactNode
           accent="var(--color-accent-watching-vivid)"
           tabs={TABS}
           moreTabs={MORE_TABS}
+          actions={<WatchingSearch />}
         />
       )}
       <motion.div

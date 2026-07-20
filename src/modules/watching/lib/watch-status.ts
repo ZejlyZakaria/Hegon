@@ -34,15 +34,17 @@ import { RESET_STATUS } from "./status-flags";
 import { buildWatchedAt } from "./watched-date";
 import {
   caughtUpAt,
+  hasReachedSeason,
   isFinished,
   isSeasonComplete,
+  isSeasonDatable,
   lastAiredPosition,
   seriesState,
   type SeriesFacts,
 } from "./series-state";
 import { isAwaitingRelease } from "../utils";
 import type { UpdateMediaInput } from "../schemas/media.schema";
-import type { WatchingMedia, WatchStatus } from "../types";
+import type { ListType, MediaType, WatchingMedia, WatchStatus } from "../types";
 
 /** Everything a transition needs to know about the row. A subset, so cards can call these too. */
 export type StatusFacts = Pick<
@@ -117,6 +119,13 @@ function dateFromFinishYear(year: number | null): string {
   return year ? buildWatchedAt({ year, month: null, day: null }) : new Date().toISOString();
 }
 
+/**
+ * Which of a row's season stamps are LEFTOVERS — years for seasons the row does not currently
+ * claim to have watched. Passed to `stampSeasons` so a fresh claim re-dates them instead of
+ * inheriting a viewing you had retracted. Read against the position BEFORE the write.
+ */
+const staleStamp = (m: StatusFacts) => (season: number) => !hasReachedSeason(m, season);
+
 // ── The transitions ───────────────────────────────────────────────────────────────────────────
 
 /**
@@ -147,7 +156,7 @@ export function markWatchedPatch(m: StatusFacts): StatusPatch {
   // not loaded, we do not touch it. (This is why SECTION_COLUMNS carries `season_years`.)
   const seasonYears =
     stampable.length > 0 && m.season_years !== undefined
-      ? stampSeasons(m.season_years, stampable, new Date().getFullYear())
+      ? stampSeasons(m.season_years, stampable, new Date().getFullYear(), staleStamp(m))
       : undefined;
 
   // WHEN did you watch it — and for a series that is NOT the moment you clicked. The truth is the
@@ -191,7 +200,7 @@ export function markCaughtUpPatch(m: StatusFacts): StatusPatch | null {
     .filter((s) => isSeasonComplete(m, s));
   const seasonYears =
     stampable.length > 0 && m.season_years !== undefined
-      ? stampSeasons(m.season_years, stampable, new Date().getFullYear())
+      ? stampSeasons(m.season_years, stampable, new Date().getFullYear(), staleStamp(m))
       : undefined;
 
   return {
@@ -247,6 +256,118 @@ export function claimedStatus(
     current_episode: position.episode,
     caught_up_at: caughtUpAt(facts, m.caught_up_at),
     ...(watched ? { watched_at: new Date().toISOString() } : {}),
+  };
+}
+
+// ── The ADD path ──────────────────────────────────────────────────────────────────────────────
+
+/** The status columns of a BRAND-NEW row — every one of them, stated. */
+export interface AddStatus {
+  watched: boolean;
+  in_progress: boolean;
+  want_to_watch: boolean;
+  /**
+   * Always FALSE here, and stated rather than omitted. Adding a title that already exists as a bare
+   * list stub MERGES onto that row — and an omitted flag is not a cleared one, so the stub stayed
+   * `is_reference: true`, which `deriveWatchStatus` reads FIRST: the title you had just added went
+   * on reading "Unwatched", in no rail, whatever you had claimed.
+   */
+  is_reference: boolean;
+  paused: boolean;
+  dropped: boolean;
+  drop_reason: string | null;
+  watched_at: string | null;
+  caught_up_at: string | null;
+  current_season: number | null;
+  current_episode: number | null;
+  /** Only when the claim dates seasons — a fresh row has no map to merge into. */
+  season_years?: Record<string, number> | null;
+}
+
+/** What a door collected. `position: null` means "I am claiming nothing". */
+export interface AddClaim {
+  position: { season: number; episode: number } | null;
+  stance?: "watching" | "paused" | "dropped";
+  /** The world's facts for the title being added — what aired, and whether it is over. */
+  facts: SeriesFacts;
+  /** The date the door asked for, if it asked. */
+  watchedAt?: string | null;
+}
+
+/** Nothing true. Every add starts here, so no column is left to a default. */
+const NO_STATUS: AddStatus = {
+  watched: false, in_progress: false, want_to_watch: false, is_reference: false,
+  paused: false, dropped: false, drop_reason: null,
+  watched_at: null, caught_up_at: null,
+  current_season: null, current_episode: null,
+};
+
+/**
+ * THE STATUS OF A NEW ROW — the add path's `claimedStatus`, and the end of assembling flags by hand.
+ *
+ * `useAddMedia` used to build its status one boolean at a time, from the DOOR you came through. For
+ * a film that is honest: "seen it / haven't" is binary and the door knows. For a SERIES it is the
+ * lie this whole model exists to kill — and the add path was still telling it, in a way no test
+ * could see: the "In Progress" door never collected a position, so `claimedStatus` returned `null`
+ * (its answer to "you claimed nothing"), every flag fell to `false`, and the row landed in LIMBO —
+ * no status at all. Invisible in every rail, "Want to Watch" on its own detail page. The three
+ * buttons on the discover card did not cause that; they walked into it.
+ *
+ * So the add path derives, exactly like every other path:
+ *   · FILM   — the door decides. It always could.
+ *   · SERIES — the POSITION decides, via `claimedStatus`. The door only says whether a claim is
+ *     being made at all (`wantToWatch` makes none, by definition).
+ *
+ * Returns `null` when a door that NEEDS a claim was given none. That is not a status to write, it
+ * is a question that was never asked — and a caller that ignores the null gets refused again by
+ * `insertMediaSchema`. Two barriers, because this row must never exist.
+ */
+export function addStatusPatch(
+  door: ListType,
+  claim: AddClaim,
+  type: MediaType,
+): AddStatus | null {
+  const now = () => new Date().toISOString();
+
+  if (door === "wantToWatch") return { ...NO_STATUS, want_to_watch: true };
+
+  if (type === "film") {
+    // A film cannot be half-watched, so "In Progress" is the only door that isn't a completion.
+    if (door === "inProgress") return { ...NO_STATUS, in_progress: true };
+    return { ...NO_STATUS, watched: true, watched_at: claim.watchedAt ?? now() };
+  }
+
+  const claimed = claimedStatus({ ...claim.facts, type }, claim.position ?? null, claim.stance);
+  if (!claimed || !claim.position) return null;
+
+  // THE YEAR YOU GIVE BELONGS TO THE SEASONS YOU CLAIM — and only to the ones that are over, in
+  // both senses: fully aired, and fully watched. That is `isSeasonDatable`, the rule "Set all year"
+  // and the season strip already share. The add path had invented a FOURTH version of it, stamping
+  // against what had aired instead of what was announced — so a season 4 episodes into its 8 got a
+  // year the moment you claimed to stand at its end.
+  //
+  // A DOOR THAT DOES NOT ASK ABOUT THE PAST IS TALKING ABOUT NOW. Only the library door collects a
+  // date; the others ("Start watching", "Last Watched", "Top 10") mean "this is where I am today".
+  // Requiring a date before stamping anything left those doors writing NOTHING, so adding Blue Lock
+  // at season 2 episode 4 — season 1 finished, plainly — showed an empty "Year" placeholder on it.
+  // And it disagreed with the "+1": walking that same route with the stepper stamps the current
+  // year on every season you complete. Same claim, same position, two different histories.
+  // The year is a default, not a verdict: the season is datable, so one click corrects it.
+  const claimedYear = new Date(claim.watchedAt ?? Date.now()).getFullYear();
+  const stamped = { ...claim.facts, current_season: claim.position.season, current_episode: claim.position.episode };
+  const seasonYears = Object.fromEntries(
+    (claim.facts.season_episodes ?? [])
+      .map((_, idx) => idx + 1)
+      .filter((season) => isSeasonDatable(stamped, season))
+      .map((season) => [String(season), claimedYear]),
+  );
+
+  return {
+    ...NO_STATUS,
+    ...claimed,
+    // `claimedStatus` dates a completion "now"; a door that asked WHEN overrules it.
+    watched_at: claimed.watched ? (claim.watchedAt ?? claimed.watched_at ?? now()) : null,
+    ...(Object.keys(seasonYears).length ? { season_years: seasonYears } : {}),
   };
 }
 
@@ -316,9 +437,18 @@ export function positionPatch(
   const crossed = kind === "viewing" && forward && season > from.season
     ? seasonRange(from.season, season - 1).filter((s) => isSeasonComplete(m, s))
     : [];
+
+  // AND THE SEASON YOU JUST FINISHED. It stamped what you LEAVE, not what you COMPLETE — so
+  // watching the last episode of season 2 dated nothing, and the year only appeared once you
+  // started season 3. A show you are caught up on never reached that point at all: its final
+  // season stayed blank for as long as you kept up with it. Finishing a season is the very
+  // moment it becomes datable, so that is when it gets its year.
+  const landed = kind === "viewing" && forward && isSeasonDatable(facts, season) ? [season] : [];
+
+  const toStamp = [...crossed, ...landed];
   const seasonYears =
-    crossed.length > 0 && m.season_years !== undefined
-      ? stampSeasons(m.season_years, crossed, new Date().getFullYear())
+    toStamp.length > 0 && m.season_years !== undefined
+      ? stampSeasons(m.season_years, toStamp, new Date().getFullYear(), staleStamp(m))
       : undefined;
 
   return {
