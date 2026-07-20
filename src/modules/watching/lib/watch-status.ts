@@ -42,6 +42,7 @@ import {
   seriesState,
   type SeriesFacts,
 } from "./series-state";
+import type { MediaView } from "./media-view";
 import { isAwaitingRelease } from "../utils";
 import type { UpdateMediaInput } from "../schemas/media.schema";
 import type { ListType, MediaType, WatchingMedia, WatchStatus } from "../types";
@@ -124,7 +125,44 @@ function dateFromFinishYear(year: number | null): string {
  * claim to have watched. Passed to `stampSeasons` so a fresh claim re-dates them instead of
  * inheriting a viewing you had retracted. Read against the position BEFORE the write.
  */
-const staleStamp = (m: StatusFacts) => (season: number) => !hasReachedSeason(m, season);
+const staleStamp = (m: SeriesFacts & { watched?: boolean }) => (season: number) =>
+  !hasReachedSeason(m, season);
+
+/**
+ * WHERE THE SEASON MATH HAPPENS — the one thing that differs between the two coordinate spaces.
+ *
+ * A lumped anime has ONE flat TMDB season but two real cours. "Which season did I just finish?"
+ * therefore has two different answers, and the year belongs in a different COLUMN depending on which
+ * one you mean (`season_years` keyed by TMDB season vs `cour_years` keyed by cour). Every automatic
+ * stamp used to answer in storage space and write `season_years` — a map the strip never reads for
+ * an overlaid title. That is the whole bug, and this is the seam that closes it.
+ *
+ * Status is NOT routed here on purpose: episodes-seen and episodes-aired sum to the same totals in
+ * either space, so `seriesState`/`caughtUpAt` are space-invariant and go on reading the raw row.
+ *
+ * No lens supplied → identical behaviour to before, byte for byte. That is what keeps every
+ * non-overlaid title (and every existing test) untouched.
+ */
+function stampSpace(m: StatusFacts, view?: MediaView | null) {
+  if (!view) {
+    return {
+      facts: m as SeriesFacts & { watched?: boolean },
+      count: (m.season_episodes ?? []).length,
+      position: { season: m.current_season ?? 1, episode: m.current_episode ?? 0 },
+      map: m.season_years,
+      toView: (season: number, episode: number) => ({ season, episode }),
+      write: (next: Record<string, number>) => ({ season_years: next }) as StatusPatch,
+    };
+  }
+  return {
+    facts: { ...view.seriesFacts, watched: m.watched },
+    count: view.seasons.length,
+    position: view.position,
+    map: view.yearMap,
+    toView: (season: number, episode: number) => view.fromStorage(season, episode),
+    write: (next: Record<string, number>) => view.writeYears(next) as StatusPatch,
+  };
+}
 
 // ── The transitions ───────────────────────────────────────────────────────────────────────────
 
@@ -140,23 +178,23 @@ const staleStamp = (m: StatusFacts) => (season: number) => !hasReachedSeason(m, 
  * And it stamps only the seasons that have FULLY AIRED. Stamping every ANNOUNCED season put
  * "2026" on a season with four of its eight episodes out.
  */
-export function markWatchedPatch(m: StatusFacts): StatusPatch {
+export function markWatchedPatch(m: StatusFacts, view?: MediaView | null): StatusPatch {
   const isSeries = m.type !== "film";
   const last = isSeries ? lastAiredPosition(m) : null;
+  const sp = stampSpace(m, view);
 
   // With no airing data (a row the sync has never reached) we keep the old behaviour rather than
   // silently stamping nothing — a loose stamp beats an empty history.
   const hasAiring = (m.season_aired?.length ?? 0) > 0;
-  const stampable = (m.season_episodes ?? [])
-    .map((_, idx) => idx + 1)
-    .filter((s) => !hasAiring || isSeasonComplete(m, s));
+  const stampable = Array.from({ length: sp.count }, (_, idx) => idx + 1)
+    .filter((s) => !hasAiring || isSeasonComplete(sp.facts, s));
 
   // ⚠️ `stampSeasons` MERGES. Merging into `undefined` and writing the result would REPLACE the
   // jsonb column with a single entry and wipe every year you had set by hand. If the column was
   // not loaded, we do not touch it. (This is why SECTION_COLUMNS carries `season_years`.)
   const seasonYears =
-    stampable.length > 0 && m.season_years !== undefined
-      ? stampSeasons(m.season_years, stampable, new Date().getFullYear(), staleStamp(m))
+    stampable.length > 0 && sp.map !== undefined
+      ? stampSeasons(sp.map, stampable, new Date().getFullYear(), staleStamp(sp.facts))
       : undefined;
 
   // WHEN did you watch it — and for a series that is NOT the moment you clicked. The truth is the
@@ -164,7 +202,7 @@ export function markWatchedPatch(m: StatusFacts): StatusPatch {
   // finished in 2014 gets a 2014 timestamp, not "now", and it no longer sits atop Recently Watched
   // with a "2 weeks ago" badge. `buildWatchedAt` maps the current year back to `now`, so finishing
   // something today still stamps today. A film keeps `now` (the date picker refines it).
-  const watchedAt = isSeries ? dateFromFinishYear(maxYear(seasonYears ?? m.season_years)) : new Date().toISOString();
+  const watchedAt = isSeries ? dateFromFinishYear(maxYear(seasonYears ?? sp.map)) : new Date().toISOString();
 
   return {
     watched: true,
@@ -176,7 +214,7 @@ export function markWatchedPatch(m: StatusFacts): StatusPatch {
     ...(last
       ? { current_season: last.season, current_episode: last.episode, caught_up_at: caughtUpAt({ ...m, current_season: last.season, current_episode: last.episode }, m.caught_up_at) }
       : {}),
-    ...(seasonYears ? { season_years: seasonYears } : {}),
+    ...(seasonYears ? sp.write(seasonYears) : {}),
   };
 }
 
@@ -190,17 +228,17 @@ export function markWatchedPatch(m: StatusFacts): StatusPatch {
  *
  * Returns null when we don't know what has aired — we do not guess, and the caller must say so.
  */
-export function markCaughtUpPatch(m: StatusFacts): StatusPatch | null {
+export function markCaughtUpPatch(m: StatusFacts, view?: MediaView | null): StatusPatch | null {
   const last = lastAiredPosition(m);
   if (!last) return null;
 
   const facts = { ...m, current_season: last.season, current_episode: last.episode };
-  const stampable = (m.season_episodes ?? [])
-    .map((_, idx) => idx + 1)
-    .filter((s) => isSeasonComplete(m, s));
+  const sp = stampSpace(m, view);
+  const stampable = Array.from({ length: sp.count }, (_, idx) => idx + 1)
+    .filter((s) => isSeasonComplete(sp.facts, s));
   const seasonYears =
-    stampable.length > 0 && m.season_years !== undefined
-      ? stampSeasons(m.season_years, stampable, new Date().getFullYear(), staleStamp(m))
+    stampable.length > 0 && sp.map !== undefined
+      ? stampSeasons(sp.map, stampable, new Date().getFullYear(), staleStamp(sp.facts))
       : undefined;
 
   return {
@@ -213,7 +251,7 @@ export function markCaughtUpPatch(m: StatusFacts): StatusPatch | null {
     current_episode: last.episode,
     caught_up_at: caughtUpAt(facts, m.caught_up_at),
     last_watched_at: new Date().toISOString(),
-    ...(seasonYears ? { season_years: seasonYears } : {}),
+    ...(seasonYears ? sp.write(seasonYears) : {}),
   };
 }
 
@@ -412,6 +450,13 @@ export function positionPatch(
   season: number,
   episode: number,
   kind: "viewing" | "correction",
+  /**
+   * The lens, when the title has one. `season`/`episode` stay in STORAGE coordinates — every caller
+   * already speaks them — and we translate INTERNALLY to decide which season you just finished.
+   * That is the inversion the fix needs: converting cour→flat before this function ran is precisely
+   * what made a cour boundary look like "same season, one episode further", so nothing was stamped.
+   */
+  view?: MediaView | null,
 ): StatusPatch {
   const from = { season: m.current_season ?? 1, episode: m.current_episode ?? 0 };
   const forward = season > from.season || (season === from.season && episode > from.episode);
@@ -432,10 +477,19 @@ export function positionPatch(
   const resumesFromPause =
     !!m.paused && forward && !completed && seriesState(facts) === "caught-up";
 
+  // ── THE YEAR, DECIDED IN DISPLAY SPACE ───────────────────────────────────────────────────────
+  // Season boundaries are the only thing the two coordinate spaces disagree about, so the stamp —
+  // and the column it lands in — is computed through the lens. Without one this is the identity and
+  // the behaviour is unchanged.
+  const sp = stampSpace(m, view);
+  const fromV = sp.toView(from.season, from.episode);
+  const toV = sp.toView(season, episode);
+  const factsV = { ...sp.facts, current_season: toV.season, current_episode: toV.episode };
+
   // Seasons you have just travelled PAST, and only those that have fully aired. A correction
   // stamps nothing: you are claiming to have watched them, not to have watched them TODAY.
-  const crossed = kind === "viewing" && forward && season > from.season
-    ? seasonRange(from.season, season - 1).filter((s) => isSeasonComplete(m, s))
+  const crossed = kind === "viewing" && forward && toV.season > fromV.season
+    ? seasonRange(fromV.season, toV.season - 1).filter((s) => isSeasonComplete(sp.facts, s))
     : [];
 
   // AND THE SEASON YOU JUST FINISHED. It stamped what you LEAVE, not what you COMPLETE — so
@@ -443,12 +497,12 @@ export function positionPatch(
   // started season 3. A show you are caught up on never reached that point at all: its final
   // season stayed blank for as long as you kept up with it. Finishing a season is the very
   // moment it becomes datable, so that is when it gets its year.
-  const landed = kind === "viewing" && forward && isSeasonDatable(facts, season) ? [season] : [];
+  const landed = kind === "viewing" && forward && isSeasonDatable(factsV, toV.season) ? [toV.season] : [];
 
   const toStamp = [...crossed, ...landed];
   const seasonYears =
-    toStamp.length > 0 && m.season_years !== undefined
-      ? stampSeasons(m.season_years, toStamp, new Date().getFullYear(), staleStamp(m))
+    toStamp.length > 0 && sp.map !== undefined
+      ? stampSeasons(sp.map, toStamp, new Date().getFullYear(), staleStamp(sp.facts))
       : undefined;
 
   return {
@@ -456,14 +510,14 @@ export function positionPatch(
     current_episode: episode,
     caught_up_at: caughtUpAt(facts, m.caught_up_at),
     ...(kind === "viewing" && forward ? { last_watched_at: new Date().toISOString() } : {}),
-    ...(seasonYears ? { season_years: seasonYears } : {}),
+    ...(seasonYears ? sp.write(seasonYears) : {}),
     ...(completes
       ? {
           watched: true, in_progress: false, want_to_watch: false, is_reference: false, ...RESET_STATUS,
           // Same as markWatchedPatch: a series is finished WHEN its last season aired, not when you
           // corrected the record. The finish year (from season_years) dates it; buildWatchedAt maps
           // the current year back to now.
-          watched_at: dateFromFinishYear(maxYear(seasonYears ?? m.season_years)),
+          watched_at: dateFromFinishYear(maxYear(seasonYears ?? sp.map)),
         }
       : {}),
     ...(revokes

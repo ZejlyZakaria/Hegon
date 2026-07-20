@@ -22,7 +22,8 @@ import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { useRewatches, useAddRewatch, useRemoveRewatch } from "../../hooks/useRewatches";
 import { dropReasonLabel } from "../../lib/drop-reasons";
-import { airedInSeason, caughtUpOn, hasFullyWatchedSeason, lastAiredSeason, seriesState } from "../../lib/series-state";
+import { caughtUpOn, hasFullyWatchedSeason, seriesState } from "../../lib/series-state";
+import type { MediaView } from "../../lib/media-view";
 import { canComplete, deriveWatchStatus } from "../../lib/watch-status";
 import { WatchDatePicker } from "../shared/WatchDatePicker";
 import { partsFromISO, type WatchDateParts } from "../../lib/watched-date";
@@ -254,17 +255,20 @@ interface Props {
   onWatchedDateChange: (parts: WatchDateParts) => void;   // film → precise watched_at
   onDelete: () => void;                      // opens the shared delete-confirm modal
   isUpdating?: boolean;
-  /** Anime v2: TMDB lumps this anime into one flat season, so its "Season 1/1" stepper is both
-   *  meaningless AND contradicts the real seasons shown in Watch History → hide it. Progress is
-   *  tracked by the (flat) episode stepper, and seasons are jumped from the Watch History strip. */
-  hideSeasonStepper?: boolean;
+  /**
+   * THE LENS. `currentSeason`/`currentEpisode` arrive in DISPLAY space, and every season number this
+   * card shows or bounds comes from `view.seasons` — so a lumped anime reads "Season 2 · Episode 1"
+   * like the rest of the app instead of the flat "Episode 25 / 38" it used to print next to a Watch
+   * History cut into cours. `hideSeasonStepper` existed ONLY because this card could not see the
+   * overlay; with the lens the season stepper is meaningful again, so the patch is gone.
+   */
+  view?: MediaView | null;
 }
 
 export function StatusCard({
-  media, isSeries, providers, currentSeason, currentEpisode, onUpdateProgress,
+  media, isSeries, providers, currentSeason, currentEpisode, onUpdateProgress, view,
   favorite, onFavoriteToggle, onMarkWatched, onMarkCaughtUp, onStartWatching, onPause, onDrop,
   onResume, onAddNote, onWatchedYearChange, onWatchedDateChange, onDelete, isUpdating,
-  hideSeasonStepper = false,
 }: Props) {
   const status: CardStatus = CARD_STATUS[deriveWatchStatus(media)];
 
@@ -275,7 +279,23 @@ export function StatusCard({
   //   · caught-up → you've seen everything that exists, but it isn't over. You're WAITING, and
   //     the card says so instead of pretending you have a decision to make.
   // The live position (the stepper) wins over the stored row, so the state follows your taps.
-  const seriesFacts = { ...media, current_season: currentSeason, current_episode: currentEpisode };
+  // The seasons, in the space this card speaks. Falls back to the raw row when there is no lens, so
+  // a plain series behaves exactly as before.
+  const seasons = view?.seasons ?? (media.season_episodes ?? []).map((episodes, i) => ({
+    season: i + 1,
+    episodes: episodes ?? 0,
+    aired: (media.season_aired ?? [])[i] ?? 0,
+    poster: null as string | null,
+    endDate: null as string | null,
+  }));
+  const here = seasons[currentSeason - 1];
+
+  const seriesFacts = {
+    ...(view ? view.seriesFacts : media),
+    watched: media.watched,
+    current_season: currentSeason,
+    current_episode: currentEpisode,
+  };
   const state = isSeries ? seriesState(seriesFacts) : null;
   const atLastEpisode = state === "completed";
   const caughtUp = state === "caught-up";
@@ -303,10 +323,13 @@ export function StatusCard({
   // THE STEPPERS SHOW THE ANNOUNCED AND STOP AT THE AIRED. Two numbers, two jobs — see StepRow.
   // "4 / 8" with a dead "+" tells you both truths at once: the season has eight episodes, and
   // only four of them exist. "4 / 4" told you neither.
-  const announcedSeasons = isSeries ? (media.season_episodes?.length ?? media.seasons ?? null) : null;
-  const announcedInSeason = isSeries ? (media.season_episodes?.[currentSeason - 1] ?? null) : null;
-  const lastSeasonOut = isSeries ? lastAiredSeason(media) : null;
-  const airedInThisSeason = isSeries ? airedInSeason(media, currentSeason) : null;
+  const announcedSeasons = isSeries ? (seasons.length || media.seasons || null) : null;
+  const announcedInSeason = isSeries ? (here?.episodes ?? null) : null;
+  // The last season that has aired anything — the ceiling the season stepper may never pass.
+  const lastSeasonOut = isSeries
+    ? (seasons.reduce((last, s, i) => (s.aired > 0 ? i + 1 : last), 1))
+    : null;
+  const airedInThisSeason = isSeries ? (here?.aired ?? 0) : null;
 
   const reason = dropReasonLabel(media.drop_reason);
   // ONE truth for "can this honestly be called watched": a series that is over, or a film that has
@@ -657,7 +680,7 @@ export function StatusCard({
 
           {status === "in_progress" && (
             <div className="mt-3 space-y-2.5">
-              {!hideSeasonStepper && (
+              {(announcedSeasons ?? 1) > 1 && (
               <StepRow
                 label="Season"
                 value={currentSeason}

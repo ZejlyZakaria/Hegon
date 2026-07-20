@@ -1,6 +1,7 @@
 "use client";
 
 import { useUpdateMedia } from "./useUpdateMedia";
+import { useMediaView } from "./useMediaView";
 import { useWatchingGoals } from "./useWatchingGoals";
 import { goalWouldCount } from "../lib/goal-contribution";
 import { GoalRippleToast } from "../components/detail/GoalRippleToast";
@@ -20,7 +21,24 @@ import {
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { toast } from "@/shared/utils/toast";
 
-type Target = (StatusFacts & { id: string }) | null | undefined;
+/**
+ * The extra columns are OPTIONAL on purpose. A surface that carries them (the detail page, and any
+ * card whose select includes them) gets the coordinate lens and therefore the cour-aware year
+ * stamping; one that doesn't degrades to exactly today's behaviour instead of breaking. That is what
+ * lets the overlay be adopted surface by surface without a flag day.
+ */
+type Target =
+  | (StatusFacts & {
+      id: string;
+      tmdb_id?: number;
+      season_posters?: (string | null)[] | null;
+      season_end_dates?: (string | null)[] | null;
+      season_ratings?: Record<string, number> | null;
+      cour_years?: Record<string, number> | null;
+      cour_ratings?: Record<string, number> | null;
+    })
+  | null
+  | undefined;
 
 /**
  * ONE set of watch actions, for every surface that has ever had them.
@@ -40,6 +58,16 @@ type Target = (StatusFacts & { id: string }) | null | undefined;
 export function useWatchActions(media: Target) {
   const updateMedia = useUpdateMedia();
   const { data: watchingGoals = [] } = useWatchingGoals();
+
+  /**
+   * THE LENS, BUILT ONCE, HERE — so every surface inherits it.
+   *
+   * The season-boundary math (which season did I just finish, hence which year gets stamped and in
+   * which column) is the one thing that differs between a lumped anime's flat storage and the cours
+   * it actually displays. Building the view at the single writer means a card, a list row or a
+   * surface not yet written cannot forget it: it never had to remember in the first place.
+   */
+  const view = useMediaView(media);
 
   /**
    * The Goals ripple — the felt moment, the count animating up — follows THE FACT, not the button.
@@ -99,14 +127,14 @@ export function useWatchActions(media: Target) {
     markWatched: () => {
       if (!media) return Promise.resolve(null);
       if (!canComplete(media)) return notOutYet();
-      return write(markWatchedPatch(media), "");
+      return write(markWatchedPatch(media, view), "");
     },
 
     markCaughtUp: async () => {
       if (!media) return null;
       // A film is never "caught up" — it's watched or it isn't. An unreleased one isn't even that.
       if (media.type === "film") return notOutYet();
-      const patch = markCaughtUpPatch(media);
+      const patch = markCaughtUpPatch(media, view);
       if (!patch) {
         toast.error("We don't know what has aired for this title yet.");
         return null;
@@ -133,6 +161,6 @@ export function useWatchActions(media: Target) {
      * false claim for another.
      */
     setPosition: (season: number, episode: number, kind: "viewing" | "correction", message = "") =>
-      media ? write(positionPatch(media, season, episode, kind), message) : Promise.resolve(null),
+      media ? write(positionPatch(media, season, episode, kind, view), message) : Promise.resolve(null),
   };
 }

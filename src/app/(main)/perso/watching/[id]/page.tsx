@@ -29,8 +29,7 @@ import { CaptureSheet } from "@/modules/watching/components/shared/CaptureSheet"
 import { DROP_REASONS } from "@/modules/watching/lib/drop-reasons";
 import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
 import { Episodes } from "@/modules/watching/components/detail/Episodes";
-import { useAnimeCours } from "@/modules/watching/hooks/useAnimeCours";
-import { shouldOverlay, buildOverlay, courToFlat, tmdbFromFlat } from "@/modules/watching/lib/anime-overlay";
+import { useMediaView } from "@/modules/watching/hooks/useMediaView";
 import type { StatusPatch } from "@/modules/watching/lib/watch-status";
 import { buildWatchedAt, type WatchDateParts } from "@/modules/watching/lib/watched-date";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
@@ -67,8 +66,9 @@ export default function MediaDetailPage() {
   const { data: ownedIds = [] } = useOwnedTmdbIds(media?.user_id ?? "", media?.type ?? "film", !!media);
   const { data: trailer, isLoading: trailerLoading } = useMediaTrailer(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
   const { data: providers } = useWatchProviders(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
-  // Anime v2 — the AniList season overlay (shared, cached). Only anime query it.
-  const { data: coursRow } = useAnimeCours(media?.tmdb_id ?? 0, !!media && media.type === "anime");
+  // THE LENS — the one object that knows which coordinate space this title lives in. It fetches the
+  // AniList cours itself when they matter, and hands back everything in DISPLAY space.
+  const view = useMediaView(media);
   const [addItem, setAddItem] = useState<any | null>(null);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [dropSheetOpen, setDropSheetOpen] = useState(false);
@@ -149,18 +149,20 @@ export default function MediaDetailPage() {
    *
    * Debounced: the local state moves at once so the "+" feels instant, the write follows.
    */
-  const updateProgress = (season: number, episode: number) => {
+  const updateProgress = (displaySeason: number, displayEpisode: number) => {
     if (!media) return;
+    // The steppers speak DISPLAY units; storage speaks TMDB. One conversion, at the boundary.
+    const to = view ? view.toStorage(displaySeason, displayEpisode) : { season: displaySeason, episode: displayEpisode };
     const forward =
-      season > (media.current_season ?? 1) ||
-      (season === (media.current_season ?? 1) && episode > (media.current_episode ?? 0));
+      to.season > (media.current_season ?? 1) ||
+      (to.season === (media.current_season ?? 1) && to.episode > (media.current_episode ?? 0));
 
-    setCurrentSeason(season);
-    setCurrentEpisode(episode);
+    setCurrentSeason(to.season);
+    setCurrentEpisode(to.episode);
 
     if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
     progressTimerRef.current = setTimeout(() => {
-      void actions.setPosition(season, episode, forward ? "viewing" : "correction");
+      void actions.setPosition(to.season, to.episode, forward ? "viewing" : "correction");
     }, 500);
   };
 
@@ -176,52 +178,37 @@ export default function MediaDetailPage() {
    * landing on the end of a finished one completes it) and it stamps NO years, because claiming a
    * season today does not mean you watched it today.
    */
-  const handleSetPosition = async (season: number, episode: number) => {
-    setCurrentSeason(season);
-    setCurrentEpisode(episode);
-    const patch = await actions.setPosition(season, episode, "correction", `Watched through season ${season}.`);
+  const handleSetPosition = async (displaySeason: number, displayEpisode: number) => {
+    // The strip speaks DISPLAY units too — cours for an overlaid anime, plain seasons otherwise.
+    const to = view ? view.toStorage(displaySeason, displayEpisode) : { season: displaySeason, episode: displayEpisode };
+    setCurrentSeason(to.season);
+    setCurrentEpisode(to.episode);
+    const patch = await actions.setPosition(to.season, to.episode, "correction", `Watched through season ${displaySeason}.`);
     if (!patch && media) {
       setCurrentSeason(media.current_season ?? 1);
       setCurrentEpisode(media.current_episode ?? 0);
     }
   };
 
-  const handleSeasonYearsChange = async (next: Record<string, number>) => {
-    if (!media) return;
+  // FOUR handlers became two. There used to be a season pair and a cour pair, and every call site
+  // had to pick — `overlay ? handleCourYearsChange : handleSeasonYearsChange`. Choosing the column
+  // is exactly what the lens is for, so the choice is gone: the strip says "this season, this year"
+  // in display units and `writeYears` puts it where it belongs.
+  const handleYearsChange = async (next: Record<string, number>) => {
+    if (!media || !view) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, season_years: next });
+      await updateMedia.mutateAsync({ id: media.id, ...view.writeYears(next) });
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
     }
   };
 
-  const handleSeasonRatingsChange = async (next: Record<string, number>) => {
-    if (!media) return;
+  const handleRatingsChange = async (next: Record<string, number>) => {
+    if (!media || !view) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, season_ratings: next });
-    } catch (err) {
-      if (isDemoReadOnlyError(err)) return;
-      toast.error("Failed to update.");
-    }
-  };
-
-  // Anime v2 — per-COUR year/rating go to their own maps (cour_years/cour_ratings), keyed by cour
-  // number. Kept apart from season_years/season_ratings so Stats (which reads TMDB seasons) is safe.
-  const handleCourYearsChange = async (next: Record<string, number>) => {
-    if (!media) return;
-    try {
-      await updateMedia.mutateAsync({ id: media.id, cour_years: next });
-    } catch (err) {
-      if (isDemoReadOnlyError(err)) return;
-      toast.error("Failed to update.");
-    }
-  };
-
-  const handleCourRatingsChange = async (next: Record<string, number>) => {
-    if (!media) return;
-    try {
-      await updateMedia.mutateAsync({ id: media.id, cour_ratings: next });
+      const key = view.overlaid ? "cour_ratings" : "season_ratings";
+      await updateMedia.mutateAsync({ id: media.id, [key]: next });
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
@@ -310,24 +297,11 @@ export default function MediaDetailPage() {
 
   const isUnwatched = !!(media.is_reference || (media.want_to_watch && !media.watched && !media.in_progress));
 
-  // Anime v2 — the season overlay, computed from the shared cours + this row (pure). Null unless the
-  // title is a safe-to-recut anime; everything downstream then keeps TMDB's flat structure.
-  const overlay = shouldOverlay(media, coursRow) ? buildOverlay(media, coursRow.cours) : null;
-
-  // "Watched through S2" from the overlaid strip speaks in cour coordinates; storage speaks TMDB. We
-  // translate cour → flat episode → TMDB (season, episode) before writing, and label with the cour.
-  const handleCourSetPosition = async (courSeason: number, courEpisode: number) => {
-    if (!overlay) return handleSetPosition(courSeason, courEpisode);
-    const flat = courToFlat(courSeason, courEpisode, overlay.cours);
-    const tmdb = tmdbFromFlat(media.season_episodes, flat);
-    setCurrentSeason(tmdb.season);
-    setCurrentEpisode(tmdb.episode);
-    const patch = await actions.setPosition(tmdb.season, tmdb.episode, "correction", `Watched through season ${courSeason}.`);
-    if (!patch) {
-      setCurrentSeason(media.current_season ?? 1);
-      setCurrentEpisode(media.current_episode ?? 0);
-    }
-  };
+  // Where you stand, in the space the UI speaks. The local stepper state stays in STORAGE units (it
+  // mirrors the row); the lens translates for display, and back again on write.
+  const shown = view
+    ? view.fromStorage(currentSeason, currentEpisode)
+    : { season: currentSeason, episode: currentEpisode };
 
   // THE state-aware surface — the module's branded hero card. Rendered twice:
   // right under the hero on mobile (the daily action must never sink below the
@@ -337,8 +311,9 @@ export default function MediaDetailPage() {
       media={media}
       isSeries={isSeries}
       providers={providers}
-      currentSeason={currentSeason}
-      currentEpisode={currentEpisode}
+      currentSeason={shown.season}
+      currentEpisode={shown.episode}
+      view={view}
       onUpdateProgress={updateProgress}
       favorite={favorite}
       onFavoriteToggle={toggleFavorite}
@@ -353,7 +328,6 @@ export default function MediaDetailPage() {
       onWatchedDateChange={handleWatchedDateChange}
       onDelete={() => setDeleteOpen(true)}
       isUpdating={actions.isPending}
-      hideSeasonStepper={!!overlay}
     />
   );
 
@@ -383,30 +357,30 @@ export default function MediaDetailPage() {
           {/* Left = you & the work: verdict → memory → progress → catalogue (people, recos) */}
           <MyTake media={media} forceNoteOpen={forceTakeOpen} />
 
-          {isSeries && (overlay ? overlay.cours.length > 1 : (media.season_episodes?.length ?? 0) > 1) && (media.in_progress || media.watched || media.paused || media.dropped) && (
+          {isSeries && (view?.seasons.length ?? 0) > 1 && (media.in_progress || media.watched || media.paused || media.dropped) && (
             <SeasonHistoryStrip
-              seasonEpisodes={overlay ? overlay.seasonEpisodes : (media.season_episodes ?? [])}
-              seasonAired={overlay ? overlay.seasonAired : media.season_aired}
-              currentEpisode={overlay ? overlay.currentEpisode : currentEpisode}
-              seasonPosters={overlay ? overlay.seasonPosters : media.season_posters}
-              seasonAirDates={overlay ? undefined : media.season_air_dates}
-              seasonEndDates={overlay ? overlay.seasonEndDates : media.season_end_dates}
-              seasonYears={overlay ? media.cour_years : media.season_years}
-              seasonRatings={overlay ? media.cour_ratings : media.season_ratings}
+              seasonEpisodes={view?.seasons.map((s) => s.episodes) ?? []}
+              seasonAired={view?.seasons.map((s) => s.aired)}
+              currentEpisode={shown.episode}
+              seasonPosters={view?.seasons.map((s) => s.poster)}
+              seasonAirDates={view?.overlaid ? undefined : media.season_air_dates}
+              seasonEndDates={view?.seasons.map((s) => s.endDate)}
+              seasonYears={view?.yearMap}
+              seasonRatings={view?.ratingMap}
               showPoster={media.poster_url}
               releaseYear={media.year ?? null}
-              currentSeason={overlay ? overlay.currentSeason : currentSeason}
+              currentSeason={shown.season}
               inProgress={media.in_progress}
               incomplete={!media.watched}
-              onYearChange={overlay ? handleCourYearsChange : handleSeasonYearsChange}
-              onRatingChange={overlay ? handleCourRatingsChange : handleSeasonRatingsChange}
-              onSetPosition={overlay ? handleCourSetPosition : handleSetPosition}
+              onYearChange={handleYearsChange}
+              onRatingChange={handleRatingsChange}
+              onSetPosition={handleSetPosition}
             />
           )}
 
           {/* want_to_watch: read-only (catalogue scope — no rating/best-ep on unwatched episodes) */}
           {isSeries && media.tmdb_id && (
-            <Episodes media={media} currentSeason={overlay ? overlay.currentSeason : currentSeason} readOnly={isUnwatched} cours={overlay?.cours} />
+            <Episodes media={media} currentSeason={shown.season} readOnly={isUnwatched} cours={view?.cours ?? undefined} />
           )}
 
           {hasCastCrew && (

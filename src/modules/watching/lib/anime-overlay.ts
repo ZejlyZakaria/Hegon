@@ -83,7 +83,13 @@ export interface OverlayView {
   cours: AnimeCour[];
 }
 
-export function buildOverlay(media: WatchingMedia, cours: AnimeCour[]): OverlayView {
+/** Only what the overlay actually reads — so a card selecting a subset of columns can build one. */
+export type OverlaySource = Pick<
+  WatchingMedia,
+  "season_aired" | "season_episodes" | "episodes" | "current_season" | "current_episode"
+>;
+
+export function buildOverlay(media: OverlaySource, cours: AnimeCour[]): OverlayView {
   // Episodes ACTUALLY AIRED across the whole show (TMDB truth), used to split aired-per-cour.
   const flatAired =
     (media.season_aired ?? media.season_episodes ?? []).reduce((a, b) => a + (b ?? 0), 0) ||
