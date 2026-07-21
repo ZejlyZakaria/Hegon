@@ -4,6 +4,7 @@ import { Panel } from "@/shared/components/ui/panel";
 import { useRewatches } from "../../hooks/useRewatches";
 import { useRatingStanding } from "../../hooks/useRatingPercentile";
 import { airedCount, lastWatched, reachedEntries, seriesState, watchedCount } from "../../lib/series-state";
+import type { MediaView } from "../../lib/media-view";
 import type { WatchingMedia } from "../../types";
 
 const TYPE_WORD: Record<string, string> = { film: "films", serie: "series", anime: "animes" };
@@ -30,8 +31,26 @@ function hours(minutes: number): string {
  * only repeats what's on screen is noise wearing the costume of information.
  * Everything is derived from what you actually logged; a row with no answer doesn't appear.
  */
-export function QuickStats({ media }: { media: WatchingMedia }) {
+export function QuickStats({ media, view }: { media: WatchingMedia; view?: MediaView | null }) {
   const { data: rewatches = [] } = useRewatches(media.id);
+  /**
+   * THE YEARS AND SCORES LIVE IN THE SPACE THE TITLE IS DISPLAYED IN.
+   *
+   * This panel read `media.season_years` / `media.season_ratings` directly — both EMPTY for an
+   * overlaid anime, whose stamps live in `cour_years`/`cour_ratings`. So Blue Lock, dated 2023 and
+   * 2024 by hand, showed no "Started", no mean score and a wrong "Last watched".
+   *
+   * And swapping the map alone is not enough: `reachedEntries` filters with `hasReachedSeason`,
+   * which compares a map KEY against the current position. Cour keys against a TMDB position is a
+   * category error — so the facts have to come from the lens too, not just the map.
+   */
+  const facts = { ...(view ? view.seriesFacts : media), watched: media.watched };
+  // The raw branches are the no-lens fallback: for a plain series the columns ARE the display
+  // space, and the two are the same object. Only an overlaid anime needs the translation.
+  // eslint-disable-next-line no-restricted-syntax -- explicit `view ? lens : raw` fallback, raw side only for titles with no overlay.
+  const yearMap = view ? view.yearMap : media.season_years;
+  // eslint-disable-next-line no-restricted-syntax -- same fallback, ratings side.
+  const ratingMap = view ? view.ratingMap : media.season_ratings;
   const standing = useRatingStanding(media.user_id ?? null, media.type, media.user_rating ?? 0);
 
   const isSeries = media.type !== "film";
@@ -47,6 +66,10 @@ export function QuickStats({ media }: { media: WatchingMedia }) {
   // the announced). Three copies of "how many episodes have I watched" is how one screen ends up
   // disagreeing with the next about the same title.
   const airedEps = airedCount(media);
+  // A TOTAL, and totals are invariant across the two spaces: cutting one flat season of 59 into
+  // three cours does not change how many episodes exist. This is the same reason components/stats
+  // is exempt from the guard entirely — it counts, it does not locate.
+  // eslint-disable-next-line no-restricted-syntax -- summing episodes, not reading a position; the sum is identical in either space.
   const announcedList = media.season_episodes ?? [];
   const totalEps = announcedList.reduce((a, b) => a + b, 0) || media.episodes || airedEps;
 
@@ -65,12 +88,12 @@ export function QuickStats({ media }: { media: WatchingMedia }) {
   // an un-drop — and the stamps for seasons you no longer claim just sit there. One-Punch Man
   // kept reporting 2019 (season 2) after you moved back to season 1. The data isn't wrong and
   // isn't deleted; it simply must not be READ for a season you haven't reached.
-  const seasonScores = reachedEntries(media, media.season_ratings);
+  const seasonScores = reachedEntries(facts, ratingMap);
   const meanSeason = seasonScores.length
     ? seasonScores.reduce((a, b) => a + b, 0) / seasonScores.length
     : null;
 
-  const years = reachedEntries(media, media.season_years);
+  const years = reachedEntries(facts, yearMap);
   const watchedYear = media.watched_at ? new Date(media.watched_at).getFullYear() : null;
   const firstYear = years.length ? Math.min(...years) : watchedYear;
 
@@ -84,7 +107,7 @@ export function QuickStats({ media }: { media: WatchingMedia }) {
   // beats a timestamp (a timestamp only records when you CLICKED, and correcting a position with
   // the stepper is a forward move, so it dates itself "today"). The timestamp only speaks when
   // you're mid-season, where no year exists yet.
-  const last = lastWatched(media);
+  const last = lastWatched({ ...facts, last_watched_at: media.last_watched_at, season_years: yearMap });
   const lastValue =
     last?.kind === "date"
       ? new Date(last.value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })

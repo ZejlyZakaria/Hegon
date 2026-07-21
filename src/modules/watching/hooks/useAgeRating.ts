@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useQuery } from "@tanstack/react-query";
-import { TMDB_KEYS } from "./query-keys";
-import { getReleaseDates, getContentRatings } from "../service";
+import { useCallback } from "react";
+import { useTitleBundle } from "./useTitleBundle";
+import type { TitleBundle } from "../service";
 import type { MediaType } from "../types";
 
 // US certifications (R, PG-13, TV-MA…) are the most globally recognizable, so try
@@ -36,18 +36,14 @@ function pickTvCert(results: any[]): string | null {
 }
 
 export function useAgeRating(tmdbId: number, type: MediaType, enabled = true) {
-  return useQuery({
-    queryKey: TMDB_KEYS.ageRating(type, tmdbId),
-    queryFn: async () => {
-      if (type === "film") {
-        const data = await getReleaseDates(tmdbId);
-        return pickMovieCert(data?.results ?? []);
-      }
-      const data = await getContentRatings(tmdbId);
-      return pickTvCert(data?.results ?? []);
-    },
-    staleTime: 7 * 24 * 60 * 60 * 1000, // certifications don't change
-    gcTime: 60 * 60 * 1000,
-    enabled: enabled && !!tmdbId,
-  });
+  // A film certifies through `release_dates`, a show through `content_ratings` — the bundle
+  // appends whichever one applies, so the branch that used to pick an ENDPOINT now picks a FIELD.
+  const select = useCallback(
+    (b: TitleBundle): string | null =>
+      type === "film"
+        ? pickMovieCert(b.release_dates?.results ?? [])
+        : pickTvCert(b.content_ratings?.results ?? []),
+    [type],
+  );
+  return useTitleBundle(tmdbId, type, enabled, select);
 }

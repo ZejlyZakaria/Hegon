@@ -102,12 +102,6 @@ async function airedPerSeason(tmdbId, seasons) {
   return out;
 }
 
-const seen = (m) => {
-  const aired = m.season_aired ?? [];
-  const season = m.current_season ?? 1;
-  const before = aired.slice(0, Math.max(0, season - 1)).reduce((a, b) => a + (b || 0), 0);
-  return before + Math.max(0, Math.min(m.current_episode ?? 0, aired[season - 1] ?? 0));
-};
 const total = (a) => (a ?? []).reduce((x, y) => x + (y || 0), 0);
 const lastAired = (aired) => {
   for (let s = aired.length; s >= 1; s--) if ((aired[s - 1] ?? 0) > 0) return { season: s, episode: aired[s - 1] };

@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
@@ -26,6 +25,7 @@ import { caughtUpOn, hasFullyWatchedSeason, seriesState } from "../../lib/series
 import type { MediaView } from "../../lib/media-view";
 import { canComplete, deriveWatchStatus } from "../../lib/watch-status";
 import { WatchDatePicker } from "../shared/WatchDatePicker";
+import { WhereToWatch } from "../shared/WhereToWatch";
 import { partsFromISO, type WatchDateParts } from "../../lib/watched-date";
 import type { WatchingMedia, WatchStatus } from "../../types";
 import type { WatchProviderInfo } from "../../hooks/useWatchProviders";
@@ -55,19 +55,22 @@ const CARD_STATUS: Record<WatchStatus, CardStatus> = {
 };
 
 // "Watched" label: films → the watched_at year; series → the season-year range.
-function watchedLabel(media: WatchingMedia): string | null {
+// The year map comes from the LENS, never from the row: on an overlaid anime the years live in
+// `cour_years` and `season_years` is empty, so reading the column made Blue Lock — dated 2023 and
+// 2024 by hand — fall back to its `watched_at` year instead of showing the span.
+function watchedLabel(media: WatchingMedia, yearMap: Record<string, number> | null | undefined): string | null {
   if (media.type === "film") {
     return media.watched_at ? String(new Date(media.watched_at).getFullYear()) : null;
   }
-  const years = Object.values(media.season_years ?? {}).map(Number).filter((y) => !Number.isNaN(y));
+  const years = Object.values(yearMap ?? {}).map(Number).filter((y) => !Number.isNaN(y));
   if (!years.length) return media.watched_at ? String(new Date(media.watched_at).getFullYear()) : null;
   const min = Math.min(...years), max = Math.max(...years);
   return min === max ? String(min) : `${min} – ${max}`;
 }
 
-function watchedYearOf(media: WatchingMedia): number | null {
+function watchedYearOf(media: WatchingMedia, yearMap: Record<string, number> | null | undefined): number | null {
   if (media.type === "film") return media.watched_at ? new Date(media.watched_at).getFullYear() : null;
-  return media.season_years?.["1"] ?? null;
+  return yearMap?.["1"] ?? null;
 }
 
 const fmtDate = (d: string) =>
@@ -281,9 +284,11 @@ export function StatusCard({
   // The live position (the stepper) wins over the stored row, so the state follows your taps.
   // The seasons, in the space this card speaks. Falls back to the raw row when there is no lens, so
   // a plain series behaves exactly as before.
+  // eslint-disable-next-line no-restricted-syntax -- the no-lens fallback: for a plain series the raw seasons ARE the display space.
   const seasons = view?.seasons ?? (media.season_episodes ?? []).map((episodes, i) => ({
     season: i + 1,
     episodes: episodes ?? 0,
+    // eslint-disable-next-line no-restricted-syntax -- same fallback, aired counts for the same plain-series branch.
     aired: (media.season_aired ?? [])[i] ?? 0,
     poster: null as string | null,
     endDate: null as string | null,
@@ -376,10 +381,17 @@ export function StatusCard({
   );
 
   // Year is editable where no Watch History strip owns it: films + 1-season shows.
+  // ⚠️ COUNTED IN STORAGE SPACE ON PURPOSE. The question is "does the Watch History strip exist?",
+  // and the strip appears for a title with more than one DISPLAY season — but a lumped anime has
+  // exactly one TMDB season while displaying several cours, so counting the lens here would hand
+  // the year editor to a title whose strip already owns it. The raw count is the honest test.
+  // eslint-disable-next-line no-restricted-syntax -- deliberately storage-space: asks how TMDB splits the title, not how we display it.
   const seasonCount = media.season_episodes?.length ?? 0;
   const yearEditable = media.type === "film" ? media.watched : media.watched && seasonCount <= 1;
-  const yearLabel = watchedLabel(media);
-  const selectedYear = watchedYearOf(media);
+  // eslint-disable-next-line no-restricted-syntax -- explicit `view ? lens : raw` fallback for the label.
+  const yearLabel = watchedLabel(media, view ? view.yearMap : media.season_years);
+  // eslint-disable-next-line no-restricted-syntax -- same fallback for the selected value.
+  const selectedYear = watchedYearOf(media, view ? view.yearMap : media.season_years);
   const currentYear = new Date().getFullYear();
   const years: number[] = [];
   for (let y = currentYear; y >= Math.min(media.year ?? 1950, currentYear); y--) years.push(y);
@@ -822,24 +834,7 @@ export function StatusCard({
 
       {/* ── Footer: where to watch. A quiet, separated strip — it's reference, not an action
              on this card, so it closes it instead of interrupting it. ── */}
-      {providers && providers.flatrate.length > 0 && (
-        <div className="mt-4 border-t border-white/10 pt-3">
-          <p className="text-caption uppercase tracking-wide text-white/45">Where to watch</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {providers.flatrate.slice(0, 6).map((p) =>
-              p.logo_url ? (
-                <Hint key={p.id} label={p.name}>
-                  <img
-                    src={p.logo_url}
-                    alt={p.name}
-                    className="h-8 w-8 rounded-control object-cover ring-1 ring-white/15"
-                  />
-                </Hint>
-              ) : null,
-            )}
-          </div>
-        </div>
-      )}
+      <WhereToWatch providers={providers} />
     </section>
   );
 }

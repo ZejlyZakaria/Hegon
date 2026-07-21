@@ -165,5 +165,33 @@ export function useWatchActions(media: Target) {
      */
     setPosition: (season: number, episode: number, kind: "viewing" | "correction", message = "") =>
       media ? write(positionPatch(media, season, episode, kind, view), message) : Promise.resolve(null),
+
+    /**
+     * UNDO IS NOT A CORRECTION — and the toast is the only caller that can tell them apart.
+     *
+     * Moving backwards is normally a correction: you are fixing the record, and `last_watched_at`
+     * stays where it is, because you really did watch this then. That rule is right, and it is why
+     * stepping back deliberately leaves the date alone — the alternative (a jsonb history of every
+     * position) was considered and refused.
+     *
+     * But the Undo on the "+1" toast is not a later fix. It cancels the write that just happened,
+     * and that write stamped today. Leaving the stamp meant a mis-tap you took back two seconds
+     * later still dragged the title to the top of Last Watched, dated today — the app remembering
+     * an evening you never had.
+     *
+     * So this one caller hands the old value back. No new column: it is captured at the call site,
+     * before the move, which is the only moment anyone knows it.
+     *
+     * ⚠️ `undefined` and `null` are DIFFERENT ANSWERS here, and treating them alike would have made
+     * this fix destructive. `null` means "there was no date, restore none". `undefined` means the
+     * surface never selected the column and does not KNOW — writing null on that would erase a real
+     * date to undo a mis-tap. A surface that cannot answer simply doesn't get asked.
+     */
+    undoPosition: (season: number, episode: number, lastWatchedAt?: string | null) => {
+      if (!media) return Promise.resolve(null);
+      const patch = positionPatch(media, season, episode, "correction", view);
+      if (!patch) return Promise.resolve(null);
+      return write(lastWatchedAt === undefined ? patch : { ...patch, last_watched_at: lastWatchedAt }, "");
+    },
   };
 }

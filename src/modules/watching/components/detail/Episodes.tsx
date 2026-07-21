@@ -244,6 +244,11 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
   // slice it by the selected cour's flat episode range. Marks stay in TMDB coordinates (season 1 +
   // the flat episode number); only the displayed episode number is per-cour.
   const overlayOn = !!cours && cours.length > 0;
+  // The overlay branch already answers this from the cours; the raw read is the OTHER branch — a
+  // title with no overlay, whose TMDB seasons are exactly what it displays. This component takes
+  // `cours` rather than a MediaView because it also serves the discover page, where there is no row
+  // to build a lens from.
+  // eslint-disable-next-line no-restricted-syntax -- no-overlay branch, where TMDB seasons are the display seasons.
   const seasonCount = overlayOn ? cours!.length : (media.season_episodes?.length ?? media.seasons ?? 1);
   const [view, setView] = useState<View>("all");
   const [season, setSeason] = useState(

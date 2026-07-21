@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
-import { getOwnedTmdbIds, findOwnedMediaId } from "../service";
+import { getOwnedTmdbIds, findOwnedMediaId, findOwnedMediaIds } from "../service";
 import type { MediaType } from "../types";
 
 // The set of tmdb_ids the user already owns for a given type. Tiny, indexed query
@@ -31,5 +31,27 @@ export function useOwnedMediaId(userId: string, tmdbId: number, enabled = true) 
     queryFn: () => findOwnedMediaId(userId, tmdbId),
     staleTime: 2 * 60 * 1000,
     enabled: enabled && !!userId && tmdbId > 0,
+  });
+}
+
+/**
+ * The same answer for a whole list of results, resolved WHILE YOU READ THEM.
+ *
+ * This is what lets the search route correctly on the first try instead of sending you through a
+ * page that exists to tell you you were on the wrong page. It runs as soon as results render, so by
+ * the time a click happens the map is already in cache — and if it somehow isn't, the caller falls
+ * back to /discover, which still works. Nothing waits on this.
+ *
+ * Under WATCHING_KEYS.all like its single-row sibling, so adding a title refreshes it and the very
+ * next search routes you to the fiche you just created.
+ */
+export function useOwnedMediaIds(userId: string, tmdbIds: number[]) {
+  // Sorted so the same set of results is the same cache entry regardless of TMDB's ordering.
+  const key = [...tmdbIds].sort((a, b) => a - b).join(",");
+  return useQuery({
+    queryKey: [...WATCHING_KEYS.all, "owned-rows", key],
+    queryFn: () => findOwnedMediaIds(userId, tmdbIds),
+    staleTime: 2 * 60 * 1000,
+    enabled: !!userId && tmdbIds.length > 0,
   });
 }

@@ -426,6 +426,33 @@ export function addStatusPatch(
   };
 }
 
+/**
+ * YOU EDITED THE YEARS — SO THE DATE MUST FOLLOW.
+ *
+ * `watched_at` is not an independent fact for a series: it IS the year you finished, and the year
+ * you finished is the latest stamp in the year map. But it was only ever computed at the moment you
+ * pressed "Mark as watched" — so the sequence "mark it watched, then correct the years to 2023/2024"
+ * left the date at today, and Last Watched announced a show you finished in 2024 as watched TODAY.
+ *
+ * A derived value that is stored must be RE-DERIVED whenever its source moves. That is the whole of
+ * `derive don't store`; storing it is a cache, and a cache that is not invalidated is a lie.
+ *
+ * Returns the year-map write plus the date it implies. The caller does not need to know which
+ * column the map lives in — the lens already decided that.
+ */
+export function yearsPatch(
+  m: Pick<StatusFacts, "type" | "watched">,
+  next: Record<string, number>,
+  write: (map: Record<string, number>) => StatusPatch,
+): StatusPatch {
+  const patch = write(next);
+  // Only a finished SERIES has a finish year to follow. A film's date is a real timestamp the
+  // picker owns (day and month included) — deriving it from a year would coarsen what you set.
+  if (m.type === "film" || !m.watched) return patch;
+  const year = maxYear(next);
+  return year ? { ...patch, watched_at: dateFromFinishYear(year) } : patch;
+}
+
 export function startWatchingPatch(): StatusPatch {
   return { in_progress: true, watched: false, want_to_watch: false, is_reference: false, ...RESET_STATUS };
 }

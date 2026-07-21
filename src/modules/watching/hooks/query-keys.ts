@@ -93,23 +93,23 @@ export const TMDB_KEYS = {
   all: ['tmdb'] as const,
   hero: (type: MediaType) =>
     ['tmdb', 'hero', type] as const,
-  similar: (type: MediaType, tmdbId: number) =>
-    ['tmdb', 'similar', type, tmdbId] as const,
   credits: (type: MediaType, tmdbId: number) =>
     ['tmdb', 'credits', type, tmdbId] as const,
-  // A NON-owned title's full facts (discover). Deliberately OUTSIDE WATCHING_KEYS: it is TMDB data,
-  // not your library, and every add invalidates WATCHING_KEYS.all with refetchType:"all" — which
-  // used to force a refetch of every cached TMDB detail on each add.
-  details: (type: MediaType, tmdbId: number) =>
-    ['tmdb', 'details', type, tmdbId] as const,
-  trailer: (type: MediaType, tmdbId: number) =>
-    ['tmdb', 'trailer', type, tmdbId] as const,
-  providers: (type: MediaType, tmdbId: number) =>
-    ['tmdb', 'providers', type, tmdbId] as const,
-  externalIds: (type: MediaType, tmdbId: number) =>
-    ['tmdb', 'external-ids', type, tmdbId] as const,
-  ageRating: (type: MediaType, tmdbId: number) =>
-    ['tmdb', 'age-rating', type, tmdbId] as const,
+  /**
+   * The ONE request a fiche makes to TMDB — the title's own record plus external_ids, videos,
+   * watch/providers, recommendations and certifications, appended into a single response. Every
+   * hook that used to own a call now selects its slice out of THIS key, so they share one fetch by
+   * construction rather than by anyone remembering to coordinate.
+   *
+   * Deliberately OUTSIDE WATCHING_KEYS, like the `details` key it replaces: this is TMDB data, not
+   * your library, and every add invalidates WATCHING_KEYS.all with refetchType:"all" — which would
+   * otherwise re-fetch the world's facts about every title you had looked at, on every add.
+   *
+   * (The old trailer / providers / external-ids / age-rating / similar / details keys are gone —
+   * each of them is now a `select` over this one.)
+   */
+  bundle: (type: MediaType, tmdbId: number) =>
+    ['tmdb', 'bundle', type, tmdbId] as const,
   omdb: (imdbId: string) =>
     ['omdb', imdbId] as const,
   seasonEpisodes: (tmdbId: number, season: number) =>

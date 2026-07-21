@@ -68,7 +68,12 @@ export function NextEpisodeButton({ item }: { item: WatchingMedia }) {
 
   const advance = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const from = { season: item.current_season ?? 1, episode: item.current_episode ?? 0 };
+    // Captured BEFORE the move, because the move overwrites it. This is the whole mechanism behind
+    // a truthful Undo — see `undoPosition`.
+    // Storage space throughout: `nextStep` reasons in it, `setPosition`/`undoPosition` take it, and
+    // the lens is only applied to SAY the move in the toast. Converting here would corrupt the write.
+    // eslint-disable-next-line no-restricted-syntax -- the value handed back to undoPosition, which takes storage coordinates.
+    const from = { season: item.current_season ?? 1, episode: item.current_episode ?? 0, lastWatchedAt: item.last_watched_at };
 
     // A VIEWING: it dates the move and stamps the year of any season it just carried you past.
     // Everything else — the caught_up_at stamp, the "you cannot claim what hasn't aired" clamp —
@@ -93,7 +98,10 @@ export function NextEpisodeButton({ item }: { item: WatchingMedia }) {
           // would announce "New episodes" the next time one aired. Going through the same patch
           // builder makes that unforgettable rather than merely remembered. (The year stamped on
           // the way through stays: you did finish that season, and un-clicking doesn't un-watch it.)
-          onClick: () => { void actions.setPosition(from.season, from.episode, "correction"); },
+          //
+          // The DATE, though, does come back: this is a cancellation, not a later fix, so the title
+          // must not stay at the top of Last Watched for an episode you just said you hadn't seen.
+          onClick: () => { void actions.undoPosition(from.season, from.episode, from.lastWatchedAt); },
         },
       },
     );

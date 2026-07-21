@@ -96,8 +96,12 @@ export async function uploadCustomPoster(file: File): Promise<string | null> {
 // `tmdb_id` is here for the LENS, not for display: without it a card cannot look up its AniList
 // cours, so a lumped anime printed its flat episode ("S01 E59") on the tile while its own detail
 // page said "S03 E12". A surface can only speak the right coordinates if it carries the key to them.
+// `last_watched_at` is here for the Undo on a card's "+1" toast: undoing has to put the date back
+// where it was, and a surface can only restore a value its own query brought along. (Same lesson as
+// `tmdb_id`, which the lens needed and this list didn't carry — a surface can't speak about a fact
+// it never selected.)
 const SECTION_COLUMNS =
-  "id, type, tmdb_id, title, original_title, poster_url, backdrop_url, year, release_date, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
+  "id, type, tmdb_id, title, original_title, poster_url, backdrop_url, year, release_date, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, last_watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
 
 export async function getMediaItems(
   userId: string,
@@ -623,6 +627,43 @@ export async function findOwnedMediaId(userId: string, tmdbId: number): Promise<
 }
 
 /**
+ * The same question, asked ONCE for a whole list of results.
+ *
+ * The search used to route every pick to /discover and let that page find out you owned the title
+ * and bounce — which cost a full page load and TWO loading states for the most ordinary action in
+ * the module. The comment defending it said "no stale ownership cache to keep in sync": true, and
+ * it optimised the wrong thing. Knowing which of ten visible results are yours is ONE indexed read
+ * on `tmdb_id IN (…)` — cheap enough to run the moment the results appear, so the answer is already
+ * there when you click, and the route is right the first time.
+ *
+ * Batched for the same reason `getAnimeCoursMany` is: one query per list, never one per row.
+ * Possession is decided by tmdb_id alone and stubs don't count — see `findOwnedMediaId`, whose
+ * rules this shares exactly.
+ */
+export async function findOwnedMediaIds(
+  userId: string,
+  tmdbIds: number[],
+): Promise<Record<number, { id: string; type: MediaType }>> {
+  if (!userId || tmdbIds.length === 0) return {};
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching")
+    .from("media_items")
+    .select("id, type, tmdb_id")
+    .eq("user_id", userId)
+    .in("tmdb_id", tmdbIds)
+    .not("is_reference", "is", true);
+  if (error) throw error;
+  const out: Record<number, { id: string; type: MediaType }> = {};
+  // First row wins, mirroring the `.limit(1)` of the single lookup: a title stored twice under two
+  // types is a data problem, and picking a side here at least keeps both surfaces agreeing.
+  for (const r of (data as unknown as { id: string; type: MediaType; tmdb_id: number }[]) ?? []) {
+    if (!out[r.tmdb_id]) out[r.tmdb_id] = { id: r.id, type: r.type };
+  }
+  return out;
+}
+
+/**
  * The world's facts about a title you do NOT own — a VIRTUAL row.
  *
  * The detail page is really "a tmdb_id + your row": the hero, the genres, the cast, the episodes
@@ -635,12 +676,17 @@ export async function findOwnedMediaId(userId: string, tmdbId: number): Promise<
  * `addTmdbItemToList` uses — anime detection, status normalisation, per-season arrays — so what
  * you see before adding is exactly what you get after.
  */
-export async function getTmdbDetails(tmdbId: number, type: MediaType): Promise<WatchingMedia | null> {
-  const isFilm = type === "film";
-  const res = await fetch(`/api/tmdb?endpoint=${isFilm ? "movie" : "tv"}/${tmdbId}&language=en-US`);
-  if (!res.ok) return null;
-  const d: any = await res.json();
+/**
+ * The mapping, separated from the fetching — because the bytes it needs are ALREADY in the bundle.
+ *
+ * `getTmdbDetails` used to own its own `tv/{id}` request, and the bundle is that exact record with
+ * more appended to it. So the discover page was asking TMDB for the same resource twice in the same
+ * breath: once bare, once with extras. Splitting the pure part out lets the hook select the virtual
+ * row straight out of the shared response.
+ */
+export function mapTmdbDetails(d: any, tmdbId: number, type: MediaType): WatchingMedia | null {
   if (!d || d.success === false) return null;
+  const isFilm = type === "film";
 
   type SeasonLite = { season_number: number; episode_count?: number; poster_path?: string | null; air_date?: string | null };
   // Season 0 is "Specials" — never part of the run, same rule as the add path.
@@ -1001,20 +1047,59 @@ export async function getTmdbEpisode(tmdbId: number, season: number, episode: nu
   );
 }
 
-// Movie or tv videos (trailers / teasers) — powers the trailer lightbox.
-export async function getMediaVideos(id: number, type: "movie" | "tv") {
-  return tmdbFetch<any>(`${type}/${id}/videos`);
+/**
+ * ONE TRIP FOR EVERYTHING A FICHE ASKS TMDB.
+ *
+ * Opening a title used to fire five separate requests — external_ids, videos, watch/providers,
+ * recommendations, content_ratings — all for the SAME resource. They are sub-resources of one
+ * record, and TMDB has always been willing to send them together.
+ *
+ * The count is the smaller half of the win. `external_ids` carries the imdb_id, and OMDb cannot
+ * start until it has one — so the ratings were a full round-trip BEHIND a request that had nothing
+ * else to wait for. Folding it in here moves OMDb up by that entire trip.
+ *
+ * ⛔ `credits`/`aggregate_credits` are deliberately NOT appended, and that is measured, not assumed:
+ * on House of the Dragon the bundle is 49 KB, and adding them makes it 214 KB (+165 KB) — for data
+ * the detail page usually reads from our own `cast_members` column anyway. Trading five trips for a
+ * payload four times bigger is not an optimisation. They stay in `getMediaDetails`, fetched only
+ * when a title has no stored cast.
+ */
+export interface TitleBundle {
+  external_ids?: { imdb_id?: string | null } | null;
+  videos?: { results?: any[] } | null;
+  recommendations?: { results?: any[] } | null;
+  content_ratings?: { results?: any[] } | null;
+  release_dates?: { results?: any[] } | null;
+  "watch/providers"?: { results?: Record<string, any> } | null;
+  [key: string]: any;
 }
 
-// Where-to-watch providers by region (JustWatch data via TMDB).
-export async function getWatchProviders(id: number, type: "movie" | "tv") {
-  return tmdbFetch<any>(`${type}/${id}/watch/providers`);
-}
+/**
+ * The regions we actually read for "where to watch" — the two the owner lives in, then the US.
+ *
+ * IN PRIORITY ORDER. Morocco first is the point: House M.D. and Stranger Things stream on Netflix MA,
+ * Inception and Interstellar on Shahid VIP, and showing a French offer for a title he can watch at
+ * home would be a worse answer than no answer. Where Morocco has nothing (HBO Max and Apple TV are
+ * not distributed there) it falls through to France.
+ *
+ * GB was here as a "data-rich fallback" so the block was never empty. It earned nothing — measured,
+ * every title carrying GB providers already carried FR or US — and that job now belongs to the
+ * proxy, which appends one region that actually has something when none of these do.
+ *
+ * ONE list, declared here and used twice: the proxy trims the payload down to it, and
+ * `useWatchProviders` resolves within it. Two copies would eventually disagree, and the symptom
+ * would be an empty block for a region the client wanted and the server had already thrown away.
+ */
+export const PROVIDER_REGIONS = ["MA", "FR", "US"] as const;
 
-// External ids (imdb_id, etc.) — shared by the IMDb link, OMDb ratings and the
-// episode heatmap. Works for both movie and tv.
-export async function getExternalIds(id: number, type: "movie" | "tv") {
-  return tmdbFetch<any>(`${type}/${id}/external_ids`);
+export async function getTitleBundle(id: number, type: "movie" | "tv"): Promise<TitleBundle> {
+  // Films certify through `release_dates`, shows through `content_ratings` — different endpoints
+  // for the same question, which is why `useAgeRating` had to branch on type.
+  const ratings = type === "tv" ? "content_ratings" : "release_dates";
+  return tmdbFetch<TitleBundle>(`${type}/${id}`, {
+    append_to_response: `external_ids,videos,watch/providers,recommendations,${ratings}`,
+    providerRegions: PROVIDER_REGIONS.join(","),
+  });
 }
 
 // ── AnimeThemes (OP/ED) ─────────────────────────────────────────────────────
@@ -1281,13 +1366,6 @@ export async function getOmdbData(imdbId: string, season?: number) {
   return res.json();
 }
 
-// Age certification. Movies → release_dates (MPAA per country); tv → content_ratings.
-export async function getReleaseDates(id: number) {
-  return tmdbFetch<any>(`movie/${id}/release_dates`);
-}
-export async function getContentRatings(id: number) {
-  return tmdbFetch<any>(`tv/${id}/content_ratings`);
-}
 
 // Movie or tv details with credits. TV/anime cast is sparse/empty in `credits`
 // (the recurring voice cast lives in `aggregate_credits`), so append both for tv.

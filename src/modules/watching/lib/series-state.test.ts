@@ -6,6 +6,7 @@ import {
   isEpisodeActionable,
   isSeasonComplete,
   isSeasonDatable,
+  isSeasonLive,
   lastWatched,
   lastAiredPosition,
   nextStep,
@@ -78,6 +79,41 @@ describe("seriesState", () => {
     // A row that says S3 E8 while only 3 have aired must not report 5 phantom episodes.
     expect(watchedCount(hotd(3, 8))).toBe(21);   // 10 + 8 + 3, not 10 + 8 + 8
     expect(seriesState(hotd(3, 8))).toBe("caught-up");
+  });
+});
+
+// The "Now" badge. The two failing cases below sat one line apart in the old rule
+// (`current_episode < aired`) — one of them right, one of them wrong, for the same reason.
+describe("isSeasonLive", () => {
+  it("stays lit on a season still coming out, even when you've seen every aired episode", () => {
+    // THE BUG. House of the Dragon: 3 of 8 episodes exist, you've watched all 3. Nothing is left
+    // to watch, so the old rule said "not now" and dropped the badge — while you sit waiting for
+    // Sunday, which is the most "now" a viewer ever is.
+    expect(isSeasonLive(hotd(3, 3), 3)).toBe(true);
+  });
+
+  it("stays lit while you're simply behind", () => {
+    expect(isSeasonLive(hotd(3, 1), 3)).toBe(true);
+  });
+
+  it("goes dark once the season you're caught up on has FINISHED airing", () => {
+    // The case the old rule was written for, and it must keep working: every episode of season 5
+    // exists and you've seen them all. You aren't watching it now — you're waiting for season 6.
+    expect(isSeasonLive(theBoys("ongoing"), 5)).toBe(false);
+  });
+
+  it("stays lit mid-way through a season that has fully aired", () => {
+    // Season 2 is complete (8 of 8) and you're at episode 4. Still watching it, plainly.
+    expect(isSeasonLive(hotd(2, 4), 2)).toBe(true);
+  });
+
+  it("is only ever true of the season you're standing in", () => {
+    expect(isSeasonLive(hotd(3, 3), 1)).toBe(false);
+    expect(isSeasonLive(hotd(3, 3), 2)).toBe(false);
+  });
+
+  it("is false for a season nothing has aired from — that's 'coming soon', not 'now'", () => {
+    expect(isSeasonLive({ ...gentlemen, current_season: 2, current_episode: 0 }, 2)).toBe(false);
   });
 });
 

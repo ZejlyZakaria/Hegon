@@ -30,7 +30,8 @@ import { DROP_REASONS } from "@/modules/watching/lib/drop-reasons";
 import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
 import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import { useMediaView } from "@/modules/watching/hooks/useMediaView";
-import type { StatusPatch } from "@/modules/watching/lib/watch-status";
+import { yearsPatch, type StatusPatch } from "@/modules/watching/lib/watch-status";
+import type { WatchingMedia } from "@/modules/watching/types";
 import { buildWatchedAt, type WatchDateParts } from "@/modules/watching/lib/watched-date";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { QuickStats } from "@/modules/watching/components/detail/QuickStats";
@@ -38,6 +39,21 @@ import { InList } from "@/modules/watching/components/detail/InList";
 import { AnimeThemes } from "@/modules/watching/components/detail/AnimeThemes";
 import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { toast } from "@/shared/utils/toast";
+
+/**
+ * THE ROW'S POSITION, IN STORAGE UNITS — and the only place this page is allowed to read it raw.
+ *
+ * The steppers hold their own state so they feel instant, and that state deliberately mirrors the
+ * row byte for byte: storage space, TMDB seasons, flat episodes for a lumped anime. The lens
+ * translates it for display (`shown`) and back again on write (`toStorage`), so the UI never sees a
+ * flat episode number and the database never sees a cour one.
+ *
+ * Six identical raw reads were scattered across this file to do it. Gathering them here is what
+ * makes the coordinate guard readable: one suppression with one reason, instead of six that a
+ * reader would learn to skip past.
+ */
+// eslint-disable-next-line no-restricted-syntax -- the page's single sanctioned storage-space read; see above.
+const storedPosition = (m: WatchingMedia) => ({ season: m.current_season ?? 1, episode: m.current_episode ?? 0 });
 
 export default function MediaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -94,8 +110,9 @@ export default function MediaDetailPage() {
     if (media && media.id !== mediaIdRef.current) {
       mediaIdRef.current = media.id;
       setFavorite(media.favorite);
-      setCurrentSeason(media.current_season ?? 1);
-      setCurrentEpisode(media.current_episode ?? 0);
+      const at = storedPosition(media);
+      setCurrentSeason(at.season);
+      setCurrentEpisode(at.episode);
       setForceTakeOpen(false);
     }
   }, [media]);
@@ -121,10 +138,10 @@ export default function MediaDetailPage() {
   // The steppers hold their own state so they feel instant; a transition that MOVES the position
   // (finishing a show, catching up) has to bring them along.
   const follow = (patch: StatusPatch | null) => {
-    if (patch?.current_season != null) {
-      setCurrentSeason(patch.current_season);
-      setCurrentEpisode(patch.current_episode ?? 0);
-    }
+    // A PATCH, not a row — and a patch is written in storage units by construction (positionPatch
+    // takes storage coordinates), which is the same space this state lives in. No lens to apply.
+    // eslint-disable-next-line no-restricted-syntax -- reading a storage-space patch into storage-space state.
+    if (patch?.current_season != null) { setCurrentSeason(patch.current_season); setCurrentEpisode(patch.current_episode ?? 0); }
   };
 
   const toggleFavorite = async () => {
@@ -153,9 +170,10 @@ export default function MediaDetailPage() {
     if (!media) return;
     // The steppers speak DISPLAY units; storage speaks TMDB. One conversion, at the boundary.
     const to = view ? view.toStorage(displaySeason, displayEpisode) : { season: displaySeason, episode: displayEpisode };
-    const forward =
-      to.season > (media.current_season ?? 1) ||
-      (to.season === (media.current_season ?? 1) && to.episode > (media.current_episode ?? 0));
+    // Both sides in storage units — comparing a converted target against the row is only meaningful
+    // in one space, and mixing them is precisely what the guard exists to catch.
+    const at = storedPosition(media);
+    const forward = to.season > at.season || (to.season === at.season && to.episode > at.episode);
 
     setCurrentSeason(to.season);
     setCurrentEpisode(to.episode);
@@ -185,8 +203,10 @@ export default function MediaDetailPage() {
     setCurrentEpisode(to.episode);
     const patch = await actions.setPosition(to.season, to.episode, "correction", `Watched through season ${displaySeason}.`);
     if (!patch && media) {
-      setCurrentSeason(media.current_season ?? 1);
-      setCurrentEpisode(media.current_episode ?? 0);
+      // The write was refused — put the steppers back where the row still says they are.
+      const at = storedPosition(media);
+      setCurrentSeason(at.season);
+      setCurrentEpisode(at.episode);
     }
   };
 
@@ -197,7 +217,14 @@ export default function MediaDetailPage() {
   const handleYearsChange = async (next: Record<string, number>) => {
     if (!media || !view) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, ...view.writeYears(next) });
+      // `watched_at` FOLLOWS the years — see yearsPatch. Correcting Blue Lock to 2023/2024 after
+      // marking it watched used to leave the date at today, so Last Watched claimed you finished it
+      // this afternoon.
+      await updateMedia.mutateAsync({
+        id: media.id,
+        type: media.type,
+        ...yearsPatch(media, next, view.writeYears),
+      });
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
@@ -237,7 +264,11 @@ export default function MediaDetailPage() {
       await updateMedia.mutateAsync({
         id: media.id,
         type: media.type,
-        season_years: { ...(media.season_years ?? {}), "1": yr },
+        // Through the LENS: a lumped anime is one TMDB season, so writing `season_years["1"]` here
+        // dropped the year into a map its own Watch History never reads. The raw branch is the
+        // no-lens fallback — a plain series, where season_years IS the display space.
+        // eslint-disable-next-line no-restricted-syntax -- explicit `view ? lens : raw` fallback; the raw side only runs when there is no overlay.
+        ...(view ? view.writeYear(1, yr) : { season_years: { ...(media.season_years ?? {}), "1": yr } }),
         watched_at: buildWatchedAt({ year: yr, month: null, day: null }),
       });
       toast("Year updated.");
@@ -407,7 +438,7 @@ export default function MediaDetailPage() {
             </div>
 
             {/* Your numbers first, the world's numbers (Details) after. */}
-            <QuickStats media={media} />
+            <QuickStats media={media} view={view} />
 
             <AnimeThemes media={media} />
 

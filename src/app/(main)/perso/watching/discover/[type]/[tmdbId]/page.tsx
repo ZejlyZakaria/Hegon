@@ -6,7 +6,7 @@
  *
  * The owned detail page is really "a tmdb_id + your row": the hero, the genres, the cast, the
  * episodes and the recommendations all derive from the tmdb_id alone. So this route mounts those
- * very components against a VIRTUAL row (`getTmdbDetails`), and simply does not mount the ones
+ * very components against a VIRTUAL row (`mapTmdbDetails`), and simply does not mount the ones
  * that describe YOU — My Take, Quick Stats, Watch History, the StatusCard. There is no history to
  * show on something you have never watched, and a panel that renders empty is worse than absent.
  *
@@ -17,6 +17,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Check, Play, Plus } from "lucide-react";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { Button } from "@/shared/components/ui/button";
@@ -26,6 +27,8 @@ import { useSimilarTitles } from "@/modules/watching/hooks/useSimilarTitles";
 import { useMediaCredits } from "@/modules/watching/hooks/useMediaCredits";
 import { useMediaTrailer } from "@/modules/watching/hooks/useMediaTrailer";
 import { useOwnedTmdbIds, useOwnedMediaId } from "@/modules/watching/hooks/useOwnedTmdbIds";
+import { useWatchProviders } from "@/modules/watching/hooks/useWatchProviders";
+import { WhereToWatch } from "@/modules/watching/components/shared/WhereToWatch";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import { MediaHero } from "@/modules/watching/components/detail/MediaHero";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
@@ -37,7 +40,8 @@ import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal"
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
-import { tmdbPathFromUrl } from "@/modules/watching/service";
+import { tmdbPathFromUrl, getMediaItemById } from "@/modules/watching/service";
+import { WATCHING_KEYS } from "@/modules/watching/hooks/query-keys";
 import type { ListType, MediaType } from "@/modules/watching/types";
 
 const TYPE_LABEL: Record<MediaType, string> = { film: "Movie", serie: "TV Show", anime: "Anime" };
@@ -57,15 +61,38 @@ export default function DiscoverDetailPage() {
   const [trailerOpen, setTrailerOpen] = useState(false);
   // null = closed. The value IS the intent, so the modal opens already knowing what you meant.
   const [addContext, setAddContext] = useState<ListType | null>(null);
-  const openAdd = (ctx: ListType) => setAddContext(ctx);
+  /**
+   * WHICH title the modal is about — null meaning "the one this page is about".
+   *
+   * More Like This was inert here while it added titles on the owned fiche: the same row, the same
+   * cards, one of them silently decorative. A recommendation you cannot act on is just a picture.
+   */
+  const [addItem, setAddItem] = useState<any | null>(null);
+  const openAdd = (ctx: ListType) => { setAddItem(null); setAddContext(ctx); };
+  const closeAdd = () => { setAddContext(null); setAddItem(null); };
 
   // ── Already yours? Then this page is the wrong one: the real fiche has your history, your
   //    rating and every action. Send you there instead of showing a stranger's copy.
   const { data: ownedIds = [] } = useOwnedTmdbIds(userId ?? "", mediaType, !!userId);
-  const { data: ownedRow } = useOwnedMediaId(userId ?? "", id, !!userId);
+  const { data: ownedRow, isLoading: ownedLoading } = useOwnedMediaId(userId ?? "", id, !!userId);
+  const queryClient = useQueryClient();
   useEffect(() => {
-    if (ownedRow) router.replace(`/perso/watching/${ownedRow.id}`);
-  }, [ownedRow, router]);
+    if (!ownedRow) return;
+    /**
+     * ARRIVE WARM. Redirecting is only half the job — landing on a page that then shows its OWN
+     * skeleton means you waited twice for one click, which is worse than the flash we removed.
+     * The row is fetched here, in parallel with the navigation, so the fiche usually renders with
+     * its data already in cache.
+     *
+     * (The ordinary path no longer comes through here at all: the search resolves ownership before
+     * it routes. This is the deep-link case — a pasted URL, a link from elsewhere.)
+     */
+    void queryClient.prefetchQuery({
+      queryKey: WATCHING_KEYS.detail(ownedRow.id),
+      queryFn: () => getMediaItemById(ownedRow.id),
+    });
+    router.replace(`/perso/watching/${ownedRow.id}`);
+  }, [ownedRow, router, queryClient]);
 
   useEffect(() => {
     if (!media) return;
@@ -77,6 +104,8 @@ export default function DiscoverDetailPage() {
   const { data: similar = [] } = useSimilarTitles(id, mediaType, !!media);
   const { data: credits } = useMediaCredits(id, mediaType, !!media);
   const { data: trailer, isLoading: trailerLoading } = useMediaTrailer(id, mediaType, !!media);
+  // Free: it's another slice of the bundle this page already fetches, not a new request.
+  const { data: providers } = useWatchProviders(id, mediaType, !!media);
 
   // Same rule as the owned page: never recommend what you already have.
   const recommendations = useMemo(() => {
@@ -84,7 +113,20 @@ export default function DiscoverDetailPage() {
     return (similar as any[]).filter((s) => !owned.has(s.id)).slice(0, 6);
   }, [similar, ownedIds]);
 
-  if (isLoading) return <DetailSkeleton />;
+  /**
+   * "NOT YET KNOWN" IS NOT "NO" — the same confusion that made a card print a flat episode number
+   * before its cours arrived (MediaView.pending).
+   *
+   * Possession is an async answer, and `ownedRow === undefined` was read as "you don't own it". So
+   * a title already in your library painted the WHOLE guest page — hero, cast, three add buttons —
+   * and only then bounced to your real fiche. The flash was the page announcing something false.
+   *
+   * So we wait while the question is open (`ownedLoading`), and we keep waiting once the answer is
+   * yes (`ownedRow`): the redirect fires in an effect, i.e. after this render, and painting the
+   * guest page for that one frame is the very flash we are removing. A disabled query (no user)
+   * reports `isLoading: false`, so a logged-out visitor is never held here.
+   */
+  if (isLoading || ownedLoading || ownedRow) return <DetailSkeleton />;
   if (!media) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
@@ -96,6 +138,44 @@ export default function DiscoverDetailPage() {
 
   const cast = media.cast_members?.length ? media.cast_members : (credits?.cast ?? []);
   const directors = credits?.directors ?? [];
+
+  // Same gesture as on the owned fiche, deliberately: a recommendation opens the add modal on
+  // ITSELF, not on the title you're reading. Recommendations of a series are series.
+  const handleAddSimilar = (sim: any) => {
+    setAddItem({
+      id: sim.id,
+      title: sim.title ?? sim.name,
+      name: sim.name ?? sim.title,
+      poster_path: sim.poster_path,
+      backdrop_path: sim.backdrop_path ?? null,
+      vote_average: sim.vote_average ?? 0,
+      overview: sim.overview ?? "",
+      genre_ids: sim.genre_ids ?? [],
+      media_type: mediaType === "film" ? "movie" : "tv",
+      ...(mediaType === "film"
+        ? { release_date: sim.release_date }
+        : { first_air_date: sim.first_air_date }),
+    });
+    setAddContext("wantToWatch");
+  };
+
+  // This page's own title, in the shape the modal speaks (TMDB search result).
+  const selfItem = {
+    id: media.tmdb_id,
+    media_type: (mediaType === "film" ? "movie" : "tv") as "movie" | "tv",
+    title: media.title,
+    original_title: media.original_title,
+    // Hand it real paths — not null, which rendered an <img src=""> and made the browser
+    // re-fetch the page.
+    poster_path: tmdbPathFromUrl(media.poster_url),
+    backdrop_path: tmdbPathFromUrl(media.backdrop_url),
+    release_date: media.release_date ?? null,
+    first_air_date: null,
+    vote_average: media.rating,
+    overview: media.description ?? "",
+    genre_ids: [],
+    origin_country: [],
+  };
 
   // The actions replace the StatusCard's whole surface. Not ONE generic "add": by the time you
   // are on a title's page you already know what you mean by it — you want to see it later, you
@@ -127,6 +207,9 @@ export default function DiscoverDetailPage() {
           <Check />
           Mark as watched
         </Button>
+        {/* On a title you own, this is reference. Here it is part of the decision you came to make:
+            "can I actually watch this?" belongs next to "do I want to". */}
+        <WhereToWatch providers={providers} />
       </div>
     </Panel>
   );
@@ -156,7 +239,9 @@ export default function DiscoverDetailPage() {
             <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
           )}
 
-          {recommendations.length > 0 && <MoreLikeThis items={recommendations} />}
+          {recommendations.length > 0 && (
+            <MoreLikeThis items={recommendations} onAddClick={handleAddSimilar} />
+          )}
         </div>
 
         {/* ── RIGHT — quiet utility rail ── */}
@@ -178,29 +263,15 @@ export default function DiscoverDetailPage() {
         title={media.title}
       />
 
-      {/* Adding sends you to the real page — the `ownedRowId` effect above picks it up. */}
+      {/* Adding THIS title sends you to the real page — the `ownedRow` effect above picks it up.
+          Adding a recommendation just adds it; you stay where you are. */}
       <AddMediaModal
         isOpen={!!addContext}
-        onClose={() => setAddContext(null)}
-        onAdded={() => setAddContext(null)}
+        onClose={closeAdd}
+        onAdded={closeAdd}
         defaultType={mediaType}
         listContext={addContext ?? "wantToWatch"}
-        initialItem={{
-          id: media.tmdb_id,
-          media_type: mediaType === "film" ? "movie" : "tv",
-          title: media.title,
-          original_title: media.original_title,
-          // The modal speaks TMDB's shape, so hand it real paths — not null, which rendered an
-          // <img src=""> and made the browser re-fetch the page.
-          poster_path: tmdbPathFromUrl(media.poster_url),
-          backdrop_path: tmdbPathFromUrl(media.backdrop_url),
-          release_date: media.release_date ?? null,
-          first_air_date: null,
-          vote_average: media.rating,
-          overview: media.description ?? "",
-          genre_ids: [],
-          origin_country: [],
-        }}
+        initialItem={addItem ?? selfItem}
       />
     </div>
   );

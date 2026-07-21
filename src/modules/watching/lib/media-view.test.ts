@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildMediaView } from "./media-view";
-import { addStatusPatch, markWatchedPatch, positionPatch, type StatusFacts } from "./watch-status";
+import { addStatusPatch, markWatchedPatch, positionPatch, yearsPatch, type StatusFacts } from "./watch-status";
 import type { AnimeCoursRow, WatchingMedia } from "../types";
 
 // Real rows, read out of the live database on 2026-07-20. Invented cases prove invented things.
@@ -212,6 +212,24 @@ describe("the stamping functions, through the lens", () => {
     )!;
     expect(withoutLens.season_years).toBeUndefined();
     expect("cour_years" in withoutLens).toBe(false);
+  });
+
+  it("🔴 EDITING THE YEARS RE-DATES THE VIEWING — Last Watched said 'today'", () => {
+    // Owner's bug: mark Blue Lock watched (no years known yet → dated today), then correct the cours
+    // to 2023/2024. The map moved; `watched_at` did not, so the rail announced a show finished in
+    // 2024 as watched this afternoon. A stored derivation that is never re-derived is a lie.
+    const view = buildMediaView(blueLock({ watched: true }), blueLockCours);
+    const p = yearsPatch({ type: "anime", watched: true }, { "1": 2023, "2": 2024 }, view.writeYears);
+    expect(p.cour_years).toEqual({ "1": 2023, "2": 2024 });
+    expect(p.watched_at?.slice(0, 4)).toBe("2024");   // the LATEST year you claim
+  });
+
+  it("does not touch the date of a film, nor of something unwatched", () => {
+    const view = buildMediaView(hotd(), null);
+    // A film's date is a real timestamp (day + month) the picker owns — a year would coarsen it.
+    expect("watched_at" in yearsPatch({ type: "film", watched: true }, { "1": 2020 }, view.writeYears)).toBe(false);
+    // Nothing finished, nothing to date.
+    expect("watched_at" in yearsPatch({ type: "serie", watched: false }, { "1": 2020 }, view.writeYears)).toBe(false);
   });
 
   it("a plain series is completely unaffected by passing its (identity) lens", () => {

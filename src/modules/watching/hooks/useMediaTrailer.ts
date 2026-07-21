@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useQuery } from "@tanstack/react-query";
-import { TMDB_KEYS } from "./query-keys";
-import { getMediaVideos } from "../service";
+import { useTitleBundle } from "./useTitleBundle";
+import type { TitleBundle } from "../service";
 import type { MediaType } from "../types";
 
 export interface Trailer {
@@ -28,16 +27,8 @@ function pickTrailer(videos: any): Trailer | null {
   return best ? { key: best.key, name: best.name } : null;
 }
 
+const selectTrailer = (b: TitleBundle): Trailer | null => pickTrailer(b.videos);
+
 export function useMediaTrailer(tmdbId: number, type: MediaType, enabled = true) {
-  return useQuery({
-    queryKey: TMDB_KEYS.trailer(type, tmdbId),
-    queryFn: async () => {
-      const tmdbType = type === "film" ? "movie" : "tv";
-      const videos = await getMediaVideos(tmdbId, tmdbType);
-      return pickTrailer(videos);
-    },
-    staleTime: 24 * 60 * 60 * 1000, // trailers rarely change
-    gcTime: 60 * 60 * 1000,
-    enabled: enabled && !!tmdbId,
-  });
+  return useTitleBundle(tmdbId, type, enabled, selectTrailer);
 }

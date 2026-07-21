@@ -13,7 +13,7 @@ import { SectionHeader } from "@/shared/components/ui/section-header";
 import { Badge } from "@/shared/components/ui/badge";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
-import { isSeasonComplete, isSeasonDatable } from "@/modules/watching/lib/series-state";
+import { isSeasonComplete, isSeasonDatable, isSeasonLive } from "@/modules/watching/lib/series-state";
 
 interface Props {
   seasonEpisodes: number[];
@@ -216,11 +216,10 @@ export function SeasonHistoryStrip({
            * "watched through S2" is still a legitimate thing to say about the season you are in.
            */
           const unseenAhead = canJump && !editable && s !== currentSeason;
-          // "Now" = THE SEASON YOU ARE IN THE MIDDLE OF — not merely the season your position sits
-          // in. On FROM you're at S4 E10 of a fully-aired season 4: you're not watching it "now",
-          // you're waiting for season 5, and a badge saying otherwise is just false. It shows only
-          // while there is still something left to watch in that season.
-          const current = inProgress && s === currentSeason && currentEpisode < airedIn(idx);
+          // "Now" = the season you are INSIDE. The rule is `isSeasonLive` and lives in
+          // series-state.ts with the rest of them — this component owning a private version of it
+          // is the exact shape of the last three bugs here.
+          const current = inProgress && isSeasonLive(facts, s);
           // A stamp on a season you haven't reached is a claim you're no longer making. The data
           // stays (it comes back when you advance again) — we just stop reading it.
           const reached = !incomplete || s <= currentSeason;

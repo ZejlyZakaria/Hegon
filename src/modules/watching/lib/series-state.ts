@@ -292,6 +292,30 @@ export function isSeasonComplete(m: SeriesFacts, season: number): boolean {
   return announced > 0 && aired >= announced;
 }
 
+/**
+ * Are you INSIDE this season right now? — the whole question behind the "Now" badge.
+ *
+ * There are TWO ways to be inside a season, and the badge only knew one of them.
+ *   · Something is left to watch here. (The obvious one.)
+ *   · You've seen everything out, but the season HASN'T FINISHED AIRING. House of the Dragon:
+ *     five of eight episodes exist, you've watched all five. Nothing is left — and you are more
+ *     "in" that season than any other viewer, waiting on Sunday.
+ *
+ * The rule used to be `current_episode < aired`, i.e. "have you seen everything?", which asks only
+ * about YOU. The badge is about the SEASON: while it is still coming out, standing at the frontier
+ * is still standing inside. Being caught up on a season that is OVER is the other thing entirely —
+ * that's waiting for the next season, and "Now" would be a lie.
+ *
+ * A season with nothing aired is not "now" either; it hasn't started existing.
+ */
+export function isSeasonLive(m: SeriesFacts, season: number): boolean {
+  if (season !== (m.current_season ?? 1)) return false;
+  const aired = (m.season_aired ?? [])[season - 1] ?? 0;
+  if (aired === 0) return false;
+  const leftToWatch = (m.current_episode ?? 0) < aired;
+  return leftToWatch || !isSeasonComplete(m, season);
+}
+
 /** Have you watched this season to its LAST episode? (Your half of the question.) */
 export function hasFullyWatchedSeason(m: SeriesFacts & { watched?: boolean }, season: number): boolean {
   if (m.watched) return true;

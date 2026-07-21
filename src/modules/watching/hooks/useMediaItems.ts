@@ -26,7 +26,15 @@ export function useMediaItems({ userId, type, initialData, ...options }: UseMedi
     ...(initialData && { initialData }),
     queryKey: resolveQueryKey(type, options),
     queryFn: () => getMediaItems(userId, type, options),
+    // STALE AND FORGOTTEN ARE NOT THE SAME WORD — and confusing them is what put a skeleton on a
+    // page you had already loaded. `staleTime` says "go check again"; `gcTime` says "throw the
+    // answer away". At 5 minutes they were nearly equal, so a browse section left alone for the
+    // length of an episode came back EMPTY and had to hard-load, when the rows were fine and one
+    // background refetch away from fresh.
+    //
+    // Keep the 2-minute freshness (a status change elsewhere must land quickly) and let the answer
+    // survive half an hour. The user sees the list instantly and the refetch happens underneath.
     staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 }

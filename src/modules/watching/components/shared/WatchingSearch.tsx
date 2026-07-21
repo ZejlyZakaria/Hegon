@@ -8,22 +8,37 @@
  * added. Merging them would mean typing "Dune" and getting your Dune next to the world's Dune —
  * the same name twice, meaning two different things, in one list.
  *
- * A result never guesses whether you own it: it always routes to /discover, and that page hands
- * you to your real fiche if the title turns out to be yours. One rule, no stale ownership cache
- * to keep in sync here.
+ * ⚠️ THIS FILE USED TO ROUTE EVERYTHING TO /discover and let that page discover you owned the
+ * title and bounce. The comment defending it said "one rule, no stale ownership cache to keep in
+ * sync" — which was true, and was optimising the wrong side of the trade. It cost a full page load
+ * and TWO loading states on the most ordinary action in the module: looking up a show you own.
+ *
+ * The decision belongs HERE, because this is the only place that knows what you just picked.
+ * Ownership for the visible results is one batched indexed read, started the moment they render —
+ * so the answer is waiting before your finger comes back up, and the first route is the right one.
+ * It is also SHOWN ("In your library"), because a click that lands somewhere you didn't expect
+ * should have told you why beforehand.
+ *
+ * If the map hasn't resolved (a very fast click, an error), we fall back to /discover — which still
+ * redirects correctly. Slower, never wrong.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, Search, X } from "lucide-react";
+import { Check, Loader2, Search, X } from "lucide-react";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
+import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useSearchTmdbForList } from "../../hooks/useMediaLists";
+import { useOwnedMediaIds } from "../../hooks/useOwnedTmdbIds";
+import { ownedRowFor, type OwnedMap } from "../../lib/possession";
 import { tmdbResultType } from "../../service";
 import type { TmdbListResult } from "../../types";
 
 const TYPE_LABEL = { film: "Movie", serie: "TV", anime: "Anime" } as const;
+const TEAL = "var(--color-accent-watching-vivid)";
+
 
 function yearOf(r: TmdbListResult): string | null {
   const d = r.release_date || r.first_air_date;
@@ -31,11 +46,12 @@ function yearOf(r: TmdbListResult): string | null {
 }
 
 function Results({
-  results, loading, query, onPick,
+  results, loading, query, owned, onPick,
 }: {
   results: TmdbListResult[];
   loading: boolean;
   query: string;
+  owned: OwnedMap;
   onPick: (r: TmdbListResult) => void;
 }) {
   if (query.trim().length < 2) {
@@ -82,6 +98,18 @@ function Results({
                   {TYPE_LABEL[type]}{year ? ` · ${year}` : ""}
                 </p>
               </div>
+              {/* Left says what the title IS; right says what it is TO YOU. Teal because owning it
+                  is your fact, not the world's — and this click goes somewhere else because of it,
+                  which you deserve to know before making it. */}
+              {ownedRowFor(r, owned) && (
+                <span
+                  className="flex shrink-0 items-center gap-1 text-micro font-medium"
+                  style={{ color: TEAL }}
+                >
+                  <Check size={11} />
+                  In your library
+                </span>
+              )}
             </button>
           </li>
         );
@@ -98,6 +126,12 @@ export function WatchingSearch() {
   const debounced = useDebounce(query, 200);
   const { data: results = [], isFetching } = useSearchTmdbForList(debounced);
   const boxRef = useRef<HTMLDivElement>(null);
+
+  // Which of these are already yours — one query for the whole list, fired as the results paint.
+  // Nothing blocks on it: the marker appears when it lands, and `pick` degrades to /discover.
+  const userId = useCurrentUserId();
+  const tmdbIds = useMemo(() => results.map((r) => r.id), [results]);
+  const { data: owned = {} } = useOwnedMediaIds(userId ?? "", tmdbIds);
 
   // A dropdown that outlives the click that dismissed it is the classic bug — close on any
   // click outside, and on Escape.
@@ -119,7 +153,10 @@ export function WatchingSearch() {
     setOpen(false);
     setSheetOpen(false);
     setQuery("");
-    router.push(`/perso/watching/discover/${tmdbResultType(r)}/${r.id}`);
+    // THE ROUTE IS DECIDED HERE, ONCE. Owned → straight to your fiche, one page, one skeleton.
+    // Not owned (or not yet known) → /discover, which remains correct in every case.
+    const mine = ownedRowFor(r, owned);
+    router.push(mine ? `/perso/watching/${mine.id}` : `/perso/watching/discover/${tmdbResultType(r)}/${r.id}`);
   };
 
   return (
@@ -137,7 +174,7 @@ export function WatchingSearch() {
         />
         {open && (
           <div className="absolute right-0 top-full z-50 mt-1.5 w-80 overflow-hidden rounded-card border border-border-strong bg-surface-3 shadow-2xl">
-            <Results results={results} loading={isFetching} query={query} onPick={pick} />
+            <Results results={results} loading={isFetching} query={query} owned={owned} onPick={pick} />
           </div>
         )}
       </div>
@@ -174,7 +211,7 @@ export function WatchingSearch() {
             </button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <Results results={results} loading={isFetching} query={query} onPick={pick} />
+            <Results results={results} loading={isFetching} query={query} owned={owned} onPick={pick} />
           </div>
         </div>
       )}

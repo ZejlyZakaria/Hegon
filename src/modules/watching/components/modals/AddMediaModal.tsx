@@ -316,7 +316,15 @@ export default function AddMediaModal({
         setNotes(existing.notes ?? "");
         setFavorite(existing.favorite ?? false);
         if (listContext === "inProgress") {
+          // ⚠️ KNOWN GAP (found by the coordinate guard, not yet fixed): these inputs speak DISPLAY
+          // units (cours for a lumped anime) while the row stores TMDB ones, so re-adding an owned
+          // lumped anime through this door prefills a flat episode into a cour-capped field. It
+          // cannot be converted HERE — the cours are fetched from the id we are only now selecting,
+          // so the lens is still empty at this point. The fix is to prefill from an effect once the
+          // lens resolves, not to convert inline.
+          // eslint-disable-next-line no-restricted-syntax
           setSeasonInput(String(existing.current_season ?? 1));
+          // eslint-disable-next-line no-restricted-syntax
           setEpisodeInput(String(existing.current_episode ?? 1));
         }
       }

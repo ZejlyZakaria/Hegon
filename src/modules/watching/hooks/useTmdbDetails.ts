@@ -1,19 +1,22 @@
-import { useQuery } from "@tanstack/react-query";
-import { getTmdbDetails } from "../service";
-import { TMDB_KEYS } from "./query-keys";
-import type { MediaType } from "../types";
+import { useCallback } from "react";
+import { useTitleBundle } from "./useTitleBundle";
+import { mapTmdbDetails, type TitleBundle } from "../service";
+import type { MediaType, WatchingMedia } from "../types";
 
 /**
- * The world's facts about a title you do NOT own, shaped as a media row so the detail
- * components render it unchanged. Cached for an hour: a film's runtime, genres and cast do not
- * move, and browsing search results should not re-ask TMDB the same question every time you
- * step back and forth.
+ * The world's facts about a title you do NOT own, shaped as a media row so the detail components
+ * render it unchanged.
+ *
+ * It used to fetch `{type}/{id}` on its own — and the bundle IS that record, with the trailer, the
+ * certifications and the recommendations appended. So the discover page asked TMDB for the same
+ * resource twice in the same breath: once bare here, once with extras. Now it reads the shared
+ * response, and one request feeds the hero, the details panel, the trailer button, the age rating
+ * and More Like This.
  */
 export function useTmdbDetails(tmdbId: number, type: MediaType, enabled = true) {
-  return useQuery({
-    queryKey: TMDB_KEYS.details(type, tmdbId),
-    queryFn: () => getTmdbDetails(tmdbId, type),
-    enabled: enabled && tmdbId > 0,
-    staleTime: 60 * 60 * 1000,
-  });
+  const select = useCallback(
+    (b: TitleBundle): WatchingMedia | null => mapTmdbDetails(b, tmdbId, type),
+    [tmdbId, type],
+  );
+  return useTitleBundle(tmdbId, type, enabled, select);
 }

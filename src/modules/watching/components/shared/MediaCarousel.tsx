@@ -150,6 +150,11 @@ function MovieCard({
               it — the same mechanical mismatch that made the List Detail toolbar look "off". A
               row aligns when its items share a height, not when you nudge them. */}
           {showEpisodeBadge &&
+            // "HAVE YOU STARTED THIS AT ALL?" — a question about existence, not about location, and
+            // its answer is the same in both spaces: a position past zero is past zero whether you
+            // call it episode 59 or S03 E12. Reading the lens here would also make the badge appear
+            // and disappear while the cours resolve, which is what `pending` exists to prevent.
+            // eslint-disable-next-line no-restricted-syntax -- space-invariant "is there a position at all" test, not a coordinate to display.
             ((item.current_episode ?? 0) > 0 || (item.current_season ?? 1) > 1) && (
               <div className="space-y-1.5">
                 {/* flex-wrap: on a narrow mobile poster, the position chip + a wide state chip
@@ -166,10 +171,8 @@ function MovieCard({
                       color: "var(--color-accent-watching-vivid)",
                     }}
                   >
-                    {formatPosition(
-                      view?.position.season ?? item.current_season ?? 1,
-                      view?.position.episode ?? item.current_episode ?? 0,
-                    )}
+                    {/* eslint-disable-next-line no-restricted-syntax -- lens first; the raw values are the fallback for a title with no overlay, where they ARE the display space. */}
+                    {formatPosition(view?.position.season ?? item.current_season ?? 1, view?.position.episode ?? item.current_episode ?? 0)}
                   </span>
                   )}
                   <span onClick={(e) => e.stopPropagation()}>
