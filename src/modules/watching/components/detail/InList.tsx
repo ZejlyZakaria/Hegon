@@ -11,7 +11,6 @@ import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import {
-  useMediaLists,
   useListsForMedia,
   useListsWithThumbnails,
   useCreateMediaList,
@@ -96,9 +95,15 @@ export function InList({ mediaItemId, userId }: Props) {
   const router = useRouter();
   const setSelectedListId = useWatchingUIStore((s) => s.setSelectedListId);
 
-  const { data: allLists = [], isLoading: listsLoading } = useMediaLists(userId);
+  /**
+   * ONE question, once. This used to call `useMediaLists` AND `useListsWithThumbnails`, which are
+   * two query keys over the SAME rows — `media_lists?user_id=…&deleted_at=is.null` went out twice,
+   * five milliseconds apart, on every detail page. The thumbnails version returns each list plus a
+   * count and its covers, so it is a strict superset: the plain one had nothing to add.
+   */
+  const { data: allLists = [], isLoading: listsLoading } = useListsWithThumbnails(userId);
   const { data: mediaLists = [], isLoading: mediaListsLoading } = useListsForMedia(mediaItemId);
-  const { data: withThumbs = [] } = useListsWithThumbnails(userId);
+  const withThumbs = allLists;
 
   const createList = useCreateMediaList(userId);
   const addToList = useAddToList(mediaItemId, userId);

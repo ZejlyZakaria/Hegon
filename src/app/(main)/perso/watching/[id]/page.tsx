@@ -36,6 +36,9 @@ import { buildWatchedAt, type WatchDateParts } from "@/modules/watching/lib/watc
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { QuickStats } from "@/modules/watching/components/detail/QuickStats";
 import { InList } from "@/modules/watching/components/detail/InList";
+import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
+import { useRewatches } from "@/modules/watching/hooks/useRewatches";
+import { useListsForMedia, useListsWithThumbnails } from "@/modules/watching/hooks/useMediaLists";
 import { AnimeThemes } from "@/modules/watching/components/detail/AnimeThemes";
 import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { toast } from "@/shared/utils/toast";
@@ -61,6 +64,27 @@ export default function MediaDetailPage() {
 
   const { data: media, isLoading } = useMediaItem(id);
   const updateMedia = useUpdateMedia();
+
+  /**
+   * THE QUERIES THAT NEVER NEEDED TO WAIT — started here, at t=0.
+   *
+   * Opening a fiche used to fire in three waves: the row and the session facts, then ~640ms later
+   * everything else, then a third round. The second wave looked like a data dependency and mostly
+   * wasn't: `rewatches`, `media_list_items` and `media_lists` are keyed by the id in the URL and the
+   * signed-in user — both known before the first byte comes back. They started late only because the
+   * components that ask for them do not MOUNT until the row has rendered.
+   *
+   * So we ask here instead, where the page mounts immediately. Same query keys, so the components
+   * below get a warm cache rather than a second request.
+   *
+   * Only what is ALWAYS needed: QuickStats and InList render on every fiche. `episode_highlights`
+   * stays where it is — it belongs to Episodes, which a film never mounts, and warming it here
+   * would add a request for every film to save one for a series.
+   */
+  const sessionUserId = useCurrentUserId();
+  useRewatches(id);
+  useListsForMedia(id);
+  useListsWithThumbnails(sessionUserId ?? "");
   // `useSeasonRefresh` used to fire here on every open of an ongoing title: a TMDB call, and a
   // write of the ANNOUNCED counts that never touched the AIRED ones. A second writer of the
   // world's facts, with its own rules and its own clock. The hourly sync owns that now.
