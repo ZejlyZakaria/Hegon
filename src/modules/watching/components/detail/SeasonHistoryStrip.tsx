@@ -245,12 +245,26 @@ export function SeasonHistoryStrip({
                 </div>
               )}
 
-              {/* Top-left = WHEN.
-                  The "Year" placeholder is a CALL TO ACTION ("click to date this season") — and we
-                  refuse that action on a season that isn't fully aired and watched. Offering it
-                  anyway was the app inviting you to do something it would then decline. On a season
-                  still coming out, "Now" says everything that's true. */}
-              {!locked && (year != null || datable(idx)) && (
+              {/**
+               * Top-left = WHEN.
+               *
+               * The "Year" placeholder is a CALL TO ACTION ("click to date this season") — and we
+               * refuse that action on a season that isn't fully aired and watched. Offering it
+               * anyway was the app inviting you to do something it would then decline. On a season
+               * still coming out, "Now" says everything that's true.
+               *
+               * ⚠️ SHOWN UNDER EXACTLY THE RULE THAT LETS YOU EDIT IT — `editable`, not a looser
+               * variant of it. This used to add `|| year != null`, so a season carrying a year it
+               * could no longer claim (you stepped back into it, or it grew another episode) kept
+               * displaying that year while the popover refused to change or clear it. A number you
+               * cannot touch is the app asserting something on your behalf and then locking the
+               * door.
+               *
+               * The year is NOT deleted — same philosophy as `reached` above: the data stays and
+               * comes back the moment the season is datable again. We simply stop reading it while
+               * the claim isn't yours to make.
+               */}
+              {editable && (
                 <Badge
                   variant="flag"
                   size="sm"

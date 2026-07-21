@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { usePrefetchMedia } from "../../hooks/usePrefetchMedia";
 import Image from "next/image";
 import { tmdbImageFor } from "../../lib/tmdb-image";
 import { motion } from "framer-motion";
@@ -53,6 +54,7 @@ function MovieCard({
   item,
   view,
   onView,
+  onIntent,
   onDelete,
   showEpisodeBadge,
   showRankBadge,
@@ -66,6 +68,8 @@ function MovieCard({
    *  own detail page says "S03 E12" — the same position, two different sentences. */
   view?: MediaView | null;
   onView: () => void;
+  /** Hover/focus = intent. Warms the fiche's query before the click — see usePrefetchMedia. */
+  onIntent?: () => void;
   onDelete?: (id: string) => Promise<void>;
   showEpisodeBadge?: boolean;
   showRankBadge?: boolean;
@@ -86,6 +90,8 @@ function MovieCard({
     <div
       className={cn("group relative w-full cursor-pointer transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]", isPoster ? "rounded-tile" : "rounded-card")}
       onClick={onView}
+      onMouseEnter={onIntent}
+      onFocus={onIntent}
     >
       {/* overflow-hidden only on the image container so the dropdown can escape */}
       <div className={cn("relative overflow-hidden bg-zinc-800", isPoster ? "rounded-tile aspect-2/3" : "rounded-card aspect-video")}>
@@ -258,6 +264,7 @@ export function MediaCarousel({
   showCountdown = false,
 }: MediaCarouselProps) {
   const router = useRouter();
+  const prefetch = usePrefetchMedia();
   // Add IS shown in the read-only demo — clicking it runs the full add flow, then
   // the guarded mutation shows the friendly read-only toast.
   const canAdd = !!onAddClick;
@@ -420,6 +427,7 @@ export function MediaCarousel({
               item={item}
               view={views.get(item.id)}
               onView={() => router.push(`/perso/watching/${item.id}`)}
+              onIntent={() => prefetch(item.id)}
               onDelete={onDelete}
               showEpisodeBadge={showEpisodeBadge}
               showRankBadge={showRankBadge}
@@ -468,6 +476,7 @@ export function MediaCarousel({
               item={item}
               view={views.get(item.id)}
               onView={() => router.push(`/perso/watching/${item.id}`)}
+              onIntent={() => prefetch(item.id)}
               onDelete={onDelete}
               showEpisodeBadge={showEpisodeBadge}
               showRankBadge={showRankBadge}
