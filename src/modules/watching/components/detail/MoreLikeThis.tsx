@@ -53,10 +53,9 @@ export function MoreLikeThis({ items, onAddClick }: Props) {
                   src={sim.poster_path ? `https://image.tmdb.org/t/p/w300${sim.poster_path}` : "/placeholder.svg"}
                   alt={title}
                   fill
-                  sizes="15vw"
+                  sizes="(max-width: 1024px) 33vw, 200px"
                   loading="lazy"
                   className="object-cover"
-                  unoptimized
                 />
                 {clickable && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/25 group-hover:opacity-100">

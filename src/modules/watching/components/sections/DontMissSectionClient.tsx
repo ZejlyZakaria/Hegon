@@ -8,6 +8,7 @@ import { Check, Plus, TrendingUp } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
+import { tmdbImage, tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
 import { useWatchingHero } from "@/modules/watching/hooks/useWatchingHero";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
@@ -62,7 +63,10 @@ function DontMissCard({
             area beside the sharp poster reads as glow, never a flat dark panel ── */}
       {posterUrl && (
         <div className="absolute inset-0">
-          <Image src={posterUrl} alt="" aria-hidden fill unoptimized sizes="50vw" className="scale-[1.7] object-cover blur-3xl" />
+          {/* It is blurred into a glow at blur-3xl — nobody can see a pixel of it. Asking for a
+              full-size poster here downloaded the SAME image twice per card, the second copy only
+              to be destroyed. w92 is indistinguishable once blurred and ~2 KB. */}
+          <Image src={tmdbImage(posterUrl, "w92") || posterUrl} alt="" aria-hidden fill loading="lazy" sizes="96px" className="scale-[1.7] object-cover blur-3xl" />
           <div className="absolute inset-0 bg-black/40" />
         </div>
       )}
@@ -73,16 +77,18 @@ function DontMissCard({
         className={`absolute left-0 top-0 bottom-0 bg-surface-2 ${posterLoaded ? "" : "animate-pulse"}`}
         style={{ aspectRatio: "2/3" }}
       >
+        {/* Only the FIRST card leads the page — it is the one above the fold, and the only one that
+            earns `eager`. All six were claiming it, which is how this rail alone fired twelve
+            immediate fetches that raced the rest of the page. */}
         {posterUrl && (
           <Image
-            src={posterUrl}
+            src={tmdbImageFor(posterUrl, 220) || posterUrl}
             alt={title}
             fill
-            unoptimized
-            className="object-cover transition-opacity duration-500"
+            className="object-cover transition-opacity duration-200"
             style={{ opacity: posterLoaded ? 1 : 0 }}
-            sizes="25vw"
-            loading="eager"
+            sizes="(max-width: 1024px) 45vw, 240px"
+            loading={isFirst ? "eager" : "lazy"}
             priority={isFirst}
             onLoad={() => setPosterLoaded(true)}
           />
@@ -218,7 +224,7 @@ function TrendingMobileCard({
       className="relative shrink-0 w-[42%] aspect-2/3 snap-start overflow-hidden rounded-tile bg-surface-2 text-left"
     >
       {posterUrl && (
-        <Image src={posterUrl} alt={title} fill unoptimized sizes="128px" className="object-cover" />
+        <Image src={tmdbImageFor(posterUrl, 170) || posterUrl} alt={title} fill loading="lazy" sizes="(max-width: 1024px) 45vw, 180px" className="object-cover" />
       )}
       <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/10 to-transparent" />
       {/* Owned → a quiet check, top-right, so the rail doesn't pretend it's new to you. */}

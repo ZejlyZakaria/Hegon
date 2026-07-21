@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
 import { CalendarClock, Plus } from "lucide-react";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { SectionHeader } from "@/shared/components/ui/section-header";
@@ -229,7 +230,7 @@ export default function PersonPage() {
                       className="group block w-full text-left"
                     >
                       <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
-                        <Image src={t.poster_url || "/placeholder.svg"} alt={t.title} fill unoptimized sizes="15vw" className="object-cover" />
+                        <Image src={tmdbImageFor(t.poster_url, 200) || "/placeholder.svg"} alt={t.title} fill loading="lazy" sizes="(max-width: 768px) 33vw, 200px" className="object-cover" />
                         {badge && <PosterStatusBadge status={badge} />}
                       </div>
                       {/* The score sits on the TITLE LINE, not on the artwork. These tiles are
@@ -273,7 +274,7 @@ export default function PersonPage() {
                     {visibleNotSeen.map((c) => (
                       <button key={c.tmdb_id} type="button" onClick={() => openAdd(c)} className="group block w-full text-left">
                         <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
-                          <Image src={c.poster_url || "/placeholder.svg"} alt={c.title} fill unoptimized loading="lazy" sizes="15vw" className="object-cover" />
+                          <Image src={tmdbImageFor(c.poster_url, 200) || "/placeholder.svg"} alt={c.title} fill loading="lazy" sizes="(max-width: 768px) 33vw, 200px" className="object-cover" />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/25 group-hover:opacity-100">
                             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 ring-1 ring-white/20 backdrop-blur-md">
                               <Plus size={13} className="text-white" />

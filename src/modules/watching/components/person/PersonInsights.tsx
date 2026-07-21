@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { tmdbImageFor } from "../../lib/tmdb-image";
 import { Gem, Star, Trophy } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { SectionHeader } from "@/shared/components/ui/section-header";
@@ -35,7 +36,7 @@ function TitleCell({ label, icon, t }: { label: string; icon: React.ReactNode; t
       <div className="mt-1.5 flex items-center gap-2.5">
         <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-chip bg-surface-2 ring-1 ring-border-subtle">
           {t.poster_url && (
-            <Image src={t.poster_url} alt="" fill unoptimized loading="lazy" sizes="36px" className="object-cover" />
+            <Image src={tmdbImageFor(t.poster_url, 36) || t.poster_url} alt="" fill loading="lazy" sizes="36px" className="object-cover" />
           )}
         </div>
         <div className="min-w-0">

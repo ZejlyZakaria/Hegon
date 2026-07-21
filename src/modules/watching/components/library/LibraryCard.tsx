@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
+import { tmdbImageFor } from "../../lib/tmdb-image";
 import { MoreVertical, Trash2, ExternalLink } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { LoveMark, ScoreMark, OVERLAY_CIRCLE, OVERLAY_CLUSTER } from "@/modules/watching/components/shared/Marks";
@@ -56,12 +57,11 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
       {/* image */}
       <div className="relative aspect-2/3 overflow-hidden rounded-tile transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
         <Image
-          src={item.poster_url || "/placeholder.svg"}
+          src={tmdbImageFor(item.poster_url, 200) || "/placeholder.svg"}
           alt={item.title}
           fill
-          unoptimized
           className="object-cover"
-          sizes="(max-width: 768px) 100vw, 50vw"
+          sizes="(max-width: 768px) 33vw, 200px"
           loading={eagerLoad ? "eager" : "lazy"}
           priority={eagerLoad}
         />

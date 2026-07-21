@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import SectionHeader from "@/shared/components/layout/SectionHeader";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import { ThemePlayer } from "@/modules/watching/components/ThemePlayer";
@@ -43,14 +42,18 @@ export default function WatchingLayout({ children }: { children: React.ReactNode
           actions={<WatchingSearch />}
         />
       )}
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-      >
-        {children}
-      </motion.div>
+      {/**
+       * NO ENTRANCE ANIMATION, AND NO `key={pathname}` — removed 21/07 on the owner's call.
+       *
+       * The key forced React to destroy and rebuild the ENTIRE subtree on every tab change, then
+       * replay a 220ms fade over the whole page. That is what "it feels like a full reload" was: not
+       * a reload, a rebuild plus a fade, on a navigation that was already instant from cache.
+       *
+       * The fade hid nothing — there is no load to cover — so it was 220ms of loading theatre added
+       * to every click. An interface that redraws itself completely to move between two tabs is the
+       * same family of fault as one that changes its mind about a value.
+       */}
+      {children}
 
       {/* Global OP/ED player — persists across Watching pages (Watching-only). */}
       <ThemePlayer />

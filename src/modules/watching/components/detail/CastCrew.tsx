@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { tmdbImageFor } from "../../lib/tmdb-image";
 import Link from "next/link";
 import { User } from "lucide-react";
 import { SectionHeader } from "@/shared/components/ui/section-header";
@@ -23,7 +24,7 @@ function PersonCard({ id, name, src, subtitle, size = 60 }: {
         style={{ width: size, height: size }}
       >
         {src ? (
-          <Image src={src} alt={name} fill sizes={`${size}px`} unoptimized className="object-cover" />
+          <Image src={tmdbImageFor(src, size) || src} alt={name} fill sizes={`${size}px`} loading="lazy" className="object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-text-tertiary">
             {initials || <User size={14} />}

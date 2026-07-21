@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { tmdbImageFor } from "../../lib/tmdb-image";
 import { Plus, Trash2, Trophy } from "lucide-react";
 import { toast } from "@/shared/utils/toast";
 import { InlineFormActions } from "@/shared/components/ui/inline-form-actions";
@@ -117,7 +118,7 @@ function ListCard({ list, onClick, onDelete }: {
           posters.map((t, i) => (
             <div key={i} className="relative flex-1 overflow-hidden">
               {t?.poster_url ? (
-                <Image src={t.poster_url} alt="" fill unoptimized className="object-cover" sizes="8vw" />
+                <Image src={tmdbImageFor(t.poster_url, 120) || t.poster_url} alt="" fill loading="lazy" className="object-cover" sizes="120px" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-zinc-900">
                   <div className="opacity-20">

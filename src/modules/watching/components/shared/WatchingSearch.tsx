@@ -87,8 +87,8 @@ function Results({
                     alt=""
                     fill
                     sizes="32px"
+                    loading="lazy"
                     className="object-cover"
-                    unoptimized
                   />
                 )}
               </div>

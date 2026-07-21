@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import { tmdbImageFor } from "../../lib/tmdb-image";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Bookmark, Check, Eye, EyeOff, FileText, Film, LayoutGrid, List,
@@ -101,7 +102,7 @@ function Poster({ src, title }: { src: string | null; title?: string }) {
   return (
     <>
       <div className="absolute inset-0 bg-zinc-800" />
-      {src && <Image src={src} alt="" fill unoptimized className="object-cover transition-opacity duration-500" sizes="320px" loading="eager" />}
+      {src && <Image src={tmdbImageFor(src, 320) || src} alt="" fill className="object-cover transition-opacity duration-200" sizes="320px" loading="lazy" />}
       <div className="absolute inset-x-0 bottom-0 h-14 bg-linear-to-t from-black/80 to-transparent" />
       {title && (
         <p className="absolute bottom-2 left-2 right-2 truncate text-micro font-semibold leading-tight text-white">
@@ -268,7 +269,7 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
                     >
                       <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-chip">
                         {media.poster_url
-                          ? <Image src={media.poster_url} alt="" fill unoptimized className="object-cover" sizes="40px" />
+                          ? <Image src={tmdbImageFor(media.poster_url, 40) || media.poster_url} alt="" fill loading="lazy" className="object-cover" sizes="40px" />
                           : <div className="h-full w-full bg-zinc-800" />
                         }
                       </div>
@@ -311,7 +312,7 @@ function AddTitlePopover({ listId, userId, existingIds, existingTmdbIds }: {
                     >
                       <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-chip">
                         {item.poster_path
-                          ? <Image src={`https://image.tmdb.org/t/p/w92${item.poster_path}`} alt="" fill unoptimized className="object-cover" sizes="40px" />
+                          ? <Image src={`https://image.tmdb.org/t/p/w92${item.poster_path}`} alt="" fill loading="lazy" className="object-cover" sizes="40px" />
                           : <div className="h-full w-full bg-zinc-800" />
                         }
                       </div>
@@ -505,7 +506,7 @@ function TableRow({
         {/* Poster */}
         <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 cursor-pointer overflow-hidden rounded-chip" onClick={onOpen}>
           {item.media.poster_url
-            ? <Image src={item.media.poster_url} alt="" fill unoptimized className="object-cover" sizes="28px" />
+            ? <Image src={tmdbImageFor(item.media.poster_url, 28) || item.media.poster_url} alt="" fill loading="lazy" className="object-cover" sizes="28px" />
             : <div className="h-full w-full bg-zinc-800" />
           }
         </div>
@@ -652,7 +653,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
       <div className="relative cursor-pointer" onClick={onOpen}>
         <div className="relative aspect-2/3 overflow-hidden rounded-tile transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
           {item.media.poster_url ? (
-            <Image src={item.media.poster_url} alt={item.media.title} fill unoptimized className="object-cover" sizes="15vw" />
+            <Image src={tmdbImageFor(item.media.poster_url, 200) || item.media.poster_url} alt={item.media.title} fill loading="lazy" className="object-cover" sizes="(max-width: 768px) 33vw, 200px" />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-zinc-800">
               <span className="text-2xl opacity-20">🎬</span>

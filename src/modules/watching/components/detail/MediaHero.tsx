@@ -2,6 +2,7 @@
 
 import { Fragment } from "react";
 import Image from "next/image";
+import { tmdbImage, tmdbImageFor } from "../../lib/tmdb-image";
 import { ArrowLeft, Loader2, Play } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Badge } from "@/shared/components/ui/badge";
@@ -124,12 +125,15 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
       {/* ── Mobile: stacked cinematic hero (backdrop → poster overlap → full-width info) ── */}
       <div className="lg:hidden">
         <div className="relative aspect-video w-full overflow-hidden">
+          {/* Both hero trees are mounted at once (lg:hidden / hidden lg:block), and `priority` on
+              each meant EVERY detail page downloaded two full-size backdrops — one of them into a
+              `display:none` branch. The desktop one keeps priority; this one is lazy, which costs a
+              phone nothing (an in-viewport lazy image is fetched immediately). */}
           <Image
-            src={media.backdrop_url || media.poster_url || "/placeholder.svg"}
+            src={tmdbImage(media.backdrop_url || media.poster_url, "w780") || "/placeholder.svg"}
             alt=""
             fill
-            priority
-            unoptimized
+            loading="lazy"
             className="object-cover"
             style={{ objectPosition: "center 25%" }}
             sizes="100vw"
@@ -151,11 +155,10 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
         <div className="relative -mt-16 flex flex-col items-center px-4 pb-2 text-center">
           <div className="relative aspect-2/3 w-(--poster-md) shrink-0 overflow-hidden rounded-tile border border-white/10 shadow-xl">
             <Image
-              src={media.poster_url || "/placeholder.svg"}
+              src={tmdbImageFor(media.poster_url, 112) || "/placeholder.svg"}
               alt={media.title}
               fill
-              unoptimized
-              priority
+              loading="lazy"
               sizes="112px"
               className="object-cover"
             />
@@ -188,12 +191,14 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
 
       {/* ── Desktop: wide cinematic banner ── */}
       <div className="relative hidden w-full overflow-hidden lg:block" style={{ aspectRatio: "21/9", maxHeight: "55vh", minHeight: 280 }}>
+        {/* The page's LCP element — the one image that genuinely earns `priority`. w1280 rather
+            than `original`: it sits behind a gradient with text over it, and a 3000px source for a
+            decorative banner was 600 KB of nothing. */}
         <Image
-          src={media.backdrop_url || media.poster_url || "/placeholder.svg"}
+          src={tmdbImage(media.backdrop_url || media.poster_url, "w1280") || "/placeholder.svg"}
           alt=""
           fill
           priority
-          unoptimized
           className="object-cover"
           style={{ objectPosition: "center 27%" }}
           sizes="100vw"
@@ -229,10 +234,9 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
                 <div className="absolute inset-0 bg-white/15" />
                 <div className="relative h-full w-full overflow-hidden rounded-tile">
                   <Image
-                    src={media.poster_url || "/placeholder.svg"}
+                    src={tmdbImageFor(media.poster_url, 170) || "/placeholder.svg"}
                     alt={media.title}
                     fill
-                    unoptimized
                     priority
                     sizes="170px"
                     className="object-cover"

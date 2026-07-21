@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { tmdbImageFor } from "../../lib/tmdb-image";
 import { Check, List, Loader2, Plus, X } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
@@ -65,7 +66,7 @@ function ListCard({ list, onOpen, onRemove }: {
               }}
             >
               {t?.poster_url ? (
-                <Image src={t.poster_url} alt="" fill unoptimized className="object-cover" sizes="14vw" />
+                <Image src={tmdbImageFor(t.poster_url, 140) || t.poster_url} alt="" fill loading="lazy" className="object-cover" sizes="140px" />
               ) : (
                 <div className="h-full w-full bg-zinc-900" />
               )}

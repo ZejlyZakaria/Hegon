@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
 import Image from "next/image";
+import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
 import { X } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
@@ -68,16 +69,18 @@ function ForYouCard({
       onClick={onClick}
     >
       <div className={cn("relative bg-surface-2", !imgLoaded && "animate-pulse", isPoster ? "aspect-2/3" : "aspect-video")}>
+        {/* `loading="eager"` was hardcoded on EVERY item of this rail, in both the desktop and the
+            always-mounted mobile tree — up to 20 forced fetches from one section that sits below the
+            fold. `priority` never gated it: that prop only sets the fetchpriority hint. */}
         {imgSrc && (
           <Image
-            src={imgSrc}
+            src={(isPoster ? tmdbImageFor(imgSrc, 170) : tmdbImageFor(imgSrc, 360)) || imgSrc}
             alt={item.title}
             fill
-            unoptimized
-            className="object-cover transition-opacity duration-500"
+            className="object-cover transition-opacity duration-200"
             style={{ opacity: imgLoaded ? 1 : 0 }}
-            sizes={isPoster ? "45vw" : "(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"}
-            loading="eager"
+            sizes={isPoster ? "(max-width: 1024px) 45vw, 180px" : "(max-width: 1024px) 45vw, 380px"}
+            loading={priority ? "eager" : "lazy"}
             priority={priority}
             onLoad={() => setImgLoaded(true)}
           />

@@ -56,6 +56,16 @@ const nextConfig: NextConfig = {
 
   images: {
     minimumCacheTTL: 2592000, // 30 days — posters/backdrops never change
+    /**
+     * AVIF first, WebP second, the original as the last resort.
+     *
+     * Without this line the optimizer emits WebP only — and until 21/07 it emitted nothing at all
+     * for Watching, because every card passed `unoptimized`, which routes around this whole config
+     * (the `minimumCacheTTL` above was dead for those images for the same reason). Now that the
+     * cards go through the optimizer, AVIF is worth roughly another 25-30% over WebP at equal
+     * quality on photographic content, which posters and backdrops are.
+     */
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: "https",

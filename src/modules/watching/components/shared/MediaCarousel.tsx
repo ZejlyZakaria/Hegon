@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { tmdbImageFor } from "../../lib/tmdb-image";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
@@ -88,16 +89,25 @@ function MovieCard({
     >
       {/* overflow-hidden only on the image container so the dropdown can escape */}
       <div className={cn("relative overflow-hidden bg-zinc-800", isPoster ? "rounded-tile aspect-2/3" : "rounded-card aspect-video")}>
+        {/**
+         * ASK FOR THE SIZE THIS CARD SHOWS. A poster tile is ~160px wide and a backdrop card ~340px;
+         * the stored urls said `w500` and `original` (avg 603 KB, several thousand pixels). That one
+         * mismatch was 20.6 of the 22.4 MB this page used to download.
+         *
+         * `unoptimized` is gone with it: the same prop was doing two jobs, and dropping it lets Next
+         * serve AVIF/WebP and a DPR-aware srcset on top of the now-correct source size.
+         */}
         <Image
-          src={isPoster
-            ? (item.poster_url || item.backdrop_url || "/placeholder.svg")
-            : (item.backdrop_url || item.poster_url || "/placeholder.svg")}
+          src={
+            (isPoster
+              ? tmdbImageFor(item.poster_url || item.backdrop_url, 170)
+              : tmdbImageFor(item.backdrop_url || item.poster_url, 360)) || "/placeholder.svg"
+          }
           alt={item.title}
           fill
-          className="object-cover transition-opacity duration-500"
+          className="object-cover transition-opacity duration-200"
           style={{ opacity: imgLoaded ? 1 : 0 }}
-          sizes={isPoster ? "45vw" : "(max-width: 768px) 100vw, 50vw"}
-          unoptimized
+          sizes={isPoster ? "(max-width: 1024px) 45vw, 180px" : "(max-width: 1024px) 45vw, 380px"}
           loading={eagerLoad ? "eager" : "lazy"}
           priority={eagerLoad}
           onLoad={() => setImgLoaded(true)}
@@ -415,14 +425,35 @@ export function MediaCarousel({
               showRankBadge={showRankBadge}
               showWatchedAgo={showWatchedAgo}
               showCountdown={showCountdown}
-              eagerLoad={i < cardsPerView}
+              /**
+               * Lazy, even here. A page carries SEVEN of these rails, and each one claiming its
+               * first five images as `eager` meant ~35 forced fetches for the one rail actually on
+               * screen. The browser loads an in-viewport `lazy` image immediately anyway — what it
+               * stops doing is racing the six rails you have not scrolled to yet.
+               *
+               * The page's real above-the-fold image is Don't Miss's hero, which owns its own eager
+               * budget. `MovieCard` still supports `eagerLoad` for a surface that genuinely leads.
+               */
+              eagerLoad={false}
             />
           </motion.div>
         ))}
       </div>
 
-      {/* Mobile: swipeable poster rail (~2.4 visible) — posters read better than
-          wide backdrops on a phone. Native swipe; no arrows. */}
+      {/**
+       * Mobile: swipeable poster rail (~2.4 visible) — posters read better than wide backdrops on a
+       * phone. Native swipe; no arrows.
+       *
+       * ⚠️ THIS TREE IS ALWAYS MOUNTED. `lg:hidden` is CSS, and **`display:none` does not stop
+       * `loading="eager"` from downloading** — so on a desktop screen this invisible rail was
+       * fetching its own first three images for every carousel on the page, on top of the visible
+       * one's. Measured on /movies: ~60 of 74 image requests fired immediately, which is the real
+       * reason three posters appear and the rest crawl — not a lazy-loading seam, a stampede.
+       *
+       * So this rail is NEVER eager. That costs nothing on a phone: an image marked `lazy` that is
+       * already inside the viewport is fetched right away by the browser. `lazy` means "wait until
+       * it's needed", not "wait".
+       */}
       <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory py-1.5">
         {sortedItems.map((item, i) => (
           <motion.div
@@ -442,7 +473,7 @@ export function MediaCarousel({
               showRankBadge={showRankBadge}
               showWatchedAgo={showWatchedAgo}
               showCountdown={showCountdown}
-              eagerLoad={i < 3}
+              eagerLoad={false}
             />
           </motion.div>
         ))}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { tmdbImageFor } from "../../lib/tmdb-image";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import type { PersonTitle } from "../../service";
 
@@ -73,7 +74,7 @@ export function SeenTogether({ titles, personId, firstName }: Props) {
             >
               <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-surface-2 ring-1 ring-border-subtle transition-all group-hover:ring-2 group-hover:ring-accent-watching-vivid/60">
                 {p.profile_url ? (
-                  <Image src={p.profile_url} alt={p.name} fill unoptimized loading="lazy" sizes="36px" className="object-cover" />
+                  <Image src={tmdbImageFor(p.profile_url, 36) || p.profile_url} alt={p.name} fill loading="lazy" sizes="36px" className="object-cover" />
                 ) : (
                   <span className="flex h-full w-full items-center justify-center text-micro font-semibold text-text-tertiary">
                     {initials(p.name)}

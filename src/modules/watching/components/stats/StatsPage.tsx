@@ -225,7 +225,7 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
                     src={seasonPoster ? `https://image.tmdb.org/t/p/w300${seasonPoster}` : item.poster_url!}
                     alt={item.title}
                     fill
-                    unoptimized
+                    loading="lazy"
                     className="object-cover"
                     sizes="36px"
                   />
