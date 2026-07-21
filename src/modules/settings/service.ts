@@ -1,3 +1,4 @@
+import { downscaleImage } from "@/shared/utils/downscale-image";
 import { createClient } from "@/infrastructure/supabase/client";
 import { DEFAULT_USER_SETTINGS } from "./types";
 import type { Profile, UserSettings, UserSettingsPatch } from "./types";
@@ -63,7 +64,8 @@ export async function uploadAvatar(file: File): Promise<string> {
   const userId = await requireUserId();
   const ext = file.name.split(".").pop() ?? "jpg";
   const path = `${userId}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+  // Shrunk on this device first (see downscaleImage) — an avatar renders at 40px.
+  const { error } = await supabase.storage.from("avatars").upload(path, await downscaleImage(file), { upsert: true });
   if (error) throw error;
   const { data } = supabase.storage.from("avatars").getPublicUrl(path);
   return data.publicUrl;

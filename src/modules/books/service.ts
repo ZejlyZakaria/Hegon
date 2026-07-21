@@ -1,3 +1,4 @@
+import { downscaleImage } from "@/shared/utils/downscale-image";
 import { createClient } from "@/infrastructure/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
@@ -33,9 +34,12 @@ export async function uploadBookCover(file: File): Promise<string | null> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const ext = file.name.split(".").pop() ?? "jpg";
+  // Shrink first, THEN name the file: downscaleImage may hand back a .webp, and a path that
+  // still says .jpg would describe bytes that aren't there.
+  const upload = await downscaleImage(file);
+  const ext = upload.name.split(".").pop() ?? "jpg";
   const filePath = `${user.id}/book-covers/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from("posters").upload(filePath, file);
+  const { error } = await supabase.storage.from("posters").upload(filePath, upload);
   if (error) return null;
   const { data } = supabase.storage.from("posters").getPublicUrl(filePath);
   return data.publicUrl;
