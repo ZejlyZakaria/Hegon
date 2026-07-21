@@ -22,7 +22,7 @@ import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal"
 import { StatusCard } from "@/modules/watching/components/detail/StatusCard";
 import { MyTake } from "@/modules/watching/components/detail/MyTake";
 import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis";
-import { CastCrew } from "@/modules/watching/components/detail/CastCrew";
+import { CastCrew, CastCrewSkeleton } from "@/modules/watching/components/detail/CastCrew";
 import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfirmModal";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import { CaptureSheet } from "@/modules/watching/components/shared/CaptureSheet";
@@ -102,7 +102,7 @@ export default function MediaDetailPage() {
   // Cast is cached in the DB (stored at add time / backfilled) → render straight
   // from there and skip the TMDB credits call. Only fall back to TMDB when absent.
   const hasStoredCast = (media?.cast_members?.length ?? 0) > 0;
-  const { data: credits } = useMediaCredits(media?.tmdb_id ?? 0, media?.type ?? "film", !!media && !hasStoredCast);
+  const { data: credits, isLoading: creditsLoading } = useMediaCredits(media?.tmdb_id ?? 0, media?.type ?? "film", !!media && !hasStoredCast);
   const { data: ownedIds = [] } = useOwnedTmdbIds(media?.user_id ?? "", media?.type ?? "film", !!media);
   const { data: trailer, isLoading: trailerLoading } = useMediaTrailer(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
   const { data: providers } = useWatchProviders(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
@@ -442,9 +442,13 @@ export default function MediaDetailPage() {
             <Episodes media={media} currentSeason={shown.season} readOnly={isUnwatched} cours={view?.cours ?? undefined} />
           )}
 
-          {hasCastCrew && (
+          {/* A title whose cast we stored renders instantly and never shifts. One we have to ask
+              TMDB for arrives late — hold the rail's height so More Like This doesn't jump. */}
+          {creditsLoading ? (
+            <CastCrewSkeleton />
+          ) : hasCastCrew ? (
             <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
-          )}
+          ) : null}
 
           {recommendations.length > 0 && (
             <MoreLikeThis items={recommendations} onAddClick={handleAddSimilar} />

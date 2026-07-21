@@ -49,6 +49,36 @@ function PersonCard({ id, name, src, subtitle, size = 60 }: {
   );
 }
 
+/**
+ * THE SPACE THIS RAIL WILL OCCUPY, HELD WHILE ITS FACES ARE STILL COMING.
+ *
+ * The cast is a separate TMDB request — deliberately, because folding credits into the title bundle
+ * cost 165 KB — so on a discover page it lands after everything around it. The section simply did
+ * not exist until then, and when it appeared it SHOVED "More Like This" down the page, under the
+ * reader's eye. A screen that rearranges itself after you have started reading is the same fault as
+ * a screen that changes its mind about a value.
+ *
+ * It lives beside the real component on purpose: a skeleton in another file drifts from the layout
+ * it is meant to stand in for, and then it reserves the wrong height — which is the bug again, with
+ * extra steps. Same wrapper, same size, same count.
+ */
+export function CastCrewSkeleton({ count = 9, size = 86 }: { count?: number; size?: number }) {
+  return (
+    <section aria-hidden>
+      <SectionHeader title="Cast & Crew" />
+      <div className="-mx-4 flex gap-4 overflow-x-hidden px-4 py-1 sm:mx-0 sm:px-0">
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} className="flex shrink-0 flex-col items-center" style={{ width: size }}>
+            <div className="animate-pulse rounded-full bg-surface-2" style={{ width: size, height: size }} />
+            <div className="mt-2 h-3 w-4/5 animate-pulse rounded-control bg-surface-2" />
+            <div className="mt-1 h-3 w-3/5 animate-pulse rounded-control bg-surface-2" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 interface Props {
   cast: CastMember[];
   directors: CreditedDirector[];

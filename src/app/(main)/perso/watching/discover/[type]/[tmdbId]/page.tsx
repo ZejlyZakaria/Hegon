@@ -32,7 +32,7 @@ import { WhereToWatch } from "@/modules/watching/components/shared/WhereToWatch"
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import { MediaHero } from "@/modules/watching/components/detail/MediaHero";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
-import { CastCrew } from "@/modules/watching/components/detail/CastCrew";
+import { CastCrew, CastCrewSkeleton } from "@/modules/watching/components/detail/CastCrew";
 import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis";
 import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import { AnimeThemes } from "@/modules/watching/components/detail/AnimeThemes";
@@ -102,7 +102,7 @@ export default function DiscoverDetailPage() {
   }, [media, setPageLabel]);
 
   const { data: similar = [] } = useSimilarTitles(id, mediaType, !!media);
-  const { data: credits } = useMediaCredits(id, mediaType, !!media);
+  const { data: credits, isLoading: creditsLoading } = useMediaCredits(id, mediaType, !!media);
   const { data: trailer, isLoading: trailerLoading } = useMediaTrailer(id, mediaType, !!media);
   // Free: it's another slice of the bundle this page already fetches, not a new request.
   const { data: providers } = useWatchProviders(id, mediaType, !!media);
@@ -235,9 +235,13 @@ export default function DiscoverDetailPage() {
             <Episodes media={media} currentSeason={1} readOnly />
           )}
 
-          {(cast.length > 0 || directors.length > 0) && (
+          {/* Hold the rail's height while the faces are in flight, so More Like This doesn't get
+              shoved down the page a beat after you started reading it. */}
+          {creditsLoading ? (
+            <CastCrewSkeleton />
+          ) : (cast.length > 0 || directors.length > 0) ? (
             <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
-          )}
+          ) : null}
 
           {recommendations.length > 0 && (
             <MoreLikeThis items={recommendations} onAddClick={handleAddSimilar} />

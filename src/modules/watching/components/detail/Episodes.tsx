@@ -427,9 +427,38 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
       {/* ── All: this season's episodes ── */}
       {view === "all" ? (
         isLoading ? (
+          /**
+           * THE WHOLE CARD, NOT JUST ITS PICTURE.
+           *
+           * This skeleton reserved the still and nothing else, while a real card is still PLUS
+           * number, title and a two-line overview. So the rail stood 91px short and grew the moment
+           * the episodes landed — shoving Cast & Crew and More Like This down the page, under the
+           * reader's eye. A placeholder that is not the size of what it replaces does not prevent
+           * the jump; it schedules it.
+           *
+           * Mirrors StillCard's own markup above (mt-2, the three lines) so the two cannot drift.
+           */
           <div className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:mx-0 sm:px-0">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="aspect-video w-66 shrink-0 animate-pulse rounded-card bg-surface-2" />
+              <div key={i} className="w-66 shrink-0">
+                <div className="aspect-video w-full animate-pulse rounded-card bg-surface-2" />
+                {/* The bars carry the REAL typography classes and hold a non-breaking space, so each
+                    line takes its true height from the same line-height as the text it replaces.
+                    Hard-coded pixel heights were 7px short here and would drift the day the type
+                    scale moves; this cannot. (Measured: 15 + 16 + 4 + 36 = 71px of text block.) */}
+                <div className="mt-2">
+                  <p className="text-micro font-medium">
+                    <span className="inline-block w-16 animate-pulse rounded-control bg-surface-2 text-transparent">&nbsp;</span>
+                  </p>
+                  <p className="text-xs font-semibold">
+                    <span className="inline-block w-2/3 animate-pulse rounded-control bg-surface-2 text-transparent">&nbsp;</span>
+                  </p>
+                  <p className="mt-1 text-micro leading-relaxed">
+                    <span className="inline-block w-full animate-pulse rounded-control bg-surface-2 text-transparent">&nbsp;</span>
+                    <span className="inline-block w-4/5 animate-pulse rounded-control bg-surface-2 text-transparent">&nbsp;</span>
+                  </p>
+                </div>
+              </div>
             ))}
           </div>
         ) : episodes.length === 0 ? (

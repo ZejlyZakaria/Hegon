@@ -530,18 +530,40 @@ export function positionPatch(
   const toV = sp.toView(season, episode);
   const factsV = { ...sp.facts, current_season: toV.season, current_episode: toV.episode };
 
-  // Seasons you have just travelled PAST, and only those that have fully aired. A correction
-  // stamps nothing: you are claiming to have watched them, not to have watched them TODAY.
+  /**
+   * ── WHAT THE APP MAY HONESTLY CLAIM A DATE FOR ──────────────────────────────────────────────
+   *
+   * Seasons you travelled PAST, only if fully aired — and only on a VIEWING. Leaping from season 1
+   * to season 3 through the Watch History says "I saw these at some point"; it does not say when.
+   * Seven Deadly Sins is the real case: three seasons watched in 2019, told to the app today.
+   * Stamping them with this year would be an invention, and a wrong year is worse than a blank
+   * because it LOOKS authoritative — you would have to notice it to fix it.
+   */
   const crossed = kind === "viewing" && forward && toV.season > fromV.season
     ? seasonRange(fromV.season, toV.season - 1).filter((s) => isSeasonComplete(sp.facts, s))
     : [];
 
-  // AND THE SEASON YOU JUST FINISHED. It stamped what you LEAVE, not what you COMPLETE — so
-  // watching the last episode of season 2 dated nothing, and the year only appeared once you
-  // started season 3. A show you are caught up on never reached that point at all: its final
-  // season stayed blank for as long as you kept up with it. Finishing a season is the very
-  // moment it becomes datable, so that is when it gets its year.
-  const landed = kind === "viewing" && forward && isSeasonDatable(factsV, toV.season) ? [toV.season] : [];
+  /**
+   * AND THE SEASON YOU JUST FINISHED — on a correction too, which is the fix.
+   *
+   * It used to stamp what you LEAVE, not what you COMPLETE, so finishing season 2 dated nothing and
+   * the year only appeared once you started season 3; a show you keep up with never got there at
+   * all. That was fixed for "+1". But "Watched through S2" on the poster went on stamping nothing,
+   * because it is a CORRECTION — so the same act, expressed through three doors, produced two
+   * results: the add modal and the steppers dated the season, the Watch History left "Year".
+   *
+   * The rule that settles it is the one already adopted for the add doors: A DOOR THAT ASKS FOR NO
+   * DATE SPEAKS OF THE PRESENT. Landing on a season is a statement about where you stand NOW, and
+   * that is the same claim "+1" makes when it carries you over the line.
+   *
+   * Still `forward` only: stepping BACK is saying you got less far than the app thought, and there
+   * is nothing to date about that. And still non-destructive — `stampSeasons` protects a year you
+   * set by hand behind your position (see staleStamp), and the badge stays editable either way.
+   *
+   * ⚠️ Accepted imprecision: jumping S1 → S3 dates S3 with this year even if you finished it in
+   * 2020. One click to correct, against a blank the owner reported as feeling broken.
+   */
+  const landed = forward && isSeasonDatable(factsV, toV.season) ? [toV.season] : [];
 
   const toStamp = [...crossed, ...landed];
   const seasonYears =
