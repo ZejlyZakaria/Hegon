@@ -260,10 +260,37 @@ export function ListsClient({ userId }: Props) {
 
   return (
     <div className="p-4 md:p-6">
+      {/* `New list` is not data — it is drawn unconditionally the moment `lists` resolves, so
+          the skeleton can draw its real shape (border, centred icon, "Create a list" footer)
+          instead of guessing at it too. The other seven are a plausible COUNT, not a known one —
+          list count is genuinely data-dependent — but a three-way poster collage + a two-line
+          footer is what every one of them turns into, never a flat rectangle. */}
       {isLoading && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="animate-pulse rounded-card bg-surface-1" style={{ height: 204 }} />
+          <div className="animate-pulse overflow-hidden rounded-card border border-white/10 bg-surface-1">
+            <div className="flex h-42 items-center justify-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-10 w-10 rounded-full bg-white/10" />
+                <div className="h-3 w-14 rounded bg-white/10" />
+              </div>
+            </div>
+            <div className="border-t border-white/10 p-3">
+              <div className="h-3.5 w-20 rounded bg-surface-2" />
+              <div className="mt-2 h-2.5 w-4 rounded bg-surface-2" />
+            </div>
+          </div>
+          {Array.from({ length: 7 }, (_, i) => (
+            <div key={i} className="animate-pulse overflow-hidden rounded-card border border-border-subtle bg-surface-1">
+              <div className="flex h-42 gap-0.5 bg-black">
+                {[0, 1, 2].map((j) => (
+                  <div key={j} className="flex-1 bg-surface-2" />
+                ))}
+              </div>
+              <div className="p-3">
+                <div className="h-3.5 w-24 rounded bg-surface-2" />
+                <div className="mt-2 h-2.5 w-28 rounded bg-surface-2" />
+              </div>
+            </div>
           ))}
         </div>
       )}

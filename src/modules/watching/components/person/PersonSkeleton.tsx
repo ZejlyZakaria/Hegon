@@ -20,18 +20,43 @@ const PosterGrid = ({ n }: { n: number }) => (
 export function PersonSkeleton() {
   return (
     <div className="min-h-screen bg-surface-0">
-      {/* Hero */}
-      <div className="relative aspect-video w-full overflow-hidden bg-surface-1 lg:aspect-21/9 lg:max-h-[55vh] lg:min-h-70">
-        <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/40 to-transparent lg:bg-linear-to-b lg:via-surface-0/50" />
+      {/* ── Mobile hero — the real hero is a CENTRED column (portrait → name → facts → bio),
+          pulled up over the backdrop. `surface-2` + pulse, not `surface-1`: the real hero is a
+          photograph under a gradient, and `surface-1` (#161619) sits close enough to the page's
+          own `surface-0` (#0e0e11) that the "banner" read as empty page, not as artwork loading
+          in. Same fix as the media detail hero (`WatchingSkeletons.tsx`) — one bug, two files. */}
+      <div className="lg:hidden">
+        <div className="relative aspect-video w-full animate-pulse overflow-hidden bg-surface-2">
+          <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/30 to-transparent" />
+        </div>
+        <div className="relative -mt-16 flex flex-col items-center px-4 pb-2">
+          <div className="aspect-2/3 w-(--poster-md) shrink-0 animate-pulse rounded-tile bg-surface-2" />
+          <Bar className="mt-3 h-6 w-40" />
+          <Bar className="mt-2.5 h-4 w-56" />
+          <Bar className="mt-3 h-14 w-full" />
+        </div>
       </div>
-      {/* Mobile — the real hero is a CENTRED column (portrait → name → facts → bio). The
-          skeleton drew the old beside-the-poster layout, so the page re-laid itself out the
-          instant the data landed. */}
-      <div className="relative -mt-16 flex flex-col items-center px-4 pb-2 lg:hidden">
-        <div className="aspect-2/3 w-(--poster-md) shrink-0 animate-pulse rounded-tile bg-surface-2" />
-        <Bar className="mt-3 h-6 w-40" />
-        <Bar className="mt-2.5 h-4 w-56" />
-        <Bar className="mt-3 h-14 w-full" />
+
+      {/* ── Desktop hero — bottom-anchored, mirrors DetailSkeleton's `HeroSkeleton`: portrait +
+          name + facts + bio reserved over the banner. THE bug the owner pointed at: this used to
+          be one single responsive div, and past `lg:`, that div only carried the backdrop
+          rectangle — nothing reserved the content block at all. The real desktop hero anchors a
+          poster, "Matt Smith", "Actor · b. 1982 · Northampton…" and the bio at the bottom-left;
+          the old skeleton showed a plain empty banner there and the whole block popped in at
+          once the moment the row landed. No tags row, no trailer button here — Person has
+          neither; that's the "necessary adaptation" from the detail page's shape. */}
+      <div className="relative hidden w-full animate-pulse overflow-hidden bg-surface-2 lg:block lg:aspect-21/9 lg:max-h-[55vh] lg:min-h-70">
+        <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/40 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 px-10 pb-8">
+          <div className="flex items-end gap-8">
+            <div className="aspect-2/3 w-(--poster-xl) shrink-0 animate-pulse rounded-tile bg-surface-2" />
+            <div className="flex-1 space-y-3 pb-1">
+              <div className="h-7 w-2/3 animate-pulse rounded-control bg-surface-2" />
+              <div className="h-4 w-1/3 animate-pulse rounded bg-surface-2" />
+              <div className="h-10 w-full max-w-4xl animate-pulse rounded-control bg-surface-2" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Mobile slot — the branded card rides right after the hero, as on the real page */}
@@ -47,7 +72,9 @@ export function PersonSkeleton() {
           </div>
           <div>
             <Bar className="mb-3 h-4 w-32" />
-            <PosterGrid n={12} />
+            {/* Not seen yet starts at exactly 18 — `visibleCount`'s initial state in
+                PersonPage.tsx, a fixed constant, not a data-dependent guess like the row above. */}
+            <PosterGrid n={18} />
           </div>
         </div>
 

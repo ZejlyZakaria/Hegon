@@ -26,6 +26,59 @@ import {
 import { EpisodeHeatmapModal } from "./EpisodeHeatmapModal";
 import type { WatchingMedia, AnimeCour } from "../../types";
 
+/**
+ * THE WHOLE CARD, NOT JUST ITS PICTURE.
+ *
+ * A skeleton that reserves the still and nothing else, while a real card is still PLUS number,
+ * title and a two-line overview, stands short and grows the moment the episodes land — shoving
+ * whatever sits below down the page, under the reader's eye. A placeholder that is not the size
+ * of what it replaces does not prevent the jump; it schedules it.
+ *
+ * Exported so the full-page skeletons (`DetailSkeleton`, `DiscoverSkeleton`) hold this exact
+ * shape too, instead of a generic guess that then gets swapped for THIS the moment `Episodes`
+ * itself mounts — which is the same 91px bug with extra steps: right height, wrong picture,
+ * twice.
+ *
+ * Mirrors StillCard's own markup below (mt-2, the three lines) so the two cannot drift.
+ */
+export function EpisodeCardsSkeleton({ n = 5 }: { n?: number }) {
+  return (
+    <div className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:mx-0 sm:px-0">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="w-66 shrink-0">
+          <div className="aspect-video w-full animate-pulse rounded-card bg-surface-2" />
+          {/* The bars carry the REAL typography classes and hold a non-breaking space, so each
+              line takes its true height from the same line-height as the text it replaces.
+              Hard-coded pixel heights were 7px short here and would drift the day the type
+              scale moves; this cannot. (Measured: 15 + 16 + 4 + 36 = 71px of text block.)
+
+              Reserving that height is not the same as matching its WEIGHT. The real card is a
+              hierarchy — a faint tertiary caption, then a solid bold title, then two THIN,
+              tertiary-coloured overview lines with real letterforms (mostly negative space). All
+              four bars here used to paint at the same full opacity, so the block read as one
+              solid grey wall next to the title instead of the light-then-bold-then-light shape
+              the real card has — that solid wall was the "too busy below the image". The
+              caption and overview bars share the real card's `text-tertiary` colour, so they
+              now share its lighter weight too; only the title (`text-primary`, actually bold)
+              stays solid. */}
+          <div className="mt-2">
+            <p className="text-micro font-medium">
+              <span className="inline-block w-16 animate-pulse rounded-control bg-surface-2 text-transparent opacity-60">&nbsp;</span>
+            </p>
+            <p className="text-xs font-semibold">
+              <span className="inline-block w-2/3 animate-pulse rounded-control bg-surface-2 text-transparent">&nbsp;</span>
+            </p>
+            <p className="mt-1 text-micro leading-relaxed">
+              <span className="inline-block w-full animate-pulse rounded-control bg-surface-2 text-transparent opacity-40">&nbsp;</span>
+              <span className="inline-block w-4/5 animate-pulse rounded-control bg-surface-2 text-transparent opacity-40">&nbsp;</span>
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type View = "all" | "highlights";
 const HIGHLIGHT = "var(--color-gold)";                              // gold — "best episode"
 const RATE_COLOR = "var(--color-accent-watching-vivid)"; // teal — your rating
@@ -427,40 +480,7 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
       {/* ── All: this season's episodes ── */}
       {view === "all" ? (
         isLoading ? (
-          /**
-           * THE WHOLE CARD, NOT JUST ITS PICTURE.
-           *
-           * This skeleton reserved the still and nothing else, while a real card is still PLUS
-           * number, title and a two-line overview. So the rail stood 91px short and grew the moment
-           * the episodes landed — shoving Cast & Crew and More Like This down the page, under the
-           * reader's eye. A placeholder that is not the size of what it replaces does not prevent
-           * the jump; it schedules it.
-           *
-           * Mirrors StillCard's own markup above (mt-2, the three lines) so the two cannot drift.
-           */
-          <div className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:mx-0 sm:px-0">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="w-66 shrink-0">
-                <div className="aspect-video w-full animate-pulse rounded-card bg-surface-2" />
-                {/* The bars carry the REAL typography classes and hold a non-breaking space, so each
-                    line takes its true height from the same line-height as the text it replaces.
-                    Hard-coded pixel heights were 7px short here and would drift the day the type
-                    scale moves; this cannot. (Measured: 15 + 16 + 4 + 36 = 71px of text block.) */}
-                <div className="mt-2">
-                  <p className="text-micro font-medium">
-                    <span className="inline-block w-16 animate-pulse rounded-control bg-surface-2 text-transparent">&nbsp;</span>
-                  </p>
-                  <p className="text-xs font-semibold">
-                    <span className="inline-block w-2/3 animate-pulse rounded-control bg-surface-2 text-transparent">&nbsp;</span>
-                  </p>
-                  <p className="mt-1 text-micro leading-relaxed">
-                    <span className="inline-block w-full animate-pulse rounded-control bg-surface-2 text-transparent">&nbsp;</span>
-                    <span className="inline-block w-4/5 animate-pulse rounded-control bg-surface-2 text-transparent">&nbsp;</span>
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <EpisodeCardsSkeleton />
         ) : episodes.length === 0 ? (
           <p className="py-6 text-center text-xs text-text-tertiary">No episodes found.</p>
         ) : (

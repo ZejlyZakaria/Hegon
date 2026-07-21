@@ -67,6 +67,39 @@ const updateMediaFields = z.object({
  * (`null` is a perfectly good answer — it means "you are not at the frontier". What is forbidden
  * is not ANSWERING.)
  */
+/**
+ * A FILM HAS NO COURS — so it may not carry cour-indexed maps.
+ *
+ * `cour_years` / `cour_ratings` exist for one reason: a lumped anime whose seasons AniList splits
+ * into cours, where `season_years` (indexed by TMDB season) cannot express "season 2 of three that
+ * TMDB calls one". A film has exactly one of everything. Writing those columns on one is not a
+ * smaller truth, it is a category error — and the row would then be read through a lens that has
+ * nothing to translate.
+ *
+ * Nothing stopped it. The columns are plain jsonb, every door could write them, and the mistake
+ * would have surfaced months later as a film with a mysterious year map that no screen displays.
+ * Refused here, and again by a CHECK constraint in the database (20260721_cour_columns_series_only)
+ * so a write that never passes through this schema still cannot land it.
+ */
+function refuseCoursOnFilm(
+  v: { type?: string | null; cour_years?: unknown; cour_ratings?: unknown },
+  ctx: z.RefinementCtx,
+) {
+  if (v.type !== "film") return;
+  for (const key of ["cour_years", "cour_ratings"] as const) {
+    const value = v[key];
+    // `null` and `{}` are fine — they say "nothing here", which is true of a film.
+    const carriesData = value != null && Object.keys(value as object).length > 0;
+    if (carriesData) {
+      ctx.addIssue({
+        code: "custom",
+        path: [key],
+        message: `${key} is cour-indexed and only means something for a lumped anime. A film has no cours.`,
+      });
+    }
+  }
+}
+
 export const updateMediaSchema = updateMediaFields.superRefine((v, ctx) => {
   const movesPosition = "current_season" in v || "current_episode" in v;
   if (movesPosition && !("caught_up_at" in v)) {
@@ -77,6 +110,7 @@ export const updateMediaSchema = updateMediaFields.superRefine((v, ctx) => {
         "A position write must recompute caught_up_at. Build the patch with positionPatch() (lib/watch-status.ts) instead of writing current_season/current_episode by hand.",
     });
   }
+  refuseCoursOnFilm(v, ctx);
 });
 
 export type UpdateMediaInput = z.infer<typeof updateMediaSchema>;
@@ -155,6 +189,8 @@ export const insertMediaSchema = insertMediaFields.superRefine((v, ctx) => {
         "A series you have started must say how far you got — a positionless claim reads as zero episodes watched everywhere it is counted. Collect a position and pass it to addStatusPatch().",
     });
   }
+
+  refuseCoursOnFilm(v, ctx);
 });
 
 export type InsertMediaInput = z.infer<typeof insertMediaSchema>;

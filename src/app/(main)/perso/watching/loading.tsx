@@ -8,9 +8,9 @@ export default function WatchingLoading() {
     <div className="p-4 sm:p-6 space-y-4">
       <DontMissSkeleton />
       <ForYouSkeleton />
-      <CarouselSkeleton cards={5} />
-      <CarouselSkeleton cards={5} />
-      <CarouselSkeleton cards={5} />
+      <CarouselSkeleton />
+      <CarouselSkeleton />
+      <CarouselSkeleton />
     </div>
   );
 }

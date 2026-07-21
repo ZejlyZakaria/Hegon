@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element, @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
@@ -58,6 +58,21 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
+/** One person as TMDB returns them on /credits (movie) or /aggregate_credits (tv). */
+type CreditPerson = {
+  id: number;
+  name: string;
+  job?: string;
+  character?: string | null;
+  roles?: { character?: string | null }[];
+  profile_path?: string | null;
+};
+
+type ResolvedCredits = {
+  directors: { id?: number; name: string; profile_url: string | null }[];
+  cast: { id: number; name: string; character: string | null; profile_url: string | null }[];
+};
+
 export default function AddMediaModal({
   isOpen,
   onClose,
@@ -97,6 +112,8 @@ export default function AddMediaModal({
 
   const [seasons, setSeasons]         = useState<number | null>(null);
   const [episodes, setEpisodes]       = useState<number | null>(null);
+  /** The owned row's position in STORAGE units, waiting for the lens — see the prefill effect. */
+  const [existingPosition, setExistingPosition] = useState<{ season: number; episode: number } | null>(null);
   const [seasonInput, setSeasonInput] = useState<string>("1");
   const [episodeInput, setEpisodeInput] = useState<string>("1");
   const [seasonError, setSeasonError] = useState<string | null>(null);
@@ -111,6 +128,8 @@ export default function AddMediaModal({
   const [runtime, setRuntime]         = useState<number | null>(null);
   const [directors, setDirectors]     = useState<{ id?: number; name: string; profile_url: string | null }[] | null>(null);
   const [cast, setCast]               = useState<{ id: number; name: string; character: string | null; profile_url: string | null }[]>([]);
+  /** The in-flight credits request for the current pick. Submitting awaits it — see below. */
+  const creditsRef                    = useRef<Promise<ResolvedCredits> | null>(null);
   const [studio, setStudio]           = useState<string | null>(null);
   const [status, setStatus]           = useState<string | null>(null);
 
@@ -169,7 +188,7 @@ export default function AddMediaModal({
         setPriority(null); setSeasonInput("1"); setEpisodeInput("1");
         setSeasonError(null); setEpisodeError(null); setConflict(null);
         setPriorityLevel("medium");
-        setPosition(null); setStance("watching"); setSeasonAired([]); setSeasonEnd({});
+        setPosition(null); setStance("watching"); setSeasonAired([]); setSeasonEnd({}); setExistingPosition(null);
         setWatchDate({ year: new Date().getFullYear(), month: null, day: null });
       }, 300);
       return () => clearTimeout(t);
@@ -218,6 +237,8 @@ export default function AddMediaModal({
     setPreviewUrl(null);
     setRuntime(null);
     setDirectors(null);
+    setCast([]);
+    creditsRef.current = null;   // a second pick must never submit the first pick's cast
     setStudio(null);
     setStatus(null);
     setSeasons(null);
@@ -230,7 +251,22 @@ export default function AddMediaModal({
     try {
       const mediaType  = result.media_type || (result.first_air_date ? "tv" : "movie");
       const isMovie    = mediaType === "movie";
-      const res        = await fetch(`/api/tmdb?endpoint=${isMovie ? `movie/${result.id}` : `tv/${result.id}`}&append_to_response=credits,aggregate_credits&language=en-US`);
+      const base       = isMovie ? `movie/${result.id}` : `tv/${result.id}`;
+
+      // The credits ride a SECOND request — fired at this same instant, but never awaited here.
+      // They are not drawn anywhere in this modal: `cast` and `directors` are read exactly once,
+      // in the submit payload. Appending them made the FORM (seasons, episodes, position chips)
+      // wait on a body it does not need to draw, and `aggregate_credits` on a long-running series
+      // is enormous — Jujutsu Kaisen: 422 KB against 5 KB for the details alone.
+      // Measured through /api/tmdb, A/B interleaved, median of 7: JJK 285 → 228 ms, Game of
+      // Thrones 361 → 247 ms; payload −99%.
+      const creditsPromise: Promise<{ crew?: unknown[]; cast?: unknown[] } | null> = fetch(
+        `/api/tmdb?endpoint=${base}/${isMovie ? "credits" : "aggregate_credits"}&language=en-US`,
+      )
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+
+      const res        = await fetch(`/api/tmdb?endpoint=${base}&language=en-US`);
       const details: TmdbModalResult = await res.json();
 
       let runtimeMinutes: number | null = null;
@@ -243,28 +279,35 @@ export default function AddMediaModal({
         runtimeMinutes = details.last_episode_to_air.runtime;
       }
 
-      const extractedDirectors = isMovie
-        ? (details.credits?.crew ?? [])
-            .filter((m) => m.job === "Director")
-            .map((d) => ({ id: d.id, name: d.name, profile_url: d.profile_path ? `https://image.tmdb.org/t/p/w200${d.profile_path}` : null }))
-        : (details.created_by ?? []).map((c) => ({
-            id: c.id,
-            name: c.name,
-            profile_url: c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : null,
-          }));
-
-      // Cast — movies expose it on credits.cast; TV/anime recurring cast lives on
-      // aggregate_credits.cast (character is under roles[]). Cached (top 12) so the
-      // detail page renders Cast & Crew from the DB with no extra TMDB call.
-      const rawCast: any[] = isMovie
-        ? (details.credits?.cast ?? [])
-        : (details.aggregate_credits?.cast ?? []);
-      const extractedCast = rawCast.slice(0, 12).map((p) => ({
-        id: p.id,
-        name: p.name,
-        character: p.character ?? p.roles?.[0]?.character ?? null,
-        profile_url: p.profile_path ? `https://image.tmdb.org/t/p/w185${p.profile_path}` : null,
-      }));
+      // Cast & directors are derived HERE but LAND LATER — the second request owns them.
+      // Movies carry both on /credits (crew.job === "Director", cast); a series names its
+      // creators in the details themselves (`created_by`) and its recurring cast on
+      // /aggregate_credits, where the character sits under roles[]. Top 12 is cached on the row
+      // so the detail page can draw Cast & Crew from the DB with no TMDB call at all.
+      // One owner for every credits-derived field: nothing here is read before submit.
+      const resolvedCredits = creditsPromise.then((payload) => {
+        const crew    = (payload?.crew ?? []) as CreditPerson[];
+        const rawCast = (payload?.cast ?? []) as CreditPerson[];
+        return {
+          directors: isMovie
+            ? crew
+                .filter((m) => m.job === "Director")
+                .map((d) => ({ id: d.id, name: d.name, profile_url: d.profile_path ? `https://image.tmdb.org/t/p/w200${d.profile_path}` : null }))
+            : (details.created_by ?? []).map((c) => ({
+                id: c.id,
+                name: c.name,
+                profile_url: c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : null,
+              })),
+          cast: rawCast.slice(0, 12).map((p) => ({
+            id: p.id,
+            name: p.name,
+            character: p.character ?? p.roles?.[0]?.character ?? null,
+            profile_url: p.profile_path ? `https://image.tmdb.org/t/p/w185${p.profile_path}` : null,
+          })),
+        };
+      });
+      creditsRef.current = resolvedCredits;
+      void resolvedCredits.then(({ cast, directors }) => { setCast(cast); setDirectors(directors); });
 
       const extractedStudio  = isMovie ? (details.production_companies?.[0]?.name ?? null) : (details.networks?.[0]?.name ?? null);
       const rawStatus        = details.status?.toLowerCase() ?? null;
@@ -286,8 +329,6 @@ export default function AddMediaModal({
       setSeasonEnd({});
 
       setRuntime(runtimeMinutes);
-      setDirectors(extractedDirectors);
-      setCast(extractedCast);
       setStudio(extractedStudio);
       setStatus(extractedStatus);
       if (!isMovie) { setSeasons(details.number_of_seasons ?? null); setEpisodes(details.number_of_episodes ?? null); }
@@ -316,16 +357,12 @@ export default function AddMediaModal({
         setNotes(existing.notes ?? "");
         setFavorite(existing.favorite ?? false);
         if (listContext === "inProgress") {
-          // ⚠️ KNOWN GAP (found by the coordinate guard, not yet fixed): these inputs speak DISPLAY
-          // units (cours for a lumped anime) while the row stores TMDB ones, so re-adding an owned
-          // lumped anime through this door prefills a flat episode into a cour-capped field. It
-          // cannot be converted HERE — the cours are fetched from the id we are only now selecting,
-          // so the lens is still empty at this point. The fix is to prefill from an effect once the
-          // lens resolves, not to convert inline.
-          // eslint-disable-next-line no-restricted-syntax
-          setSeasonInput(String(existing.current_season ?? 1));
-          // eslint-disable-next-line no-restricted-syntax
-          setEpisodeInput(String(existing.current_episode ?? 1));
+          // The row's position, in STORAGE units, remembered rather than written straight into the
+          // inputs — those speak DISPLAY units, and the lens that converts between them does not
+          // exist yet at this point (the cours are fetched from the id we are only now selecting).
+          // The effect below does the conversion the moment it can. See `prefillFromExisting`.
+          // eslint-disable-next-line no-restricted-syntax -- deliberately storage-space: handed to the lens later, not displayed.
+          setExistingPosition({ season: existing.current_season ?? 1, episode: existing.current_episode ?? 1 });
         }
       }
 
@@ -421,6 +458,26 @@ export default function AddMediaModal({
     [defaultType, status, tmdbSeasonEpisodes, seasonAired, coursRow],
   );
 
+  /**
+   * PREFILL ONCE THE LENS CAN TRANSLATE — the fix for the gap the coordinate guard found.
+   *
+   * Re-adding a title you already own through the "In Progress" door prefills where you are. But the
+   * row stores TMDB coordinates (a lumped anime's "episode 47") and these inputs speak display ones
+   * ("S3 E1", capped at the cour's length). Writing the stored value straight in put a flat episode
+   * number into a field that cannot hold it — Blue Lock at episode 37 offered into a 24-episode cour.
+   *
+   * It could not be converted where the value is read: the cours are fetched from the id being
+   * selected, so the lens is empty at that instant. So the value waits in `storedPosition`, and this
+   * effect converts it as soon as `addView` exists. Without an overlay `fromStorage` is the identity,
+   * so a plain series behaves exactly as before.
+   */
+  useEffect(() => {
+    if (!existingPosition) return;
+    const shown = addView.fromStorage(existingPosition.season, existingPosition.episode);
+    setSeasonInput(String(shown.season));
+    setEpisodeInput(String(shown.episode));
+  }, [existingPosition, addView]);
+
   const maxSeason = overlayCours ? overlayCours.length : seasons;
 
   const getMaxEpisode = (season: number): number | null => {
@@ -496,10 +553,15 @@ export default function AddMediaModal({
             ? addView.toStorage(position.season, position.episode)
             : null;
 
+      // The credits travel on their own request so the form can be filled while they land. This is
+      // the one moment they matter, so it is also the one place that waits for them: submitting
+      // fast must not save a row with an empty cast. By now it has almost always resolved.
+      const credits = (await creditsRef.current) ?? { directors, cast };
+
       const result = await addMediaMutation.mutateAsync({
         selectedItem, defaultType, listContext,
         userRating, notes, favorite, priority, priorityLevel,
-        seasons, episodes, runtime, directors, cast, studio, status,
+        seasons, episodes, runtime, directors: credits.directors, cast: credits.cast, studio, status,
         customPosterUrl: finalPosterUrl,
         genres: mapTmdbGenres(selectedItem.genre_ids),
         watchedAt,

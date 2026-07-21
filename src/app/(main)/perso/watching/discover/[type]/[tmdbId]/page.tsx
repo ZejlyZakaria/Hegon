@@ -38,7 +38,7 @@ import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import { AnimeThemes } from "@/modules/watching/components/detail/AnimeThemes";
 import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
-import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
+import { DetailSkeleton, DiscoverSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
 import { tmdbPathFromUrl, getMediaItemById } from "@/modules/watching/service";
 import { WATCHING_KEYS } from "@/modules/watching/hooks/query-keys";
@@ -126,7 +126,21 @@ export default function DiscoverDetailPage() {
    * guest page for that one frame is the very flash we are removing. A disabled query (no user)
    * reports `isLoading: false`, so a logged-out visitor is never held here.
    */
-  if (isLoading || ownedLoading || ownedRow) return <DetailSkeleton />;
+  /**
+   * THE SKELETON ANNOUNCES WHERE YOU WILL LAND, NOT WHERE YOU ARE.
+   *
+   * If the title turns out to be yours, this page is a doorway you pass through — so it draws the
+   * OWNED fiche's shape, and the redirect lands on a layout that was already promised. Drawing the
+   * guest shape here and then handing you a different page would replace the flash of wrong CONTENT
+   * we removed with a flash of wrong LAYOUT, which is the same fault with better manners.
+   *
+   * While ownership is still unknown, the owned shape is the safe bet for the same reason: it is a
+   * superset. Its extra panels can appear; a missing one cannot be un-drawn without a jump.
+   *
+   * `isSeries` comes from the ROUTE here, so both variants know their type from the first frame.
+   */
+  if (ownedLoading || ownedRow) return <DetailSkeleton isSeries={isSeries} />;
+  if (isLoading) return <DiscoverSkeleton isSeries={isSeries} />;
   if (!media) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
