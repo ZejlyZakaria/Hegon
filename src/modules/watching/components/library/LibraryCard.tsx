@@ -20,6 +20,12 @@ interface Props {
 
 export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Props) {
   const badge = posterStatus(item);
+  // The route skeleton hands over the moment the data lands, but the POSTERS are still in flight.
+  // Every other card in this module carries its own pulse for exactly that gap; this one didn't, so
+  // the grid went from 93 pulsing tiles to none, and sat as frozen black rectangles — titles and
+  // badges already drawn — for the ~2s the images took. A skeleton must hand over to something
+  // still loading, not to a stopped picture.
+  const [posterLoaded, setPosterLoaded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
@@ -55,15 +61,22 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
   return (
     <div className="group relative cursor-pointer" onClick={onClick}>
       {/* image */}
-      <div className="relative aspect-2/3 overflow-hidden rounded-tile transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
+      <div
+        className={cn(
+          "relative aspect-2/3 overflow-hidden rounded-tile bg-surface-2 transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]",
+          !posterLoaded && "animate-pulse",
+        )}
+      >
         <Image
           src={tmdbImageFor(item.poster_url, 200) || "/placeholder.svg"}
           alt={item.title}
           fill
-          className="object-cover"
+          className="object-cover transition-opacity duration-300"
+          style={{ opacity: posterLoaded ? 1 : 0 }}
           sizes="(max-width: 768px) 33vw, 200px"
           loading={eagerLoad ? "eager" : "lazy"}
           priority={eagerLoad}
+          onLoad={() => setPosterLoaded(true)}
         />
 
         {/* THE TWO CLUSTERS — and they must live in the SAME box. The heart used to sit

@@ -22,7 +22,11 @@ export function ThemePlayer() {
   const { queue, index, isPlaying, showVideo, toggle, setPlaying, next, prev, openVideo, closeVideo, close } =
     useThemePlayer();
   const current = queue[index] ?? null;
-  const { data: favorites = [] } = useThemeFavorites();
+  // Only once something is playing. This component sits in the Watching layout, so it mounts on
+  // every page of the module while rendering nothing (`if (!current) return null` below) — and it
+  // was fetching the whole playlist anyway, on every hard load, to decide whether one heart is
+  // filled. The heart cannot be seen before there is a track to put it on.
+  const { data: favorites = [] } = useThemeFavorites(!!current);
   const toggleFavMutation = useToggleThemeFavorite();
   const faved = current ? favorites.some((f) => f.track_key === themeTrackKey(current)) : false;
 

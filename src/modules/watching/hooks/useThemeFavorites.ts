@@ -10,11 +10,17 @@ import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 
 // The user's hearted OP/ED, durable in Supabase (was localStorage). Source of
 // truth for the ♥ state on every row/player and for the "My Themes" playlist.
-export function useThemeFavorites() {
+//
+// `enabled` exists for ONE caller: the ThemePlayer lives in the Watching layout, so it mounts on
+// every page of the module and used to pull the whole playlist — 8151 bytes measured, on 6 hard
+// loads out of 6 — even though it renders nothing at all until a track is playing. The three
+// surfaces that actually SHOW themes keep asking unconditionally; they display the list.
+export function useThemeFavorites(enabled = true) {
   return useQuery({
     queryKey: WATCHING_KEYS.themeFavorites(),
     queryFn: getThemeFavorites,
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
 }
 
