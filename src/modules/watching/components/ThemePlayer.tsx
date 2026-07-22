@@ -109,7 +109,12 @@ export function ThemePlayer() {
             transition={{ type: "spring", stiffness: 380, damping: 32 }}
             // Mobile: solid bg (no backdrop-blur) — animating a backdrop-blur is a
             // per-frame GPU cost that stutters the entrance. Glass kept on desktop.
-            className="fixed bottom-4 right-4 z-40 w-85 max-w-[calc(100vw-2rem)] transform-gpu overflow-hidden rounded-modal border border-white/10 bg-zinc-950/95 shadow-2xl md:bg-black/70 md:backdrop-blur-xl"
+            // The one glass in Watching that earns it: a floating panel with the page scrolling
+            // behind it, which is exactly the condition the material is for. It was mixing its own
+            // recipe (bg-black/70 + backdrop-blur-xl) instead of using the system's — same
+            // intention, different numbers, drifting apart by default. Mobile stays solid: the
+            // panel animates in, and animating a backdrop-filter is expensive.
+            className="fixed bottom-4 right-4 z-40 w-85 max-w-[calc(100vw-2rem)] transform-gpu overflow-hidden rounded-modal border border-white/10 bg-zinc-950/95 shadow-2xl md:border-transparent md:bg-transparent md:glass-panel"
           >
             <div className="flex items-center gap-3 p-3 pb-2">
               <button type="button" onClick={() => setExpanded(true)} aria-label="Expand player" className="relative h-12 w-12 shrink-0 overflow-hidden rounded-tile bg-white/5 ring-1 ring-white/10">
@@ -120,7 +125,7 @@ export function ThemePlayer() {
               </button>
 
               <button type="button" onClick={() => setExpanded(true)} className="min-w-0 flex-1 text-left">
-                <p className="truncate text-[13px] font-semibold text-white">
+                <p className="truncate text-label font-semibold text-white">
                   <span className="text-accent-watching-vivid">{current.label}</span> · {current.title}
                 </p>
                 <p className="truncate text-micro text-white/50">{current.artist || current.animeName}</p>

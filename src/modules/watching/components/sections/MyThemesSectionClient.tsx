@@ -73,7 +73,7 @@ function ThemeTile({
       </div>
 
       {/* Meta — song title + anime name */}
-      <p className="mt-2 truncate text-[13px] font-semibold text-text-primary">{track.title}</p>
+      <p className="mt-2 truncate text-label font-semibold text-text-primary">{track.title}</p>
       <p className="truncate text-micro text-text-tertiary">{track.animeName}</p>
     </button>
   );

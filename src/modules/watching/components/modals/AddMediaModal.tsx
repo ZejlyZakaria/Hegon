@@ -708,7 +708,8 @@ export default function AddMediaModal({
                       onClick={() => (toDetails ? seeDetails(res) : selectResult(res))}
                       className="w-full flex items-center gap-3 p-3 hover:bg-surface-2 text-left transition-colors border-b border-border-subtle last:border-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
                     >
-                      <div className="relative w-9 h-13 shrink-0 overflow-hidden rounded-chip bg-surface-2">
+                      {/* Same rung as the topbar search — see WatchingSearch. */}
+                      <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-chip bg-surface-2">
                         {res.poster_path
                           ? <img src={`https://image.tmdb.org/t/p/w92${res.poster_path}`} alt="" className="w-full h-full object-cover" />
                           : <Film size={14} className="text-text-tertiary absolute inset-0 m-auto" />
@@ -769,7 +770,8 @@ export default function AddMediaModal({
 
                   {/* Poster */}
                   <div className="relative group shrink-0 mx-auto sm:mx-0">
-                    <div className="w-28 aspect-2/3 rounded-tile overflow-hidden border border-border-subtle">
+                    {/* `w-28` happened to equal --poster-md; a coincidence is not a link. */}
+                    <div className="w-(--poster-md) aspect-2/3 rounded-tile overflow-hidden border border-border-subtle">
                       <img
                         src={previewUrl || (selectedItem.poster_path ? `https://image.tmdb.org/t/p/w500${selectedItem.poster_path}` : "/placeholder.png")}
                         alt="" className="w-full h-full object-cover"

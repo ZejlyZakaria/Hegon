@@ -21,6 +21,10 @@ const CARD_BG   = "var(--color-surface-0)";
 const EXP       = 22;   // 22/(22+7×4) = 44%
 const COL       = 7;    // 7/50         = 14%
 // card row height = h-60 = 240px → portrait poster width = 240 × 2/3 = 160px
+// Deliberately OFF the --poster-* ladder (audited 2026-07-22). This card is an accordion whose
+// width animates between collapsed and active; the poster is a fixed inset INSIDE it, derived from
+// the card's own h-60, not a tile sized by the ladder. Confusing the two would be confusing the
+// container with its content — see the ladder's note in globals.css.
 const POSTER_W  = 160;
 
 // ─── card ─────────────────────────────────────────────────────────────────────

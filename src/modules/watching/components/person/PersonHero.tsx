@@ -44,7 +44,9 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
           <button
             type="button"
             onClick={onBack}
-            className="absolute left-4 top-4 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[13px] font-medium text-white/80 backdrop-blur-sm"
+            /* `on-artwork`, not hand-rolled glass: a hero backdrop never moves, so a blur here costs
+             GPU to simulate a refraction nothing can refract. Mirror of MediaHero, as before. */
+          className="on-artwork absolute left-4 top-4 z-20 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-label text-white/80"
           >
             <ArrowLeft size={14} />
             Back
@@ -85,7 +87,7 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
         <button
           type="button"
           onClick={onBack}
-          className="group absolute left-10 top-5 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3.5 py-2 text-[13px] font-medium text-white/70 backdrop-blur-sm transition-colors hover:border-white/20 hover:bg-black/50 hover:text-white"
+          className="on-artwork group absolute left-10 top-5 z-20 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-label text-white/70 transition-colors hover:text-white"
         >
           <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
           Back

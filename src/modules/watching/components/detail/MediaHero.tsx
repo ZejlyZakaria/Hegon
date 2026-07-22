@@ -105,8 +105,8 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
       disabled={!hasTrailer}
       onClick={hasTrailer ? onPlayTrailer : undefined}
       className={cn(
-        "group mt-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-[13px] font-medium text-white/85 backdrop-blur-sm transition-colors",
-        hasTrailer && "hover:border-white/35 hover:bg-white/10 hover:text-white",
+        "on-artwork group mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-label text-white/85 transition-colors",
+        hasTrailer && "hover:text-white",
         trailerLoading && "cursor-wait opacity-50",
         !hasTrailer && !trailerLoading && "invisible",
       )}
@@ -142,7 +142,7 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
           <button
             type="button"
             onClick={onBack}
-            className="absolute left-4 top-4 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[13px] font-medium text-white/80 backdrop-blur-sm"
+            className="on-artwork absolute left-4 top-4 z-20 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-label text-white/80"
           >
             <ArrowLeft size={14} />
             Back
@@ -209,7 +209,7 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
         <button
           type="button"
           onClick={onBack}
-          className="group absolute left-10 top-5 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3.5 py-2 text-[13px] font-medium text-white/70 backdrop-blur-sm transition-colors hover:border-white/20 hover:bg-black/50 hover:text-white"
+          className="on-artwork group absolute left-10 top-5 z-20 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-label text-white/70 transition-colors hover:text-white"
         >
           <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
           Back
@@ -256,10 +256,13 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
 
               {media.tags && media.tags.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
+                  {/* The same primitive the mobile column uses, twenty lines up. This was a
+                      hand-rolled span, so the very same tags changed appearance when you resized
+                      the window — a difference the product never meant to say. */}
                   {media.tags.slice(0, 5).map((tag) => (
-                    <span key={tag} className="rounded-full bg-white/6 px-2.5 py-0.5 text-xs text-white/40 ring-1 ring-white/6">
+                    <Badge key={tag} variant="overlay" size="lg" color="rgba(255,255,255,0.8)">
                       {tag}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               )}

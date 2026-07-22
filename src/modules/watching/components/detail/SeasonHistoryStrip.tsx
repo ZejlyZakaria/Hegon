@@ -188,7 +188,7 @@ export function SeasonHistoryStrip({
           same way — THAT was the mismatch, not the tile size. */}
       <div
         ref={scrollRef}
-        className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:mx-0 sm:px-0"
+        className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5"
       >
         {seasonEpisodes.map((eps, idx) => {
           const s = idx + 1;

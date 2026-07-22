@@ -42,8 +42,15 @@ import type { WatchingMedia, AnimeCour } from "../../types";
  * Mirrors StillCard's own markup below (mt-2, the three lines) so the two cannot drift.
  */
 export function EpisodeCardsSkeleton({ n = 5 }: { n?: number }) {
+  // `py-2` has always reserved room for the hover scale on the VERTICAL axis. The horizontal one
+  // was reserved too, until "every detail rail bleeds alike" replaced the edge padding with
+  // `sm:px-0` — which put the scroll container's edge exactly on the content's edge, so a card
+  // growing ~4px sideways got clipped by its own `overflow-x-auto`. The negative margin cancels the
+  // padding, so the row still bleeds exactly where it did; only the clip is gone. More Like This
+  // never had this bug because past `sm:` it stops scrolling and becomes a grid with
+  // `overflow-visible` — not an option here, these rails hold dozens of episodes.
   return (
-    <div className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:mx-0 sm:px-0">
+    <div className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5">
       {Array.from({ length: n }).map((_, i) => (
         <div key={i} className="w-66 shrink-0">
           <div className="aspect-video w-full animate-pulse rounded-card bg-surface-2" />
@@ -204,7 +211,7 @@ function StillCard({
           <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5">
             {highlighted && (
               <Hint label="Best episode">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 ring-1 ring-white/15 backdrop-blur-md">
+                <span className="on-artwork flex h-7 w-7 items-center justify-center rounded-full">
                   <Star size={13} style={{ color: HIGHLIGHT, fill: HIGHLIGHT }} />
                 </span>
               </Hint>
@@ -214,7 +221,7 @@ function StillCard({
                 <button
                   type="button"
                   className={cn(
-                    "flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white/85 ring-1 ring-white/15 backdrop-blur-md transition-all hover:bg-black/75 hover:text-white",
+                    "on-artwork flex h-7 w-7 items-center justify-center rounded-full text-white/85 transition-all hover:text-white",
                     highlighted ? "opacity-100" : "opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100",
                   )}
                 >
@@ -272,7 +279,7 @@ function StillCard({
         {/* Bottom-right — rating DISPLAY only (teal ★ + value), not interactive */}
         {hasActions && rated && (
           <div className="pointer-events-none absolute bottom-2 right-2 z-10">
-            <span className="flex h-6 items-center gap-1 rounded-full bg-black/55 px-1.5 ring-1 ring-white/15 backdrop-blur-md">
+            <span className="on-artwork flex h-6 items-center gap-1 rounded-full px-1.5">
               <Star size={11} style={{ color: RATE_COLOR, fill: RATE_COLOR }} />
               <span className="text-micro font-semibold tabular-nums" style={{ color: RATE_COLOR }}>{rating}</span>
             </span>
@@ -484,7 +491,7 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
         ) : episodes.length === 0 ? (
           <p className="py-6 text-center text-xs text-text-tertiary">No episodes found.</p>
         ) : (
-          <div ref={scrollRef} className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:mx-0 sm:px-0">
+          <div ref={scrollRef} className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5">
             {episodes.map((ep) => {
               // Display number is per-cour (S2 starts at "Episode 1"); the stored coordinate stays
               // the TMDB flat number, so marks and progress never shift under the overlay.
@@ -523,7 +530,7 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
             Star an episode in <span className="text-text-secondary">All</span> to pin your best moments here.
           </p>
         ) : (
-          <div ref={scrollRef} className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:mx-0 sm:px-0">
+          <div ref={scrollRef} className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5">
             {highlightRows.map((h) => (
               <StillCard
                 key={h.id}

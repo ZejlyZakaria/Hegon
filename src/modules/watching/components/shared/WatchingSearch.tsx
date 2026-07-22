@@ -80,7 +80,9 @@ function Results({
               onClick={() => onPick(r)}
               className="flex w-full items-center gap-3 px-2.5 py-2 text-left transition-colors hover:bg-surface-2"
             >
-              <div className="relative h-12 w-8 shrink-0 overflow-hidden rounded-tile bg-surface-2">
+              {/* The ladder's smallest rung. This was `w-8` and the add modal's identical row was
+                  `w-9` — two search results, one module, two sizes agreeing with nothing. */}
+              <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-chip bg-surface-2">
                 {r.poster_path && (
                   <Image
                     src={`https://image.tmdb.org/t/p/w92${r.poster_path}`}
@@ -162,10 +164,13 @@ export function WatchingSearch() {
   return (
     <>
       {/* ── Desktop: the field lives in the header ── */}
-      <div ref={boxRef} className="relative hidden sm:block">
+      {/* The width is declared ONCE, here: the field and the results panel below it are the same
+          object seen open or closed, so they read as one column. They used to carry their own
+          widths (w-52 and w-80) and the panel hung wider than the field that opened it. */}
+      <div ref={boxRef} className="relative hidden w-80 sm:block">
         <SearchInput
           size="sm"
-          containerClassName="w-52"
+          containerClassName="w-full"
           placeholder="Search titles…"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
@@ -173,7 +178,7 @@ export function WatchingSearch() {
           onClear={() => { setQuery(""); setOpen(false); }}
         />
         {open && (
-          <div className="absolute right-0 top-full z-50 mt-1.5 w-80 overflow-hidden rounded-card border border-border-strong bg-surface-3 shadow-2xl">
+          <div className="absolute right-0 top-full z-50 mt-1.5 w-full overflow-hidden rounded-card border border-border-strong bg-surface-3 shadow-2xl">
             <Results results={results} loading={isFetching} query={query} owned={owned} onPick={pick} />
           </div>
         )}

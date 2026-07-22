@@ -258,11 +258,26 @@
      a GRID stays fluid (w-full) and takes its width from the grid, never from itself.
      Watch History used to sit at 144px even on a phone while More Like This sat at 112 —
      two rails, same column, different tiles. This ladder is what prevents that. ── */
-  --poster-xs: 2.5rem;    /* 40px  — attribution, Top Picks, timeline rows */
+  /* THE POSTER LADDER — named by SIZE, not by role, on purpose: a rung stays reusable for a role
+     nobody has invented yet, whereas a role name (--poster-hero-desktop) forces a new token every
+     time a new surface appears. The cost of that choice is that the name alone doesn't tell you
+     where a rung is used — so the list below is the map, and it is meant to be kept accurate.
+     Rungs also decide what is FETCHED: tmdbImageFor(url, cssPx) picks the TMDB variant from the
+     rendered size, so a poster sized off-ladder also downloads the wrong weight.
+     KNOWN OFF-LADDER (deliberate, audited 2026-07-22): Don't Miss (POSTER_W = 160, an accordion
+     card that CONTAINS a poster rather than being one) and More Like This (fluid, sized by its
+     grid column). Everything else that draws an aspect-2/3 should sit on a rung. */
+  /* CORNERS: a poster's radius is a property of its FRAME, not a function of its size — an 8px
+     corner is what a poster tile looks like, at 112px as at 170px, and scaling it per rung would
+     make the hero read as a card. The one exception is physical: below ~64px the radius starts
+     eating the artwork, so `xs` takes `rounded-chip` (6px) and every larger rung takes
+     `rounded-tile` (8px). Nothing else. (Books reached 4px independently for this same rung with a
+     raw `rounded-[4px]` — worth reconciling when the system propagates there.) */
+  --poster-xs: 2.5rem;    /* 40px  — attribution · Top Picks (Stats) · timeline rows · search results (topbar + add modal) · rounded-chip */
   --poster-sm: 5rem;      /* 80px  — info rows (Books reading) */
-  --poster-md: 7rem;      /* 112px — hero poster on mobile */
-  --poster-lg: 9rem;      /* 144px — rail tile on desktop */
-  --poster-xl: 10.625rem; /* 170px — hero poster on desktop */
+  --poster-md: 7rem;      /* 112px — hero poster on mobile · selected-title preview in the add modal */
+  --poster-lg: 9rem;      /* 144px — rail tile on desktop (Watch History) */
+  --poster-xl: 10.625rem; /* 170px — hero poster on desktop (media detail AND person) */
 
   /* A rail's tile on a PHONE is sized by its peek, not by pixels: 2.6 cards visible, so the
      3rd is cut and says "this scrolls". Two rails that share this share a tile by
