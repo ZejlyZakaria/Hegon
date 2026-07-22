@@ -100,6 +100,19 @@ export function useUpdateMedia() {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.detail(id) });
       queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "list-items"] });
 
+      /**
+       * A RANK CHANGE IS NOT A STATUS CHANGE — but it REORDERS a rail, and that is a different
+       * kind of staleness. The Top 10 is sorted by `priority` in the query; the optimistic patch
+       * can only rewrite each row's number where it already sits, never move it. So swapping two
+       * titles left the badges correct and the positions wrong until a full reload.
+       * `priority` sits in neither STATUS_FIELDS nor the section invalidations, so it needs saying.
+       */
+      if (input.priority !== undefined) {
+        for (const type of touched) {
+          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.topRated(type), refetchType: "all" });
+        }
+      }
+
       if (isStatusChange) {
         for (const type of touched) {
           // refetchType "all" so the main-page section carousels refetch even while

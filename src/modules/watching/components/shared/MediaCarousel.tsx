@@ -13,16 +13,11 @@ import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
-import { LoveMark, RankMark, ScoreMark, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
+import { LoveMark, PriorityMark, RankMark, ScoreMark, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
 
-// Priority on a want-to-watch: a WORD, not a cryptic bookmark. Red/amber/neutral = urgency,
-// a scale everyone already reads.
-const PRIORITY_COLOR: Record<string, string> = {
-  high: "#fb7185",
-  medium: "#fcd34d",
-  low: "rgba(255,255,255,0.75)",
-};
+// Priority: the order of the rail carries the ranking, and `PriorityMark` flags only its top.
+// See Marks.tsx — the reasoning lives with the grammar, not here.
 import { displayTitle, watchedAgo, releaseCountdown } from "@/modules/watching/utils";
 import { Clock, CalendarClock } from "lucide-react";
 import { formatPosition, overallProgress } from "@/modules/watching/lib/progress";
@@ -120,6 +115,16 @@ function MovieCard({
         />
         <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
 
+        {/* THE ONE THING OUTSIDE THE CLUSTERS, and it earns it: a bookmark is a RIBBON, and a ribbon
+            hangs from an edge. Held at the cluster's inset it floated in the corner and stopped
+            reading as a bookmark at all. Flush to the top, then — but not to the left: the card is
+            `rounded-card` (12px), and at 0 the glyph would sit half on the curve. */}
+        {item.want_to_watch && item.priority_level && !showCountdown && (
+          <div className="absolute left-2 top-0 z-10">
+            <PriorityMark level={item.priority_level} />
+          </div>
+        )}
+
         {/* THE OVERLAY GRAMMAR — two clusters, and nothing else may sit on the artwork:
             left = IDENTITY (what this title is: rank, priority), right = ACTIONS (favorite,
             menu). Same inset, same 24px item height, same gap → they align by construction
@@ -128,11 +133,6 @@ function MovieCard({
           {showRankBadge && item.priority && <RankMark rank={item.priority} />}
           {/* Priority is "how badly do I want to watch this" — meaningless for a film that isn't out
               yet. In the Waiting for rail (showCountdown) the countdown is the only mark that belongs. */}
-          {item.want_to_watch && item.priority_level && !showCountdown && (
-            <Badge variant="flag" size="sm" uppercase color={PRIORITY_COLOR[item.priority_level]}>
-              {item.priority_level}
-            </Badge>
-          )}
           {/* WHEN you watched it — a factual timestamp, not a verdict, so it's neutral white, not
               the teal of a rating or the gold of the world. It has this cluster to itself: rank and
               priority never apply to a watched title. */}
@@ -214,13 +214,15 @@ function MovieCard({
                 text-overflow only applies to the element that HOLDS the text. So the label gets
                 its own span — "Science Fiction" ellipsises instead of shoving the year and the
                 score off the card. */}
-            {/* Genres, styled like the detail hero's — a quiet rounded pill, not the `overlay` badge
-                (that variant is built to sit ON artwork; here it's on the card body, where its bright
-                fill read as louder than the title). Same soft pill both places now. */}
+            {/* Genres via the primitive, at the weight this surface can carry. The earlier note
+                here was half right: `overlay` DID read louder than the title — but because it was
+                being handed the hero's 0.8 white, not because the variant is wrong. A genre is
+                metadata; it must sit under the title that names the thing. This card's title is
+                `text-sm`, so the pill is quieter than the hero's and matches Don't Miss. */}
             {!isPoster && item.tags?.slice(0, 2).map((tag) => (
-              <span key={tag} className="max-w-24 shrink truncate rounded-full bg-white/6 px-2 py-0.5 text-micro text-white/40 ring-1 ring-white/6">
+              <Badge key={tag} variant="overlay" size="sm" color="rgba(255,255,255,0.45)" className="max-w-24 shrink truncate">
                 {tag}
-              </span>
+              </Badge>
             ))}
             <span className="shrink-0 text-xs text-text-tertiary">{item.year}</span>
 

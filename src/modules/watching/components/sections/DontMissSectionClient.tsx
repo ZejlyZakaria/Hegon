@@ -18,15 +18,30 @@ import type { WatchingConfig } from "@/modules/watching/types";
 
 const TMDB_W500 = "https://image.tmdb.org/t/p/w500";
 const CARD_BG   = "var(--color-surface-0)";
-const EXP       = 22;   // 22/(22+7×4) = 44%
-const COL       = 7;    // 7/50         = 14%
-// card row height = h-60 = 240px → portrait poster width = 240 × 2/3 = 160px
-// Deliberately OFF the --poster-* ladder (audited 2026-07-22). This card is an accordion whose
-// width animates between collapsed and active; the poster is a fixed inset INSIDE it, derived from
-// the card's own h-60, not a tile sized by the ladder. Confusing the two would be confusing the
-// container with its content — see the ladder's note in globals.css.
-const POSTER_W  = 160;
-
+/**
+ * THE ROW'S TWO DIMENSIONS, as CSS variables so the row and its skeleton cannot disagree.
+ *
+ * `--dm-poster` — and it is NOT a free number: the poster is `inset-y-0` at 2:3, so its width IS the
+ * row's height × 2/3. You cannot widen a poster without making the row taller.
+ * `--dm-panel` — the open card's text column. FIXED, and that is the point: it used to be pinned
+ * `right-0`, so it inherited the card's ANIMATING width and every line inside re-laid-out on every
+ * frame — pills re-wrapped, the title re-broke, the paragraph re-flowed. No easing curve fixes that;
+ * it is not the motion that is wrong, it is that the content has no home until the motion ends.
+ *
+ * From those two, the row sizes itself: every card's flex-basis is one poster, and only the OPEN one
+ * grows. So a closed card is EXACTLY its artwork — the two failure modes are both gone, the dead
+ * dark strip beside a too-wide card and the artwork cropped off a too-narrow one.
+ *
+ * The breakpoint is 1700px and it is arithmetic, not taste: six posters + the panel + five gaps must
+ * fit the row, and the row is capped at 1552px by the page's `max-w-400`. 6×192 + 320 + 80 = 1552.
+ * Measured: exact from 1536px up (192px poster past 1700, 160px below). Under 1536 there is honestly
+ * not room for six posters and a 320px panel, so the posters give a little — 11px at 1440.
+ *
+ * Deliberately OFF the `--poster-*` ladder: those rungs size tiles, and this is an accordion whose
+ * poster is an inset derived from its own height.
+ */
+export const ROW_VARS =
+  "h-60 [--dm-panel:320px] [--dm-poster:160px] min-[1700px]:h-72 min-[1700px]:[--dm-poster:192px]";
 // ─── card ─────────────────────────────────────────────────────────────────────
 
 function DontMissCard({
@@ -57,8 +72,18 @@ function DontMissCard({
     <div
       className="relative rounded-card overflow-hidden cursor-pointer min-w-0 ring-1 ring-inset ring-white/10"
       style={{
-        flex: isActive ? EXP : COL,
-        transition: "flex 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+        // EVERY card's basis is its poster, so a closed one is EXACTLY its artwork — no dead strip
+        // beside it, and nothing cropped off it. Only the open card grows (`flex-grow: 1`), so it
+        // alone absorbs whatever the row has left over.
+        flex: isActive
+          ? "1 1 calc(var(--dm-poster) + var(--dm-panel))"
+          : "0 1 var(--dm-poster)",
+        // The open card's floor rides the BASIS, never `min-width`. min-width does not animate: it
+        // applied the instant you hovered, so the card jumped 320px wide and only then began to
+        // slide — a snap followed by a glide, which is what read as "not fitting".
+        // A curve that leaves fast and settles slowly, instead of the symmetric material easing.
+        transition:
+          "flex-basis 0.5s cubic-bezier(0.32, 0.72, 0, 1), flex-grow 0.5s cubic-bezier(0.32, 0.72, 0, 1)",
         backgroundColor: CARD_BG,
       }}
       onMouseEnter={onHover}
@@ -104,25 +129,40 @@ function DontMissCard({
         {isActive && (
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { duration: 0.22, delay: 0.15 } }}
+            // Early, and it can be: with the panel's width fixed there is no re-flow left to hide.
+            animate={{ opacity: 1, transition: { duration: 0.26, delay: 0.12 } }}
             exit={{ opacity: 0, transition: { duration: 0.1 } }}
             className="absolute inset-0"
           >
             {/* darken toward the info side; the sharp poster melts into its own blurred art */}
             <div className="absolute inset-0 bg-linear-to-r from-transparent via-black/35 to-black/65" />
 
-            {/* info panel — starts right after the poster */}
+            {/* Info panel — anchored after the poster, and WIDTH-FIXED, not `right-0`. Pinned to
+                the right edge it inherited the card's animating width, so every line inside it was
+                re-laid-out on every frame. Given the open card's final width it is laid out once,
+                from the first frame; the card opening merely uncovers it. */}
             <div
-              className="absolute right-0 top-0 bottom-0 flex flex-col justify-end pb-5 pr-6 pl-5 min-w-0"
-              style={{ left: `${POSTER_W}px` }}
+              className="absolute top-0 bottom-0 flex flex-col justify-end pb-5 pr-6 pl-5"
+              style={{ left: "var(--dm-poster)", width: "var(--dm-panel)" }}
             >
               {genres.length > 0 && (
-                <div className="flex gap-1.5 flex-wrap mb-2">
+                // ONE line, always. The panel is 320px and three long genres ("Science Fiction",
+                // "Action & Adventure"…) overflowed it, so the row wrapped and grew a second line
+                // of pills. Genres are a glance, not a list: they shrink and ellipsise rather than
+                // take a line the title should have had.
+                <div className="mb-2 flex flex-nowrap gap-1.5 overflow-hidden">
+                  {/* `overlay` is the variant written for this — "ON ARTWORK, for METADATA
+                      (genres)", in badge.tsx's own words — and it replaces a hand-rolled pill that
+                      only claimed in a comment to match the hero.
+                      The COLOUR is not the hero's, though, and that is the point: a genre is
+                      metadata and must never outweigh the title it describes. The hero's title is
+                      4xl, so 0.8 white sits under it comfortably; here the title is `text-base`,
+                      and 0.8 made the genres the brightest thing in the panel — louder than the
+                      name of the film. Same primitive, weight tuned to the title it serves. */}
                   {genres.map((g) => (
-                    // Same quiet pill as the detail hero — genres read as one style across the app.
-                    <span key={g} className="rounded-full bg-white/6 px-2 py-0.5 text-micro text-white/40 ring-1 ring-white/6">
+                    <Badge key={g} variant="overlay" size="md" color="rgba(255,255,255,0.45)" className="min-w-0 shrink truncate">
                       {g}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               )}
@@ -299,7 +339,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
       {/* Desktop: hover-expand accordion. py-3 wrapper matches MediaCarousel's
           content padding so the header→content gap is identical across sections. */}
       <div className="hidden py-1.5 lg:block">
-        <div className="flex h-60 gap-4" onMouseLeave={() => setActiveIndex(0)}>
+        <div className={`flex gap-4 ${ROW_VARS}`} onMouseLeave={() => setActiveIndex(0)}>
           {items.map((item, i) => (
             <DontMissCard
               key={`${item.id}-${i}`}

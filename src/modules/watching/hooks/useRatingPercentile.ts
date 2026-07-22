@@ -9,13 +9,23 @@ import type { MediaType } from "../types";
 const MIN_SAMPLE = 20;
 
 export interface RatingStanding {
-  /** % of your other titles of this type that you rated strictly lower. */
+  /**
+   * Percentile among your other titles of this type, TIES COUNTED HALF.
+   *
+   * It used to count only ratings strictly lower, and that broke on the two cases that matter
+   * most. Rate a film 5.5 when everything else is higher and it said "above 0% of your films" —
+   * true, and useless. Worse: rate twenty films 8.0 and this one 8.0, and it ALSO said 0%, because
+   * no rating was strictly lower — a mid-pack title reported as your worst. Splitting ties puts a
+   * shared rating where it belongs, in the middle.
+   */
   beats: number;
   /** Rank among your rated titles of this type (1 = your best). */
   rank: number;
   total: number;
   /** True when it sits in your top 10% — worth saying out loud. */
   elite: boolean;
+  /** True in your bottom 10%: the sentence has to flip, "above N%" says nothing down there. */
+  weak: boolean;
 }
 
 /**
@@ -43,13 +53,17 @@ export function useRatingStanding(
   if (others.length < MIN_SAMPLE - 1) return null;
 
   const lower = others.filter((r) => r < rating).length;
+  const equal = others.filter((r) => r === rating).length;
   const higher = others.filter((r) => r > rating).length;
-  const beats = Math.round((lower / others.length) * 100);
+  const beats = Math.round(((lower + equal / 2) / others.length) * 100);
+  const total = others.length + 1;
+  const rank = higher + 1;
 
   return {
     beats,
-    rank: higher + 1,
-    total: others.length + 1,
-    elite: (higher + 1) / (others.length + 1) <= 0.1,
+    rank,
+    total,
+    elite: rank / total <= 0.1,
+    weak: rank / total >= 0.9,
   };
 }

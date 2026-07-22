@@ -13,6 +13,7 @@
 // block under it). The page didn't just resize when the real ones mounted, it changed shape —
 // which is the "something appears, then something else" fault, not a sizing rounding error.
 import { CastCrewSkeleton } from "../detail/CastCrew";
+import { ROW_VARS } from "../sections/DontMissSectionClient";
 import { EpisodeCardsSkeleton } from "../detail/Episodes";
 
 function Pulse({ className }: { className: string }) {
@@ -67,8 +68,8 @@ export function CarouselSkeleton() {
 // ─── Trending (DontMiss) skeleton ──────────────────────────────────────────────
 
 export function DontMissSkeleton() {
-  const EXP = 22;
-  const COL = 7;
+  // The open card's width is imported, not re-typed: this block used to carry its own copy of the
+  // flex ratios, so the day the real row stopped using ratios the skeleton went on drawing them.
   return (
     <section>
       {/* header — mirrors the real "Don't Miss" title + subtitle (no shift on resolve) */}
@@ -80,12 +81,15 @@ export function DontMissSkeleton() {
           with a pulsing poster anchored left (same as DontMissCard), and the same
           py-1.5 wrapper, so skeleton → real-cards is seamless in shape AND spacing. */}
       <div className="hidden py-1.5 lg:block">
-        <div className="flex h-60 gap-4">
-          {[EXP, COL, COL, COL, COL, COL].map((f, i) => (
+        <div className={`flex gap-4 ${ROW_VARS}`}>
+          {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
               className="relative overflow-hidden rounded-card ring-1 ring-inset ring-white/10"
-              style={{ flex: f, backgroundColor: "var(--color-surface-0)" }}
+              style={{
+                flex: i === 0 ? "1 1 calc(var(--dm-poster) + var(--dm-panel))" : "0 1 var(--dm-poster)",
+                backgroundColor: "var(--color-surface-0)",
+              }}
             >
               <div className="absolute inset-y-0 left-0 bg-surface-2 animate-pulse" style={{ aspectRatio: "2/3" }} />
             </div>
@@ -427,11 +431,14 @@ function DetailRowsSkeleton({ titleW, rows, withBadge, withAwards }: { titleW: s
 function MyTakeSkeleton() {
   return (
     <div className="surface-quiet rounded-card p-4 pt-4 sm:p-5">
+      {/* The numeral is the only thing on this line that carries HEIGHT — "/ 10" and the verdict
+          word sit on its baseline and add none. They used to get a bar each, so the loading state
+          drew punctuation: three shapes standing in for one line. One bar for the words says the
+          same thing and stops the eye trying to read the placeholder. */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-baseline gap-2">
           <div className="h-9 w-14 animate-pulse rounded bg-surface-2" />
-          <div className="h-4 w-10 animate-pulse rounded bg-surface-2" />
-          <div className="h-4 w-16 animate-pulse rounded bg-surface-2" />
+          <div className="h-4 w-24 animate-pulse rounded bg-surface-2" />
         </div>
         <div className="space-y-1.5">
           <div className="ml-auto h-3 w-36 animate-pulse rounded bg-surface-2" />
@@ -439,13 +446,16 @@ function MyTakeSkeleton() {
         </div>
       </div>
 
-      {/* Rating scale — grab band (track + ticks) then the anchor-word row under it. */}
+      {/* Rating scale — 76px of real control (grab band, ticks, anchor words). The height is the
+          promise and it is kept in full; the SHAPES are not. The tick layer and the word row used
+          to be drawn and then dimmed to 30% and 20% — dimming a shape you know is too much is the
+          tell that it should not be there. One band, and the rest is reserved emptiness. */}
       <div className="mt-3 max-w-2xl">
         <div className="py-3">
           <div className="h-2.5 w-full animate-pulse rounded-full bg-surface-2" />
-          <div className="mt-1 h-1.5 w-full animate-pulse rounded-full bg-surface-2 opacity-30" />
+          <div className="mt-1 h-1.5" />
         </div>
-        <div className="mt-1 h-7 animate-pulse rounded bg-surface-2 opacity-20" />
+        <div className="mt-1 h-7" />
       </div>
 
       <div className="my-4 h-px bg-border-subtle" />

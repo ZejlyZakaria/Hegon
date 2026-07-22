@@ -32,6 +32,9 @@ export default function WantToWatchSectionClient({ userId, config }: Props) {
 
   // Unreleased films live in their own "Waiting for" rail — so a title is in exactly one place.
   // (Series/anime never match `isAwaitingRelease`, so this is a no-op for them.)
+  // The rail keeps the order the query returned. Sorting by priority was tried and reverted: with
+  // the coloured bookmark on every card, sorting only stacked every red mark at the head of the
+  // rail, saying twice what the colour already says — and it silently changed what this rail means.
   const ready = items.filter((it) => !isAwaitingRelease(it));
 
   const handleDelete = async (itemId: string) => {

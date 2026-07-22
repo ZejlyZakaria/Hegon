@@ -58,6 +58,26 @@ const SIZES: Record<NonNullable<BadgeProps["size"]>, string> = {
 
 // A flag on artwork gets a little more room than a chip on a page: it has to survive being
 // read at a glance, over an image, at poster scale.
+/**
+ * `overlay` is the GENRE variant — badge.tsx says so at the top — and a genre is a tag: a word you
+ * put down, not a control. So it gets its own geometry rather than borrowing the others':
+ *
+ *  · a PILL, not a chip. Shape now carries meaning here — a chip acts or flags (Trending, New),
+ *    a pill is a quiet label. It is also what genres looked like before the primitive existed,
+ *    hand-rolled in three files; the geometry was right, only the duplication was wrong.
+ *  · `text-micro` at EVERY size. The shared scale drops to `text-caption` below `lg`, which is the
+ *    eyebrow role — 10px, semibold, 0.08em of tracking. That is built for a short shouted label
+ *    ("TRENDING"); on "Animation" or "Drama" it reads spaced-out and stops looking like a word.
+ *
+ * Padding is the only thing that moves with size, because the only thing that changes between a
+ * hero and a card is how much room the genre is allowed to take.
+ */
+const OVERLAY_SIZES: Record<NonNullable<BadgeProps["size"]>, string> = {
+  sm: "gap-1 px-2 py-0.5 text-micro",
+  md: "gap-1 px-2.5 py-0.5 text-micro",
+  lg: "gap-1.5 px-3 py-1 text-micro",
+};
+
 const FLAG_SIZES: Record<NonNullable<BadgeProps["size"]>, string> = {
   sm: "gap-1.5 px-2 py-1 text-caption",
   md: "gap-1.5 px-2.5 py-1.5 text-caption",
@@ -114,7 +134,9 @@ export function Badge({
         variant === "overlay" ? "font-medium" : "font-semibold",
         isFlag
           ? ["on-artwork rounded-chip [&_svg]:text-(--badge-mark)", FLAG_SIZES[size]]
-          : ["rounded-chip", SIZES[size]],
+          : variant === "overlay"
+            ? ["rounded-full", OVERLAY_SIZES[size]]
+            : ["rounded-chip", SIZES[size]],
         uppercase && "uppercase tracking-wider",
         className,
       )}

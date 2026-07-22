@@ -1,4 +1,4 @@
-import { Heart, Star } from "lucide-react";
+import { Bookmark, Heart, Star } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 
 /**
@@ -32,8 +32,9 @@ export const OVERLAY_CLUSTER = "absolute top-2.5 z-10 flex h-6 items-center gap-
  * and a frosted `…` that opens a plain dropdown promises a physical object and hands you a
  * list. The material was making a promise the interaction never kept.
  *
- * `rounded-full` is right here, and only here: this shape IS round. Anything carrying TEXT
- * takes a radius token (a badge is `rounded-chip`), never a pill.
+ * `rounded-full` is right here because this shape IS round. Text is a different matter, and it
+ * splits in two: a badge that ACTS or FLAGS (Trending, New, a status) is a `rounded-chip`, while a
+ * genre — a word you put down, nothing more — is a pill. See `OVERLAY_SIZES` in badge.tsx.
  */
 export const OVERLAY_CIRCLE = "on-artwork flex h-6 w-6 items-center justify-center rounded-full";
 
@@ -101,6 +102,39 @@ export function LoveMark({ filled = true, size = 13 }: { filled?: boolean; size?
  *
  * Sized to the overlay cluster (h-6) so it aligns with everything beside it.
  */
+/**
+ * PRIORITY — a bookmark, coloured by urgency.
+ *
+ * This is the ONE place the source rule bends, and it bends for a reason that outranks it: the
+ * colour language for priority is already taught at the INPUT. The add modal offers red / amber /
+ * grey dots when you pick high, medium or low. A card that answered in teal — or in words, or with
+ * nothing — would make the picker teach a vocabulary the rest of the app never speaks.
+ *
+ * So the three levels are all marked, and the colour IS the mark. That is also why a graded mark
+ * survives being on every poster where a uniform one wouldn't: you don't scan for "is there a
+ * bookmark", you scan for "how red is it". Grey says low without raising its voice.
+ *
+ * The values are Tailwind's own tokens, the same ones the modal's classes resolve to, so the two
+ * ends of this language cannot drift apart into two palettes that a comment claims are one.
+ * (`LOVE` is rose-500 and the heart is a heart: different hue, different shape, no collision.)
+ */
+export const PRIORITY: Record<"high" | "medium" | "low", string> = {
+  high: "var(--color-red-400)",
+  medium: "var(--color-amber-400)",
+  low: "var(--color-zinc-500)",
+};
+
+export function PriorityMark({ level, size = 17 }: { level: "high" | "medium" | "low"; size?: number }) {
+  const color = PRIORITY[level];
+  return (
+    <Bookmark
+      size={size}
+      aria-label={`${level} priority`}
+      style={{ color, fill: color, filter: "drop-shadow(0 1px 4px rgba(0,0,0,0.8))" }}
+    />
+  );
+}
+
 export function RankMark({ rank, className }: { rank: number; className?: string }) {
   return (
     <span className={cn("flex h-6 items-center gap-1.5", className)}>

@@ -54,30 +54,33 @@ export function EpisodeCardsSkeleton({ n = 5 }: { n?: number }) {
       {Array.from({ length: n }).map((_, i) => (
         <div key={i} className="w-66 shrink-0">
           <div className="aspect-video w-full animate-pulse rounded-card bg-surface-2" />
-          {/* The bars carry the REAL typography classes and hold a non-breaking space, so each
-              line takes its true height from the same line-height as the text it replaces.
-              Hard-coded pixel heights were 7px short here and would drift the day the type
-              scale moves; this cannot. (Measured: 15 + 16 + 4 + 36 = 71px of text block.)
+          {/* Each <p> keeps the REAL typography class, so the block takes its height from the same
+              line-heights as the text it replaces and cannot drift when the type scale moves.
+              (Measured: 15 + 16 + 4 + 36 = 71px.)
 
-              Reserving that height is not the same as matching its WEIGHT. The real card is a
-              hierarchy — a faint tertiary caption, then a solid bold title, then two THIN,
-              tertiary-coloured overview lines with real letterforms (mostly negative space). All
-              four bars here used to paint at the same full opacity, so the block read as one
-              solid grey wall next to the title instead of the light-then-bold-then-light shape
-              the real card has — that solid wall was the "too busy below the image". The
-              caption and overview bars share the real card's `text-tertiary` colour, so they
-              now share its lighter weight too; only the title (`text-primary`, actually bold)
-              stays solid. */}
+              But a line of 11px text only INKS about a third of its line box — the rest is
+              leading and negative space. Bars that filled the whole box therefore painted two to
+              three times the mass of the text, and stacked with no gap they read as slabs, not as
+              writing: that was the "too big and too crowded". Filling them at lower opacity only
+              made the slab paler. So the bar is now SHORTER than its line and centred in it, and
+              the leading does the spacing.
+              Hierarchy rides the same property as real ink: the bold title's bar is 10px, the
+              quiet caption and overview 8px. No opacity trick — that had made the title the one
+              bar that visibly jumped out of the four. */}
           <div className="mt-2">
-            <p className="text-micro font-medium">
-              <span className="inline-block w-16 animate-pulse rounded-control bg-surface-2 text-transparent opacity-60">&nbsp;</span>
+            <p className="mb-0.5 text-micro font-medium">
+              <span className="inline-block h-2 w-16 animate-pulse rounded-full bg-surface-2 align-middle" />
             </p>
             <p className="text-xs font-semibold">
-              <span className="inline-block w-2/3 animate-pulse rounded-control bg-surface-2 text-transparent">&nbsp;</span>
+              <span className="inline-block h-2.5 w-2/3 animate-pulse rounded-full bg-surface-2 align-middle" />
             </p>
             <p className="mt-1 text-micro leading-relaxed">
-              <span className="inline-block w-full animate-pulse rounded-control bg-surface-2 text-transparent opacity-40">&nbsp;</span>
-              <span className="inline-block w-4/5 animate-pulse rounded-control bg-surface-2 text-transparent opacity-40">&nbsp;</span>
+              {/* Two bars, because the overview is `line-clamp-2` and the height has to be
+                  promised — one bar would collapse this line box and the real text would then
+                  shove the card 18px taller. The SECOND one is half-width: a real paragraph's
+                  last line stops early, and two near-equal bars read as a filled block instead. */}
+              <span className="inline-block h-2 w-full animate-pulse rounded-full bg-surface-2 align-middle" />
+              <span className="inline-block h-2 w-1/2 animate-pulse rounded-full bg-surface-2 align-middle" />
             </p>
           </div>
         </div>
@@ -287,9 +290,13 @@ function StillCard({
         )}
       </div>
 
-      {/* Number · title · overview */}
+      {/* Number · title · overview.
+          The number is an EYEBROW: it belongs to the title, so it sits closer to it (2px) than the
+          overview does (4px) — that difference is what says "these two are one thing, this is
+          another". Equal spacing everywhere would read as four unrelated lines. At zero, though,
+          the two tight line-heights (1.35 and 1.3) made them touch. */}
       <div className="mt-2">
-        <p className="text-micro font-medium text-text-tertiary">{line1}</p>
+        <p className="mb-0.5 text-micro font-medium text-text-tertiary">{line1}</p>
         <p className="truncate text-xs font-semibold text-text-primary">{line2}</p>
         {overview && (
           <p className="mt-1 line-clamp-2 text-micro leading-relaxed text-text-tertiary">{overview}</p>

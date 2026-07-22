@@ -24,6 +24,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { cn } from "@/shared/utils/utils";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Check, Loader2, Search, X } from "lucide-react";
@@ -46,8 +47,10 @@ function yearOf(r: TmdbListResult): string | null {
 }
 
 function Results({
-  results, loading, query, owned, onPick,
+  results, loading, query, owned, onPick, activeIndex = -1,
 }: {
+  /** Keyboard cursor. -1 while you are still typing and have not moved down into the list. */
+  activeIndex?: number;
   results: TmdbListResult[];
   loading: boolean;
   query: string;
@@ -70,15 +73,22 @@ function Results({
 
   return (
     <ul className="max-h-96 overflow-y-auto py-1 scrollbar-hide">
-      {results.map((r) => {
+      {results.map((r, i) => {
         const type = tmdbResultType(r);
         const year = yearOf(r);
+        const isActive = i === activeIndex;
         return (
           <li key={`${r.media_type}-${r.id}`}>
             <button
               type="button"
               onClick={() => onPick(r)}
-              className="flex w-full items-center gap-3 px-2.5 py-2 text-left transition-colors hover:bg-surface-2"
+              // The keyboard cursor wears the same clothes as hover: one highlight, whichever way
+              // you reached the row. `ref` scrolls it into view — the list scrolls past ten items.
+              ref={(el) => { if (isActive) el?.scrollIntoView({ block: "nearest" }); }}
+              className={cn(
+                "flex w-full items-center gap-3 px-2.5 py-2 text-left transition-colors hover:bg-surface-2",
+                isActive && "bg-surface-2",
+              )}
             >
               {/* The ladder's smallest rung. This was `w-8` and the add modal's identical row was
                   `w-9` — two search results, one module, two sizes agreeing with nothing. */}
@@ -151,6 +161,32 @@ export function WatchingSearch() {
     };
   }, [open]);
 
+  /**
+   * KEYBOARD. A search box you must reach for the mouse to finish is a search box that made you
+   * type for nothing. Down enters the list, Up walks back out of it (-1 = the field again), Enter
+   * takes the highlighted row — or the first one, if you never moved and just hit Enter.
+   * The cursor resets whenever the query changes: the row under it is not the same row any more.
+   */
+  // The cursor is stored WITH the query it belongs to, so a new query resets it by derivation
+  // rather than by an effect that fires after a render has already drawn the stale row.
+  const [cursor, setCursor] = useState<{ q: string; i: number }>({ q: "", i: -1 });
+  const active = cursor.q === debounced ? cursor.i : -1;
+  const setActive = (next: (i: number) => number) => setCursor({ q: debounced, i: next(active) });
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!open || results.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => (i + 1) % results.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => (i <= 0 ? -1 : i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      pick(results[active >= 0 ? active : 0]);
+    }
+  };
+
   const pick = (r: TmdbListResult) => {
     setOpen(false);
     setSheetOpen(false);
@@ -167,7 +203,7 @@ export function WatchingSearch() {
       {/* The width is declared ONCE, here: the field and the results panel below it are the same
           object seen open or closed, so they read as one column. They used to carry their own
           widths (w-52 and w-80) and the panel hung wider than the field that opened it. */}
-      <div ref={boxRef} className="relative hidden w-80 sm:block">
+      <div ref={boxRef} onKeyDown={onKeyDown} className="relative hidden w-80 sm:block">
         <SearchInput
           size="sm"
           containerClassName="w-full"
@@ -179,7 +215,7 @@ export function WatchingSearch() {
         />
         {open && (
           <div className="absolute right-0 top-full z-50 mt-1.5 w-full overflow-hidden rounded-card border border-border-strong bg-surface-3 shadow-2xl">
-            <Results results={results} loading={isFetching} query={query} owned={owned} onPick={pick} />
+            <Results results={results} loading={isFetching} query={query} owned={owned} onPick={pick} activeIndex={active} />
           </div>
         )}
       </div>

@@ -6,6 +6,7 @@ import { tmdbImage, tmdbImageFor } from "../../lib/tmdb-image";
 import { ArrowLeft, Loader2, Play } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Badge } from "@/shared/components/ui/badge";
+import { RankMark } from "../shared/Marks";
 import type { WatchingMedia } from "../../types";
 import { displayTitle } from "../../utils";
 import { useImdbId } from "../../hooks/useImdbId";
@@ -36,6 +37,32 @@ function useHeroScores(media: WatchingMedia): HeroScore[] {
         : null,
   ].filter(Boolean) as HeroScore[];
 }
+/**
+ * YOUR RANK, ABOVE THE TITLE — the one line here that is not a fact about the film.
+ *
+ * Everything else in this hero belongs to the world: genres, year, runtime, the scores. A Top 10
+ * place belongs to YOU, so it sits above the title rather than among them — an eyebrow, the way a
+ * headline is introduced, not another chip in the metadata row.
+ *
+ * It reuses `RankMark` exactly as the carousel does: the same rank has to look the same everywhere,
+ * or the badge becomes something you have to re-learn per screen. That also settles a colour the
+ * module had two answers for — the rail says teal, the add modal says amber. The grammar decides:
+ * colour names the SOURCE, gold is the world's and teal is yours, and a Top 10 is entirely yours.
+ *
+ * Nothing at all when the title is unranked. There is no empty state for a verdict you have not
+ * given: an "unranked" line would spend the most prominent row in the page saying nothing.
+ */
+function RankEyebrow({ media }: { media: WatchingMedia }) {
+  if (media.priority == null) return null;
+  const noun = media.type === "film" ? "films" : media.type === "serie" ? "series" : "animes";
+  return (
+    <div className="mb-1.5 flex items-center gap-2">
+      <RankMark rank={media.priority} />
+      <span className="text-caption uppercase tracking-wide text-white/45">of your {noun}</span>
+    </div>
+  );
+}
+
 interface Props {
   media: WatchingMedia;
   isSeries: boolean;
@@ -164,7 +191,10 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
             />
           </div>
 
-          <h1 className="mt-3 text-balance text-xl font-bold leading-tight tracking-tight text-white">
+          <div className="mt-3 flex justify-center">
+            <RankEyebrow media={media} />
+          </div>
+          <h1 className="text-balance text-xl font-bold leading-tight tracking-tight text-white">
             {title}
           </h1>
           {showAltTitle && <p className="mt-0.5 text-sm text-white/35">{other}</p>}
@@ -245,8 +275,9 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
               </div>
             </div>
 
-            {/* Title → genres → facts → pitch → the trailer gesture */}
+            {/* Your rank → title → genres → facts → pitch → the trailer gesture */}
             <div className="min-w-0 flex-1 pb-1">
+              <RankEyebrow media={media} />
               <h1 className="text-balance text-4xl font-bold leading-tight tracking-tight text-white">
                 {title}
               </h1>

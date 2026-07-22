@@ -36,6 +36,7 @@ import { buildWatchedAt, type WatchDateParts } from "@/modules/watching/lib/watc
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { QuickStats } from "@/modules/watching/components/detail/QuickStats";
 import { InList } from "@/modules/watching/components/detail/InList";
+import { TopTenRank } from "@/modules/watching/components/detail/TopTenRank";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useRewatches } from "@/modules/watching/hooks/useRewatches";
 import { useListsForMedia, useListsWithThumbnails } from "@/modules/watching/hooks/useMediaLists";
@@ -98,7 +99,7 @@ export default function MediaDetailPage() {
   }, [media, setPageLabel]);
   const isSeries = media?.type === "serie" || media?.type === "anime";
 
-  const { data: similar = [] } = useSimilarTitles(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
+  const { data: similar = [], isLoading: similarLoading } = useSimilarTitles(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
   // Cast is cached in the DB (stored at add time / backfilled) → render straight
   // from there and skip the TMDB credits call. Only fall back to TMDB when absent.
   const hasStoredCast = (media?.cast_members?.length ?? 0) > 0;
@@ -451,7 +452,7 @@ export default function MediaDetailPage() {
           ) : null}
 
           {recommendations.length > 0 && (
-            <MoreLikeThis items={recommendations} onAddClick={handleAddSimilar} />
+            <MoreLikeThis items={recommendations} loading={similarLoading} onAddClick={handleAddSimilar} />
           )}
 
         </div>
@@ -471,6 +472,11 @@ export default function MediaDetailPage() {
             <AnimeThemes media={media} />
 
             <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
+
+            {/* Ranking sits beside the lists because it IS one — the one list that is ordered.
+                Only for something you have watched: a Top 10 is a verdict, and you cannot rank
+                what you have not seen. */}
+            {media.watched && <TopTenRank media={media} />}
 
             <InList mediaItemId={media.id} userId={media.user_id} />
 

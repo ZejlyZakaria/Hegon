@@ -103,7 +103,7 @@ export default function DiscoverDetailPage() {
     return () => setPageLabel(null);
   }, [media, setPageLabel]);
 
-  const { data: similar = [] } = useSimilarTitles(id, mediaType, !!media);
+  const { data: similar = [], isLoading: similarLoading } = useSimilarTitles(id, mediaType, !!media);
   const { data: credits, isLoading: creditsLoading } = useMediaCredits(id, mediaType, !!media);
   const { data: trailer, isLoading: trailerLoading } = useMediaTrailer(id, mediaType, !!media);
   // Free: it's another slice of the bundle this page already fetches, not a new request.
@@ -273,7 +273,7 @@ export default function DiscoverDetailPage() {
           ) : null}
 
           {recommendations.length > 0 && (
-            <MoreLikeThis items={recommendations} onAddClick={handleAddSimilar} />
+            <MoreLikeThis items={recommendations} loading={similarLoading} onAddClick={handleAddSimilar} />
           )}
         </div>
 

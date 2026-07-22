@@ -17,13 +17,47 @@ interface SimilarItem {
   first_air_date?: string;
 }
 
+/**
+ * The rail's own skeleton, living next to the real thing so the two cannot drift — the same reason
+ * CastCrew and Episodes keep theirs here rather than in WatchingSkeletons.
+ * Six tiles, the same grid, and the title/year caption underneath: a poster alone is 55px short.
+ */
+export function MoreLikeThisSkeleton() {
+  return (
+    <section>
+      <SectionHeader title="More Like This" />
+      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 py-1 scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="w-(--rail-peek) shrink-0 sm:w-auto">
+            <div className="aspect-2/3 w-full animate-pulse rounded-tile bg-surface-2" />
+            <p className="mt-2 text-xs">
+              <span className="inline-block h-2 w-4/5 animate-pulse rounded-full bg-surface-2 align-middle" />
+            </p>
+            <p className="text-micro">
+              <span className="inline-block h-2 w-8 animate-pulse rounded-full bg-surface-2 align-middle" />
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 interface Props {
   items: SimilarItem[];
+  /**
+   * True while the recommendations are still in flight. Without it this component could not tell
+   * "none" from "not yet" — so on a cold load it returned null, the page skeleton's block vanished,
+   * a hole opened, and the rail dropped in afterwards. That is the module's oldest disease
+   * (`pending` on the coordinate lens, the discover flash) in one more place.
+   */
+  loading?: boolean;
   /** Click → add to "Want to Watch". When omitted (e.g. demo), cards are inert. */
   onAddClick?: (item: SimilarItem) => void;
 }
 
-export function MoreLikeThis({ items, onAddClick }: Props) {
+export function MoreLikeThis({ items, loading = false, onAddClick }: Props) {
+  if (loading) return <MoreLikeThisSkeleton />;
   if (items.length === 0) return null;
   const clickable = !!onAddClick;
 

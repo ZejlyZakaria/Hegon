@@ -155,9 +155,22 @@ export function MyTake({ media, forceNoteOpen }: Props) {
                         Top {Math.max(1, Math.round((standing.rank / standing.total) * 100))}% of your {typeWord}
                       </span>
                     )}
-                    You rate it above{" "}
-                    <span className="font-semibold text-text-secondary">{standing.beats}%</span>{" "}
-                    of your {typeWord}
+                    {/* The sentence has to face the right way. "You rate it above 4% of your films"
+                        is technically true and tells you nothing; down there the interesting fact
+                        is how much you liked LESS, not more. Same number, read from the other end. */}
+                    {standing.weak ? (
+                      <>
+                        You rated{" "}
+                        <span className="font-semibold text-text-secondary">{100 - standing.beats}%</span>{" "}
+                        of your {typeWord} higher
+                      </>
+                    ) : (
+                      <>
+                        You rate it above{" "}
+                        <span className="font-semibold text-text-secondary">{standing.beats}%</span>{" "}
+                        of your {typeWord}
+                      </>
+                    )}
                   </p>
                 )}
               </div>
