@@ -35,6 +35,8 @@ import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails"
 import { CastCrew, CastCrewSkeleton } from "@/modules/watching/components/detail/CastCrew";
 import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis";
 import { Episodes } from "@/modules/watching/components/detail/Episodes";
+import { useAnimeCours } from "@/modules/watching/hooks/useAnimeCours";
+import { shouldOverlay } from "@/modules/watching/lib/anime-overlay";
 import { AnimeThemes } from "@/modules/watching/components/detail/AnimeThemes";
 import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal";
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
@@ -107,6 +109,16 @@ export default function DiscoverDetailPage() {
   // Free: it's another slice of the bundle this page already fetches, not a new request.
   const { data: providers } = useWatchProviders(id, mediaType, !!media);
 
+  /**
+   * A lumped anime has to be cut into cours HERE too. Without this, the same title told two
+   * different stories: 38 flat episodes in one season on discover, then S1 E1-12 / S2 E13-24 the
+   * moment you added it — the coordinates changed under a title that had not changed at all.
+   * `shouldOverlay` is the rule that decides, the same one the add modal and the owned page ask;
+   * a second opinion here is how this module got sick in the first place.
+   */
+  const { data: coursRow, isLoading: coursLoading } = useAnimeCours(id, mediaType === "anime");
+  const cours = media && shouldOverlay(media, coursRow) ? coursRow.cours : undefined;
+
   // Same rule as the owned page: never recommend what you already have.
   const recommendations = useMemo(() => {
     const owned = new Set(ownedIds);
@@ -140,7 +152,10 @@ export default function DiscoverDetailPage() {
    * `isSeries` comes from the ROUTE here, so both variants know their type from the first frame.
    */
   if (ownedLoading || ownedRow) return <DetailSkeleton isSeries={isSeries} />;
-  if (isLoading) return <DiscoverSkeleton isSeries={isSeries} />;
+  // An anime waits for its cours as well. Painting the flat count first and correcting it a moment
+  // later is the same fault the owned page closed with `view.pending`: "not resolved yet" is not
+  // "no overlay". The skeleton holds until the coordinates are known.
+  if (isLoading || (mediaType === "anime" && coursLoading)) return <DiscoverSkeleton isSeries={isSeries} />;
   if (!media) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
@@ -246,7 +261,7 @@ export default function DiscoverDetailPage() {
         {/* ── LEFT — the work itself ── */}
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
           {isSeries && (
-            <Episodes media={media} currentSeason={1} readOnly />
+            <Episodes media={media} currentSeason={1} readOnly cours={cours} />
           )}
 
           {/* Hold the rail's height while the faces are in flight, so More Like This doesn't get

@@ -166,7 +166,11 @@ export async function getMediaItems(
 // is over (`status`) and where its last aired episode is (`season_aired`). Starved of those, the
 // menu wrote `watched: true` over a blank position — manufacturing the exact rows a migration had
 // just repaired. A surface that may act on a fact must be given the fact.
-const LIBRARY_COLUMNS =
+// Exported because the Library page seeds this same query server-side. It used to keep its own
+// hand-copied copy of this string, synchronised by a sentence in a comment — and it had already
+// drifted, missing the five columns the paragraph above exists to explain. An invariant kept by
+// discipline is an invariant already broken; there is one list now, and the compiler carries it.
+export const LIBRARY_COLUMNS =
   "id, type, title, original_title, poster_url, favorite, year, user_rating, watched_at, updated_at, tags, watched, in_progress, dropped, drop_reason, paused, current_season, current_episode, status, season_episodes, season_aired, season_years, caught_up_at";
 
 export async function getLibraryMedia(userId: string): Promise<WatchingMedia[]> {

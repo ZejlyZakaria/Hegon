@@ -52,12 +52,12 @@ describe('getPreview', () => {
   it('truncates at 100 chars by default', () => {
     const long = 'a'.repeat(120);
     const result = getPreview(long);
-    expect(result).toBe('a'.repeat(100) + '...');
+    expect(result).toBe('a'.repeat(100) + '…');
   });
 
   it('respects custom maxLength', () => {
     const result = getPreview('Hello world', 5);
-    expect(result).toBe('Hello...');
+    expect(result).toBe('Hello…');
   });
 
   it('returns full line when shorter than maxLength', () => {
