@@ -243,7 +243,9 @@ export default function PersonPage() {
                           <ScoreMark value={t.user_rating} source="mine" className="shrink-0" />
                         )}
                       </div>
-                      {t.role && <p className="truncate text-micro text-text-tertiary">{t.role}</p>}
+                      {/* Same rule as the grid below: the line is reserved even when the credit
+                          carries no role, so one untitled part cannot shift its poster. */}
+                      <p className="truncate text-micro text-text-tertiary">{t.role || " "}</p>
                     </button>
                   );
                 })}
@@ -282,7 +284,13 @@ export default function PersonPage() {
                           </div>
                         </div>
                         <p className="mt-2 truncate text-xs font-medium text-text-secondary transition-colors group-hover:text-text-primary">{c.title}</p>
-                        {c.year && <p className="text-micro text-text-tertiary">{c.year}</p>}
+                        {/* The caption line is always drawn, blank if there is no year. A tile is a
+                            <button>, and a button centres its own content: a missing line made the
+                            shorter tile re-centre inside its stretched grid cell and carried the
+                            POSTER down with it. The space is held by a real character rather than a
+                            hard-coded height, so the reserved line and a filled one can never
+                            measure differently. */}
+                        <p className="text-micro text-text-tertiary">{c.year || " "}</p>
                       </button>
                     ))}
                   </div>
