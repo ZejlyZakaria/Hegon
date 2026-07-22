@@ -154,6 +154,31 @@ export function ForYouSkeleton() {
  * it. Also: every card here is `surface-card` in the real page (rim light + a soft shadow) —
  * the flat `bg-surface-1` fill the old version used is a different, quieter material.
  */
+/**
+ * The three grid pages (movies, tv-shows, animes) share one silhouette, so it is written once here
+ * and each of those routes points its own `loading.tsx` at it.
+ *
+ * It deliberately no longer lives at `watching/loading.tsx`. A loading file at the segment level is
+ * not that segment's page — it is the fallback for EVERY route below it, including the ones that
+ * look nothing like a grid. On a FIRST visit the nested route's own boundary is not loaded yet, so
+ * Next fell back to the nearest one available and drew Don't Miss + carousels for ~0.1s on the way
+ * into a person page. A screen that changes its mind is a fault, so rather than make the fallback
+ * "less wrong", the file that allowed one page's skeleton to stand in for another is gone: every
+ * route now owns its boundary, or has none and simply holds the previous screen until it can draw
+ * its own. Nothing can be inherited, so nothing can lie.
+ */
+export function GridPageSkeleton() {
+  return (
+    <div className="p-4 sm:p-6 space-y-4">
+      <DontMissSkeleton />
+      <ForYouSkeleton />
+      <CarouselSkeleton />
+      <CarouselSkeleton />
+      <CarouselSkeleton />
+    </div>
+  );
+}
+
 export function StatsSkeleton() {
   return (
     <div className="space-y-4 p-4 md:p-6 animate-pulse">

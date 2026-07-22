@@ -1,8 +1,7 @@
 import { StatsSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 
-// Without this, navigating to /stats falls back to the parent /watching/loading.tsx
-// (the Don't Miss + carousels skeleton = the Movies layout) for an instant before
-// the Stats page mounts. Its own loading state keeps the Stats skeleton on screen.
+// Same skeleton on both sides of the boundary, so nothing swaps when the page mounts.
+// (There is no longer a parent watching/loading.tsx to fall back to — see GridPageSkeleton.)
 export default function StatsLoading() {
   return <StatsSkeleton />;
 }
