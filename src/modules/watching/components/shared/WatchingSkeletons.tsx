@@ -13,7 +13,7 @@
 // block under it). The page didn't just resize when the real ones mounted, it changed shape —
 // which is the "something appears, then something else" fault, not a sizing rounding error.
 import { CastCrewSkeleton } from "../detail/CastCrew";
-import { ROW_VARS } from "../sections/DontMissSectionClient";
+import { ROW_VARS } from "../../lib/dont-miss-layout";
 import { EpisodeCardsSkeleton } from "../detail/Episodes";
 
 function Pulse({ className }: { className: string }) {

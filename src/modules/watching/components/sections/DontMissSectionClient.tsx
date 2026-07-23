@@ -6,6 +6,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Plus, TrendingUp } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
+import { ROW_VARS } from "@/modules/watching/lib/dont-miss-layout";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
 import { tmdbImage, tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
@@ -18,30 +19,6 @@ import type { WatchingConfig } from "@/modules/watching/types";
 
 const TMDB_W500 = "https://image.tmdb.org/t/p/w500";
 const CARD_BG   = "var(--color-surface-0)";
-/**
- * THE ROW'S TWO DIMENSIONS, as CSS variables so the row and its skeleton cannot disagree.
- *
- * `--dm-poster` — and it is NOT a free number: the poster is `inset-y-0` at 2:3, so its width IS the
- * row's height × 2/3. You cannot widen a poster without making the row taller.
- * `--dm-panel` — the open card's text column. FIXED, and that is the point: it used to be pinned
- * `right-0`, so it inherited the card's ANIMATING width and every line inside re-laid-out on every
- * frame — pills re-wrapped, the title re-broke, the paragraph re-flowed. No easing curve fixes that;
- * it is not the motion that is wrong, it is that the content has no home until the motion ends.
- *
- * From those two, the row sizes itself: every card's flex-basis is one poster, and only the OPEN one
- * grows. So a closed card is EXACTLY its artwork — the two failure modes are both gone, the dead
- * dark strip beside a too-wide card and the artwork cropped off a too-narrow one.
- *
- * The breakpoint is 1700px and it is arithmetic, not taste: six posters + the panel + five gaps must
- * fit the row, and the row is capped at 1552px by the page's `max-w-400`. 6×192 + 320 + 80 = 1552.
- * Measured: exact from 1536px up (192px poster past 1700, 160px below). Under 1536 there is honestly
- * not room for six posters and a 320px panel, so the posters give a little — 11px at 1440.
- *
- * Deliberately OFF the `--poster-*` ladder: those rungs size tiles, and this is an accordion whose
- * poster is an inset derived from its own height.
- */
-export const ROW_VARS =
-  "h-60 [--dm-panel:320px] [--dm-poster:160px] min-[1700px]:h-72 min-[1700px]:[--dm-poster:192px]";
 // ─── card ─────────────────────────────────────────────────────────────────────
 
 function DontMissCard({
