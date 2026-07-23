@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@/infrastructure/supabase/server";
 
 const ALLOWED_HOSTS = [
   "image.tmdb.org",
@@ -6,6 +7,15 @@ const ALLOWED_HOSTS = [
 ];
 
 export async function GET(req: NextRequest) {
+  // The host allowlist stops SSRF, but not abuse: without this anyone could push bandwidth through
+  // the server. The one caller (Stats → WrappedCard) is behind the auth middleware, so a signed-in
+  // check costs it nothing. Local JWT verification, same as the other API routes — see CLAUDE.md §8.
+  const supabase = await createServerClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  if (!claimsData?.claims?.sub) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
   const url = req.nextUrl.searchParams.get("url");
   if (!url) return new NextResponse("Missing url", { status: 400 });
 

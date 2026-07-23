@@ -71,3 +71,6 @@ next-env.d.ts
 # …but the edge functions are SOURCE CODE and live nowhere else: they exist only
 # in the cloud. Downloading them is not a backup — committing them is.
 !/supabase/functions/
+
+# Personal — CV + LinkedIn, liés à HEGON mais hors base de connaissance
+/personal/

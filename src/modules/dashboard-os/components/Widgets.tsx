@@ -128,7 +128,7 @@ export function NowWatchingWidget() {
           fill
           sizes="360px"
           unoptimized
-          className="object-cover transition-transform duration-[600ms] ease-out group-hover:scale-[1.06]"
+          className="object-cover transition-transform duration-600 ease-out group-hover:scale-[1.06]"
         />
       ) : (
         <div className="absolute inset-0" style={{ background: "linear-gradient(155deg,#2dd4bf,#0c3d4a)" }} />
@@ -172,7 +172,7 @@ export function NowWatchingWidget() {
           </span>
           {progress !== null && (
             <>
-              <div className="relative h-[3px] flex-1 overflow-hidden rounded-full bg-white/20">
+              <div className="relative h-0.75 flex-1 overflow-hidden rounded-full bg-white/20">
                 <div
                   className="h-full rounded-full"
                   style={{ width: `${progress}%`, background: teal, boxShadow: `0 0 8px ${"var(--color-accent-watching-vivid)"}` }}
@@ -284,7 +284,7 @@ function TileLabel({ icon: Icon, label, right }: { icon: typeof Check; label: st
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-1.5">
         <Icon size={12} className="text-white/90" />
-        <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-white/90">{label}</span>
+        <span className="text-[11px] font-bold uppercase tracking-widest text-white/90">{label}</span>
       </div>
       {right}
     </div>
