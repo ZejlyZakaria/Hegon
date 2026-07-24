@@ -6,6 +6,7 @@ import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, ThemeFavorite, ThemeFavoriteInput, Rewatch } from "./types";
 import { deriveWatchStatus } from "./lib/watch-status";
 import { airedFromTmdb } from "./lib/series-state";
+import { runtimeFromTmdb } from "./lib/tmdb-runtime";
 import { insertMediaSchema, updateMediaSchema } from "./schemas/media.schema";
 
 // =====================================================
@@ -723,7 +724,12 @@ export function mapTmdbDetails(d: any, tmdbId: number, type: MediaType): Watchin
     backdrop_url: d.backdrop_path ? `https://image.tmdb.org/t/p/original${d.backdrop_path}` : null,
     year: date ? new Date(date).getFullYear() : 0,
     release_date: isFilm ? (d.release_date ?? null) : null,
-    runtime: isFilm ? (d.runtime ?? null) : (d.episode_run_time?.[0] ?? null),
+    /**
+     * ONE cascade, shared with the add modal — this line used to stop at `episode_run_time?.[0]`,
+     * which TMDB returns empty for essentially every modern series. Every title added through
+     * discover was therefore born worth 0 hours, forever. See `lib/tmdb-runtime.ts`.
+     */
+    runtime: runtimeFromTmdb(d, isFilm),
     rating: d.vote_average ?? 0,
     tags: Array.isArray(d.genres) ? d.genres.map((g: { name: string }) => g.name) : [],
     studio: (isFilm ? d.production_companies?.[0]?.name : d.networks?.[0]?.name) ?? undefined,

@@ -52,6 +52,31 @@ export interface ViewSeason {
  * select a subset of columns, and they must be able to build a view too — otherwise the surfaces
  * most likely to forget the overlay are exactly the ones locked out of the thing that prevents it.
  */
+/**
+ * HOW FAR YOU MAY HONESTLY CLAIM — the ceiling on a position you type by hand.
+ *
+ * It lives here, next to `ViewSeason`, because it was previously spelled out inside the add modal
+ * against the RAW TMDB payload — the announced `episode_count` — while the same modal's
+ * `HowFarDidYouGet` was already asking `aired` sixty lines below. One screen, two answers to one
+ * question, and the one that let you overclaim was the one with a text input under it.
+ *
+ * The fallback is deliberate and narrow: when NOTHING is known to have aired (a payload still in
+ * flight, or a row the sync has never reached) the announcement is all we have, and a ceiling of
+ * zero would shut the door rather than protect it.
+ */
+export function claimableEpisodes(season: ViewSeason | undefined): number | null {
+  if (!season) return null;
+  if (season.aired > 0) return season.aired;
+  return season.episodes > 0 ? season.episodes : null;
+}
+
+/** The last season you may claim: the last one with something aired, else the last announced. */
+export function claimableSeasons(seasons: ViewSeason[]): number {
+  const lastAired = seasons.reduce((last, s, i) => (s.aired > 0 ? i + 1 : last), 0);
+  if (lastAired > 0) return lastAired;
+  return seasons.reduce((last, s, i) => (s.episodes > 0 ? i + 1 : last), 0);
+}
+
 export type MediaViewSource = Pick<
   WatchingMedia,
   | "type" | "status" | "caught_up_at" | "episodes"

@@ -278,7 +278,9 @@ export default function PersonPage() {
                         <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
                           <Image src={tmdbImageFor(c.poster_url, 200) || "/placeholder.svg"} alt={c.title} fill loading="lazy" sizes="(max-width: 768px) 33vw, 200px" className="object-cover" />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/25 group-hover:opacity-100">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 ring-1 ring-white/20 backdrop-blur-md">
+                            {/* on-artwork carries its own hairline and contact shadow — the blur
+                                had nothing to refract on a still poster. */}
+                            <div className="on-artwork flex h-7 w-7 items-center justify-center rounded-full">
                               <Plus size={13} className="text-white" />
                             </div>
                           </div>

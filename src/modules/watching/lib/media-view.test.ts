@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMediaView } from "./media-view";
+import { buildMediaView, claimableEpisodes, claimableSeasons } from "./media-view";
 import { addStatusPatch, markWatchedPatch, positionPatch, yearsPatch, type StatusFacts } from "./watch-status";
 import type { AnimeCoursRow, WatchingMedia } from "../types";
 
@@ -99,6 +99,46 @@ describe("buildMediaView — an overlaid anime: display is COURS", () => {
     const patch = view.writeYear(1, 2026);
     expect("season_years" in patch).toBe(false);
     expect("season_ratings" in view.writeRating(1, 9)).toBe(false);
+  });
+});
+
+/**
+ * THE CEILING ON A CLAIM.
+ *
+ * These pin the fix for the last door that reasoned from the ANNOUNCEMENT. The add modal's
+ * season/episode inputs were bounded by TMDB's `episode_count`, so House of the Dragon offered
+ * "max 8" on a season where five episodes exist — and the label itself printed the wrong number.
+ * Nothing downstream catches it: the position is written verbatim, and the schema only checks that
+ * `caught_up_at` was recomputed. It looks harmless because `watchedCount` clamps on read; the day
+ * the missing episodes air, the clamp stops biting and you are credited with three you never saw.
+ */
+describe("claimableEpisodes / claimableSeasons — you cannot claim what has not aired", () => {
+  const s = (episodes: number, aired: number) => ({ season: 1, episodes, aired, poster: null, endDate: null });
+
+  it("bounds on what AIRED, not on what was announced", () => {
+    expect(claimableEpisodes(s(8, 5))).toBe(5);
+  });
+
+  it("falls back to the announcement only when nothing is known to have aired", () => {
+    expect(claimableEpisodes(s(8, 0))).toBe(8);
+  });
+
+  it("is null — never 0 — when neither number exists, so the door stays usable", () => {
+    expect(claimableEpisodes(s(0, 0))).toBeNull();
+    expect(claimableEpisodes(undefined)).toBeNull();
+  });
+
+  it("stops at the last season with something aired", () => {
+    // Announced 3 seasons; only two have started.
+    expect(claimableSeasons([s(10, 10), s(8, 8), s(8, 0)])).toBe(2);
+  });
+
+  it("falls back to the announced count when the sync has never run", () => {
+    expect(claimableSeasons([s(10, 0), s(8, 0)])).toBe(2);
+  });
+
+  it("says zero when there is nothing at all — the caller supplies its own fallback", () => {
+    expect(claimableSeasons([])).toBe(0);
   });
 });
 

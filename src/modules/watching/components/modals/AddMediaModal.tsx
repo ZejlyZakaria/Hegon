@@ -8,7 +8,7 @@ import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { useAnimeCours } from "@/modules/watching/hooks/useAnimeCours";
 import { shouldOverlay, courToFlat, tmdbFromFlat } from "@/modules/watching/lib/anime-overlay";
-import { buildMediaView } from "@/modules/watching/lib/media-view";
+import { buildMediaView, claimableEpisodes, claimableSeasons } from "@/modules/watching/lib/media-view";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   Search, X, Upload, Star, Heart, Bookmark,
@@ -18,6 +18,8 @@ import {
 import { toast } from "@/shared/utils/toast";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
 import { airedFromTmdb } from "@/modules/watching/lib/series-state";
+import { runtimeFromTmdb } from "@/modules/watching/lib/tmdb-runtime";
+import { WATCHING_ACCENT } from "@/modules/watching/ui";
 import { HowFarDidYouGet, type Position, type Stance } from "./HowFarDidYouGet";
 import { useAddMedia } from "@/modules/watching/hooks/useAddMedia";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
@@ -269,15 +271,10 @@ export default function AddMediaModal({
       const res        = await fetch(`/api/tmdb?endpoint=${base}&language=en-US`);
       const details: TmdbModalResult = await res.json();
 
-      let runtimeMinutes: number | null = null;
-      if (isMovie) {
-        runtimeMinutes = details.runtime ?? null;
-      } else if (Array.isArray(details.episode_run_time) && details.episode_run_time.length > 0) {
-        const sum = details.episode_run_time.reduce((a, b) => a + b, 0);
-        runtimeMinutes = Math.round(sum / details.episode_run_time.length);
-      } else if (details.last_episode_to_air?.runtime) {
-        runtimeMinutes = details.last_episode_to_air.runtime;
-      }
+      // This cascade used to be spelled out here, and ONLY here — the mapper the discover page uses
+      // had its own shorter copy, so the same title was worth 60 hours through this door and 0
+      // through that one. It is one shared function now (`lib/tmdb-runtime.ts`).
+      const runtimeMinutes = runtimeFromTmdb(details, isMovie);
 
       // Cast & directors are derived HERE but LAND LATER — the second request owns them.
       // Movies carry both on /credits (crew.job === "Director", cast); a series names its
@@ -478,14 +475,26 @@ export default function AddMediaModal({
     setEpisodeInput(String(shown.episode));
   }, [existingPosition, addView]);
 
-  const maxSeason = overlayCours ? overlayCours.length : seasons;
-
-  const getMaxEpisode = (season: number): number | null => {
-    if (overlayCours) return overlayCours.find((c) => c.season === season)?.episodes ?? null;
-    if (!selectedItem?.seasons || !Array.isArray(selectedItem.seasons)) return null;
-    const s = selectedItem.seasons.find((s) => s.season_number === season);
-    return s?.episode_count ?? null;
-  };
+  /**
+   * THESE INPUTS ARE BOUNDED BY WHAT AIRED, NOT BY WHAT WAS ANNOUNCED.
+   *
+   * They used to read `episode_count` off the TMDB payload — the ANNOUNCEMENT — while the three
+   * other doors of this same modal already ask `HowFarDidYouGet` with `aired`, sixty lines below.
+   * So the one door where you type a position by hand was the one that let you claim an episode
+   * that does not exist: House of the Dragon offered "max 8" on a season where five have aired,
+   * and the label itself was the wrong number.
+   *
+   * Nothing downstream catches it. `claimedStatus` writes the position verbatim, and the schema
+   * only enforces that `caught_up_at` was recomputed — never that the episode could have been
+   * watched. It LOOKS harmless because `watchedCount` clamps on read; it is not. The 8 is STORED,
+   * and the day episodes 6-8 air the clamp stops biting: you are silently credited with three
+   * episodes you never watched, and "New episodes" never lights up for them.
+   *
+   * Reading the lens rather than the raw payload also collapses the old overlay branch — a cour and
+   * a season are the same thing here, which is what the lens is for.
+   */
+  const getMaxEpisode = (season: number): number | null => claimableEpisodes(addView.seasons[season - 1]);
+  const maxSeason = claimableSeasons(addView.seasons) || (overlayCours ? overlayCours.length : seasons);
 
   /** What the inputs claim, in TMDB coordinates — the only shape storage accepts. */
   const storedPosition = (): { season: number; episode: number } => {
@@ -1086,11 +1095,15 @@ export default function AddMediaModal({
             >
               Cancel
             </Button>
-            <Button variant="legacy"
+            {/* `legacy` + an inline background was a CTA that could not answer the pointer: the
+                variant's hover is a class rule (`hover:bg-primary/90`) and an inline
+                `background-color` outranks it, always. `accent` hovers with `brightness()`, which
+                never collides with a colour — the pattern every other teal CTA already uses. */}
+            <Button variant="accent"
               onClick={handleSubmit}
               disabled={isSubmitDisabled}
-              className="gap-2 text-white disabled:opacity-40"
-              style={{ backgroundColor: "var(--color-accent-watching)" }}
+              className="gap-2 disabled:opacity-40"
+              style={WATCHING_ACCENT}
             >
               {submitLoading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
               Add

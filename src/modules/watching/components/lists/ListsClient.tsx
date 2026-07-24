@@ -7,6 +7,7 @@ import { Plus, Trash2, Trophy } from "lucide-react";
 import { toast } from "@/shared/utils/toast";
 import { InlineFormActions } from "@/shared/components/ui/inline-form-actions";
 import { Button } from "@/shared/components/ui/button";
+import { Badge } from "@/shared/components/ui/badge";
 import { Hint } from "@/shared/components/ui/tooltip";
 import {
   useListsWithThumbnails,
@@ -131,10 +132,13 @@ function ListCard({ list, onClick, onDelete }: {
         )}
         <div className="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-black/50" />
 
+        {/* A FLAG on artwork — something added to the list, which is the primitive's own
+            definition. It was hand-rolled in frosted glass five lines above a Button that already
+            does this correctly, on the same static image. */}
         {list.is_ranked && (
-          <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-micro font-medium text-amber-400 backdrop-blur-sm">
+          <Badge variant="flag" size="sm" color="var(--color-amber-400)" className="absolute left-2 top-2">
             <Trophy size={9} /> Ranked
-          </div>
+          </Badge>
         )}
         <Hint label="Delete list">
           <Button

@@ -539,7 +539,7 @@ export function DetailSkeleton({ isSeries }: { isSeries?: boolean } = {}) {
  * Unlike the owned fiche, the type is KNOWN here — it is in the route (`/discover/[type]/[tmdbId]`),
  * so there is nothing to guess.
  */
-export function DiscoverSkeleton({ isSeries }: { isSeries: boolean }) {
+export function DiscoverSkeleton({ isSeries, isAnime = false }: { isSeries: boolean; isAnime?: boolean }) {
   const cast = <CastCrewSkeleton />;
   const episodes = <EpisodesSectionSkeleton />;
 
@@ -568,6 +568,29 @@ export function DiscoverSkeleton({ isSeries }: { isSeries: boolean }) {
               ))}
             </div>
           </div>
+          {/* OPENINGS & ENDINGS — reserved, and only for an anime.
+              `AnimeThemes` returns null outright on a film or a series, but on an anime it mounts a
+              Panel and runs its OWN request, so it was appearing out of nowhere after this skeleton
+              had already promised the rail was complete: a measured +113 px of the page jumping,
+              against 0 for a film and 17 for a series. It was the whole gap, not a diffuse
+              infidelity — an entire section missing from the drawing.
+
+              The target is what the component shows WHILE ITS OWN QUERY IS IN FLIGHT (a titled
+              Panel with a centred spinner), not a guess at how tall it ends up — the same rule the
+              "In lists" block above already follows, and the only height that is knowable here:
+              the resolved one grows with the number of themes found. */}
+          {isAnime && (
+            <div className="surface-quiet rounded-card">
+              <div className="px-4 pb-3 pt-4 sm:px-5">
+                <div className="h-5 w-44 animate-pulse rounded bg-surface-2" />
+              </div>
+              {/* h-16 is not a guess: the loading state centres a 16px spinner inside `py-6`,
+                  so the block it occupies is 24 + 16 + 24. */}
+              <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                <div className="h-16 animate-pulse rounded bg-surface-2" />
+              </div>
+            </div>
+          )}
           <DetailRowsSkeleton titleW="w-16" rows={7} withBadge withAwards />
         </div>
       </div>

@@ -17,7 +17,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { InlineFormActions } from "@/shared/components/ui/inline-form-actions";
 import { Badge } from "@/shared/components/ui/badge";
-import { GOLD, MINE } from "@/modules/watching/components/shared/Marks";
+import { GOLD, MINE, RankMark, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
 import { WATCHING_ACCENT } from "../../ui";
 
 // Type is a category → a tinted badge, one colour per type. It used to be a grey pill that
@@ -659,9 +659,15 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
               <span className="text-2xl opacity-20">🎬</span>
             </div>
           )}
+          {/* THE OVERLAY GRAMMAR, at last — left cluster = IDENTITY. This was a frosted pill at
+              `left-1.5 top-1.5`, i.e. both the wrong material (nothing moves behind a poster) and
+              a third private guess at where a mark sits. `RankMark` is what a rank looks like
+              everywhere else in the module — the Top 10 rail and the hero — so a list's rank now
+              reads as the same thing, and `OVERLAY_CLUSTER` aligns it with the actions opposite by
+              construction instead of by two matching numbers that have to be kept in step. */}
           {rank !== null && (
-            <div className="absolute left-1.5 top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-black/70 px-1.5 text-micro font-bold tabular-nums text-white backdrop-blur-sm">
-              {rank}
+            <div className={cn(OVERLAY_CLUSTER, "left-2.5")}>
+              <RankMark rank={rank} />
             </div>
           )}
         </div>
@@ -671,12 +677,13 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
         </div>
       </div>
 
-      <div className="absolute right-1 top-1 z-10 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+      {/* …and the right cluster = ACTIONS, on the same inset and the same 24px rung as the rank. */}
+      <div className={cn(OVERLAY_CLUSTER, "right-2.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100")}>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setNoteOpen(!noteOpen); }}
           className={cn(
-            "flex h-6 w-6 items-center justify-center rounded-full bg-black/70 backdrop-blur-sm transition-colors hover:bg-black/90",
+            OVERLAY_CIRCLE, "transition-colors hover:bg-black/85",
             item.note ? "text-accent-watching" : "text-white/60 hover:text-white",
           )}
         >
@@ -685,7 +692,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white/60 backdrop-blur-sm transition-colors hover:bg-black/90 hover:text-white"
+          className={cn(OVERLAY_CIRCLE, "text-white/60 transition-colors hover:bg-black/85 hover:text-white")}
         >
           <X size={10} />
         </button>

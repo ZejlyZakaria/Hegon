@@ -237,7 +237,12 @@ export function computeStats(items: StatsRawItem[], rewatches: RewatchStatItem[]
   // event's year. Adds to Hours Watched (real time spent); does NOT bump the unique-
   // title counts (same title) nor Recently Watched.
   const itemById = new Map(items.map((i) => [i.id, i]));
-  const totalEps = (i: StatsRawItem) => (i.season_episodes?.reduce((a, b) => a + b, 0)) || i.episodes || 0;
+  // AIRED, not announced — the same rule `seasonContributions` states above, which this line
+  // quietly broke. Re-watching a running series means re-watching what EXISTS of it; billing the
+  // announced count charged you for episodes nobody has seen, and made the rewatch slice of the
+  // donut disagree with the per-type slices computed right beside it.
+  const totalEps = (i: StatsRawItem) =>
+    (i.season_aired ?? i.season_episodes)?.reduce((a, b) => a + (b || 0), 0) || i.episodes || 0;
   let rewatchCount = 0;
   const rewatchMin = { film: 0, serie: 0, anime: 0 };
   for (const rw of rewatches) {
@@ -340,7 +345,11 @@ export function computeStats(items: StatsRawItem[], rewatches: RewatchStatItem[]
   for (const item of items) {
     if (item.type === "film") {
       if (item.watched && item.watched_at) bumpYear(new Date(item.watched_at).getFullYear());
-    } else if (item.watched || item.in_progress) {
+    } else if (hasWatchTime(item)) {
+      // `hasWatchTime`, not `watched || in_progress`: a paused or dropped show already contributes
+      // its hours AND its title count through that very predicate, so leaving it out here made the
+      // timeline the one card that disagreed with the rest of the page — the exact opposite of what
+      // `contributionYears` promises above. The episodes you watched happened, whatever you did next.
       for (const y of contributionYears(item)) bumpYear(y);
     }
   }

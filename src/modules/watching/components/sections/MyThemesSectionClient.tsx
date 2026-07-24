@@ -61,13 +61,15 @@ function ThemeTile({
           "absolute inset-0 flex items-center justify-center bg-linear-to-t from-black/60 via-black/10 to-transparent transition-opacity",
           active ? "opacity-100" : "opacity-0 group-hover/tile:opacity-100",
         )}>
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-md ring-1 ring-white/25">
+          {/* Also glass on a still thumbnail — same rule, one tile over. Flat white scrim keeps the
+              affordance without pretending the artwork moves behind it. */}
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
             {playing ? <Equalizer /> : <Play size={16} className="translate-x-0.5 fill-white text-white" />}
           </span>
         </div>
 
         {/* Label chip */}
-        <span className="absolute left-2 top-2 rounded-chip bg-black/55 px-1.5 py-0.5 text-micro font-bold text-accent-watching-vivid backdrop-blur-sm">
+        <span className="on-artwork absolute left-2 top-2 rounded-chip px-1.5 py-0.5 text-micro font-bold text-accent-watching-vivid">
           {track.label}
         </span>
       </div>

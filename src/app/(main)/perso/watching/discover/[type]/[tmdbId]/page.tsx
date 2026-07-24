@@ -288,7 +288,8 @@ export default function DiscoverDetailPage() {
   // An anime waits for its cours as well. Painting the flat count first and correcting it a moment
   // later is the same fault the owned page closed with `view.pending`: "not resolved yet" is not
   // "no overlay". The skeleton holds until the coordinates are known.
-  if (ownedLoading || isLoading || (mediaType === "anime" && coursLoading)) return <DiscoverSkeleton isSeries={isSeries} />;
+  if (ownedLoading || isLoading || (mediaType === "anime" && coursLoading))
+    return <DiscoverSkeleton isSeries={isSeries} isAnime={mediaType === "anime"} />;
   if (!media) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
