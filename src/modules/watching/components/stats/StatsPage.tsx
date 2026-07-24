@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Clock, Film, Tv, Star, Sparkles, Heart, BarChart2,
-  Trophy, Play, CalendarDays, Download, Target,
+  Trophy, Play, CalendarDays, Download, Target, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
@@ -16,6 +15,8 @@ import type { StatsRawItem } from "../../service";
 import { displayTitle } from "../../utils";
 import { WrappedModal } from "./WrappedModal";
 import { computeStats, computeAchievements } from "./computeStats";
+import { HoursBreakdownPanel, type SliceKey } from "./HoursBreakdownPanel";
+import { MediaRow } from "../shared/MediaRow";
 import { AchievementGrid } from "@/shared/components/achievements/AchievementGrid";
 import { useWatchingGoals } from "../../hooks/useWatchingGoals";
 import { goalMetricLabel } from "../../lib/goal-contribution";
@@ -98,16 +99,31 @@ function statusSub(s: { watched: number; inProgress: number; paused: number; dro
 
 // ── Hours ─────────────────────────────────────────────────────────────────────
 
-type HoursFilter = "total" | "film" | "serie" | "anime" | "rewatches";
-
 function fmtH(value: number) {
   const h = Math.floor(value);
   const m = Math.round((value - h) * 60);
   return { h, m };
 }
 
-function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] }) {
-  const [filter, setFilter] = useState<HoursFilter>("total");
+/**
+ * HOVER LOOKS, CLICK OPENS.
+ *
+ * Isolating a slice used to be a click, and it held a selection you then had to clear. But
+ * isolating is LOOKING, not deciding: it deserves the hover, where you can sweep all four
+ * categories in one movement and the donut answers continuously. That frees the click for the
+ * question actually worth asking — where did these hours come from — which is the panel. The
+ * component lost a piece of state instead of gaining one.
+ *
+ * Touch has no hover, and that is fine here: this app is used at a desk (PRODUCT.md), and a tap
+ * still opens the panel. The preview is what's missing on touch, never the access.
+ */
+function HoursCard({
+  hours, onOpen,
+}: {
+  hours: ReturnType<typeof computeStats>["hours"];
+  onOpen: (slice: SliceKey, color: string, label: string) => void;
+}) {
+  const [preview, setPreview] = useState<SliceKey | null>(null);
 
   const SEGMENTS = [
     { key: "film"      as const, val: hours.film,      color: DONUT_COLORS.film,      label: "Films" },
@@ -117,7 +133,7 @@ function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] 
   ];
 
   const ringTotal = (hours.film + hours.serie + hours.anime + hours.rewatches) || 1;
-  const { h, m } = fmtH(hours[filter]);
+  const { h, m } = fmtH(preview ? hours[preview] : hours.total);
 
   const R    = 15.9;
   const CIRC = 2 * Math.PI * R;
@@ -129,9 +145,9 @@ function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] 
     return { ...seg, dash, offset };
   });
 
-  const centerLabel = filter === "total"
-    ? "total"
-    : SEGMENTS.find((s) => s.key === filter)?.label.toLowerCase() ?? "";
+  const centerLabel = preview
+    ? SEGMENTS.find((s) => s.key === preview)?.label.toLowerCase() ?? ""
+    : "total";
 
   return (
     <div className="rounded-card surface-card p-5 h-60 flex flex-col overflow-hidden">
@@ -153,9 +169,11 @@ function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] 
                 strokeWidth="2.5"
                 strokeDasharray={`${seg.dash} ${CIRC - seg.dash}`}
                 strokeDashoffset={seg.offset}
-                opacity={filter === "total" || filter === seg.key ? 1 : 0.15}
-                className="cursor-pointer transition-opacity duration-300"
-                onClick={() => setFilter(filter === seg.key ? "total" : seg.key)}
+                opacity={!preview || preview === seg.key ? 1 : 0.15}
+                className={cn("transition-opacity duration-300", seg.val > 0 && "cursor-pointer")}
+                onMouseEnter={() => setPreview(seg.key)}
+                onMouseLeave={() => setPreview(null)}
+                onClick={() => seg.val > 0 && onOpen(seg.key, seg.color, seg.label)}
               />
             ))}
           </svg>
@@ -171,23 +189,42 @@ function HoursCard({ hours }: { hours: ReturnType<typeof computeStats>["hours"] 
         <div className="w-1/2 flex flex-col justify-center gap-1.5">
           {SEGMENTS.map((seg) => {
             const { h: sh, m: sm } = fmtH(seg.val);
+            // A door to an empty room does not open. Nothing counted this period → nothing to
+            // explain, so the row keeps its number and drops every affordance.
+            const empty = seg.val <= 0;
             return (
               <button
                 key={seg.key}
                 type="button"
-                onClick={() => setFilter(filter === seg.key ? "total" : seg.key)}
+                disabled={empty}
+                onMouseEnter={() => !empty && setPreview(seg.key)}
+                onMouseLeave={() => setPreview(null)}
+                onFocus={() => !empty && setPreview(seg.key)}
+                onBlur={() => setPreview(null)}
+                onClick={() => !empty && onOpen(seg.key, seg.color, seg.label)}
+                aria-label={empty ? undefined : `Show the ${seg.label.toLowerCase()} behind these hours`}
                 className={cn(
-                  "flex items-center justify-between rounded-control px-2.5 py-1.5 transition-colors text-left w-full",
-                  filter === seg.key ? "bg-surface-2" : "hover:bg-surface-2/40",
+                  "group flex w-full items-center justify-between rounded-control px-2.5 py-1.5 text-left transition-colors",
+                  empty ? "cursor-default opacity-50" : "hover:bg-surface-2",
                 )}
               >
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
-                  <span className="text-xs text-text-secondary">{seg.label}</span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: seg.color }} />
+                  <span className="truncate text-xs text-text-secondary">{seg.label}</span>
                 </div>
-                <span className="text-xs tabular-nums text-text-tertiary">
-                  {sh}h{sm > 0 ? ` ${sm}m` : ""}
-                </span>
+                <div className="flex shrink-0 items-center gap-1">
+                  <span className="text-xs tabular-nums text-text-tertiary">
+                    {sh}h{sm > 0 ? ` ${sm}m` : ""}
+                  </span>
+                  {/* The only added chrome, and it only exists while you are on the row: without
+                      it nothing says the number can be opened at all. */}
+                  {!empty && (
+                    <ChevronRight
+                      size={12}
+                      className="text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                    />
+                  )}
+                </div>
               </button>
             );
           })}
@@ -212,32 +249,18 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
       {items.length === 0 ? (
         <p className="text-sm text-text-tertiary/50">Rate or favorite items to see your top picks</p>
       ) : (
-        <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
           {items.map(({ item, seasonLabel, rating, seasonPoster }) => (
-            <div
+            <MediaRow
               key={item.id}
-              className="group -m-1.5 flex cursor-pointer items-center gap-2.5 rounded-tile p-1.5 transition-colors hover:bg-surface-2"
+              /* Already a full URL — and it has to be: a cour's artwork comes from AniList, so
+                 pasting a TMDB prefix in front of it produced a broken image the moment the lens
+                 started returning cour posters. */
+              posterUrl={seasonPoster ?? item.poster_url}
+              title={displayTitle(item)}
               onClick={() => router.push(`/perso/watching/${item.id}`)}
-            >
-              <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-chip">
-                {(seasonPoster ? `https://image.tmdb.org/t/p/w300${seasonPoster}` : item.poster_url) ? (
-                  <Image
-                    src={seasonPoster ? `https://image.tmdb.org/t/p/w300${seasonPoster}` : item.poster_url!}
-                    alt={item.title}
-                    fill
-                    loading="lazy"
-                    className="object-cover"
-                    sizes="36px"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-surface-2">
-                    <Play size={11} className="text-text-tertiary" />
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-text-primary">{displayTitle(item)}</p>
-                <div className="mt-0.5 flex items-center gap-1.5">
+              meta={
+                <>
                   {rating != null && (
                     <div className="flex items-center gap-0.5">
                       <Star size={9} className="fill-amber-400 text-amber-400" />
@@ -249,12 +272,10 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
                   ) : (
                     <span className="text-micro text-text-tertiary/50">{item.year}</span>
                   )}
-                </div>
-              </div>
-              {item.favorite && (
-                <Heart size={10} className="shrink-0 fill-red-400 text-red-400 opacity-70" />
-              )}
-            </div>
+                </>
+              }
+              right={item.favorite ? <Heart size={10} className="fill-red-400 text-red-400 opacity-70" /> : undefined}
+            />
           ))}
         </div>
       )}
@@ -413,7 +434,11 @@ function ActivityCard({ activity, selectedYear }: {
           {activity.map((a) => {
             const isSel = selectedYear != null && a.label === String(selectedYear);
             return (
-              <div key={a.label} className="flex flex-1 flex-col items-center gap-1">
+              // min-w-0 is what stops the clipping: without it a flex item won't shrink below its
+              // label's intrinsic width, so on a narrow phone the 14 four-digit labels overflowed
+              // the card and `overflow-hidden` ate the most RECENT years off the right edge. With
+              // it, the bars always distribute evenly across whatever width there is.
+              <div key={a.label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
                 <div
                   className="w-full rounded-t-sm transition-[height] duration-500"
                   style={{
@@ -422,7 +447,12 @@ function ActivityCard({ activity, selectedYear }: {
                     opacity: isSel ? 1 : (a.count > 0 ? Math.max(0.25, (a.count / max) * 0.65) : 0.12),
                   }}
                 />
-                <span className={`text-[9px] tabular-nums leading-none ${isSel ? "font-semibold text-text-secondary" : "text-text-tertiary/70"}`}>{a.label}</span>
+                {/* Two-digit on a phone ('13…'26), four on desktop: half the width, so every year
+                    still has a readable label where the full one would collide with its neighbour. */}
+                <span className={`text-[9px] tabular-nums leading-none ${isSel ? "font-semibold text-text-secondary" : "text-text-tertiary/70"}`}>
+                  <span className="sm:hidden">&apos;{a.label.slice(2)}</span>
+                  <span className="hidden sm:inline">{a.label}</span>
+                </span>
               </div>
             );
           })}
@@ -450,8 +480,14 @@ export function StatsPage() {
   const setStatsYear = useWatchingUIStore((s) => s.setStatsYear);
   const selectedYear = statsYearReady ? statsYear : currentYear;
   const [wrappedOpen, setWrappedOpen] = useState(false);
+  // Which slice of Hours Watched is being explained. Carries its own colour and label so the panel
+  // binds to the segment you came from without re-deriving the donut's palette.
+  const [openSlice, setOpenSlice] = useState<{ key: SliceKey; color: string; label: string } | null>(null);
 
-  const stats = useMemo(() => computeStats(data?.items ?? [], data?.rewatches ?? [], selectedYear), [data, selectedYear]);
+  const stats = useMemo(
+    () => computeStats(data?.items ?? [], data?.rewatches ?? [], selectedYear, data?.cours),
+    [data, selectedYear],
+  );
   const achievements = useMemo(() => computeAchievements(data?.items ?? []), [data]);
 
   if (!userId || isLoading) return <StatsSkeleton />;
@@ -460,6 +496,16 @@ export function StatsPage() {
 
   return (
     <div className="space-y-4 p-4 md:p-6">
+
+      {/* The working behind a slice of Hours Watched. */}
+      <HoursBreakdownPanel
+        slice={openSlice?.key ?? null}
+        color={openSlice?.color ?? TEAL}
+        label={openSlice?.label ?? ""}
+        onClose={() => setOpenSlice(null)}
+        stats={stats}
+        year={selectedYear}
+      />
 
       {/* Year Wrapped modal */}
       {wrappedOpen && selectedYear && (
@@ -607,7 +653,10 @@ export function StatsPage() {
 
       {/* Row 2 — charts */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <HoursCard hours={stats.hours} />
+        <HoursCard
+          hours={stats.hours}
+          onOpen={(key, color, label) => setOpenSlice({ key, color, label })}
+        />
         <ActivityCard activity={stats.activity} selectedYear={selectedYear} />
         <RatingDistributionCard distribution={stats.ratingDistribution} />
       </div>

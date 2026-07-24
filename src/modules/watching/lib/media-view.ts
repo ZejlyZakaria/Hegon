@@ -191,7 +191,12 @@ export function buildMediaView(
   }
 
   // No overlay — display IS storage, and every conversion is the identity.
-  const announced = media.season_episodes ?? [];
+  //
+  // Falls back to `season_aired` for the SHAPE of the show. Only the announcement was ever read
+  // here, so a row that knows what aired but not what was announced produced a view with ZERO
+  // seasons — and a caller that trusts the lens (stats does now) would then count nothing at all.
+  // The announcement still wins when present: it is the fuller list.
+  const announced = media.season_episodes ?? media.season_aired ?? [];
   const seasons: ViewSeason[] = announced.map((episodes, i) => ({
     season: i + 1,
     episodes: episodes ?? 0,

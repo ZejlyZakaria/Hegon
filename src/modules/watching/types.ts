@@ -219,6 +219,11 @@ export interface TmdbModalResult {
   status?: string;
   /** TMDB's own answer to "what is the newest episode that EXISTS". Free airing data. */
   last_episode_to_air?: { runtime?: number; season_number?: number; episode_number?: number };
+  /**
+   * Seasons pulled in via `append_to_response=season/N`. Their episodes carry per-episode runtimes,
+   * which is the only accurate length TMDB still publishes — see `lib/tmdb-runtime.ts`.
+   */
+  [season: `season/${number}`]: { episodes?: { runtime?: number | null }[] } | null | undefined;
 }
 
 export interface TmdbListResult {

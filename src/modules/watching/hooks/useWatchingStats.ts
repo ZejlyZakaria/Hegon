@@ -8,11 +8,11 @@ export function useWatchingStatsData(userId: string) {
   return useQuery({
     queryKey: WATCHING_KEYS.stats(userId),
     queryFn: async () => {
-      const [items, rewatches] = await Promise.all([
+      const [{ items, cours }, rewatches] = await Promise.all([
         getWatchingStatsData(userId),
         getRewatchStats(userId),
       ]);
-      return { items, rewatches };
+      return { items, cours, rewatches };
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,

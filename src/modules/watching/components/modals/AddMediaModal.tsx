@@ -268,7 +268,11 @@ export default function AddMediaModal({
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null);
 
-      const res        = await fetch(`/api/tmdb?endpoint=${base}&language=en-US`);
+      // `season/1` rides along for a show — see `runtimeFromTmdb`: a median over real episode
+      // runtimes, which is the only accurate per-episode length TMDB still gives. No extra request.
+      const res        = await fetch(
+        `/api/tmdb?endpoint=${base}&language=en-US${isMovie ? "" : "&append_to_response=season/1"}`,
+      );
       const details: TmdbModalResult = await res.json();
 
       // This cascade used to be spelled out here, and ONLY here — the mapper the discover page uses

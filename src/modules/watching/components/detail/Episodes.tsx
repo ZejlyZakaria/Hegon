@@ -507,7 +507,17 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
               <StillCard
                 key={ep.number}
                 still={ep.still_url}
-                line1={`Episode ${dispNum}`}
+                // The full coordinate, IMDb-style, plus WHEN it aired — the eyebrow used to say only
+                // "Episode 4", which tells you nothing you can act on. `season` is display space (a
+                // cour number under the overlay) and `dispNum` is per-cour, so this reads "S2.E5" on
+                // a lumped anime, matching the rest of the app. The date is dropped for an episode
+                // that hasn't aired: its still already carries a "coming" card, and a future date in
+                // a past-tense eyebrow would read as a fact it isn't yet.
+                line1={
+                  ep.air_date && !isUnaired(ep.air_date)
+                    ? `S${season}.E${dispNum} · ${fmtAir(ep.air_date)}`
+                    : `S${season}.E${dispNum}`
+                }
                 line2={ep.name}
                 overview={ep.overview}
                 highlighted={highlightMap.has(`${markSeason}-${ep.number}`)}
@@ -542,7 +552,7 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
               <StillCard
                 key={h.id}
                 still={h.still_path ? `${TMDB_STILL}${h.still_path}` : null}
-                line1={`S${h.season} · E${h.episode}`}
+                line1={`S${h.season}.E${h.episode}`}
                 line2={h.title ?? `Episode ${h.episode}`}
                 highlighted
                 rating={ratingMap.get(`${h.season}-${h.episode}`) ?? null}

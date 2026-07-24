@@ -208,6 +208,8 @@ export async function getOwnedTmdbIds(userId: string, type: MediaType): Promise<
 
 export interface StatsRawItem {
   id: string;
+  /** Needed to look this title's cours up — the overlay is keyed by TMDB id, not by row id. */
+  tmdb_id: number | null;
   type: string;
   title: string;
   original_title: string | null;
@@ -239,21 +241,50 @@ export interface StatsRawItem {
   season_years: Record<string, number> | null;    // per-season watch year
   season_ratings: Record<string, number> | null;  // per-season rating
   season_posters: (string | null)[] | null;       // per-season TMDB poster_path
+  /**
+   * COUR space — and their absence here is what made this page lie about every lumped anime.
+   *
+   * TMDB gives Jujutsu Kaisen ONE season of 59 episodes; AniList knows it as three cours, and the
+   * years you stamped live in `cour_years` ({"1":2021,"2":2024,"3":2026}) because `season_years`
+   * cannot express "the second of three cours inside season 1". This page never selected them, so
+   * it found no stamps at all, fell back to `updated_at`, and filed all 59 episodes under the year
+   * you last touched the row. Three years of watching collapsed into one.
+   */
+  cour_years: Record<string, number> | null;
+  cour_ratings: Record<string, number> | null;
+  season_end_dates: (string | null)[] | null;
+  status: string | null;
+  caught_up_at: string | null;
 }
 
-export async function getWatchingStatsData(userId: string): Promise<StatsRawItem[]> {
+/** Everything the stats page computes from: the rows, plus the overlay that makes them readable. */
+export interface StatsData {
+  items: StatsRawItem[];
+  /** tmdb_id → its AniList cours. Empty map when nothing is overlaid. */
+  cours: Map<number, import("./types").AnimeCoursRow>;
+}
+
+export async function getWatchingStatsData(userId: string): Promise<StatsData> {
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("id, type, title, original_title, poster_url, backdrop_url, year, runtime, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters")
+    .select("id, tmdb_id, type, title, original_title, poster_url, backdrop_url, year, runtime, status, caught_up_at, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters, season_end_dates, cour_years, cour_ratings")
     .eq("user_id", userId)
     // Anything you spent time on — completed, watching, paused, or dropped. The
     // episodes you actually watched are real hours regardless of current status.
     .or("watched.eq.true,in_progress.eq.true,paused.eq.true,dropped.eq.true")
     .neq("is_reference", true);
   if (error) throw error;
-  return (data ?? []) as StatsRawItem[];
+  const items = (data ?? []) as StatsRawItem[];
+
+  // ONE read for every anime on the page — the same batch the rails use. Without it this page
+  // reasons in TMDB's lumped coordinates while the rest of the app reasons in cours, and a lumped
+  // anime's whole history lands on a single year.
+  const cours = await getAnimeCoursMany(
+    items.filter((i) => i.type === "anime").map((i) => i.tmdb_id ?? 0),
+  );
+  return { items, cours };
 }
 
 // Recent watched activity (type + date) for the Watching→Habits bridge. Only
@@ -1126,8 +1157,13 @@ export async function getTitleBundle(id: number, type: "movie" | "tv"): Promise<
   // Films certify through `release_dates`, shows through `content_ratings` — different endpoints
   // for the same question, which is why `useAgeRating` had to branch on type.
   const ratings = type === "tv" ? "content_ratings" : "release_dates";
+  // `season/1` for a show: every episode in it carries its own runtime, and a MEDIAN over them is
+  // the only honest per-episode length TMDB still offers (`episode_run_time` is empty on virtually
+  // every modern series, and `last_episode_to_air` is one sample that is very often a double-length
+  // finale). Appended, so it costs nothing beyond the request we were already making.
+  const season = type === "tv" ? ",season/1" : "";
   return tmdbFetch<TitleBundle>(`${type}/${id}`, {
-    append_to_response: `external_ids,videos,watch/providers,recommendations,${ratings}`,
+    append_to_response: `external_ids,videos,watch/providers,recommendations,${ratings}${season}`,
     providerRegions: PROVIDER_REGIONS.join(","),
   });
 }
