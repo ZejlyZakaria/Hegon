@@ -133,13 +133,25 @@ export function resolveTransition(
         existingLists: existing ? listsOf(existing) : [],
       };
     }
+    /**
+     * A SERIES STILL AIRING IS NOT REFUSED — it is RENAMED.
+     *
+     * This used to be `allowed: false`, and that was an over-correction. The original fault was
+     * that the app SAID "you finished House of the Dragon" about a running show; the fix blocked
+     * the action instead of fixing the sentence. But "I have seen everything that is out" is a
+     * perfectly honest thing to want to say, and the model already has the word for it:
+     * `caught_up`. Refusing it sent you to In Progress to walk manually to the last episode —
+     * the long way round to the very same row.
+     *
+     * So the door opens and the LABEL tells the truth. The status itself is never assumed here:
+     * `addStatusPatch` derives it from your position, and for a running series that derivation
+     * yields caught-up, never watched. The word cannot lie because nothing here writes it.
+     */
     if (!isFilm && target === "recentlyWatched") {
       return {
-        allowed: false,
-        action: "blocked",
-        message: existing
-          ? `You're already watching this, and it isn't over yet. Track it from its page — it'll land here when it ends.`
-          : `Last Watched is for titles you've finished. This one is still airing — add it from In Progress.`,
+        allowed: true,
+        action: existing ? "update:merge" : "insert",
+        message: `Still airing — you'll be marked up to date, not finished.`,
         existingLists: existing ? listsOf(existing) : [],
       };
     }

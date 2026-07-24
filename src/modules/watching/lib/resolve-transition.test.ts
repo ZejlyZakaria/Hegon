@@ -28,21 +28,33 @@ const dropped = flags({ dropped: true });
  * only half of it: the door itself is called "Add to Recently Watched", and the name of a door is a
  * promise. A title that cannot be `watched` cannot be recently watched, so the door is shut.
  */
-describe("resolveTransition — Recently Watched refuses what it cannot hold", () => {
+describe("resolveTransition — Recently Watched renames what it cannot call finished", () => {
   const airing = { type: "serie" as const, status: "ongoing" };
   const over = { type: "serie" as const, status: "ended" };
 
-  it("refuses an ongoing series you already own", () => {
+  /**
+   * These two used to assert `allowed: false`. They locked an over-correction: the original bug was
+   * that the app SAID "you finished this" about a running show, and the fix banned the action
+   * instead of fixing the sentence. Saying "I've seen everything that's out" is honest, and the
+   * model has a word for it. The door is open; the MESSAGE is what changed.
+   */
+  it("lets you catch up on an ongoing series you already own — and says so", () => {
     const t = resolveTransition(inProgress, "recentlyWatched", airing);
-    expect(t.allowed).toBe(false);
-    expect(t.action).toBe("blocked");
-    expect(t.message).toMatch(/isn't over yet/i);
+    expect(t.allowed).toBe(true);
+    expect(t.action).toBe("update:merge");
+    expect(t.message).toMatch(/up to date, not finished/i);
   });
 
-  it("refuses an ongoing series you DON'T own yet — the same lie, told about a new title", () => {
+  it("lets you catch up on an ongoing series you DON'T own yet — same wording, fresh insert", () => {
     const t = resolveTransition(null, "recentlyWatched", airing);
-    expect(t.allowed).toBe(false);
-    expect(t.message).toMatch(/still airing/i);
+    expect(t.allowed).toBe(true);
+    expect(t.action).toBe("insert");
+    expect(t.message).toMatch(/up to date, not finished/i);
+  });
+
+  it("never promises completion on a running show — the word 'finished' cannot appear alone", () => {
+    const t = resolveTransition(null, "recentlyWatched", airing);
+    expect(t.message).not.toMatch(/marks it as finished/i);
   });
 
   it("accepts a series that is really over, and calls it what it is: a completion", () => {

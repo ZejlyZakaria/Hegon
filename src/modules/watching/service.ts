@@ -5,6 +5,7 @@ import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, ThemeFavorite, ThemeFavoriteInput, Rewatch } from "./types";
 import { deriveWatchStatus } from "./lib/watch-status";
+import { airedFromTmdb } from "./lib/series-state";
 import { insertMediaSchema, updateMediaSchema } from "./schemas/media.schema";
 
 // =====================================================
@@ -731,6 +732,21 @@ export function mapTmdbDetails(d: any, tmdbId: number, type: MediaType): Watchin
     seasons: isFilm ? undefined : (d.number_of_seasons ?? seasons.length),
     episodes: isFilm ? undefined : (d.number_of_episodes ?? undefined),
     season_episodes: isFilm ? null : seasons.map((s) => s.episode_count ?? 0),
+    /**
+     * AIRED, not announced — and it was missing here entirely.
+     *
+     * `season_episodes` above is TMDB's ANNOUNCEMENT; this is what has actually been broadcast.
+     * Every rule about progress reads this one (`types.ts`: "The only source of truth for
+     * progress"), so a virtual row without it made the guest page reason from the announcement —
+     * the exact confusion the field exists to prevent. It also lets discover answer "how far can
+     * you honestly claim to have watched" without asking TMDB a second time.
+     */
+    season_aired: isFilm
+      ? null
+      : airedFromTmdb(
+          seasons as { season_number: number; episode_count: number }[],
+          d.last_episode_to_air as { season_number: number; episode_number: number } | undefined,
+        ),
     season_posters: isFilm ? [] : seasons.map((s) => s.poster_path ?? null),
     season_air_dates: isFilm ? [] : seasons.map((s) => s.air_date ?? null),
   };

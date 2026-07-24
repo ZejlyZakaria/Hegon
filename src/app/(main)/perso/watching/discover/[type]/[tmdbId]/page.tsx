@@ -23,6 +23,11 @@ import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { Button } from "@/shared/components/ui/button";
 import { Panel } from "@/shared/components/ui/panel";
 import { useTmdbDetails } from "@/modules/watching/hooks/useTmdbDetails";
+import { useTitleBundle } from "@/modules/watching/hooks/useTitleBundle";
+import { useAddMedia } from "@/modules/watching/hooks/useAddMedia";
+import { buildMediaView } from "@/modules/watching/lib/media-view";
+import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
+import { toast } from "@/shared/utils/toast";
 import { useSimilarTitles } from "@/modules/watching/hooks/useSimilarTitles";
 import { useMediaCredits } from "@/modules/watching/hooks/useMediaCredits";
 import { useMediaTrailer } from "@/modules/watching/hooks/useMediaTrailer";
@@ -42,11 +47,29 @@ import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal"
 import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import { DetailSkeleton, DiscoverSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
-import { tmdbPathFromUrl, getMediaItemById } from "@/modules/watching/service";
+import { getMediaItemById, type TitleBundle } from "@/modules/watching/service";
 import { WATCHING_KEYS } from "@/modules/watching/hooks/query-keys";
 import type { ListType, MediaType } from "@/modules/watching/types";
 
 const TYPE_LABEL: Record<MediaType, string> = { film: "Movie", serie: "TV Show", anime: "Anime" };
+
+/** `useTitleBundle` re-derives on every render, so the identity `select` must be a module constant. */
+const RAW_BUNDLE = (b: TitleBundle) => b;
+
+/**
+ * The far end of what has actually AIRED, in storage coordinates — the honest answer to
+ * "mark as watched" on a series. Read from `season_aired`, never from `season_episodes`: the
+ * announcement would claim episodes nobody has seen because they do not exist yet.
+ * Returns null when nothing has aired, which `addStatusPatch` reads as "no claim".
+ */
+function lastAiredPosition(aired: number[] | null | undefined): { season: number; episode: number } | null {
+  const list = aired ?? [];
+  for (let i = list.length - 1; i >= 0; i--) {
+    const n = list[i] ?? 0;
+    if (n > 0) return { season: i + 1, episode: n };
+  }
+  return null;
+}
 
 export default function DiscoverDetailPage() {
   const { type, tmdbId } = useParams<{ type: string; tmdbId: string }>();
@@ -61,17 +84,17 @@ export default function DiscoverDetailPage() {
   const setPageLabel = useWatchingUIStore((s) => s.setPageLabel);
 
   const [trailerOpen, setTrailerOpen] = useState(false);
-  // null = closed. The value IS the intent, so the modal opens already knowing what you meant.
-  const [addContext, setAddContext] = useState<ListType | null>(null);
   /**
-   * WHICH title the modal is about — null meaning "the one this page is about".
+   * The modal now serves ONE case: adding a RECOMMENDATION. This page's own title is added by the
+   * buttons, directly, with nothing to ask — so the second piece of state that used to say "which
+   * intent did you click" is gone, and with it the "self" fallback item. One state, one meaning:
+   * non-null = a recommendation is waiting to be added.
    *
-   * More Like This was inert here while it added titles on the owned fiche: the same row, the same
-   * cards, one of them silently decorative. A recommendation you cannot act on is just a picture.
+   * (A recommendation opens on ITSELF, not on the title you are reading — recommendations of a
+   * series are series. It was inert here while it worked on the owned fiche: same row, same cards,
+   * one of them silently decorative.)
    */
   const [addItem, setAddItem] = useState<any | null>(null);
-  const openAdd = (ctx: ListType) => { setAddItem(null); setAddContext(ctx); };
-  const closeAdd = () => { setAddContext(null); setAddItem(null); };
 
   // ── Already yours? Then this page is the wrong one: the real fiche has your history, your
   //    rating and every action. Send you there instead of showing a stranger's copy.
@@ -119,6 +142,108 @@ export default function DiscoverDetailPage() {
   const { data: coursRow, isLoading: coursLoading } = useAnimeCours(id, mediaType === "anime");
   const cours = media && shouldOverlay(media, coursRow) ? coursRow.cours : undefined;
 
+  /**
+   * ADDING, WITHOUT THE MODAL.
+   *
+   * `useAddMedia` wants the RAW TMDB record (its seasons are objects, `last_episode_to_air` lives on
+   * it). We already have it: `useTmdbDetails` is a `select` over `useTitleBundle`, so subscribing to
+   * the same key with an identity select costs zero requests — the bundle is already in cache.
+   */
+  const { data: raw } = useTitleBundle(id, mediaType, !!id, RAW_BUNDLE);
+  const addMedia = useAddMedia();
+  const [adding, setAdding] = useState<ListType | null>(null);
+
+  /**
+   * The lens for a title that is not yours yet — the same one the modal builds, for the same
+   * reason: a lumped anime must stamp its year in `cour_years`, not in a `season_years` map the
+   * Watch History never reads. Without it this door would speak the wrong coordinates.
+   */
+  const addView = useMemo(
+    () =>
+      buildMediaView(
+        {
+          type: mediaType,
+          status: media?.status,
+          caught_up_at: null,
+          episodes: undefined,
+          // eslint-disable-next-line no-restricted-syntax -- these ARE the lens's raw input: buildMediaView is what turns storage columns into display space, so it must be handed the columns.
+          season_episodes: media?.season_episodes ?? null,
+          // eslint-disable-next-line no-restricted-syntax -- same: the lens is being built here, it cannot consume its own output.
+          season_aired: media?.season_aired ?? null,
+          season_posters: null,
+          season_end_dates: null,
+          current_season: undefined,
+          current_episode: undefined,
+          season_years: null,
+          season_ratings: null,
+          cour_years: null,
+          cour_ratings: null,
+        },
+        coursRow,
+      ),
+    // eslint-disable-next-line no-restricted-syntax -- dependency list of the lens itself; see above.
+    [mediaType, media?.status, media?.season_episodes, media?.season_aired, coursRow],
+  );
+
+  /**
+   * Each button carries its own answer, so nothing is asked:
+   *   · want to watch  → no position at all; it is a plan, not a claim.
+   *   · start watching → S1E1. "Start" means start; the StatusCard is where you say otherwise.
+   *   · watched/caught up → the far end of what aired. `addStatusPatch` then DERIVES the status
+   *     from that position, so a running series lands caught-up and a finished one lands watched.
+   *     Nothing here asserts either word.
+   */
+  const runAdd = async (target: ListType) => {
+    if (!raw || !media || adding) return;
+    setAdding(target);
+    try {
+      const position =
+        target === "inProgress"
+          ? { season: 1, episode: 1 }
+          : target === "recentlyWatched" && isSeries
+            // eslint-disable-next-line no-restricted-syntax -- deliberately STORAGE space: `position` is documented as already being in storage units, and the lens (`view`) converts the year stamp, not this.
+            ? lastAiredPosition(media.season_aired)
+            : null;
+
+      const row = await addMedia.mutateAsync({
+        selectedItem: raw,
+        defaultType: mediaType,
+        listContext: target,
+        userRating: 0,
+        notes: "",
+        favorite: false,
+        priority: null,
+        priorityLevel: "medium",
+        seasons: media.seasons ?? null,
+        episodes: media.episodes ?? null,
+        runtime: media.runtime,
+        directors: credits?.directors ?? null,
+        cast: credits?.cast ?? [],
+        studio: media.studio ?? null,
+        status: media.status ?? null,
+        genres: media.tags ?? [],
+        position,
+        stance: "watching",
+        view: addView,
+      });
+
+      /**
+       * GO WITH THE ID WE WERE JUST HANDED.
+       *
+       * The mutation returns the row it created. Waiting for `useOwnedMediaId` to rediscover it
+       * over the network cost ~1.6s of measured nothing — the app throwing away what it already
+       * knew. The detail query is seeded from the same object, so the fiche paints from cache.
+       */
+      if (row?.id) {
+        queryClient.setQueryData(WATCHING_KEYS.detail(row.id), row);
+        router.replace(`/perso/watching/${row.id}`);
+      }
+    } catch (err) {
+      if (!isDemoReadOnlyError(err)) toast.error("Could not add this title.");
+      setAdding(null);
+    }
+  };
+
   // Same rule as the owned page: never recommend what you already have.
   const recommendations = useMemo(() => {
     const owned = new Set(ownedIds);
@@ -146,16 +271,24 @@ export default function DiscoverDetailPage() {
    * guest shape here and then handing you a different page would replace the flash of wrong CONTENT
    * we removed with a flash of wrong LAYOUT, which is the same fault with better manners.
    *
-   * While ownership is still unknown, the owned shape is the safe bet for the same reason: it is a
-   * superset. Its extra panels can appear; a missing one cannot be un-drawn without a jump.
+   * While ownership is still UNKNOWN, though, the bet goes the other way — and this used to be
+   * wrong. The old note argued the owned shape was safe because it is a superset: extra panels can
+   * appear, a missing one cannot be un-drawn. True going from unknown to OWNED; backwards for this
+   * route, where the ordinary case is that the title is NOT yours — that is why you are here at
+   * all. So it bet on the rare shape and then had to shed panels: measured on an unowned film, the
+   * right column went 619px → 879px, a 260px jump, every single time.
+   *
+   * Unknown now draws the GUEST shape, which is what the answer almost always turns out to be. The
+   * rare deep-link to something you own still gets the owned shape the moment we know, and it is
+   * about to be replaced by a redirect anyway.
    *
    * `isSeries` comes from the ROUTE here, so both variants know their type from the first frame.
    */
-  if (ownedLoading || ownedRow) return <DetailSkeleton isSeries={isSeries} />;
+  if (ownedRow) return <DetailSkeleton isSeries={isSeries} />;
   // An anime waits for its cours as well. Painting the flat count first and correcting it a moment
   // later is the same fault the owned page closed with `view.pending`: "not resolved yet" is not
   // "no overlay". The skeleton holds until the coordinates are known.
-  if (isLoading || (mediaType === "anime" && coursLoading)) return <DiscoverSkeleton isSeries={isSeries} />;
+  if (ownedLoading || isLoading || (mediaType === "anime" && coursLoading)) return <DiscoverSkeleton isSeries={isSeries} />;
   if (!media) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
@@ -185,31 +318,20 @@ export default function DiscoverDetailPage() {
         ? { release_date: sim.release_date }
         : { first_air_date: sim.first_air_date }),
     });
-    setAddContext("wantToWatch");
   };
 
-  // This page's own title, in the shape the modal speaks (TMDB search result).
-  const selfItem = {
-    id: media.tmdb_id,
-    media_type: (mediaType === "film" ? "movie" : "tv") as "movie" | "tv",
-    title: media.title,
-    original_title: media.original_title,
-    // Hand it real paths — not null, which rendered an <img src=""> and made the browser
-    // re-fetch the page.
-    poster_path: tmdbPathFromUrl(media.poster_url),
-    backdrop_path: tmdbPathFromUrl(media.backdrop_url),
-    release_date: media.release_date ?? null,
-    first_air_date: null,
-    vote_average: media.rating,
-    overview: media.description ?? "",
-    genre_ids: [],
-    origin_country: [],
-  };
-
-  // The actions replace the StatusCard's whole surface. Not ONE generic "add": by the time you
-  // are on a title's page you already know what you mean by it — you want to see it later, you
-  // are starting it now, or you saw it years ago. Each intent opens the add modal in its own
-  // context, which is where the rating, the date and the position get collected.
+  /**
+   * THE ACTIONS RUN HERE — no modal.
+   *
+   * The modal exists to answer questions. On this page there are none left: you are looking at one
+   * specific title, and each button already states the intent. "Want to watch" has nothing to ask —
+   * priority defaults to medium, which wears no mark and can be raised from the fiche. "Start
+   * watching" means START, so S1E1; the StatusCard is where you say otherwise, and it is better at
+   * it than a modal ever was. "Mark as watched" carries its own answer too — the far end of what
+   * has aired — and the rating and the note belong to the fiche you are about to land on.
+   *
+   * A dialog that asks nothing is a dialog too many, on the most common gesture in the module.
+   */
   const addCard = (
     <Panel title="Not in your library">
       <div className="space-y-2.5 px-4 pb-1 sm:px-5">
@@ -221,20 +343,24 @@ export default function DiscoverDetailPage() {
           size="sm"
           style={WATCHING_ACCENT}
           className="w-full"
-          onClick={() => openAdd("wantToWatch")}
+          disabled={adding !== null}
+          onClick={() => runAdd("wantToWatch")}
         >
           <Plus />
           Want to watch
         </Button>
         {isSeries && (
-          <Button variant="quiet" size="sm" className="w-full" onClick={() => openAdd("inProgress")}>
+          <Button variant="quiet" size="sm" className="w-full" disabled={adding !== null} onClick={() => runAdd("inProgress")}>
             <Play />
             Start watching
           </Button>
         )}
-        <Button variant="quiet" size="sm" className="w-full" onClick={() => openAdd("recentlyWatched")}>
+        {/* THE LABEL FOLLOWS THE FACT. On a running series you cannot have finished it — you can
+            only be up to date, and that is what gets written. Calling it "watched" here would be
+            the very sentence this module spent weeks removing. */}
+        <Button variant="quiet" size="sm" className="w-full" disabled={adding !== null} onClick={() => runAdd("recentlyWatched")}>
           <Check />
-          Mark as watched
+          {isSeries && media.status !== "ended" ? "I'm caught up" : "Mark as watched"}
         </Button>
         {/* On a title you own, this is reference. Here it is part of the decision you came to make:
             "can I actually watch this?" belongs next to "do I want to". */}
@@ -299,12 +425,12 @@ export default function DiscoverDetailPage() {
       {/* Adding THIS title sends you to the real page — the `ownedRow` effect above picks it up.
           Adding a recommendation just adds it; you stay where you are. */}
       <AddMediaModal
-        isOpen={!!addContext}
-        onClose={closeAdd}
-        onAdded={closeAdd}
+        isOpen={!!addItem}
+        onClose={() => setAddItem(null)}
+        onAdded={() => setAddItem(null)}
         defaultType={mediaType}
-        listContext={addContext ?? "wantToWatch"}
-        initialItem={addItem ?? selfItem}
+        listContext="wantToWatch"
+        initialItem={addItem}
       />
     </div>
   );
