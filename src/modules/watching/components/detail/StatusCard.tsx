@@ -98,6 +98,57 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 /**
+ * THE YEAR OF A SINGLE-SEASON TITLE — the same control whether you FINISHED it or merely CAUGHT UP.
+ *
+ * One picker, one writer: it edits `season_years`/`cour_years["1"]` (via the parent's handler),
+ * which is the very column Watch History edits for a multi-season title. The two never coexist —
+ * this shows only when there is no Watch History strip (a single display season). Year-only, because
+ * `season_years` is year-only by design and because you remember "2023", not the day. The options
+ * are floored so a year before the season finished airing can never be offered.
+ */
+function SeasonYearPicker({
+  label, prompt, selectedYear, years, onChange,
+}: {
+  label: string;
+  prompt: string;
+  selectedYear: number | null;
+  years: number[];
+  onChange: (year: number) => void;
+}) {
+  return (
+    <Row
+      label={label}
+      value={
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="group inline-flex items-center gap-1.5 text-label font-medium text-white transition-colors hover:text-white/90"
+            >
+              {selectedYear ?? "Set year"}
+              <Pencil size={10} className="text-white/40 transition-colors group-hover:text-white/70" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-44 border-border-strong bg-surface-3 p-3">
+            <label className="mb-1.5 block text-micro text-text-tertiary">{prompt}</label>
+            <Select value={selectedYear ? String(selectedYear) : undefined} onValueChange={(v) => onChange(Number(v))}>
+              <SelectTrigger variant="legacy" className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0">
+                <SelectValue placeholder="Pick a year" />
+              </SelectTrigger>
+              <SelectContent variant="legacy" className="border-border-strong bg-surface-3">
+                {years.map((yr) => (
+                  <SelectItem key={yr} value={String(yr)} className="text-xs focus:bg-surface-2 focus:text-text-primary">{yr}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </PopoverContent>
+        </Popover>
+      }
+    />
+  );
+}
+
+/**
  * `total` and `max` are NOT the same number, and conflating them was a real bug.
  *   total → what the season IS. It INFORMS. (House of the Dragon season 3 has 8 episodes.)
  *   max   → what has AIRED. It DECIDES. (Four of them exist. You may not claim the other four.)
@@ -254,7 +305,13 @@ interface Props {
   onDrop: () => void;                        // opens the drop-reason CaptureSheet
   onResume: () => void;
   onAddNote: () => void;                     // want_to_watch → reveals the My Take editor
-  onWatchedYearChange: (year: number) => void;      // one-season series → season_years["1"]
+  /**
+   * The year of a SINGLE-season/single-cour title, watched OR merely caught up. Writes the season's
+   * own stamp (`season_years`/`cour_years["1"]`) — the SAME column Watch History edits for a
+   * multi-season title, so there is one writer, never two. A multi-season title never calls this:
+   * its Watch History strip owns every season's year.
+   */
+  onSeasonYearChange: (year: number) => void;
   onWatchedDateChange: (parts: WatchDateParts) => void;   // film → precise watched_at
   onDelete: () => void;                      // opens the shared delete-confirm modal
   isUpdating?: boolean;
@@ -271,7 +328,7 @@ interface Props {
 export function StatusCard({
   media, isSeries, providers, currentSeason, currentEpisode, onUpdateProgress, view,
   favorite, onFavoriteToggle, onMarkWatched, onMarkCaughtUp, onStartWatching, onPause, onDrop,
-  onResume, onAddNote, onWatchedYearChange, onWatchedDateChange, onDelete, isUpdating,
+  onResume, onAddNote, onSeasonYearChange, onWatchedDateChange, onDelete, isUpdating,
 }: Props) {
   const status: CardStatus = CARD_STATUS[deriveWatchStatus(media)];
 
@@ -380,21 +437,34 @@ export function StatusCard({
     </DropdownMenuItem>
   );
 
-  // Year is editable where no Watch History strip owns it: films + 1-season shows.
-  // ⚠️ COUNTED IN STORAGE SPACE ON PURPOSE. The question is "does the Watch History strip exist?",
-  // and the strip appears for a title with more than one DISPLAY season — but a lumped anime has
-  // exactly one TMDB season while displaying several cours, so counting the lens here would hand
-  // the year editor to a title whose strip already owns it. The raw count is the honest test.
-  // eslint-disable-next-line no-restricted-syntax -- deliberately storage-space: asks how TMDB splits the title, not how we display it.
-  const seasonCount = media.season_episodes?.length ?? 0;
-  const yearEditable = media.type === "film" ? media.watched : media.watched && seasonCount <= 1;
+  // THE STATUSCARD YEAR PICKER IS THE EXACT COMPLEMENT OF WATCH HISTORY — never both, never neither.
+  // The strip appears for a title with more than one DISPLAY season (`view.seasons.length > 1`),
+  // and it owns every season's year there. So this picker exists only when the strip does NOT: a
+  // SINGLE display season. Counting DISPLAY seasons (the lens), not raw TMDB seasons, is the fix for
+  // the bug this file used to have — a lumped multi-cour anime (Solo Leveling) has one TMDB season
+  // but two cours, so the raw count said "1" and handed it this picker ON TOP of its Watch History
+  // strip, and the picker then wrote cour 1's year while you thought you were setting the finish.
+  // eslint-disable-next-line no-restricted-syntax -- the lens count is authoritative; this raw fallback runs only when no view was built (no overlay), where season_episodes IS the display space.
+  const displaySeasonCount = view?.seasons.length ?? media.season_episodes?.length ?? 0;
+  const singleSeason = displaySeasonCount <= 1;
+  // Editable where no strip owns it: a film (any state), or a single-season series that is watched
+  // OR merely caught up (a running show you've fully seen still has a year worth recording).
+  const yearEditable = media.type === "film" ? media.watched : (media.watched || caughtUp) && singleSeason;
   // eslint-disable-next-line no-restricted-syntax -- explicit `view ? lens : raw` fallback for the label.
   const yearLabel = watchedLabel(media, view ? view.yearMap : media.season_years);
   // eslint-disable-next-line no-restricted-syntax -- same fallback for the selected value.
   const selectedYear = watchedYearOf(media, view ? view.yearMap : media.season_years);
   const currentYear = new Date().getFullYear();
+  // ⚠️ FLOOR AT THE YEAR THE SEASON FINISHED AIRING — you cannot have watched a season through
+  // before its last episode existed. `season_end_dates[0]` is the sync's last-aired date (Black
+  // Clover: 2021-03-30, NOT its 2017 premiere — offering 2017 was the third bug). Falls back to the
+  // premiere, then the release year. The single season is index 0, because this picker only shows
+  // for a single-display-season title. Watch History floors each of its seasons the same way.
+  const seasonFloorSrc = media.season_end_dates?.[0] ?? media.season_air_dates?.[0] ?? null;
+  const floorYear = seasonFloorSrc ? new Date(seasonFloorSrc).getFullYear() : (media.year ?? 1900);
   const years: number[] = [];
-  for (let y = currentYear; y >= Math.min(media.year ?? 1950, currentYear); y--) years.push(y);
+  for (let y = currentYear; y >= Math.min(floorYear, currentYear); y--) years.push(y);
+
 
   const logRewatch = async (on: string) => {
     if (!on) return;
@@ -453,16 +523,18 @@ export function StatusCard({
                         <Repeat size={11} className="text-accent-watching-vivid" />
                         {fmtDate(r.watched_on)}
                       </span>
-                      <Hint label="Remove this rewatch">
-                        <button
-                          type="button"
-                          aria-label="Remove this rewatch"
-                          onClick={() => handleRemoveRewatch(r.id)}
-                          className="flex h-5 w-5 items-center justify-center rounded text-text-tertiary opacity-0 transition-[opacity,color] hover:text-red-400 group-hover:opacity-100"
-                        >
-                          <X size={11} />
-                        </button>
-                      </Hint>
+                      {/* Always visible — an `opacity-0 … group-hover` delete is unreachable on
+                          touch, where there is no hover to reveal it. No tooltip: an ✕ on a dated
+                          row already reads as "remove", and a Hint that only appears on hover would
+                          be the same desktop-only crutch. */}
+                      <button
+                        type="button"
+                        aria-label="Remove this rewatch"
+                        onClick={() => handleRemoveRewatch(r.id)}
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-tertiary transition-colors hover:text-red-400"
+                      >
+                        <X size={11} />
+                      </button>
                     </div>
                   ))}
                 </PopoverContent>
@@ -637,55 +709,48 @@ export function StatusCard({
         >
           {status === "watched" && (
             <div className="mt-2.5">
-              <Row
-                // NOT "Watched" — the badge above already says that. A row exists to add a
-                // fact, not to echo the header. What it adds is WHEN.
-                // "First watched" PROMISES a second — but there usually isn't one. It only earns
-                // the word "first" once a rewatch has actually been logged; otherwise it's just
-                // "Watched" (the WHEN still follows in the value).
-                label={isSeries ? "Finished" : rewatches.length > 0 ? "First watched" : "Watched"}
-                value={
-                  yearEditable ? (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          className="group inline-flex items-center gap-1.5 text-label font-medium text-white transition-colors hover:text-white/90"
-                        >
-                          {yearLabel ?? "Set year"}
-                          <Pencil size={10} className="text-white/40 transition-colors group-hover:text-white/70" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent align="end" className={media.type === "film" ? "w-72 border-border-strong bg-surface-3 p-3" : "w-44 border-border-strong bg-surface-3 p-3"}>
-                        <label className="mb-1.5 block text-micro text-text-tertiary">When did you watch it?</label>
-                        {media.type === "film" ? (
-                          // A film's date is a real timestamp → the shared picker, month and day and
-                          // all, so it can be ordered precisely in Recently Watched. (A one-season
-                          // series keeps a year: `season_years` is year-only by design.)
+              {/* NOT "Watched" — the badge above already says that. A row adds a fact, not an echo of
+                  the header, and the fact is WHEN. "First watched" only earns the word "first" once
+                  a rewatch exists; otherwise it is just "Watched". */}
+              {media.type === "film" ? (
+                // A film's date is a real timestamp → the shared month/day picker, so Recently
+                // Watched can order it precisely.
+                yearEditable ? (
+                  <Row
+                    label={rewatches.length > 0 ? "First watched" : "Watched"}
+                    value={
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button type="button" className="group inline-flex items-center gap-1.5 text-label font-medium text-white transition-colors hover:text-white/90">
+                            {yearLabel ?? "Set year"}
+                            <Pencil size={10} className="text-white/40 transition-colors group-hover:text-white/70" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-72 border-border-strong bg-surface-3 p-3">
+                          <label className="mb-1.5 block text-micro text-text-tertiary">When did you watch it?</label>
                           <WatchDatePicker
                             value={partsFromISO(media.watched_at) ?? { year: selectedYear ?? new Date().getFullYear(), month: null, day: null }}
                             onChange={onWatchedDateChange}
                             minYear={media.year ?? 1900}
+                            // …AND the release MONTH, so a film out in November can't be marked
+                            // watched in January of the same year. The add modal already floors the
+                            // month; this surface didn't, and a year floor alone leaves that gap open.
+                            minMonth={media.release_date ? new Date(media.release_date).getMonth() + 1 : 1}
                           />
-                        ) : (
-                          <Select value={selectedYear ? String(selectedYear) : undefined} onValueChange={(v) => onWatchedYearChange(Number(v))}>
-                            <SelectTrigger variant="legacy" className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0">
-                              <SelectValue placeholder="Pick a year" />
-                            </SelectTrigger>
-                            <SelectContent variant="legacy" className="border-border-strong bg-surface-3">
-                              {years.map((yr) => (
-                                <SelectItem key={yr} value={String(yr)} className="text-xs focus:bg-surface-2 focus:text-text-primary">{yr}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </PopoverContent>
-                    </Popover>
-                  ) : (
-                    yearLabel ?? "—"
-                  )
-                }
-              />
+                        </PopoverContent>
+                      </Popover>
+                    }
+                  />
+                ) : (
+                  <Row label={rewatches.length > 0 ? "First watched" : "Watched"} value={yearLabel ?? "—"} />
+                )
+              ) : yearEditable ? (
+                // A single-season series → the shared year picker. A multi-season one is read-only
+                // here (yearLabel, possibly a range) and edited in its Watch History strip.
+                <SeasonYearPicker label="Finished" prompt="When did you finish it?" selectedYear={selectedYear} years={years} onChange={onSeasonYearChange} />
+              ) : (
+                <Row label="Finished" value={yearLabel ?? "—"} />
+              )}
               {rewatchRows}
             </div>
           )}
@@ -716,6 +781,17 @@ export function StatusCard({
                   if (next !== currentEpisode) onUpdateProgress(currentSeason, next);
                 }}
               />
+              {/* CAUGHT UP, AND WHEN — but only when there is no Watch History strip to own it (a
+                  single display season, e.g. Black Clover). A multi-cour caught-up title edits each
+                  cour's year in its strip; putting a picker here too would be the very duplication
+                  that let the finish year land on the wrong cour. Same control and same writer as a
+                  finished one-season series: the year lives in `cour_years["1"]`, nowhere else. */}
+              {caughtUp && singleSeason && (
+                <>
+                  <div className="h-px bg-white/10" />
+                  <SeasonYearPicker label="Caught up" prompt="When did you catch up?" selectedYear={selectedYear} years={years} onChange={onSeasonYearChange} />
+                </>
+              )}
               {/* You've seen it all — so the record of having seen it AGAIN belongs here too. */}
               {caughtUp && rewatchRows}
             </div>

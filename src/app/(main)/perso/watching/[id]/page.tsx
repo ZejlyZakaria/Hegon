@@ -283,18 +283,20 @@ export default function MediaDetailPage() {
   // A ONE-SEASON series keeps its year in `season_years` (Stats reads that). We move `watched_at`
   // with it too, so the Recently Watched rail — which orders by watched_at — agrees with Stats
   // instead of stranding a back-dated show at "now".
-  const handleWatchedYearChange = async (yr: number) => {
+  // THE YEAR OF A SINGLE-SEASON TITLE — one writer for both "finished it" and "caught up on it".
+  // The year lives in the season's stamp (`cour_years["1"]` through the lens, `season_years["1"]`
+  // without one) — the same column Watch History edits, so there is never a second source. Only a
+  // FINISHED series gets a `watched_at` too (its precise finish timestamp); a caught-up one has not
+  // finished, so it gets the stamp alone and nothing writes a completion date it doesn't have.
+  const handleSeasonYearChange = async (yr: number) => {
     if (!media) return;
     try {
       await updateMedia.mutateAsync({
         id: media.id,
         type: media.type,
-        // Through the LENS: a lumped anime is one TMDB season, so writing `season_years["1"]` here
-        // dropped the year into a map its own Watch History never reads. The raw branch is the
-        // no-lens fallback — a plain series, where season_years IS the display space.
         // eslint-disable-next-line no-restricted-syntax -- explicit `view ? lens : raw` fallback; the raw side only runs when there is no overlay.
         ...(view ? view.writeYear(1, yr) : { season_years: { ...(media.season_years ?? {}), "1": yr } }),
-        watched_at: buildWatchedAt({ year: yr, month: null, day: null }),
+        ...(media.watched ? { watched_at: buildWatchedAt({ year: yr, month: null, day: null }) } : {}),
       });
       toast("Year updated.");
     } catch (err) {
@@ -384,7 +386,7 @@ export default function MediaDetailPage() {
       onDrop={() => setDropSheetOpen(true)}
       onResume={actions.resume}
       onAddNote={() => setForceTakeOpen(true)}
-      onWatchedYearChange={handleWatchedYearChange}
+      onSeasonYearChange={handleSeasonYearChange}
       onWatchedDateChange={handleWatchedDateChange}
       onDelete={() => setDeleteOpen(true)}
       isUpdating={actions.isPending}
