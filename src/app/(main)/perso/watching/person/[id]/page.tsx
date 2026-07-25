@@ -94,6 +94,10 @@ export default function PersonPage() {
   const owned = yourTitles.length;
   const total = credits.length;
   const watched = yourTitles.filter((t) => t.watched);
+  // The count the rank is built from, and the one the "Watched" stat shows — ONE rule, so a shared
+  // rank is verifiable: real screen time (watched · in progress · paused · dropped), the same set
+  // `getPeopleCounts` ranks by. `watched` (finished only) stays for the rating-based insights below.
+  const watchedIn = yourTitles.filter((t) => t.watched || t.in_progress || t.paused || t.dropped);
   const rated = yourTitles.filter((t) => t.user_rating != null);
   const avgRating = rated.length ? rated.reduce((s, t) => s + (t.user_rating ?? 0), 0) / rated.length : null;
   const top = rated.length ? rated.reduce((a, b) => ((b.user_rating ?? 0) > (a.user_rating ?? 0) ? b : a)) : null;
@@ -112,18 +116,25 @@ export default function PersonPage() {
     null;
 
   const journey = {
-    owned, total, watchedCount: watched.length, avgRating,
+    owned, total, watchedCount: watchedIn.length, avgRating,
     // Top 10 = a priority rank (one Top 10 per type), NOT the favorite heart.
     topTen: yourTitles.filter((t) => t.priority != null).length,
   };
 
   // ── Your [name]: rank in your library + the two titles that define your relationship ──
+  // Everyone is measured with the SAME ruler — the stored cast of every library title — and that
+  // cast is the WHOLE cast, not a top-billed slice. So a supporting part or a cameo counts exactly
+  // like a lead, the rank is honest AND consistent, and it agrees with the count the grid shows.
+  // Actors and voice actors are ranked APART (a seiyuu's anime roles aren't the same axis as an
+  // on-screen performance), so a person is placed in whichever pool they appear in MORE, and the
+  // noun follows. Directors are their own single pool.
   const isDirector = profile.known_for_department === "Directing";
-  const bucket = (isDirector ? peopleCounts?.directing : peopleCounts?.acting) ?? {};
-  // A ranking has to measure everyone with the SAME ruler, so it reads the cast_members
-  // index for this person too — not their (richer) credits ∩ library count. Mixing the two
-  // made Brad #1-alone on his page but tied on Samuel's. The grid above still uses the
-  // richer match; the rank is a relative statement and consistency beats precision here.
+  const asActor = peopleCounts?.actors?.[personId]?.n ?? 0;
+  const asVoice = peopleCounts?.voiceActors?.[personId]?.n ?? 0;
+  const isVoice = !isDirector && asVoice > asActor;
+  const bucket =
+    (isDirector ? peopleCounts?.directing : isVoice ? peopleCounts?.voiceActors : peopleCounts?.actors) ?? {};
+  const noun = isDirector ? "director" : isVoice ? "voice actor" : "actor";
   const myCount = bucket[personId]?.n ?? 0;
   const others = Object.entries(bucket)
     .filter(([id]) => Number(id) !== personId)
@@ -132,7 +143,10 @@ export default function PersonPage() {
     countsFetched && myCount >= 2
       ? {
           position: 1 + others.filter((p) => p.n > myCount).length,
-          noun: isDirector ? "director" : "actor",
+          noun,
+          // The count the rank is built from — shown next to the tie so a shared rank is verifiable
+          // at a glance: two tied people read the exact same number.
+          count: myCount,
           // A rank you share is only honest if it says with whom.
           tiedWith: others.filter((p) => p.n === myCount).map((p) => p.name).sort(),
         }

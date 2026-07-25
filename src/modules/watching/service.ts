@@ -230,10 +230,9 @@ export interface StatsRawItem {
   watched_at: string | null;
   tags: string[] | null;  // genre names (stored from TMDB at add time)
   /**
-   * The directors — a SMALL, uncapped list (one to a few people), so counting "how many of your
-   * titles share a director" is honest. `cast_members` is capped at the top 12 billed at add time,
-   * which is exactly why the person-page rank undercounts; the Auteur badge sidesteps that by
-   * measuring directors, never actors.
+   * The directors — a small, naturally-bounded list (one to a few people), so the Auteur count is
+   * exact with no storage depth to reason about. (Actors are now stored deep enough for an honest
+   * rank too, but directors stay the cleaner ruler for a "titles by one filmmaker" badge.)
    */
   directors: { id: number; name: string }[] | null;
   // In-progress support — Hours Watched counts partially-watched series/anime too.
@@ -1576,9 +1575,10 @@ const PERSON_TITLE_COLUMNS =
   "id, type, title, poster_url, backdrop_url, year, runtime, user_rating, watched, in_progress, want_to_watch, paused, dropped, priority, current_season, current_episode, watched_at, tmdb_id, cast_members, directors";
 
 // Your collection titles featuring this person — matched on the person's TMDB filmography
-// (their credits' tmdb_ids) ∩ your library, NOT on stored cast_members (which caps at ~12
-// and misses uncredited/low-billed roles, e.g. Kevin Spacey in Se7en). `favorite` covers
-// Top 10 items. Roles are attached client-side from the credits. Type is matched by the
+// (their credits' tmdb_ids) ∩ your library, NOT on stored cast_members. The stored cast is now the
+// WHOLE cast, but it can still miss an UNCREDITED turn (Kevin Spacey in Se7en) that the person's own
+// filmography does list — so the grid matches on the filmography, which never misses. `favorite`
+// covers Top 10 items. Roles are attached client-side from the credits. Type is matched by the
 // caller (film vs tv/anime) since the ids alone can collide across TMDB namespaces.
 export async function getTitlesByPerson(userId: string, creditTmdbIds: number[]): Promise<PersonTitle[]> {
   if (!userId || creditTmdbIds.length === 0) return [];
@@ -1616,22 +1616,36 @@ export async function getRatingsForType(userId: string, type: MediaType): Promis
 
 export interface PersonCount { n: number; name: string }
 
-// How many titles you've SEEN each person in, across your whole library — the basis of
-// "your #3 most-watched actor" (names included, so a tie can be named). Two lean jsonb
-// columns for the rows you actually watched (want_to_watch excluded: it isn't a shared
-// history yet). Client-side aggregation is enough at this size and keeps it one cached read.
-export async function getPeopleCounts(
-  userId: string,
-): Promise<{ acting: Record<number, PersonCount>; directing: Record<number, PersonCount> }> {
-  const acting: Record<number, PersonCount> = {};
+export interface PeopleCounts {
+  actors: Record<number, PersonCount>;       // on-screen cast, from films + series
+  voiceActors: Record<number, PersonCount>;  // seiyuu, from anime
+  directing: Record<number, PersonCount>;
+}
+
+// How many titles you've WATCHED each person in — the basis of "your #3 most-watched actor" (names
+// included, so a tie can be named). "Watched" here is REAL SCREEN TIME: watched OR in-progress OR
+// paused OR dropped — the SAME predicate Stats counts hours by (`hasWatchTime`), so a heavy series
+// you're mid-way through counts like the finished films it outweighs. want_to_watch is excluded (not
+// watched), and so is a bare `favorite`: favouriting a want-to-watch must not sneak its cast in as
+// "seen". This exact set is what the person page also DISPLAYS, so a shared rank is verifiable — two
+// tied people show the same count.
+//
+// ACTORS AND VOICE ACTORS ARE RANKED APART. A prolific seiyuu voices 100+ roles and would swamp one
+// "actors" list — a drawn character's voice and an on-screen performance are not the same axis. So the
+// cast splits by TITLE TYPE: anime → voiceActors, film/series → actors. No weighting (that would be an
+// invented score); each person is compared to their own kind. Directors stay one bucket.
+// Client-side aggregation is enough at this size, one cached read.
+export async function getPeopleCounts(userId: string): Promise<PeopleCounts> {
+  const actors: Record<number, PersonCount> = {};
+  const voiceActors: Record<number, PersonCount> = {};
   const directing: Record<number, PersonCount> = {};
-  if (!userId) return { acting, directing };
+  if (!userId) return { actors, voiceActors, directing };
 
   const supabase = createClient();
   const { data, error } = await supabase
-    .schema("watching").from("media_items").select("cast_members, directors")
+    .schema("watching").from("media_items").select("type, cast_members, directors")
     .eq("user_id", userId)
-    .or("watched.eq.true,in_progress.eq.true,dropped.eq.true,paused.eq.true,favorite.eq.true");
+    .or("watched.eq.true,in_progress.eq.true,paused.eq.true,dropped.eq.true");
   if (error) throw error;
 
   for (const row of (data ?? []) as any[]) {
@@ -1647,10 +1661,10 @@ export async function getPeopleCounts(
         else bucket[p.id] = { n: 1, name: p.name };
       }
     };
-    bump(acting, row.cast_members);
+    bump(row.type === "anime" ? voiceActors : actors, row.cast_members);
     bump(directing, row.directors);
   }
-  return { acting, directing };
+  return { actors, voiceActors, directing };
 }
 
 // ── Anime v2 — AniList season overlay (read-only) ──

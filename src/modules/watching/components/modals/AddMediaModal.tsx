@@ -284,9 +284,11 @@ export default function AddMediaModal({
       // Cast & directors are derived HERE but LAND LATER — the second request owns them.
       // Movies carry both on /credits (crew.job === "Director", cast); a series names its
       // creators in the details themselves (`created_by`) and its recurring cast on
-      // /aggregate_credits, where the character sits under roles[]. Top 12 is cached on the row
-      // so the detail page can draw Cast & Crew from the DB with no TMDB call at all.
-      // One owner for every credits-derived field: nothing here is read before submit.
+      // /aggregate_credits, where the character sits under roles[]. The cast is cached on the row
+      // so the detail page draws Cast & Crew from the DB with no TMDB call — and the WHOLE cast is
+      // stored (no slice) so the person-page ranking counts every appearance, cameos included (a
+      // real one can be billed dead last). One owner for every credits-derived field: nothing here
+      // is read before submit.
       const resolvedCredits = creditsPromise.then((payload) => {
         const crew    = (payload?.crew ?? []) as CreditPerson[];
         const rawCast = (payload?.cast ?? []) as CreditPerson[];
@@ -300,7 +302,7 @@ export default function AddMediaModal({
                 name: c.name,
                 profile_url: c.profile_path ? `https://image.tmdb.org/t/p/w200${c.profile_path}` : null,
               })),
-          cast: rawCast.slice(0, 12).map((p) => ({
+          cast: rawCast.map((p) => ({
             id: p.id,
             name: p.name,
             character: p.character ?? p.roles?.[0]?.character ?? null,

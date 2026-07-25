@@ -33,8 +33,11 @@ function mapCredits(details: any, type: MediaType): MediaCredits {
       : (aggregate.cast?.length ? aggregate.cast : credits.cast) ?? [];
   const rawCrew: any[] = credits.crew ?? [];
 
+  // The WHOLE cast is kept on the row — no cap. Display slices this to the top dozen, but the
+  // person-page ranking counts every title an actor appears in, and a real cameo can be billed dead
+  // last: Gary Oldman is #78 of 80 in Oppenheimer. Any cap drops exactly those roles and makes the
+  // rank disagree with the count shown ("watched them in 9" but ranked as an 8).
   const cast: CastMember[] = rawCast
-    .slice(0, 10)
     .map((person) => ({
       id: person.id,
       name: person.name,

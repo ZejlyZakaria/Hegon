@@ -19,7 +19,8 @@ export interface InsightTitle {
 
 export interface PersonInsightsData {
   // "Your #3 most-watched actor" — null when you've seen too few for it to mean anything.
-  rank: { position: number; noun: string; tiedWith: string[] } | null;
+  // `count` is the number the rank is built from, shown so a shared rank is verifiable.
+  rank: { position: number; noun: string; count: number; tiedWith: string[] } | null;
   best: InsightTitle | null;       // your highest-rated title with them
   hiddenGem: InsightTitle | null;  // where you and the world disagree most, in your favour
 }
@@ -62,6 +63,8 @@ export function PersonInsights({ data, firstName }: { data: PersonInsightsData; 
   if (!rank && !best && !hiddenGem) return null;
 
   const tie = rank?.tiedWith ?? [];
+  const count = rank?.count ?? 0;
+  const countLabel = `${count} ${count === 1 ? "title" : "titles"}`;
   const tieLine =
     tie.length === 0
       ? "across your whole library"
@@ -80,7 +83,9 @@ export function PersonInsights({ data, firstName }: { data: PersonInsightsData; 
               Your{" "}
               <span className="text-sm font-bold tabular-nums text-text-primary">#{rank.position}</span>{" "}
               most-watched {rank.noun}
-              <span className="block truncate text-micro text-text-tertiary">{tieLine}</span>
+              <span className="block truncate text-micro text-text-tertiary">
+                <span className="tabular-nums text-text-secondary">{countLabel}</span> · {tieLine}
+              </span>
             </p>
           </div>
         )}
