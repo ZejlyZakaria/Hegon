@@ -24,11 +24,10 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { cn } from "@/shared/utils/utils";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { Check, Loader2, Search, X } from "lucide-react";
 import { SearchInput } from "@/shared/components/ui/search-input";
+import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useSearchTmdbForList } from "../../hooks/useMediaLists";
@@ -78,51 +77,25 @@ function Results({
         const year = yearOf(r);
         const isActive = i === activeIndex;
         return (
-          <li key={`${r.media_type}-${r.id}`}>
-            <button
-              type="button"
+          <li key={`${r.media_type}-${r.id}`}
+            // The keyboard cursor scrolls into view — the list runs past ten items. `selected` on
+            // the row wears the same highlight as hover, whichever way you reached it.
+            ref={(el) => { if (isActive) el?.scrollIntoView({ block: "nearest" }); }}
+          >
+            <MediaRow
               onClick={() => onPick(r)}
-              // The keyboard cursor wears the same clothes as hover: one highlight, whichever way
-              // you reached the row. `ref` scrolls it into view — the list scrolls past ten items.
-              ref={(el) => { if (isActive) el?.scrollIntoView({ block: "nearest" }); }}
-              className={cn(
-                "flex w-full items-center gap-3 px-2.5 py-2 text-left transition-colors hover:bg-surface-2",
-                isActive && "bg-surface-2",
-              )}
-            >
-              {/* The ladder's smallest rung. This was `w-8` and the add modal's identical row was
-                  `w-9` — two search results, one module, two sizes agreeing with nothing. */}
-              <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-chip bg-surface-2">
-                {r.poster_path && (
-                  <Image
-                    src={`https://image.tmdb.org/t/p/w92${r.poster_path}`}
-                    alt=""
-                    fill
-                    sizes="32px"
-                    loading="lazy"
-                    className="object-cover"
-                  />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-text-primary">{r.title}</p>
-                <p className="mt-0.5 truncate text-micro text-text-tertiary">
-                  {TYPE_LABEL[type]}{year ? ` · ${year}` : ""}
-                </p>
-              </div>
-              {/* Left says what the title IS; right says what it is TO YOU. Teal because owning it
-                  is your fact, not the world's — and this click goes somewhere else because of it,
-                  which you deserve to know before making it. */}
-              {ownedRowFor(r, owned) && (
-                <span
-                  className="flex shrink-0 items-center gap-1 text-micro font-medium"
-                  style={{ color: TEAL }}
-                >
-                  <Check size={11} />
-                  In your library
+              selected={isActive}
+              posterUrl={r.poster_path ? `https://image.tmdb.org/t/p/w500${r.poster_path}` : null}
+              title={r.title}
+              meta={<span className="truncate text-micro text-text-tertiary">{TYPE_LABEL[type]}{year ? ` · ${year}` : ""}</span>}
+              // Left says what the title IS; right says what it is TO YOU. Teal because owning it is
+              // your fact, and this click lands somewhere else because of it.
+              right={ownedRowFor(r, owned) ? (
+                <span className="flex items-center gap-1 text-micro font-medium" style={{ color: TEAL }}>
+                  <Check size={11} /> In your library
                 </span>
-              )}
-            </button>
+              ) : undefined}
+            />
           </li>
         );
       })}

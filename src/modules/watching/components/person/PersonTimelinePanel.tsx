@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { tmdbImageFor } from "../../lib/tmdb-image";
 import { CalendarClock } from "lucide-react";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
+import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
 import type { PersonTitle } from "../../service";
 
 const TEAL = "var(--color-accent-watching-vivid)";
@@ -27,27 +25,15 @@ export function datedCount(titles: PersonTitle[]): number {
 
 function Entry({ t }: { t: PersonTitle }) {
   return (
-    <Link
+    <MediaRow
       href={`/perso/watching/${t.id}`}
-      className="group flex items-center gap-3 rounded-control px-2 py-2 transition-colors hover:bg-surface-2"
-    >
-      <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-chip bg-surface-2 ring-1 ring-border-subtle">
-        {t.poster_url && (
-          <Image src={tmdbImageFor(t.poster_url, 32) || t.poster_url} alt="" fill loading="lazy" sizes="32px" className="object-cover" />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-medium text-text-primary transition-colors group-hover:text-accent-watching-vivid">
-          {t.title}
-        </p>
-        {t.role && <p className="truncate text-micro text-text-tertiary">{t.role}</p>}
-      </div>
-      {/* YOUR rating → the shared mark, in teal. It wore a GOLD star, i.e. the world's colour
-          on a number only you wrote — the same lie the carousel and the person grid told. */}
-      {t.user_rating != null && (
-        <ScoreMark value={t.user_rating} source="mine" className="shrink-0" />
-      )}
-    </Link>
+      posterUrl={t.poster_url}
+      title={t.title}
+      meta={t.role ? <span className="truncate text-micro text-text-tertiary">{t.role}</span> : undefined}
+      // YOUR rating → the shared mark, in teal (it wore a GOLD star once — the world's colour on a
+      // number only you wrote).
+      right={t.user_rating != null ? <ScoreMark value={t.user_rating} source="mine" /> : undefined}
+    />
   );
 }
 

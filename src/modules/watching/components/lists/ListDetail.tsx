@@ -503,8 +503,9 @@ function TableRow({
           </span>
         </div>
 
-        {/* Poster */}
-        <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 cursor-pointer overflow-hidden rounded-chip" onClick={onOpen}>
+        {/* Poster — the xs rung: `rounded-thumb` + a hairline ring like every other xs poster
+            (this is a table row, not a MediaRow, so only the frame is shared). */}
+        <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 cursor-pointer overflow-hidden rounded-thumb ring-1 ring-border-subtle" onClick={onOpen}>
           {item.media.poster_url
             ? <Image src={tmdbImageFor(item.media.poster_url, 28) || item.media.poster_url} alt="" fill loading="lazy" className="object-cover" sizes="28px" />
             : <div className="h-full w-full bg-zinc-800" />

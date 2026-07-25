@@ -24,6 +24,7 @@ import { HowFarDidYouGet, type Position, type Stance } from "./HowFarDidYouGet";
 import { useAddMedia } from "@/modules/watching/hooks/useAddMedia";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { RatingPicker } from "@/modules/watching/components/shared/RatingPicker";
+import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
 import { WatchDatePicker } from "@/modules/watching/components/shared/WatchDatePicker";
 import { buildWatchedAt, type WatchDateParts } from "@/modules/watching/lib/watched-date";
 import { cn } from "@/shared/utils/utils";
@@ -714,37 +715,23 @@ export default function AddMediaModal({
                     const unreleased = defaultType === "film" && !!resYear && Number(resYear) > new Date().getFullYear();
                     const blocked = !owned && unreleased && listContext !== "wantToWatch";
                     return (
-                    <button
+                    <MediaRow
                       key={res.id}
-                      type="button"
                       disabled={blocked}
                       onClick={() => (toDetails ? seeDetails(res) : selectResult(res))}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-surface-2 text-left transition-colors border-b border-border-subtle last:border-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
-                    >
-                      {/* Same rung as the topbar search — see WatchingSearch. */}
-                      <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-chip bg-surface-2">
-                        {res.poster_path
-                          ? <img src={`https://image.tmdb.org/t/p/w92${res.poster_path}`} alt="" className="w-full h-full object-cover" />
-                          : <Film size={14} className="text-text-tertiary absolute inset-0 m-auto" />
-                        }
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-text-primary line-clamp-1">{res.title || res.name}</p>
-                        <p className="text-xs text-text-tertiary mt-0.5">
-                          {res.release_date?.slice(0, 4) || res.first_air_date?.slice(0, 4)}
-                        </p>
-                      </div>
-                      {/* Already yours → say so, and point at the door that manages it. */}
-                      {owned && (
-                        <span className="shrink-0 inline-flex items-center gap-1 text-micro font-medium text-accent-watching-vivid">
-                          <Check size={11} />
-                          {toDetails ? "See details" : "In library"}
-                        </span>
-                      )}
-                      {blocked && (
-                        <span className="shrink-0 text-micro font-medium text-text-tertiary">Not out yet</span>
-                      )}
-                    </button>
+                      posterUrl={res.poster_path ? `https://image.tmdb.org/t/p/w500${res.poster_path}` : null}
+                      title={res.title || res.name || ""}
+                      meta={<span className="text-micro text-text-tertiary">{res.release_date?.slice(0, 4) || res.first_air_date?.slice(0, 4)}</span>}
+                      right={
+                        owned ? (
+                          <span className="inline-flex items-center gap-1 text-micro font-medium text-accent-watching-vivid">
+                            <Check size={11} /> {toDetails ? "See details" : "In library"}
+                          </span>
+                        ) : blocked ? (
+                          <span className="text-micro font-medium text-text-tertiary">Not out yet</span>
+                        ) : undefined
+                      }
+                    />
                     );
                   })}
                 </div>

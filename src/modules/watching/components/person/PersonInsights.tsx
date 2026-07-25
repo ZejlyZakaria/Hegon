@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
-import { tmdbImageFor } from "../../lib/tmdb-image";
 import { Gem, Star, Trophy } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { SectionHeader } from "@/shared/components/ui/section-header";
+import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
 
 const AMBER = "var(--color-gold)";
 
@@ -29,34 +28,30 @@ export interface PersonInsightsData {
 // sit side by side and neither leaves a hole.
 function TitleCell({ label, icon, t }: { label: string; icon: React.ReactNode; t: InsightTitle }) {
   return (
-    <Link href={`/perso/watching/${t.id}`} className="group min-w-0 rounded-control p-2 transition-colors hover:bg-surface-2">
-      <p className="flex items-center gap-1 text-micro font-semibold uppercase tracking-wide text-text-tertiary">
-        {icon} {label}
-      </p>
-      <div className="mt-1.5 flex items-center gap-2.5">
-        <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-chip bg-surface-2 ring-1 ring-border-subtle">
-          {t.poster_url && (
-            <Image src={tmdbImageFor(t.poster_url, 36) || t.poster_url} alt="" fill loading="lazy" sizes="36px" className="object-cover" />
-          )}
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-xs font-medium text-text-primary transition-colors group-hover:text-accent-watching-vivid">
-            {t.title}
-          </p>
-          <div className="mt-0.5 flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-0.5 text-micro font-semibold tabular-nums text-amber-300">
-              <Star size={9} style={{ color: AMBER, fill: AMBER }} /> {t.rating}
-            </span>
-            <span className="inline-flex min-w-0 items-center gap-1 text-micro text-text-tertiary">
-              {t.metaLogo && (
-                <Image src={t.metaLogo} alt="TMDB" width={22} height={9} className="h-2.25 w-auto opacity-70" />
-              )}
-              <span className="truncate tabular-nums">{t.meta}</span>
-            </span>
-          </div>
-        </div>
-      </div>
-    </Link>
+    <MediaRow
+      href={`/perso/watching/${t.id}`}
+      posterUrl={t.poster_url}
+      title={t.title}
+      className="min-w-0"
+      eyebrow={
+        <p className="mb-1.5 flex items-center gap-1 text-micro font-semibold uppercase tracking-wide text-text-tertiary">
+          {icon} {label}
+        </p>
+      }
+      meta={
+        <>
+          <span className="inline-flex items-center gap-0.5 text-micro font-semibold tabular-nums text-amber-300">
+            <Star size={9} style={{ color: AMBER, fill: AMBER }} /> {t.rating}
+          </span>
+          <span className="inline-flex min-w-0 items-center gap-1 text-micro text-text-tertiary">
+            {t.metaLogo && (
+              <Image src={t.metaLogo} alt="TMDB" width={22} height={9} className="h-2.25 w-auto opacity-70" />
+            )}
+            <span className="truncate tabular-nums">{t.meta}</span>
+          </span>
+        </>
+      }
+    />
   );
 }
 

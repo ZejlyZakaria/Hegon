@@ -64,8 +64,9 @@
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
   /* Semantic radius by element role — the PREFERRED utilities. Change one
-     :root line to reskin a whole role. (rounded-card / -tile / -control / -chip / -modal) */
+     :root line to reskin a whole role. (rounded-card / -tile / -thumb / -control / -chip / -modal) */
   --radius-chip: var(--radius-chip);
+  --radius-thumb: var(--radius-thumb);
   --radius-control: var(--radius-control);
   --radius-tile: var(--radius-tile);
   --radius-card: var(--radius-card);
@@ -247,6 +248,10 @@
   /* ── Semantic radius by element role — change ONE line to reskin a whole role ──
      The visual answer wins: tweak a value, look, decide. */
   --radius-chip: 6px;     /* tags, badges, small chips */
+  --radius-thumb: 4px;    /* the xs poster corner (~40px) — crisper than a tile, like a printed
+                             photo. The ONE place a poster's corner scales with its size, because
+                             below ~64px the tile radius eats the artwork. Books reached 4px here
+                             independently; this token is the reconciliation. Draw it via MediaRow. */
   --radius-control: 8px;  /* buttons, inputs, selects, segmented */
   --radius-tile: 8px;     /* vertical media tiles — posters, covers (Library, Books) */
   --radius-card: 12px;    /* horizontal / content cards — carousels, Goals, Habits, Stats */
@@ -270,10 +275,11 @@
   /* CORNERS: a poster's radius is a property of its FRAME, not a function of its size — an 8px
      corner is what a poster tile looks like, at 112px as at 170px, and scaling it per rung would
      make the hero read as a card. The one exception is physical: below ~64px the radius starts
-     eating the artwork, so `xs` takes `rounded-chip` (6px) and every larger rung takes
-     `rounded-tile` (8px). Nothing else. (Books reached 4px independently for this same rung with a
-     raw `rounded-[4px]` — worth reconciling when the system propagates there.) */
-  --poster-xs: 2.5rem;    /* 40px  — attribution · Top Picks (Stats) · timeline rows · search results (topbar + add modal) · rounded-chip */
+     eating the artwork, so the larger rungs take `rounded-tile` (8px) and `xs` takes LESS.
+     RECONCILED 2026-07-25: `xs` is 4px, not 6px — at 40px a 6px corner reads button-ish, 4px reads
+     like a printed photo. Books had already reached `rounded-[4px]` for this rung independently;
+     now every xs poster does, through the ONE component that draws it (`MediaRow`). */
+  --poster-xs: 2.5rem;    /* 40px  — Top Picks · Hours panel · person timeline/insights · both search lists · all via MediaRow, rounded-[4px] */
   --poster-sm: 5rem;      /* 80px  — info rows (Books reading) */
   --poster-md: 7rem;      /* 112px — hero poster on mobile · selected-title preview in the add modal */
   --poster-lg: 9rem;      /* 144px — rail tile on desktop (Watch History) */
