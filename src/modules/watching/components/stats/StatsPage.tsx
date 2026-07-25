@@ -488,7 +488,13 @@ export function StatsPage() {
     () => computeStats(data?.items ?? [], data?.rewatches ?? [], selectedYear, data?.cours),
     [data, selectedYear],
   );
-  const achievements = useMemo(() => computeAchievements(data?.items ?? []), [data]);
+  // Achievements are ALL-TIME, so the Marathoner tier reads the same total hours the donut shows on
+  // "All time" — computed here with year=null rather than the page's selected year.
+  const allTimeHours = useMemo(
+    () => computeStats(data?.items ?? [], data?.rewatches ?? [], null, data?.cours).hours.total,
+    [data],
+  );
+  const achievements = useMemo(() => computeAchievements(data?.items ?? [], allTimeHours), [data, allTimeHours]);
 
   if (!userId || isLoading) return <StatsSkeleton />;
 

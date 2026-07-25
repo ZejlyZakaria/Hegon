@@ -9,6 +9,7 @@ import {
   CalendarRange,
   Layers,
   RotateCcw,
+  Clock,
   Clapperboard,
   Tv,
   Star,
@@ -31,6 +32,7 @@ const ICONS: Record<AchievementIcon, LucideIcon> = {
   calendarRange: CalendarRange,
   layers: Layers,
   rotateCcw: RotateCcw,
+  clock: Clock,
   clapperboard: Clapperboard,
   tv: Tv,
   star: Star,
@@ -55,12 +57,12 @@ export function AchievementGrid({ achievements, accent, title = "Achievements", 
       <div className="mb-4 flex items-baseline gap-3">
         <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
         <span className="text-xs text-text-tertiary">
-          <span className="font-semibold text-text-secondary">{unlocked}</span> /{" "}
-          {achievements.length} unlocked
+          <span className="font-semibold text-text-secondary">{unlocked}</span> / {achievements.length} unlocked
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      {/* Six to a row on desktop — a compact wall you scan by colour and icon, not by reading. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {achievements.map((a) => (
           <AchievementBadge key={a.key} a={a} accent={accent} />
         ))}
@@ -69,6 +71,8 @@ export function AchievementGrid({ achievements, accent, title = "Achievements", 
   );
 }
 
+// One badge — locked (muted, with a progress bar) or unlocked (its colour lit). Depth comes from the
+// SURFACE and a whisper of corner tint, never a coloured glow (HEGON: emphasis is material, not light).
 function AchievementBadge({ a, accent }: { a: Achievement; accent: string }) {
   const Icon = ICONS[a.icon];
   const c = a.color ?? accent;
@@ -76,54 +80,58 @@ function AchievementBadge({ a, accent }: { a: Achievement; accent: string }) {
   return (
     <div
       className={cn(
-        "rounded-xl border bg-surface-1 p-4",
+        "relative flex h-full flex-col overflow-hidden rounded-card border bg-surface-1 p-3.5",
         a.unlocked ? "border-transparent" : "border-border-subtle",
       )}
-      style={a.unlocked ? { boxShadow: `inset 0 0 0 1px ${c}` } : undefined}
+      style={a.unlocked ? { boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${c} 45%, transparent)` } : undefined}
     >
-      <div className="flex items-center gap-2.5">
+      {/* corner tint — a whisper, only once earned */}
+      {a.unlocked && (
         <div
-          className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-lg",
-            !a.unlocked && "bg-surface-2",
-          )}
+          className="pointer-events-none absolute inset-0 opacity-[0.10]"
+          style={{ background: `radial-gradient(90% 130% at 0% 0%, ${c}, transparent 55%)` }}
+        />
+      )}
+
+      <div className="relative flex items-center justify-between">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-control"
           style={
             a.unlocked
-              ? {
-                  backgroundColor: `color-mix(in srgb, ${c} 18%, transparent)`,
-                  color: c,
-                }
-              : { color: "var(--color-text-tertiary)" }
+              ? { backgroundColor: `color-mix(in srgb, ${c} 18%, transparent)`, color: c }
+              : { backgroundColor: "var(--color-surface-2)", color: "var(--color-text-tertiary)" }
           }
         >
-          <Icon size={18} />
+          <Icon size={19} strokeWidth={1.8} />
         </div>
         {a.unlocked ? (
-          <Check size={14} style={{ color: c }} className="ml-auto" />
+          <Check size={15} style={{ color: c }} />
         ) : (
-          <Lock size={12} className="ml-auto text-text-tertiary" />
+          <Lock size={13} className="text-text-tertiary" />
         )}
       </div>
 
-      <p
-        className={cn(
-          "mt-2.5 text-sm font-semibold",
-          a.unlocked ? "text-text-primary" : "text-text-secondary",
-        )}
-      >
+      <p className={cn("relative mt-2.5 text-sm font-semibold", a.unlocked ? "text-text-primary" : "text-text-secondary")}>
         {a.name}
       </p>
-      <p className="mt-0.5 text-[11px] leading-snug text-text-tertiary">{a.description}</p>
+      <p className="relative mt-0.5 text-[11px] leading-snug text-text-tertiary">{a.description}</p>
 
-      {!a.unlocked && (
-        <div className="mt-2.5">
+      {/* keeps every card the same height whether or not it carries a progress bar */}
+      <div className="flex-1" />
+
+      {a.unlocked ? (
+        <p className="relative mt-2.5 text-[10.5px] font-medium uppercase tracking-wide" style={{ color: c }}>
+          Unlocked
+        </p>
+      ) : (
+        <div className="relative mt-2.5">
           <div className="h-1 w-full overflow-hidden rounded-full bg-surface-2">
             <div
               className="h-full rounded-full transition-[width] duration-500"
               style={{ width: `${a.progress * 100}%`, backgroundColor: c }}
             />
           </div>
-          <p className="mt-1 text-[10px] text-text-tertiary">{a.progressLabel}</p>
+          <p className="mt-1 text-[10px] tabular-nums text-text-tertiary">{a.progressLabel}</p>
         </div>
       )}
     </div>

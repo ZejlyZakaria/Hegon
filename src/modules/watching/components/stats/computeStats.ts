@@ -546,116 +546,93 @@ export function computeStats(
 }
 
 // Achievements are computed from ALL-TIME stats (ignore year filter)
-export function computeAchievements(items: StatsRawItem[]): Achievement[] {
-  // Achievements count COMPLETED titles only (rawData now also carries in-progress).
-  const completed = items.filter((i) => i.watched);
-  const films  = completed.filter((i) => i.type === "film").length;
-  const series = completed.filter((i) => i.type === "serie").length;
-  const animes = completed.filter((i) => i.type === "anime").length;
-  const rated  = completed.filter((i) => i.user_rating != null).length;
-  const hasTen = completed.some((i) => (i.user_rating ?? 0) >= 10);
+/**
+ * One binary achievement — locked until `value` reaches `goal`, then done. A single, honest bar to
+ * clear; the shared <AchievementGrid> renders it as a badge with a progress bar while locked. No
+ * tiers: the owner asked for one level, a set that stays a little hard, and reads at a glance.
+ */
+function achievement(
+  base: { key: string; name: string; icon: Achievement["icon"]; color: string; description: string },
+  value: number,
+  goal: number,
+): Achievement {
+  const unlocked = value >= goal;
+  return {
+    key: base.key,
+    name: base.name,
+    icon: base.icon,
+    color: base.color,
+    description: base.description,
+    unlocked,
+    progress: goal <= 0 ? 1 : Math.min(1, value / goal),
+    progressLabel: unlocked ? "Unlocked" : `${value.toLocaleString()} / ${goal.toLocaleString()}`,
+  };
+}
 
-  // Genre count
-  const genreCount: Record<string, number> = {};
-  for (const item of completed) {
-    for (const tag of item.tags ?? []) {
-      genreCount[tag] = (genreCount[tag] ?? 0) + 1;
+/**
+ * The twelve. Thresholds are calibrated against a real, heavy library (≈270 films, ≈2,800 h) so the
+ * set stays *a bit hard* — three already-earned to reward who you are, nine to chase, several sitting
+ * near 90 % so there is always a carrot just ahead. `totalHours` is passed in — the SAME all-time
+ * figure the Hours Watched donut sums — so Marathoner can never disagree with it.
+ */
+export function computeAchievements(items: StatsRawItem[], totalHours = 0): Achievement[] {
+  const completed = items.filter((i) => i.watched);
+  const films    = completed.filter((i) => i.type === "film").length;
+  const series   = completed.filter((i) => i.type === "serie").length;
+  const animes   = completed.filter((i) => i.type === "anime").length;
+  const ninePlus = completed.filter((i) => (i.user_rating ?? 0) >= 9).length;
+  const perfect  = completed.filter((i) => (i.user_rating ?? 0) >= 10).length;
+
+  // Breadth — distinct genres explored, and distinct DECADES of release your titles span.
+  const genres = new Set<string>();
+  const decades = new Set<number>();
+  for (const i of completed) {
+    for (const tag of i.tags ?? []) genres.add(tag);
+    if (i.year) decades.add(Math.floor(i.year / 10) * 10);
+  }
+
+  // Depth — the most titles you've watched from a SINGLE director. Directors are an uncapped list
+  // (one to a few people), so this ruler is honest — unlike a cast count, which caps at 12.
+  const dirCount: Record<number, number> = {};
+  for (const i of completed) {
+    const seen = new Set<number>();
+    for (const p of i.directors ?? []) {
+      if (!p?.id || seen.has(p.id)) continue;
+      seen.add(p.id);
+      dirCount[p.id] = (dirCount[p.id] ?? 0) + 1;
     }
   }
-  const maxGenreCount = Math.max(0, ...Object.values(genreCount));
+  const maxDirector = Math.max(0, ...Object.values(dirCount));
 
-  // Best month
-  const monthCounts: Record<string, number> = {};
-  for (const item of completed) {
-    if (!item.watched_at) continue;
-    const d = new Date(item.watched_at);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    monthCounts[key] = (monthCounts[key] ?? 0) + 1;
+  // Rhythm — your biggest single calendar year, and how many distinct months you've been present.
+  const yearCount: Record<number, number> = {};
+  const months = new Set<string>();
+  for (const i of completed) {
+    if (!i.watched_at) continue;
+    const d = new Date(i.watched_at);
+    yearCount[d.getFullYear()] = (yearCount[d.getFullYear()] ?? 0) + 1;
+    months.add(`${d.getFullYear()}-${d.getMonth()}`);
   }
-  const bestMonthCount = Math.max(0, ...Object.values(monthCounts));
+  const bestYear = Math.max(0, ...Object.values(yearCount));
 
-  const typesWatched = [films > 0, series > 0, animes > 0].filter(Boolean).length;
+  // Endurance — the longest series/anime you've FINISHED, in aired (not announced) episodes.
+  const totalEps = (i: StatsRawItem) =>
+    (i.season_aired ?? i.season_episodes)?.reduce((a, b) => a + (b || 0), 0) || i.episodes || 0;
+  const longestShow = Math.max(0, ...completed.filter((i) => i.type !== "film").map(totalEps));
 
+  // Harmonised jewel tones — one cohesive set on graphite, told apart by icon + colour at a glance.
   return [
-    {
-      key: "century_club",
-      name: "Century Club",
-      description: "Watch 100 films",
-      icon: "clapperboard",
-      color: "var(--color-accent-watching-vivid)",
-      unlocked: films >= 100,
-      progress: Math.min(1, films / 100),
-      progressLabel: `${films}/100`,
-    },
-    {
-      key: "series_addict",
-      name: "Series Addict",
-      description: "Complete 15 series",
-      icon: "tv",
-      color: "#818cf8",
-      unlocked: series >= 15,
-      progress: Math.min(1, series / 15),
-      progressLabel: `${series}/15`,
-    },
-    {
-      key: "otaku",
-      name: "Otaku",
-      description: "Watch 20 animes",
-      icon: "sparkles",
-      color: "#fb923c",
-      unlocked: animes >= 20,
-      progress: Math.min(1, animes / 20),
-      progressLabel: `${animes}/20`,
-    },
-    {
-      key: "critic",
-      name: "The Critic",
-      description: "Rate 50 titles",
-      icon: "star",
-      color: "#fbbf24",
-      unlocked: rated >= 50,
-      progress: Math.min(1, rated / 50),
-      progressLabel: `${rated}/50`,
-    },
-    {
-      key: "all_timer",
-      name: "All-Timer",
-      description: "Give a perfect 10/10",
-      icon: "trophy",
-      color: "#f59e0b",
-      unlocked: hasTen,
-      progress: hasTen ? 1 : 0,
-      progressLabel: hasTen ? "Achieved" : "Not yet",
-    },
-    {
-      key: "genre_nerd",
-      name: "Genre Nerd",
-      description: "10+ titles in one genre",
-      icon: "drama",
-      color: "#a855f7",
-      unlocked: maxGenreCount >= 10,
-      progress: Math.min(1, maxGenreCount / 10),
-      progressLabel: `${maxGenreCount}/10`,
-    },
-    {
-      key: "binge_month",
-      name: "Binge Month",
-      description: "Watch 10+ titles in one month",
-      icon: "flame",
-      color: "#ef4444",
-      unlocked: bestMonthCount >= 10,
-      progress: Math.min(1, bestMonthCount / 10),
-      progressLabel: `${bestMonthCount}/10`,
-    },
-    {
-      key: "well_rounded",
-      name: "Well-Rounded",
-      description: "Watch films, series AND anime",
-      icon: "globe",
-      color: "#22c55e",
-      unlocked: typesWatched === 3,
-      progress: typesWatched / 3,
-      progressLabel: `${typesWatched}/3 types`,
-    },
+    achievement({ key: "cinephile",     name: "Cinephile",      icon: "clapperboard",  color: "#2dd4bf", description: "Watch 350 films" },              films,                  350),
+    achievement({ key: "series_devotee",name: "Series Devotee", icon: "tv",            color: "#7f9cf5", description: "Finish 30 series" },              series,                 30),
+    achievement({ key: "otaku",         name: "Otaku",          icon: "sparkles",      color: "#e6973f", description: "Finish 50 animes" },              animes,                 50),
+    achievement({ key: "marathoner",    name: "Marathoner",     icon: "clock",         color: "#e57ba3", description: "Watch 3,000 hours" },             Math.round(totalHours), 3000),
+    achievement({ key: "connoisseur",   name: "Connoisseur",    icon: "gem",           color: "#4fc59b", description: "Rate 25 titles 9 or higher" },    ninePlus,               25),
+    achievement({ key: "hall_of_fame",  name: "Hall of Fame",   icon: "trophy",        color: "#e8b64c", description: "Award 15 perfect 10s" },          perfect,                15),
+    achievement({ key: "time_traveler", name: "Time Traveler",  icon: "calendarRange", color: "#58b0e0", description: "Span 8 decades of release" },     decades.size,           8),
+    achievement({ key: "genre_nomad",   name: "Genre Nomad",    icon: "globe",         color: "#a98bf0", description: "Explore 25 genres" },             genres.size,            25),
+    achievement({ key: "auteur",        name: "Auteur",         icon: "medal",         color: "#e5776b", description: "Watch 12 by one director" },       maxDirector,            12),
+    achievement({ key: "big_year",      name: "Big Year",       icon: "flame",         color: "#db8f5a", description: "Watch 50 in one year" },          bestYear,               50),
+    achievement({ key: "long_hauler",   name: "Long Hauler",    icon: "layers",        color: "#6f9ce0", description: "Finish a 100-episode series" },   longestShow,            100),
+    achievement({ key: "ever_present",  name: "Ever-Present",   icon: "calendarCheck", color: "#b98fd4", description: "Active across 120 months" },      months.size,            120),
   ];
 }

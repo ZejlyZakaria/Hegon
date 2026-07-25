@@ -229,6 +229,13 @@ export interface StatsRawItem {
   favorite: boolean;
   watched_at: string | null;
   tags: string[] | null;  // genre names (stored from TMDB at add time)
+  /**
+   * The directors — a SMALL, uncapped list (one to a few people), so counting "how many of your
+   * titles share a director" is honest. `cast_members` is capped at the top 12 billed at add time,
+   * which is exactly why the person-page rank undercounts; the Auteur badge sidesteps that by
+   * measuring directors, never actors.
+   */
+  directors: { id: number; name: string }[] | null;
   // In-progress support — Hours Watched counts partially-watched series/anime too.
   // Paused/dropped shows keep their watched episodes → they still count real time.
   watched: boolean;
@@ -269,7 +276,7 @@ export async function getWatchingStatsData(userId: string): Promise<StatsData> {
   const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
-    .select("id, tmdb_id, type, title, original_title, poster_url, backdrop_url, year, runtime, status, caught_up_at, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters, season_end_dates, cour_years, cour_ratings")
+    .select("id, tmdb_id, type, title, original_title, poster_url, backdrop_url, year, runtime, status, caught_up_at, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, directors, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters, season_end_dates, cour_years, cour_ratings")
     .eq("user_id", userId)
     // Anything you spent time on — completed, watching, paused, or dropped. The
     // episodes you actually watched are real hours regardless of current status.

@@ -12,6 +12,7 @@ export type AchievementIcon =
   | "calendarRange"
   | "layers"
   | "rotateCcw"
+  | "clock"
   // watching
   | "clapperboard"
   | "tv"

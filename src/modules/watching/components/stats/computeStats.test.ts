@@ -38,6 +38,7 @@ function item(o: Partial<StatsRawItem> = {}): StatsRawItem {
     favorite: false,
     watched_at: null,
     tags: null,
+    directors: null,
     watched: false,
     in_progress: false,
     paused: false,
