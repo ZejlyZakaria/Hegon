@@ -4,7 +4,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Plus } from "lucide-react";
 import LibraryGrid from "@/modules/watching/components/library/LibraryGrid";
-import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
+import { QuickAddPanel } from "@/modules/watching/components/shared/QuickAddPanel";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useLibrary } from "@/modules/watching/hooks/useLibrary";
@@ -80,7 +80,6 @@ export default function LibraryClient({ initialItems, userId }: Props) {
   });
   const [modalOpen, setModalOpen]     = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const modalMediaType = mediaType === "all" ? "film" : mediaType as "film" | "serie" | "anime";
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -152,9 +151,6 @@ export default function LibraryClient({ initialItems, userId }: Props) {
       toast.error("Failed to delete item.");
     }
   }, [deleteMediaMutation]);
-
-  // Add mutation invalidates the watching cache → the library query refetches.
-  const handleAdded = useCallback(() => {}, []);
 
   return (
     <div className="space-y-4">
@@ -280,14 +276,8 @@ export default function LibraryClient({ initialItems, userId }: Props) {
         />
       )}
 
-      {/* add modal */}
-      <AddMediaModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onAdded={handleAdded}
-        defaultType={modalMediaType}
-        listContext="library"
-      />
+      {/* quick add — search-first, pick-to-add, stays open */}
+      <QuickAddPanel open={modalOpen} onClose={() => setModalOpen(false)} />
 
       {/* delete confirmation */}
       <DeleteConfirmModal

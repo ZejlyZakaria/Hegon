@@ -22,7 +22,7 @@ export interface MediaCredits {
   directors: CreditedDirector[];
 }
 
-function mapCredits(details: any, type: MediaType): MediaCredits {
+export function mapCredits(details: any, type: MediaType): MediaCredits {
   const credits = details?.credits ?? {};
   const aggregate = details?.aggregate_credits ?? {};
   // TV/anime: the recurring (voice) cast lives in aggregate_credits — `credits`
