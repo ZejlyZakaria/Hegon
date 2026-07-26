@@ -65,6 +65,7 @@ export default function WatchingClient({ config, children }: Props) {
         open={quickOpen}
         onClose={() => { setActiveModal(null); setPendingInitialItem(null); }}
         defaultList={(quickOpen ? activeModal : "wantToWatch") as ListType}
+        mediaType={config.type as MediaType}
       />
 
       {/* Top 10 (needs the rank picker) + any direct add of a specific title still use the modal. */}

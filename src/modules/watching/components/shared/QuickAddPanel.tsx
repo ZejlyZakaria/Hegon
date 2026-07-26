@@ -14,10 +14,11 @@ import { useQuickAdd } from "../../hooks/useQuickAdd";
 import { ownedRowFor } from "../../lib/possession";
 import { tmdbResultType } from "../../service";
 import { cn } from "@/shared/utils/utils";
-import type { ListType, TmdbListResult } from "../../types";
+import type { ListType, MediaType, TmdbListResult } from "../../types";
 
 const TEAL = "var(--color-accent-watching-vivid)";
 const TYPE_LABEL = { film: "Movie", serie: "TV", anime: "Anime" } as const;
+const SCOPE_LABEL: Record<MediaType, string> = { film: "movies", serie: "series", anime: "animes" };
 
 // The three quick destinations. Each is an INTENT — the status is derived from it, never asked.
 // (Top 10 is not here: adding with a rank belongs on the fiche, not in a quick pass.)
@@ -64,10 +65,13 @@ export function QuickAddPanel({
   open,
   onClose,
   defaultList = "wantToWatch",
+  mediaType,
 }: {
   open: boolean;
   onClose: () => void;
   defaultList?: ListType;
+  /** Scope the search to one type — a typed page (Movies/TV/Animes) adds only that. Omit = all. */
+  mediaType?: MediaType;
 }) {
   const router = useRouter();
   const userId = useCurrentUserId();
@@ -75,7 +79,13 @@ export function QuickAddPanel({
   const [priority, setPriority] = useState<Priority>("medium");
   const [query, setQuery] = useState("");
   const debounced = useDebounce(query, 200);
-  const { data: results = [], isFetching } = useSearchTmdbForList(debounced);
+  const { data: allResults = [], isFetching } = useSearchTmdbForList(debounced);
+  // On a typed page the add is scoped to that type — an anime page adds animes, nothing else. Same
+  // classifier the whole app uses, so search agrees with where a title would land.
+  const results = useMemo(
+    () => (mediaType ? allResults.filter((r) => tmdbResultType(r) === mediaType) : allResults),
+    [allResults, mediaType],
+  );
   const tmdbIds = useMemo(() => results.map((r) => r.id), [results]);
   const { data: owned = {} } = useOwnedMediaIds(userId ?? "", tmdbIds);
   const { add } = useQuickAdd();
@@ -118,7 +128,7 @@ export function QuickAddPanel({
         <SearchInput
           size="sm"
           autoFocus
-          placeholder="Search titles…"
+          placeholder={mediaType ? `Search ${SCOPE_LABEL[mediaType]}…` : "Search titles…"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onClear={() => setQuery("")}
@@ -174,7 +184,9 @@ export function QuickAddPanel({
               <Loader2 size={15} className="animate-spin text-text-tertiary" />
             </div>
           ) : results.length === 0 ? (
-            <p className="px-2 py-8 text-center text-xs text-text-tertiary">Nothing found for “{query}”.</p>
+            <p className="px-2 py-8 text-center text-xs text-text-tertiary">
+              {mediaType ? `No ${SCOPE_LABEL[mediaType]} found` : "Nothing found"} for “{query}”.
+            </p>
           ) : (
             <ul>
               {results.map((r) => {
