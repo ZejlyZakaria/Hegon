@@ -143,7 +143,7 @@ export default function ForYouSectionClient({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(5);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { openModalWithItem } = useWatching();
+  const { openTitle } = useWatching();
   const gap = 16;
 
   // Live filter against the library (handles titles added since the last 5-day
@@ -195,23 +195,7 @@ export default function ForYouSectionClient({
     setCurrentIndex(Math.min(newIndex, Math.max(0, totalElements - cardsPerView)));
   };
 
-  const handleAdd = (item: ForYouItem) => {
-    const tmdbMediaType = config.type === "film" ? "movie" : "tv";
-    openModalWithItem("wantToWatch", {
-      id: item.id,
-      title: item.title,
-      name: item.title,
-      poster_path: item.poster_path,
-      backdrop_path: item.backdrop_path,
-      vote_average: item.vote_average,
-      overview: item.overview,
-      genre_ids: item.genre_ids,
-      media_type: tmdbMediaType,
-      ...(config.type === "film"
-        ? { release_date: item.year ? `${item.year}-01-01` : undefined }
-        : { first_air_date: item.year ? `${item.year}-01-01` : undefined }),
-    });
-  };
+  const handleAdd = (item: ForYouItem) => openTitle(item);
 
   const itemWidthStyle = {
     width: `calc((100% - ${(cardsPerView - 1) * gap}px) / ${cardsPerView})`,

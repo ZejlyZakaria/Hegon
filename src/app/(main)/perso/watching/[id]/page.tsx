@@ -15,7 +15,6 @@ import { useMediaTrailer } from "@/modules/watching/hooks/useMediaTrailer";
 import { useWatchProviders } from "@/modules/watching/hooks/useWatchProviders";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
-import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import { ContributingToGoals } from "@/modules/watching/components/detail/ContributingToGoals";
 import { MediaHero } from "@/modules/watching/components/detail/MediaHero";
 import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal";
@@ -110,7 +109,6 @@ export default function MediaDetailPage() {
   // THE LENS — the one object that knows which coordinate space this title lives in. It fetches the
   // AniList cours itself when they matter, and hands back everything in DISPLAY space.
   const view = useMediaView(media);
-  const [addItem, setAddItem] = useState<any | null>(null);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [dropSheetOpen, setDropSheetOpen] = useState(false);
 
@@ -339,23 +337,9 @@ export default function MediaDetailPage() {
   const cast = hasStoredCast ? (media.cast_members ?? []) : (credits?.cast ?? []);
   const hasCastCrew = cast.length > 0 || (!isSeries && directors.length > 0);
 
-  const handleAddSimilar = (sim: any) => {
-    const tmdbMediaType = media.type === "film" ? "movie" : "tv";
-    setAddItem({
-      id: sim.id,
-      title: sim.title ?? sim.name,
-      name: sim.name ?? sim.title,
-      poster_path: sim.poster_path,
-      backdrop_path: sim.backdrop_path ?? null,
-      vote_average: sim.vote_average ?? 0,
-      overview: sim.overview ?? "",
-      genre_ids: sim.genre_ids ?? [],
-      media_type: tmdbMediaType,
-      ...(media.type === "film"
-        ? { release_date: sim.release_date }
-        : { first_air_date: sim.first_air_date }),
-    });
-  };
+  // A recommendation opens on ITS OWN discover page — the home of a title you don't own.
+  const handleAddSimilar = (sim: { id: number }) =>
+    router.push(`/perso/watching/discover/${media.type}/${sim.id}`);
 
   const isUnwatched = !!(media.is_reference || (media.want_to_watch && !media.watched && !media.in_progress));
 
@@ -500,15 +484,6 @@ export default function MediaDetailPage() {
         onClose={() => setTrailerOpen(false)}
         youtubeKey={trailer?.key}
         title={media.title}
-      />
-
-      <AddMediaModal
-        isOpen={!!addItem}
-        onClose={() => setAddItem(null)}
-        onAdded={() => setAddItem(null)}
-        defaultType={media.type}
-        listContext="wantToWatch"
-        initialItem={addItem}
       />
 
       <CaptureSheet

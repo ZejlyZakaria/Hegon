@@ -19,14 +19,11 @@ import { PersonSkeleton } from "@/modules/watching/components/person/PersonSkele
 import { SeenTogether } from "@/modules/watching/components/person/SeenTogether";
 import { PersonInsights, type PersonInsightsData } from "@/modules/watching/components/person/PersonInsights";
 import { PersonTimelinePanel, datedCount } from "@/modules/watching/components/person/PersonTimelinePanel";
-import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import type { PersonCredit, PersonTitle } from "@/modules/watching/service";
 
 const DEPT_LABEL: Record<string, string> = {
   Acting: "Actor", Directing: "Director", Writing: "Writer", Production: "Producer",
 };
-// Our stored urls are full (w342) — strip back to the raw TMDB path the modal expects.
-const stripSize = (u: string | null) => (u ? u.replace(/^https:\/\/image\.tmdb\.org\/t\/p\/w\d+/, "") : null);
 
 // The toolbar only earns its place once the grid is big enough to need it.
 const TOOLBAR_MIN = 5;
@@ -61,8 +58,6 @@ export default function PersonPage() {
   const creditTmdbIds = bundle ? bundle.credits.map((c) => c.tmdb_id) : [];
   const { data: rawTitles = [], isFetched: titlesFetched } = useTitlesByPerson(userId ?? "", personId, creditTmdbIds);
   const { data: peopleCounts, isFetched: countsFetched } = usePeopleCounts(userId ?? "");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [addItem, setAddItem] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(18);
   const [sort, setSort] = useState<SortKey>("rating");
@@ -179,21 +174,9 @@ export default function PersonPage() {
   const showToolbar = yourTitles.length >= TOOLBAR_MIN;
   const showTimeline = datedCount(yourTitles) >= TIMELINE_MIN;
 
-  const openAdd = (c: PersonCredit) =>
-    setAddItem({
-      id: c.tmdb_id,
-      title: c.title,
-      name: c.title,
-      poster_path: stripSize(c.poster_url),
-      backdrop_path: stripSize(c.backdrop_url),
-      vote_average: c.vote,
-      overview: "",
-      genre_ids: [],
-      media_type: c.type === "film" ? "movie" : "tv",
-      ...(c.type === "film"
-        ? { release_date: c.year ? `${c.year}-01-01` : null }
-        : { first_air_date: c.year ? `${c.year}-01-01` : null }),
-    });
+  // A credit you don't own opens on its own discover page — where you add it — like every other
+  // unowned title in the module. No add modal.
+  const openAdd = (c: PersonCredit) => router.push(`/perso/watching/discover/${c.type}/${c.tmdb_id}`);
 
   return (
     <div className="min-h-screen bg-surface-0">
@@ -343,14 +326,6 @@ export default function PersonPage() {
         firstName={firstName}
       />
 
-      <AddMediaModal
-        isOpen={!!addItem}
-        onClose={() => setAddItem(null)}
-        onAdded={() => setAddItem(null)}
-        defaultType={addItem?.media_type === "movie" ? "film" : "serie"}
-        listContext="wantToWatch"
-        initialItem={addItem}
-      />
     </div>
   );
 }

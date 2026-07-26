@@ -22,57 +22,7 @@ export interface GetMediaOptions {
   limit?: number;
 }
 
-// ── AddMediaModal helpers (extracted from the component — service-layer rule) ──
-
-export interface ExistingMediaEntry {
-  id: string;
-  /** THE FACTS the banner needs, so it stops inferring the outcome from the button you pressed. */
-  type: MediaType;
-  status: string | null;
-  favorite: boolean;
-  priority: number | null;
-  in_progress: boolean;
-  want_to_watch: boolean;
-  watched: boolean;
-  paused: boolean;
-  dropped: boolean;
-  user_rating: number | null;
-  notes: string | null;
-  current_season: number | null;
-  current_episode: number | null;
-}
-
-export async function getTakenPriorities(type: MediaType): Promise<number[]> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-  const { data } = await supabase
-    .schema("watching").from("media_items")
-    .select("priority")
-    .eq("user_id", user.id)
-    .eq("type", type)
-    .eq("favorite", true)
-    .not("priority", "is", null);
-  return (data ?? []).map((i: { priority: number }) => i.priority);
-}
-
-export async function getExistingMediaEntry(
-  type: MediaType,
-  tmdbId: number,
-): Promise<ExistingMediaEntry | null> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data } = await supabase
-    .schema("watching").from("media_items")
-    .select("id,type,status,favorite,priority,in_progress,want_to_watch,watched,paused,dropped,user_rating,notes,current_season,current_episode")
-    .eq("user_id", user.id)
-    .eq("type", type)
-    .eq("tmdb_id", tmdbId)
-    .maybeSingle();
-  return (data as ExistingMediaEntry | null) ?? null;
-}
-
+// Upload a hand-picked poster to Supabase Storage — custom art that overrides TMDB's.
 export async function uploadCustomPoster(file: File): Promise<string | null> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();

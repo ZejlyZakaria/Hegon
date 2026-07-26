@@ -181,51 +181,6 @@ export interface TMDBTVShow {
   episode_run_time?: number[];
 }
 
-// TMDB search result (search/movie or search/tv endpoint) + merged detail fields
-export interface TmdbModalResult {
-  id: number;
-  media_type?: "movie" | "tv";
-  // search fields
-  title?: string;
-  name?: string;
-  original_title?: string;
-  original_name?: string;
-  overview: string;
-  poster_path: string | null;
-  backdrop_path: string | null;
-  release_date?: string;
-  first_air_date?: string;
-  vote_average: number;
-  genre_ids: number[];
-  origin_country?: string[];
-  // detail fields (populated after selectResult fetch)
-  /** /movie/{id} & /tv/{id} return objects here, not the ids /search returns. */
-  genres?: { id: number; name: string }[];
-  runtime?: number;
-  episode_run_time?: number[];
-  number_of_seasons?: number;
-  number_of_episodes?: number;
-  seasons?: { season_number: number; episode_count: number }[];
-  credits?: {
-    crew: { id: number; job: string; name: string; profile_path?: string }[];
-    cast?: { id: number; name: string; character?: string; profile_path?: string | null }[];
-  };
-  aggregate_credits?: {
-    cast?: { id: number; name: string; roles?: { character?: string }[]; profile_path?: string | null }[];
-  };
-  created_by?: { id: number; name: string; profile_path?: string | null }[];
-  production_companies?: { name: string }[];
-  networks?: { name: string }[];
-  status?: string;
-  /** TMDB's own answer to "what is the newest episode that EXISTS". Free airing data. */
-  last_episode_to_air?: { runtime?: number; season_number?: number; episode_number?: number };
-  /**
-   * Seasons pulled in via `append_to_response=season/N`. Their episodes carry per-episode runtimes,
-   * which is the only accurate length TMDB still publishes — see `lib/tmdb-runtime.ts`.
-   */
-  [season: `season/${number}`]: { episodes?: { runtime?: number | null }[] } | null | undefined;
-}
-
 export interface TmdbListResult {
   id: number;
   media_type: "movie" | "tv";

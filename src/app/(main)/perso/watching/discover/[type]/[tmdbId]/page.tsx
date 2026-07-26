@@ -44,7 +44,6 @@ import { useAnimeCours } from "@/modules/watching/hooks/useAnimeCours";
 import { shouldOverlay } from "@/modules/watching/lib/anime-overlay";
 import { AnimeThemes } from "@/modules/watching/components/detail/AnimeThemes";
 import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal";
-import AddMediaModal from "@/modules/watching/components/modals/AddMediaModal";
 import { DetailSkeleton, DiscoverSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
 import { getMediaItemById, type TitleBundle } from "@/modules/watching/service";
@@ -84,17 +83,6 @@ export default function DiscoverDetailPage() {
   const setPageLabel = useWatchingUIStore((s) => s.setPageLabel);
 
   const [trailerOpen, setTrailerOpen] = useState(false);
-  /**
-   * The modal now serves ONE case: adding a RECOMMENDATION. This page's own title is added by the
-   * buttons, directly, with nothing to ask — so the second piece of state that used to say "which
-   * intent did you click" is gone, and with it the "self" fallback item. One state, one meaning:
-   * non-null = a recommendation is waiting to be added.
-   *
-   * (A recommendation opens on ITSELF, not on the title you are reading — recommendations of a
-   * series are series. It was inert here while it worked on the owned fiche: same row, same cards,
-   * one of them silently decorative.)
-   */
-  const [addItem, setAddItem] = useState<any | null>(null);
 
   // ── Already yours? Then this page is the wrong one: the real fiche has your history, your
   //    rating and every action. Send you there instead of showing a stranger's copy.
@@ -302,24 +290,10 @@ export default function DiscoverDetailPage() {
   const cast = media.cast_members?.length ? media.cast_members : (credits?.cast ?? []);
   const directors = credits?.directors ?? [];
 
-  // Same gesture as on the owned fiche, deliberately: a recommendation opens the add modal on
-  // ITSELF, not on the title you're reading. Recommendations of a series are series.
-  const handleAddSimilar = (sim: any) => {
-    setAddItem({
-      id: sim.id,
-      title: sim.title ?? sim.name,
-      name: sim.name ?? sim.title,
-      poster_path: sim.poster_path,
-      backdrop_path: sim.backdrop_path ?? null,
-      vote_average: sim.vote_average ?? 0,
-      overview: sim.overview ?? "",
-      genre_ids: sim.genre_ids ?? [],
-      media_type: mediaType === "film" ? "movie" : "tv",
-      ...(mediaType === "film"
-        ? { release_date: sim.release_date }
-        : { first_air_date: sim.first_air_date }),
-    });
-  };
+  // A recommendation opens on ITS OWN discover page — the home of any title you don't own — not on
+  // the title you're reading. Recommendations of a series are series, so the type carries over.
+  const handleAddSimilar = (sim: { id: number }) =>
+    router.push(`/perso/watching/discover/${mediaType}/${sim.id}`);
 
   /**
    * THE ACTIONS RUN HERE — no modal.
@@ -423,16 +397,6 @@ export default function DiscoverDetailPage() {
         title={media.title}
       />
 
-      {/* Adding THIS title sends you to the real page — the `ownedRow` effect above picks it up.
-          Adding a recommendation just adds it; you stay where you are. */}
-      <AddMediaModal
-        isOpen={!!addItem}
-        onClose={() => setAddItem(null)}
-        onAdded={() => setAddItem(null)}
-        defaultType={mediaType}
-        listContext="wantToWatch"
-        initialItem={addItem}
-      />
     </div>
   );
 }

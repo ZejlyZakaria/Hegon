@@ -278,7 +278,7 @@ function TrendingMobileCard({
 
 export default function DontMissSectionClient({ config }: { config: WatchingConfig }) {
   const { data } = useWatchingHero(config.type);
-  const { openModalWithItem } = useWatching();
+  const { openTitle } = useWatching();
   const userId = useCurrentUserId();
   const { data: ownedIds = [] } = useOwnedTmdbIds(userId ?? "", config.type, !!userId);
   const owned = new Set(ownedIds);
@@ -308,7 +308,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
             item={item}
             isTrending={i === 0}
             isOwned={owned.has(item.id)}
-            onAdd={() => openModalWithItem("wantToWatch", item)}
+            onAdd={() => openTitle(item)}
           />
         ))}
       </div>
@@ -326,7 +326,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
               isFirst={i < 3}
               isOwned={owned.has(item.id)}
               onHover={() => setActiveIndex(i)}
-              onAdd={() => openModalWithItem("wantToWatch", item)}
+              onAdd={() => openTitle(item)}
             />
           ))}
         </div>
