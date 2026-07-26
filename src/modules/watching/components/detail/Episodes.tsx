@@ -10,9 +10,8 @@ import { isEpisodeActionable } from "../../lib/series-state";
 import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { RatingPicker } from "@/modules/watching/components/shared/RatingPicker";
 import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { SectionHeader } from "@/shared/components/ui/section-header";
@@ -115,9 +114,6 @@ function airLabel(d: string): { lead: string; sub: string | null } {
 }
 const MAX_HIGHLIGHTS = 20;
 const TMDB_STILL = "https://image.tmdb.org/t/p/w300";
-// Same scale as the season rating in Watch History (5 → 10 in half-steps).
-const RATING_VALUES = [10, 9.5, 9, 8.5, 8, 7.5, 7, 6.5, 6, 5.5, 5] as const;
-
 // Heatmap is hidden until we ingest complete IMDb ratings (OMDb data is patchy —
 // e.g. GoT S5E3 has no rating there). Flip to re-enable once that lands.
 const HEATMAP_ENABLED = false;
@@ -219,63 +215,56 @@ function StillCard({
                 </span>
               </Hint>
             )}
-            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-              <DropdownMenuTrigger asChild>
+            <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+              <PopoverTrigger asChild>
                 <button
                   type="button"
                   className={cn(
                     "on-artwork flex h-7 w-7 items-center justify-center rounded-full text-white/85 transition-all hover:text-white",
-                    highlighted ? "opacity-100" : "opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100",
+                    // Touch has no hover: below sm the control is always there; on desktop it reveals
+                    // on hover (or when the menu / best-ep star is active).
+                    highlighted
+                      ? "opacity-100"
+                      : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:data-[state=open]:opacity-100",
                   )}
                 >
                   <MoreVertical size={14} />
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60 rounded-card border-border-default bg-surface-3 p-1 shadow-md">
-                <DropdownMenuItem
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64 overflow-hidden rounded-card border-border-subtle bg-surface-2 p-0 shadow-xl">
+                {/* Best episode — one clean row */}
+                <button
+                  type="button"
                   onClick={onToggle}
-                  className="gap-2.5 px-3 py-2 text-xs text-text-secondary focus:bg-surface-2 focus:text-text-primary"
+                  className="flex w-full items-center gap-2.5 px-3.5 py-3 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary"
                 >
-                  <Star size={13} style={{ color: HIGHLIGHT, fill: highlighted ? HIGHLIGHT : "transparent" }} />
+                  <Star size={14} style={{ color: HIGHLIGHT, fill: highlighted ? HIGHLIGHT : "transparent" }} />
                   {highlighted ? "Remove from best episode" : "Mark as best episode"}
-                </DropdownMenuItem>
+                </button>
 
-                <div className="my-1 h-px bg-border-default" />
+                <div className="h-px bg-border-subtle" />
 
-                {/* Rating — values shown directly (no nested select), menu stays open */}
-                <div className="px-2 pb-1.5 pt-1">
-                  <p className="mb-1.5 flex items-center gap-1.5 px-1 text-caption font-semibold uppercase tracking-wide text-text-tertiary">
-                    <Star size={11} style={{ color: RATE_COLOR, fill: RATE_COLOR }} />
-                    Your rating
-                  </p>
-                  <div className="grid grid-cols-6 gap-1">
-                    {RATING_VALUES.map((n) => (
+                {/* Rating — the app's canonical slider (tap or drag), not a wall of buttons. */}
+                <div className="px-3.5 pb-1 pt-3">
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wide text-text-tertiary">
+                      <Star size={11} style={{ color: RATE_COLOR, fill: RATE_COLOR }} />
+                      Your rating
+                    </p>
+                    {rated && (
                       <button
-                        key={n}
                         type="button"
-                        onClick={() => { onRate(n); setMenuOpen(false); }}
-                        className={cn(
-                          "flex h-7 items-center justify-center rounded-chip text-micro font-semibold tabular-nums transition-colors",
-                          rating === n ? "text-white" : "bg-surface-2 text-text-secondary hover:bg-surface-1 hover:text-text-primary",
-                        )}
-                        style={rating === n ? { backgroundColor: RATE_COLOR } : undefined}
+                        onClick={() => onRate(null)}
+                        className="text-micro font-medium text-text-tertiary transition-colors hover:text-text-primary"
                       >
-                        {n}
+                        Clear
                       </button>
-                    ))}
+                    )}
                   </div>
-                  {rated && (
-                    <button
-                      type="button"
-                      onClick={() => { onRate(null); setMenuOpen(false); }}
-                      className="mt-1.5 w-full rounded-chip py-1 text-micro font-medium text-text-tertiary transition-colors hover:text-text-primary"
-                    >
-                      Clear rating
-                    </button>
-                  )}
+                  <RatingPicker value={rating ?? 0} onChange={(v) => onRate(v)} showValue={false} />
                 </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </PopoverContent>
+            </Popover>
           </div>
         )}
 
