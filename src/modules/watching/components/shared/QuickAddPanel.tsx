@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Check, Loader2 } from "lucide-react";
+import { Plus, Check, Loader2, ChevronRight } from "lucide-react";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { MediaRow } from "./MediaRow";
@@ -60,18 +60,27 @@ function yearOf(r: TmdbListResult): string | null {
  * burst all lands in one place. Want to watch carries a priority (its only meaningful attribute).
  * No other form: rating, exact position and Top 10 rank are refined on the fiche. An owned title is
  * never re-added — it offers to open instead.
+ *
+ * `navigate` flips it into a FINDER for Top 10: ranking is not a status you dump into, it's a swap
+ * that lives on the title's fiche — so here you just pick a title and land on its page, where the
+ * rank picker already is. No chips, no status; owned → its fiche, new → its discover page.
  */
 export function QuickAddPanel({
   open,
   onClose,
   defaultList = "wantToWatch",
   mediaType,
+  title = "Add to your library",
+  navigate = false,
 }: {
   open: boolean;
   onClose: () => void;
   defaultList?: ListType;
   /** Scope the search to one type — a typed page (Movies/TV/Animes) adds only that. Omit = all. */
   mediaType?: MediaType;
+  title?: string;
+  /** Finder mode: pick routes to the title's fiche (to rank it) instead of adding a status. */
+  navigate?: boolean;
 }) {
   const router = useRouter();
   const userId = useCurrentUserId();
@@ -104,7 +113,10 @@ export function QuickAddPanel({
     const q = query.trim();
     if (q.length >= 2) setRecent(pushRecent(q));
     const mine = ownedRowFor(r, owned);
+    // Owned → its fiche. In finder mode a NEW title goes to its discover page (add there, then rank);
+    // in add mode we add it below.
     if (mine) { onClose(); router.push(`/perso/watching/${mine.id}`); return; }
+    if (navigate) { onClose(); router.push(`/perso/watching/discover/${tmdbResultType(r)}/${r.id}`); return; }
     if (addingId || addedIds.has(r.id)) return;
     setAddingId(r.id);
     try {
@@ -119,9 +131,14 @@ export function QuickAddPanel({
 
   const destLabel = DESTS.find((d) => d.key === dest)?.label;
   const typing = query.trim().length >= 2;
+  const hint = navigate ? (
+    <>Pick a title to rank it in your <span className="font-medium text-text-secondary">Top 10</span>.</>
+  ) : (
+    <>What you pick lands in <span className="font-medium text-text-secondary">{destLabel}</span>.</>
+  );
 
   return (
-    <SlidingPanel open={open} onClose={onClose} title="Add to your library">
+    <SlidingPanel open={open} onClose={onClose} title={title}>
       {/* Search LEADS — the hero. Destination + (want-to-watch) priority sit UNDER it as quiet
           context, not competing chrome: the section you came from already set them. Sticky. */}
       <div className="sticky top-0 z-10 border-b border-border-subtle bg-surface-1 px-4 pb-3 pt-3.5">
@@ -134,25 +151,28 @@ export function QuickAddPanel({
           onClear={() => setQuery("")}
         />
 
-        {/* Destination — quiet text tabs, the active one lit teal. Not buttons; a whisper. */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-          {DESTS.map((d) => (
-            <button
-              key={d.key}
-              type="button"
-              onClick={() => setDest(d.key)}
-              className={cn(
-                "font-medium transition-colors",
-                d.key === dest ? "text-accent-watching-vivid" : "text-text-tertiary hover:text-text-secondary",
-              )}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
+        {/* Destination — quiet text tabs, the active one lit teal. Not buttons; a whisper. Hidden in
+            finder mode (Top 10 has no status to choose). */}
+        {!navigate && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+            {DESTS.map((d) => (
+              <button
+                key={d.key}
+                type="button"
+                onClick={() => setDest(d.key)}
+                className={cn(
+                  "font-medium transition-colors",
+                  d.key === dest ? "text-accent-watching-vivid" : "text-text-tertiary hover:text-text-secondary",
+                )}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Priority — want-to-watch's only meaningful attribute; a quiet inline row, gone elsewhere. */}
-        {dest === "wantToWatch" && (
+        {!navigate && dest === "wantToWatch" && (
           <div className="mt-2.5 flex items-center gap-1">
             <span className="mr-1 text-micro uppercase tracking-wide text-text-tertiary">Priority</span>
             {PRIORITY.map((p) => {
@@ -208,7 +228,15 @@ export function QuickAddPanel({
                         </span>
                       }
                       right={
-                        isAdding ? (
+                        navigate ? (
+                          mine ? (
+                            <span className="flex items-center gap-1 text-micro font-medium" style={{ color: TEAL }}>
+                              <Check size={11} /> In library
+                            </span>
+                          ) : (
+                            <ChevronRight size={15} className="text-text-tertiary" />
+                          )
+                        ) : isAdding ? (
                           <Loader2 size={13} className="animate-spin text-text-tertiary" />
                         ) : isAdded ? (
                           <span className="flex items-center gap-1 text-micro font-medium" style={{ color: TEAL }}>
@@ -244,15 +272,13 @@ export function QuickAddPanel({
               </button>
             ))}
           </div>
-          <p className="mt-5 text-micro leading-relaxed text-text-tertiary">
-            What you pick lands in <span className="font-medium text-text-secondary">{destLabel}</span>.
-          </p>
+          <p className="mt-5 text-micro leading-relaxed text-text-tertiary">{hint}</p>
         </div>
       ) : (
-        <p className="px-4 py-8 text-center text-xs leading-relaxed text-text-tertiary">
-          Type to search — what you pick lands in{" "}
-          <span className="font-medium text-text-secondary">{destLabel}</span>.
-        </p>
+        <div className="px-4 py-8 text-center text-xs leading-relaxed text-text-tertiary">
+          <p>Type to search.</p>
+          <p className="mt-1.5">{hint}</p>
+        </div>
       )}
     </SlidingPanel>
   );

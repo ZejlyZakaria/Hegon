@@ -50,10 +50,12 @@ export default function WatchingClient({ config, children }: Props) {
     setPendingInitialItem(null);
   }, []);
 
-  // A section "+" opens the quick-add panel, pre-scoped to that section (search, nothing pre-picked).
-  // Top 10 is excluded — adding with a rank needs the modal's picker — and a DIRECT add of a specific
-  // title (a recommendation) keeps the modal's direct mode. Everything else is a quick pass.
-  const quickOpen = activeModal !== null && activeModal !== "topTen" && pendingInitialItem === null;
+  // A section "+" opens the quick-add panel, pre-scoped to that section. Top 10 opens it as a FINDER
+  // (navigate mode): a rank is a swap that lives on the title's fiche, not a status you dump into —
+  // so it just takes you to the title. A DIRECT add of a specific title (a recommendation) is the one
+  // thing left on the modal's pre-filled form.
+  const quickOpen = activeModal !== null && pendingInitialItem === null;
+  const isTopTen = activeModal === "topTen";
 
   return (
     <WatchingContext.Provider value={{ openModal, openModalWithItem, config }}>
@@ -64,22 +66,21 @@ export default function WatchingClient({ config, children }: Props) {
       <QuickAddPanel
         open={quickOpen}
         onClose={() => { setActiveModal(null); setPendingInitialItem(null); }}
-        defaultList={(quickOpen ? activeModal : "wantToWatch") as ListType}
+        defaultList={(quickOpen && !isTopTen ? activeModal : "wantToWatch") as ListType}
         mediaType={config.type as MediaType}
+        navigate={isTopTen}
+        title={isTopTen ? "Add to your Top 10" : "Add to your library"}
       />
 
-      {/* Top 10 (needs the rank picker) + any direct add of a specific title still use the modal. */}
-      {(["topTen", "inProgress", "recentlyWatched", "wantToWatch"] as const).map((ctx) => (
-        <AddMediaModal
-          key={ctx}
-          isOpen={activeModal === ctx && (ctx === "topTen" || pendingInitialItem !== null)}
-          onClose={() => { setActiveModal(null); setPendingInitialItem(null); }}
-          onAdded={handleAdded}
-          defaultType={config.type as MediaType}
-          listContext={ctx}
-          initialItem={activeModal === ctx ? pendingInitialItem : null}
-        />
-      ))}
+      {/* The only thing still on the modal: a direct add of a specific title (a recommendation). */}
+      <AddMediaModal
+        isOpen={pendingInitialItem !== null && activeModal !== null}
+        onClose={() => { setActiveModal(null); setPendingInitialItem(null); }}
+        onAdded={handleAdded}
+        defaultType={config.type as MediaType}
+        listContext={(activeModal ?? "wantToWatch") as ListType}
+        initialItem={pendingInitialItem}
+      />
     </WatchingContext.Provider>
   );
 }

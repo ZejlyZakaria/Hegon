@@ -476,9 +476,13 @@ export default function MediaDetailPage() {
             <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
 
             {/* Ranking sits beside the lists because it IS one — the one list that is ordered.
-                Only for something you have watched: a Top 10 is a verdict, and you cannot rank
-                what you have not seen. */}
-            {media.watched && <TopTenRank media={media} />}
+                Shown for anything you've spent real watch time on: RANKING IS NOT WATCHING, so a show
+                you're mid-way through, caught up on, paused, or stopped-but-loved (Prison Break after
+                a poor final season; a True Detective anthology season) can all be a favourite. Only
+                want-to-watch is out — a Top 10 is a verdict, and you cannot rank what you've not seen. */}
+            {(media.watched || media.in_progress || media.paused || media.dropped) && (
+              <TopTenRank media={media} />
+            )}
 
             <InList mediaItemId={media.id} userId={media.user_id} />
 
