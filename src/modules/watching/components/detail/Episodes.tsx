@@ -11,7 +11,7 @@ import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import { RatingPicker } from "@/modules/watching/components/shared/RatingPicker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { SectionHeader } from "@/shared/components/ui/section-header";
@@ -205,69 +205,6 @@ function StillCard({
           </>
         )}
 
-        {/* Top-right — best-ep indicator (gold star) + "…" menu = single control surface */}
-        {hasActions && (
-          <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5">
-            {highlighted && (
-              <Hint label="Best episode">
-                <span className="on-artwork flex h-7 w-7 items-center justify-center rounded-full">
-                  <Star size={13} style={{ color: HIGHLIGHT, fill: HIGHLIGHT }} />
-                </span>
-              </Hint>
-            )}
-            <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className={cn(
-                    "on-artwork flex h-7 w-7 items-center justify-center rounded-full text-white/85 transition-all hover:text-white",
-                    // Touch has no hover: below sm the control is always there; on desktop it reveals
-                    // on hover (or when the menu / best-ep star is active).
-                    highlighted
-                      ? "opacity-100"
-                      : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:data-[state=open]:opacity-100",
-                  )}
-                >
-                  <MoreVertical size={14} />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-64 overflow-hidden rounded-card border-border-subtle bg-surface-2 p-0 shadow-xl">
-                {/* Best episode — one clean row */}
-                <button
-                  type="button"
-                  onClick={onToggle}
-                  className="flex w-full items-center gap-2.5 px-3.5 py-3 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary"
-                >
-                  <Star size={14} style={{ color: HIGHLIGHT, fill: highlighted ? HIGHLIGHT : "transparent" }} />
-                  {highlighted ? "Remove from best episode" : "Mark as best episode"}
-                </button>
-
-                <div className="h-px bg-border-subtle" />
-
-                {/* Rating — the app's canonical slider (tap or drag), not a wall of buttons. */}
-                <div className="px-3.5 pb-1 pt-3">
-                  <div className="mb-1 flex items-center justify-between">
-                    <p className="flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wide text-text-tertiary">
-                      <Star size={11} style={{ color: RATE_COLOR, fill: RATE_COLOR }} />
-                      Your rating
-                    </p>
-                    {rated && (
-                      <button
-                        type="button"
-                        onClick={() => onRate(null)}
-                        className="text-micro font-medium text-text-tertiary transition-colors hover:text-text-primary"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  <RatingPicker value={rating ?? 0} onChange={(v) => onRate(v)} showValue={false} />
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        )}
-
         {/* Bottom-right — rating DISPLAY only (teal ★ + value), not interactive */}
         {hasActions && rated && (
           <div className="pointer-events-none absolute bottom-2 right-2 z-10">
@@ -278,6 +215,74 @@ function StillCard({
           </div>
         )}
       </div>
+
+      {/* Top-right — best-ep indicator (gold star) + "…" menu. OUTSIDE the scaling frame on
+          purpose: the poster/backdrop zooms on hover, the menu does NOT — the trigger stays put so
+          the Radix popover anchored to it never drifts, matching every other card's menu. */}
+      {hasActions && (
+        <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
+          {highlighted && (
+            <Hint label="Best episode">
+              <span className="on-artwork flex h-7 w-7 items-center justify-center rounded-full">
+                <Star size={13} style={{ color: HIGHLIGHT, fill: HIGHLIGHT }} />
+              </span>
+            </Hint>
+          )}
+          <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "on-artwork flex h-7 w-7 items-center justify-center rounded-full text-white/85 transition-all hover:text-white",
+                  // Touch has no hover: below sm the control is always there; on desktop it reveals
+                  // on hover (or when the menu / best-ep star is active).
+                  highlighted
+                    ? "opacity-100"
+                    : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:data-[state=open]:opacity-100",
+                )}
+              >
+                <MoreVertical size={14} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 overflow-hidden rounded-card border-border-subtle bg-surface-2 p-0 shadow-xl">
+              {/* Best episode — one clean row */}
+              <button
+                type="button"
+                onClick={onToggle}
+                className="flex w-full items-center gap-2.5 px-3.5 py-3 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary"
+              >
+                <Star size={14} style={{ color: HIGHLIGHT, fill: HIGHLIGHT }} />
+                {highlighted ? "Remove from best episode" : "Mark as best episode"}
+              </button>
+
+              <div className="h-px bg-border-subtle" />
+
+              {/* Rating — the same value Select as Watch History, not a slider. "—" clears it,
+                  so no separate Clear button. */}
+              <div className="px-3.5 pb-3.5 pt-3">
+                <p className="mb-1.5 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wide text-text-tertiary">
+                  <Star size={14} style={{ color: RATE_COLOR, fill: RATE_COLOR }} />
+                  Your rating
+                </p>
+                <Select
+                  value={rated ? String(rating) : undefined}
+                  onValueChange={(v) => onRate(v === "none" ? null : Number(v))}
+                >
+                  <SelectTrigger variant="legacy" className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-accent-watching-vivid focus:ring-0">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent variant="legacy" className="border-border-strong bg-surface-3">
+                    <SelectItem value="none" className="text-xs focus:bg-surface-2 focus:text-text-primary">—</SelectItem>
+                    {[10, 9.5, 9, 8.5, 8, 7.5, 7, 6.5, 6, 5.5, 5].map((n) => (
+                      <SelectItem key={n} value={String(n)} className="text-xs focus:bg-surface-2 focus:text-text-primary">{n}/10</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
 
       {/* Number · title · overview.
           The number is an EYEBROW: it belongs to the title, so it sits closer to it (2px) than the
