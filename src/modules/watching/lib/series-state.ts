@@ -109,6 +109,26 @@ export function seriesState(m: SeriesFacts): SeriesState | null {
   return isFinished(m.status) ? "completed" : "caught-up";
 }
 
+/**
+ * "Up to date, put it down until it comes back" — the state that belongs in Last Watched, not In
+ * Progress. TWO conditions:
+ *   · caught up — you've seen everything that has AIRED, and the show isn't over; AND
+ *   · the current season has FINISHED airing (`caughtUpOn === "season"`) — the next thing is a whole
+ *     new SEASON, months or a year away, not next week's episode.
+ *
+ * That second condition is a distinction the model already drew (`caughtUpOn`) but the buckets
+ * ignored: a show releasing WEEKLY (caught up, yet its season is still coming out → `"episode"`)
+ * belongs in In Progress — you're actively following it, an episode is days away. Only the
+ * between-seasons wait is "last watched".
+ *
+ * Derived, so it un-sets itself: a new episode airs → `seriesState` flips to `"new"` → back to In
+ * Progress, no flag to forget. Series/anime only — `caughtUpOn` needs a current season, and a film's
+ * `seriesState` is null, so it is never awaiting a next season.
+ */
+export function isAwaitingNextSeason(m: SeriesFacts): boolean {
+  return seriesState(m) === "caught-up" && caughtUpOn(m) === "season";
+}
+
 // ── The next step, and what the app will and won't let you do ──────────────────────────────
 
 export type NextStep =

@@ -19,7 +19,8 @@ import { WATCHING_ACCENT } from "@/modules/watching/ui";
 // Priority: the order of the rail carries the ranking, and `PriorityMark` flags only its top.
 // See Marks.tsx — the reasoning lives with the grammar, not here.
 import { displayTitle, watchedAgo, releaseCountdown } from "@/modules/watching/utils";
-import { Clock, CalendarClock } from "lucide-react";
+import { Clock, CalendarClock, Check } from "lucide-react";
+import { isAwaitingNextSeason } from "@/modules/watching/lib/series-state";
 import { formatPosition, overallProgress } from "@/modules/watching/lib/progress";
 import { useMediaViews } from "@/modules/watching/hooks/useMediaView";
 import type { MediaView } from "@/modules/watching/lib/media-view";
@@ -40,6 +41,8 @@ type MediaCarouselProps = {
   showWatchedAgo?: boolean;
   /** Waiting for only — surface WHEN a film comes out, the anticipation made legible. */
   showCountdown?: boolean;
+  /** Last Watched only — flag a caught-up title (up to date, not finished) with a teal badge. */
+  showCaughtUp?: boolean;
 };
 
 
@@ -55,6 +58,7 @@ function MovieCard({
   showRankBadge,
   showWatchedAgo,
   showCountdown,
+  showCaughtUp,
   eagerLoad,
   orientation = "backdrop",
 }: {
@@ -70,13 +74,19 @@ function MovieCard({
   showRankBadge?: boolean;
   showWatchedAgo?: boolean;
   showCountdown?: boolean;
+  showCaughtUp?: boolean;
   eagerLoad?: boolean;
   orientation?: "poster" | "backdrop";
 }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const isPoster = orientation === "poster";
+  const caughtUp = !!showCaughtUp && isAwaitingNextSeason(item);
   // Compact on the narrow poster (mobile): "2w" instead of "2 weeks ago", which crowds the tile.
-  const ago = showWatchedAgo ? watchedAgo(item.watched_at, { short: isPoster }) : null;
+  // NOT on a caught-up title: `watched_at` is its old finish date (Bleach, caught up two years ago
+  // then again yesterday via a "+1", which only moves `last_watched_at`), so the badge would read a
+  // stale "2 years ago". Its state is "Caught up" — that badge stands in for the date, and dropping
+  // the "ago" also un-crowds the top row (one left badge instead of two beside the heart + menu).
+  const ago = showWatchedAgo && !caughtUp ? watchedAgo(item.watched_at, { short: isPoster }) : null;
   // "Waiting for" cards: the countdown to release. Legacy rows with no stored date still belong here
   // (via status) but can't count — they say "Soon" rather than nothing.
   const countdown = showCountdown ? (releaseCountdown(item.release_date, { short: isPoster }) ?? "Soon") : null;
@@ -148,6 +158,14 @@ function MovieCard({
             <Badge variant="flag" size="sm" color="rgba(255,255,255,0.92)">
               <CalendarClock size={11} />
               {countdown}
+            </Badge>
+          )}
+          {/* Up to date on an ongoing show — teal (it's your state), so it reads apart from the
+              neutral-white world facts above. Only the Last Watched rail passes showCaughtUp. */}
+          {caughtUp && (
+            <Badge variant="flag" size="sm" color="var(--color-accent-watching-vivid)">
+              <Check size={11} />
+              Caught up
             </Badge>
           )}
         </div>
@@ -264,6 +282,7 @@ export function MediaCarousel({
   showRankBadge = false,
   showWatchedAgo = false,
   showCountdown = false,
+  showCaughtUp = false,
 }: MediaCarouselProps) {
   const router = useRouter();
   const prefetch = usePrefetchMedia();
@@ -435,6 +454,7 @@ export function MediaCarousel({
               showRankBadge={showRankBadge}
               showWatchedAgo={showWatchedAgo}
               showCountdown={showCountdown}
+              showCaughtUp={showCaughtUp}
               /**
                * Lazy, even here. A page carries SEVEN of these rails, and each one claiming its
                * first five images as `eager` meant ~35 forced fetches for the one rail actually on
@@ -484,6 +504,7 @@ export function MediaCarousel({
               showRankBadge={showRankBadge}
               showWatchedAgo={showWatchedAgo}
               showCountdown={showCountdown}
+              showCaughtUp={showCaughtUp}
               eagerLoad={false}
             />
           </motion.div>
