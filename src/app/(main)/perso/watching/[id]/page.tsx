@@ -17,6 +17,8 @@ import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { ContributingToGoals } from "@/modules/watching/components/detail/ContributingToGoals";
 import { MediaHero } from "@/modules/watching/components/detail/MediaHero";
+import { ImageGallery } from "@/modules/watching/components/detail/ImageGallery";
+import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal";
 import { StatusCard } from "@/modules/watching/components/detail/StatusCard";
 import { MyTake } from "@/modules/watching/components/detail/MyTake";
@@ -110,6 +112,7 @@ export default function MediaDetailPage() {
   // AniList cours itself when they matter, and hands back everything in DISPLAY space.
   const view = useMediaView(media);
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const [imagesOpen, setImagesOpen] = useState(false);
   const [dropSheetOpen, setDropSheetOpen] = useState(false);
 
   // "More Like This" — drop titles already in the library (like For You), then
@@ -387,6 +390,7 @@ export default function MediaDetailPage() {
         hasTrailer={!!trailer?.key}
         trailerLoading={trailerLoading}
         onPlayTrailer={() => setTrailerOpen(true)}
+        onOpenImages={() => setImagesOpen(true)}
       />
 
       {/* Mobile slot — the StatusCard right after the hero, before everything */}
@@ -485,6 +489,14 @@ export default function MediaDetailPage() {
         youtubeKey={trailer?.key}
         title={media.title}
       />
+
+      {/* Artwork gallery — a wide sliding panel (4 posters / 2 backdrops) rather than a route, so it
+          opens over the fiche without losing context. */}
+      <SlidingPanel open={imagesOpen} onClose={() => setImagesOpen(false)} title="Artwork" width="gallery">
+        <div className="p-4">
+          <ImageGallery media={media} />
+        </div>
+      </SlidingPanel>
 
       <CaptureSheet
         open={dropSheetOpen}

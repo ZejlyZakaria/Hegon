@@ -24,6 +24,12 @@ const updateMediaFields = z.object({
   cour_years: z.record(z.string(), z.number()).nullable().optional(),
   cour_ratings: z.record(z.string(), z.number()).nullable().optional(),
   favorite: z.boolean().optional(),
+  // The artwork you chose over TMDB's default — a poster/backdrop you picked in the Images gallery,
+  // or a custom upload. Plain columns like the other "world facts", but they MUST be declared: the
+  // hook path (useUpdateMedia) writes toColumns(parse(input)), so an undeclared field is stripped
+  // before it can reach the database. Declared, therefore preserved.
+  poster_url: z.string().nullable().optional(),
+  backdrop_url: z.string().nullable().optional(),
   /** Top-10 rank. A ranking, not a status — see `claimedStatus`: loving it is not having seen it. */
   priority: z.number().nullable().optional(),
   /** TMDB's own score, refreshed when a door re-reads the title. Yours is `user_rating`. */

@@ -1396,6 +1396,51 @@ export async function getMediaDetails(id: number, type: "movie" | "tv") {
   return tmdbFetch<any>(`${type}/${id}`, { append_to_response: append });
 }
 
+// ── Images gallery ──
+// One TMDB image (a poster or a backdrop). `file_path` is the bare path — prefix a size to fetch.
+export interface TmdbImage {
+  file_path: string;
+  vote_average: number;
+  vote_count: number;
+  width: number;
+  height: number;
+  iso_639_1: string | null;   // language of any baked-in text; null = textless art
+}
+
+export interface MediaImages {
+  posters: TmdbImage[];
+  backdrops: TmdbImage[];
+}
+
+// Every poster + backdrop TMDB holds for a title.
+//
+// ⚠️ `tmdbFetch` forces `language=en-US` on EVERY call, and `/images` FILTERS by it — so without the
+// override below we got only English-tagged art, which is exactly the posters/backdrops with the
+// TITLE baked in. The clean textless backdrops (iso_639_1 = null) and every other language were
+// dropped, which is why so many images visible on TMDB were missing here. `include_image_language`
+// overrides that filter: `null` = textless art (a hero wants no title), `en` = English. We then
+// ORDER them — backdrops lead textless, posters lead English — and fall back to community score.
+export async function getMediaImages(tmdbId: number, type: "movie" | "tv"): Promise<MediaImages> {
+  const data = await tmdbFetch<{ posters?: TmdbImage[]; backdrops?: TmdbImage[] }>(
+    `${type}/${tmdbId}/images`,
+    { include_image_language: "en,null" },
+  );
+  const byQuality = (a: TmdbImage, b: TmdbImage) =>
+    b.vote_average - a.vote_average || b.vote_count - a.vote_count;
+  const posterLang = (i: TmdbImage) => (i.iso_639_1 === "en" ? 0 : i.iso_639_1 == null ? 1 : 2);
+  const backdropLang = (i: TmdbImage) => (i.iso_639_1 == null ? 0 : i.iso_639_1 === "en" ? 1 : 2);
+  // TMDB can return the SAME file_path twice (a known quirk when image languages overlap) — and the
+  // gallery keys tiles by file_path, so a duplicate is a React key collision. One image, one entry.
+  const dedupe = (arr: TmdbImage[] = []) => {
+    const seen = new Set<string>();
+    return arr.filter((i) => (seen.has(i.file_path) ? false : (seen.add(i.file_path), true)));
+  };
+  return {
+    posters: dedupe(data.posters).sort((a, b) => posterLang(a) - posterLang(b) || byQuality(a, b)),
+    backdrops: dedupe(data.backdrops).sort((a, b) => backdropLang(a) - backdropLang(b) || byQuality(a, b)),
+  };
+}
+
 // =====================================================
 // PERSON — TMDB people + your titles with them
 // =====================================================

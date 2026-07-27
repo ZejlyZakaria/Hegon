@@ -120,4 +120,8 @@ export const TMDB_KEYS = {
     ['tmdb', 'for-you', type] as const,
   person: (personId: number) =>
     ['tmdb', 'person', personId] as const,
+  // Every poster + backdrop TMDB has for a title — the Images gallery. TMDB data (rarely changes),
+  // so it sits here, not under WATCHING_KEYS.
+  images: (type: MediaType, tmdbId: number) =>
+    ['tmdb', 'images', type, tmdbId] as const,
 } as const;
