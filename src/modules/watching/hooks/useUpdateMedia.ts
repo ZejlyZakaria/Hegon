@@ -151,6 +151,15 @@ export function useUpdateMedia() {
       if (STATS_FIELDS.some((f) => input[f] != null)) {
         queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "stats"] });
       }
+
+      // Artwork (poster/backdrop) is neither a status nor a stat FIELD, but HEGON shows every edit
+      // everywhere at once. The optimistic patch already repoints the array caches (sections,
+      // library, detail); this covers the reads it can't reach — Stats' Top Picks & Wrapped are a
+      // COMPUTED object, and the person page's titles are keyed by tmdb_id, not row id.
+      if (input.poster_url !== undefined || input.backdrop_url !== undefined) {
+        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "stats"] });
+        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "by-person"] });
+      }
     },
   });
 }
