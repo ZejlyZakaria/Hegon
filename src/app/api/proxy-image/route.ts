@@ -5,6 +5,10 @@ const ALLOWED_HOSTS = [
   "image.tmdb.org",
   "femvhonlpafdajyamvcu.supabase.co",
 ];
+// AniList serves cour posters from subdomains (s4.anilist.co, img.anilist.co). A single anime
+// season's own artwork lives there, so without this the Year Wrapped poster fan rendered it blank.
+// Suffix match with the leading dot → a subdomain of anilist.co only, never `evilanilist.co`.
+const ALLOWED_HOST_SUFFIXES = [".anilist.co"];
 
 export async function GET(req: NextRequest) {
   // The host allowlist stops SSRF, but not abuse: without this anyone could push bandwidth through
@@ -26,7 +30,10 @@ export async function GET(req: NextRequest) {
     return new NextResponse("Invalid url", { status: 400 });
   }
 
-  if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
+  const hostAllowed =
+    ALLOWED_HOSTS.includes(parsed.hostname) ||
+    ALLOWED_HOST_SUFFIXES.some((suffix) => parsed.hostname.endsWith(suffix));
+  if (!hostAllowed) {
     return new NextResponse("Host not allowed", { status: 403 });
   }
 

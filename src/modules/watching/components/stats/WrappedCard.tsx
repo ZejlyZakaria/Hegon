@@ -227,7 +227,7 @@ export function WrappedCard({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <StatCard value={films} label="Films" />
           <StatCard value={seriesAnime} label="Series & Anime" />
-          <StatCard value={`${hours}h`} label="Hours watched" />
+          <StatCard value={`${Math.round(hours * 10) / 10}h`} label="Hours watched" />
           <StatCard value={topGenre ?? "—"} label="Top Genre" />
         </div>
 
