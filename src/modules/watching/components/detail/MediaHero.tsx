@@ -3,7 +3,7 @@
 import { Fragment } from "react";
 import Image from "next/image";
 import { tmdbImage, tmdbImageFor } from "../../lib/tmdb-image";
-import { ArrowLeft, Loader2, Play } from "lucide-react";
+import { ArrowLeft, Images, Loader2, Play } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Badge } from "@/shared/components/ui/badge";
 import { RankMark } from "../shared/Marks";
@@ -70,9 +70,11 @@ interface Props {
   hasTrailer?: boolean;
   trailerLoading?: boolean;
   onPlayTrailer?: () => void;
+  /** Open the Images gallery for this title. Absent on a title you don't own (discover). */
+  onOpenImages?: () => void;
 }
 
-export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading, onPlayTrailer }: Props) {
+export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading, onPlayTrailer, onOpenImages }: Props) {
   const mainTitle = displayTitle(media);
   const other = mainTitle === media.title ? media.original_title : media.title;
   // Same title in a different case (title "Death Note" / original "DEATH NOTE"): keep the
@@ -157,7 +159,7 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
               `display:none` branch. The desktop one keeps priority; this one is lazy, which costs a
               phone nothing (an in-viewport lazy image is fetched immediately). */}
           <Image
-            src={tmdbImage(media.backdrop_url || media.poster_url, "w780") || "/placeholder.svg"}
+            src={tmdbImage(media.backdrop_url || media.poster_url, "w1280") || "/placeholder.svg"}
             alt=""
             fill
             loading="lazy"
@@ -182,13 +184,23 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
         <div className="relative -mt-16 flex flex-col items-center px-4 pb-2 text-center">
           <div className="relative aspect-2/3 w-(--poster-md) shrink-0 overflow-hidden rounded-tile border border-white/10 shadow-xl">
             <Image
-              src={tmdbImageFor(media.poster_url, 112) || "/placeholder.svg"}
+              src={tmdbImageFor(media.poster_url, 112, 3) || "/placeholder.svg"}
               alt={media.title}
               fill
               loading="lazy"
               sizes="112px"
               className="object-cover"
             />
+            {onOpenImages && (
+              <button
+                type="button"
+                onClick={onOpenImages}
+                aria-label="Change artwork"
+                className="on-artwork absolute bottom-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-full text-white/85 transition-colors hover:text-white"
+              >
+                <Images size={13} />
+              </button>
+            )}
           </div>
 
           <div className="mt-3 flex justify-center">
@@ -225,7 +237,7 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
             than `original`: it sits behind a gradient with text over it, and a 3000px source for a
             decorative banner was 600 KB of nothing. */}
         <Image
-          src={tmdbImage(media.backdrop_url || media.poster_url, "w1280") || "/placeholder.svg"}
+          src={tmdbImage(media.backdrop_url || media.poster_url, "original") || "/placeholder.svg"}
           alt=""
           fill
           priority
@@ -248,7 +260,17 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
         <div className="absolute bottom-0 left-0 right-0 z-10 px-10 pb-8">
           <div className="flex items-end gap-8">
             {/* Poster */}
-            <div className="relative shrink-0">
+            <div className="group/poster relative shrink-0">
+              {onOpenImages && (
+                <button
+                  type="button"
+                  onClick={onOpenImages}
+                  aria-label="Change artwork"
+                  className="on-artwork absolute bottom-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full text-white/85 opacity-0 transition-all hover:text-white group-hover/poster:opacity-100"
+                >
+                  <Images size={15} />
+                </button>
+              )}
               {/* Nested radii: the inner one must be OUTER − padding, or the corners can't
                   sit inside each other. rounded-card (12) − p-1 (4) = rounded-tile (8). */}
               <div className="relative aspect-2/3 w-(--poster-xl) overflow-hidden rounded-card p-1">
@@ -264,7 +286,7 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
                 <div className="absolute inset-0 bg-white/15" />
                 <div className="relative h-full w-full overflow-hidden rounded-tile">
                   <Image
-                    src={tmdbImageFor(media.poster_url, 170) || "/placeholder.svg"}
+                    src={tmdbImageFor(media.poster_url, 170, 3) || "/placeholder.svg"}
                     alt={media.title}
                     fill
                     priority

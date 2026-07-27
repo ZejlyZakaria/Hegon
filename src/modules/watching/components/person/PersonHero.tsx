@@ -36,7 +36,7 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
           {/* Same two-tree trap as MediaHero: this branch is mounted on desktop too, so `priority`
               here downloaded a second full-size backdrop into a `display:none` subtree. */}
           {backdrop ? (
-            <Image src={tmdbImage(backdrop, "w780") || backdrop} alt="" fill loading="lazy" className="object-cover" style={{ objectPosition: "center 25%" }} sizes="100vw" />
+            <Image src={tmdbImage(backdrop, "w1280") || backdrop} alt="" fill loading="lazy" className="object-cover" style={{ objectPosition: "center 25%" }} sizes="100vw" />
           ) : (
             <div className="h-full w-full bg-surface-1" />
           )}
@@ -60,7 +60,7 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
         <div className="relative -mt-16 flex flex-col items-center px-4 pb-2 text-center">
           <div className="relative aspect-2/3 w-(--poster-md) shrink-0 overflow-hidden rounded-tile border border-white/10 bg-surface-2 shadow-xl">
             {profile.profile_url ? (
-              <Image src={tmdbImageFor(profile.profile_url, 112) || profile.profile_url} alt={profile.name} fill loading="lazy" sizes="112px" className="object-cover" />
+              <Image src={tmdbImageFor(profile.profile_url, 112, 3) || profile.profile_url} alt={profile.name} fill loading="lazy" sizes="112px" className="object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center"><User className="text-text-tertiary" size={28} /></div>
             )}
@@ -77,7 +77,7 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
       {/* ── Desktop ── */}
       <div className="relative hidden w-full overflow-hidden lg:block" style={{ aspectRatio: "21/9", maxHeight: "55vh", minHeight: 280 }}>
         {backdrop ? (
-          <Image src={tmdbImage(backdrop, "w1280") || backdrop} alt="" fill priority className="object-cover" style={{ objectPosition: "center 27%" }} sizes="100vw" />
+          <Image src={tmdbImage(backdrop, "original") || backdrop} alt="" fill priority className="object-cover" style={{ objectPosition: "center 27%" }} sizes="100vw" />
         ) : (
           <div className="h-full w-full bg-surface-1" />
         )}
@@ -110,7 +110,7 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
                   />
                   <div className="absolute inset-0 bg-white/15" />
                   <div className="relative h-full w-full overflow-hidden rounded-tile">
-                    <Image src={tmdbImageFor(profile.profile_url, 160) || profile.profile_url} alt={profile.name} fill priority sizes="160px" className="object-cover" />
+                    <Image src={tmdbImageFor(profile.profile_url, 160, 3) || profile.profile_url} alt={profile.name} fill priority sizes="160px" className="object-cover" />
                   </div>
                 </>
               ) : (

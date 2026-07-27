@@ -29,13 +29,19 @@ export type TmdbSize =
 /**
  * The variant to request for an image that will be displayed `cssPx` wide.
  *
- * Doubled for high-DPI screens — a 160px tile on a retina display genuinely needs ~320px of image,
+ * Scaled by device pixel ratio — a 160px tile on a retina display genuinely needs ~320px of image,
  * and serving w185 there is the *other* failure mode we measured (an 804px slot fed a 500px file,
  * which is simply blurry). Then rounded UP to a real TMDB width, never down: too small is a visible
  * defect, too big is only bytes.
+ *
+ * ⚠️ `dpr` DEFAULTS TO 2, AND MOST CALLERS MUST LEAVE IT THERE. A rail carries dozens of images, so
+ * ×2 is the ceiling before the download weight becomes the "stampede" the size ladder exists to
+ * prevent. Pass `dpr = 3` ONLY on a LOW-COUNT surface — a hero poster, a fiche's one profile — where
+ * a single sharper image costs nothing at the page level but visibly helps on a ×3 phone (a flagship
+ * screen the ×2 assumption under-serves: a 160px poster wants ~480px there, and ×2 only asks 320).
  */
-export function tmdbSizeFor(cssPx: number): TmdbSize {
-  const needed = cssPx * 2;
+export function tmdbSizeFor(cssPx: number, dpr = 2): TmdbSize {
+  const needed = cssPx * dpr;
   if (needed <= 92) return "w92";
   if (needed <= 154) return "w154";
   if (needed <= 185) return "w185";
@@ -56,7 +62,7 @@ export function tmdbImage(url: string | null | undefined, size: TmdbSize): strin
   return `https://image.tmdb.org/t/p/${size}${path}`;
 }
 
-/** Same, for a display width in CSS pixels. */
-export function tmdbImageFor(url: string | null | undefined, cssPx: number): string | null {
-  return tmdbImage(url, tmdbSizeFor(cssPx));
+/** Same, for a display width in CSS pixels. `dpr` defaults to 2 — see tmdbSizeFor before raising it. */
+export function tmdbImageFor(url: string | null | undefined, cssPx: number, dpr = 2): string | null {
+  return tmdbImage(url, tmdbSizeFor(cssPx, dpr));
 }
