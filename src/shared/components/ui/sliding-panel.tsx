@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
@@ -16,8 +17,9 @@ interface SlidingPanelProps {
   onClose:   () => void;
   title?:    ReactNode;
   icon?:     ReactNode;
-  /** "default" = sm:w-108 (432px), "wide" = sm:w-120 (480px, for dense forms). */
-  width?:    "default" | "wide";
+  /** "default" = sm:w-108 (432px), "wide" = sm:w-120 (480px, dense forms), "gallery" = sm:w-160
+   *  (640px, image grids — fits 4 posters / 2 backdrops). */
+  width?:    "default" | "wide" | "gallery";
   /** Optional action(s) rendered in the header, just before the close button. */
   headerAction?: ReactNode;
   footer?:   ReactNode;
@@ -35,7 +37,13 @@ export function SlidingPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  return (
+  // Portal to <body>. A `fixed` overlay is relative to the nearest ancestor with a transform / filter
+  // / will-change — and framer-motion stamps those on animating elements — so rendered inline the
+  // overlay could recontextualise to a short ancestor, leaving a live, undimmed strip at the bottom
+  // that clicked straight through to the page. In <body> there is no such ancestor: the overlay is
+  // relative to the viewport, always full-screen. (Same reason Radix Dialog portals.)
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <AnimatePresence>
       {open && (
         <>
@@ -54,7 +62,7 @@ export function SlidingPanel({
             transition={SPRING}
             className={cn(
               "fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-border-strong bg-surface-1",
-              width === "wide" ? "sm:w-120" : "sm:w-108",
+              width === "gallery" ? "sm:w-160" : width === "wide" ? "sm:w-120" : "sm:w-108",
             )}
             role="dialog"
             aria-modal="true"
@@ -92,6 +100,7 @@ export function SlidingPanel({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
