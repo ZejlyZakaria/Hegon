@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Pencil, Tv, Lock, Clock, EyeOff } from "lucide-react";
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -88,6 +88,15 @@ export function SeasonHistoryStrip({
   const currentYear = now.getFullYear();
   const nowMs = now.getTime();
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Which season's popover is open (controlled, so a page scroll can dismiss it — the same reflex
+  // the poster "…" menu has). null = none open.
+  const [openSeason, setOpenSeason] = useState<number | null>(null);
+  useEffect(() => {
+    if (openSeason == null) return;
+    const close = () => setOpenSeason(null);
+    window.addEventListener("scroll", close, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", close, { capture: true });
+  }, [openSeason]);
 
   if (seasonEpisodes.length <= 1) return null;
 
@@ -342,14 +351,14 @@ export function SeasonHistoryStrip({
           }
 
           return (
-            <Popover key={s}>
+            <Popover key={s} open={openSeason === s} onOpenChange={(o) => setOpenSeason(o ? s : null)}>
               <PopoverTrigger asChild>
                 <button type="button" className="group w-(--rail-peek) shrink-0 cursor-pointer text-left sm:w-(--poster-lg)">
                   {cardInner}
                 </button>
               </PopoverTrigger>
 
-              <PopoverContent align="start" className="w-52 bg-surface-3 border-border-strong p-3">
+              <PopoverContent align="start" className="w-52 bg-surface-3 border-border-default p-3">
                 <div className="mb-2">
                   <p className="text-xs font-semibold text-text-primary">Season {s}</p>
                   {airDate && <p className="text-micro text-text-tertiary">Aired {fmtDate(airDate)} · {eps} ep{eps > 1 ? "s" : ""}</p>}

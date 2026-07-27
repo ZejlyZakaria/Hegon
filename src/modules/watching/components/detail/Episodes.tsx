@@ -147,6 +147,14 @@ function StillCard({
   backdrop?: string | null;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Close on scroll — the same reflex the poster "…" menu has: a menu anchored to a card that just
+  // scrolled away should get out of the way, not float detached over the page.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    window.addEventListener("scroll", close, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", close, { capture: true });
+  }, [menuOpen]);
   const rated = rating != null;
   // AN EPISODE THAT HASN'T AIRED CANNOT BE RATED OR STARRED. TMDB lists announced episodes —
   // House of the Dragon shows 8 in season 3, three of which exist. You cannot have an opinion
@@ -244,24 +252,25 @@ function StillCard({
                 <MoreVertical size={14} />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-56 overflow-hidden rounded-card border-border-subtle bg-surface-2 p-0 shadow-xl">
-              {/* Best episode — one clean row */}
+            <PopoverContent align="end" className="w-52 overflow-hidden rounded-card border-border-default bg-surface-3 p-0 shadow-md">
+              {/* Best episode — one clean row. Same row grammar as the poster "…" menu:
+                  px-3 py-2, text-xs, gap-2.5, hover:bg-surface-2, 13px icon. */}
               <button
                 type="button"
                 onClick={onToggle}
-                className="flex w-full items-center gap-2.5 px-3.5 py-3 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
               >
-                <Star size={14} style={{ color: HIGHLIGHT, fill: HIGHLIGHT }} />
+                <Star size={13} style={{ color: HIGHLIGHT, fill: HIGHLIGHT }} />
                 {highlighted ? "Remove from best episode" : "Mark as best episode"}
               </button>
 
-              <div className="h-px bg-border-subtle" />
+              <div className="my-1 h-px bg-border-default" />
 
               {/* Rating — the same value Select as Watch History, not a slider. "—" clears it,
                   so no separate Clear button. */}
-              <div className="px-3.5 pb-3.5 pt-3">
+              <div className="px-3 pb-3 pt-2">
                 <p className="mb-1.5 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wide text-text-tertiary">
-                  <Star size={14} style={{ color: RATE_COLOR, fill: RATE_COLOR }} />
+                  <Star size={13} style={{ color: RATE_COLOR, fill: RATE_COLOR }} />
                   Your rating
                 </p>
                 <Select
