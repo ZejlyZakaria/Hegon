@@ -55,17 +55,22 @@ const nextConfig: NextConfig = {
   },
 
   images: {
-    minimumCacheTTL: 2592000, // 30 days — posters/backdrops never change
     /**
-     * AVIF first, WebP second, the original as the last resort.
+     * ⚠️ NO VERCEL IMAGE OPTIMIZER — every image here is ALREADY sized at the source.
      *
-     * Without this line the optimizer emits WebP only — and until 21/07 it emitted nothing at all
-     * for Watching, because every card passed `unoptimized`, which routes around this whole config
-     * (the `minimumCacheTTL` above was dead for those images for the same reason). Now that the
-     * cards go through the optimizer, AVIF is worth roughly another 25-30% over WebP at equal
-     * quality on photographic content, which posters and backdrops are.
+     * `tmdb-image.ts` requests the exact TMDB variant (w92…w1280, DPR included) for the size a
+     * surface actually renders, and uploads are downscaled on the way in. Routing those pre-sized
+     * images back through `/_next/image` buys only format conversion (JPG→WebP/AVIF) — a marginal
+     * gain on already-small files — while spending Vercel's Image Optimization quota. In prod that
+     * quota hit its ceiling and `/_next/image` began returning **402 (Payment Required)** for every
+     * image: half the app went blank. Bandwidth was the real cost, and it's solved at the source, so
+     * we route around the optimizer entirely.
+     *
+     * This is the per-card `unoptimized` that was the default until 21/07 (removed to chase AVIF),
+     * now applied ONCE, globally. `formats`/`minimumCacheTTL` are gone with it: both only ever
+     * governed the optimizer we no longer call.
      */
-    formats: ["image/avif", "image/webp"],
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
