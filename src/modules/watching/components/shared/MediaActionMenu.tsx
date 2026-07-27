@@ -52,6 +52,8 @@ function MenuItem({
 
 // ── MediaActionMenu ───────────────────────────────────────────────────────────
 
+const MENU_W = 208; // w-52 — the portaled dropdown's width, used to keep it on-screen
+
 interface MediaActionMenuProps {
   item: WatchingMedia;
   triggerClassName?: string;
@@ -110,9 +112,14 @@ export function MediaActionMenu({
     e.stopPropagation();
     if (btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
+      // Clamp so the (left-growing, w-52 = 208px) menu never spills off-screen — on mobile the
+      // first rail item sits near the left edge, and `innerWidth - rect.right` alone pushed the
+      // menu's left edge negative, cutting it off. Keep it 8px inside both edges.
+      const desiredRight = window.innerWidth - rect.right;
+      const maxRight = window.innerWidth - MENU_W - 8;
       setMenuPos({
         top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
+        right: Math.max(8, Math.min(desiredRight, maxRight)),
       });
     }
     setOpen((p) => !p);

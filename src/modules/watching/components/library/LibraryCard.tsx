@@ -18,6 +18,8 @@ interface Props {
   eagerLoad?: boolean;
 }
 
+const MENU_W = 176; // w-44 — the portaled dropdown's width, used to keep it on-screen
+
 export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Props) {
   const badge = posterStatus(item);
   // The route skeleton hands over the moment the data lands, but the POSTERS are still in flight.
@@ -53,7 +55,11 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
     e.stopPropagation();
     if (btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+      // Clamp so the (left-growing, w-44 = 176px) menu stays on-screen — the first grid item on
+      // mobile sits near the left edge, where `innerWidth - rect.right` alone cut the menu off.
+      const desiredRight = window.innerWidth - rect.right;
+      const maxRight = window.innerWidth - MENU_W - 8;
+      setMenuPos({ top: rect.bottom + 4, right: Math.max(8, Math.min(desiredRight, maxRight)) });
     }
     setMenuOpen((p) => !p);
   };
@@ -94,7 +100,7 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
         )}
 
         <div
-          className={cn(OVERLAY_CLUSTER, "right-2.5 opacity-0 transition-opacity group-hover:opacity-100")}
+          className={cn(OVERLAY_CLUSTER, "right-2.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100")}
           onClick={(e) => e.stopPropagation()}
         >
           <button
