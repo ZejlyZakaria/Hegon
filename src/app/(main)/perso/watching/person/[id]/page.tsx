@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
@@ -13,6 +13,7 @@ import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { Button } from "@/shared/components/ui/button";
 import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { usePeopleCounts, usePersonBundle, useTitlesByPerson } from "@/modules/watching/hooks/usePerson";
+import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import { PersonHero } from "@/modules/watching/components/person/PersonHero";
 import { PersonJourney } from "@/modules/watching/components/person/PersonJourney";
 import { PersonSkeleton } from "@/modules/watching/components/person/PersonSkeleton";
@@ -62,6 +63,17 @@ export default function PersonPage() {
   const [visibleCount, setVisibleCount] = useState(18);
   const [sort, setSort] = useState<SortKey>("rating");
   const [timelineOpen, setTimelineOpen] = useState(false);
+
+  // The global topbar builds its breadcrumb from `pageLabel` — the fiche sets it, and so must this
+  // page, or a person route (absent from the static breadcrumb map) shows an empty crumb. Declared
+  // BEFORE the skeleton early-return so the hook order never changes.
+  const setPageLabel = useWatchingUIStore((s) => s.setPageLabel);
+  useEffect(() => {
+    const name = bundle?.profile.name;
+    if (!name) return;
+    setPageLabel({ section: "People", title: name });
+    return () => setPageLabel(null);
+  }, [bundle?.profile.name, setPageLabel]);
 
   // Hold the skeleton until BOTH halves are in. The TMDB filmography lands first; if we
   // painted then, "Not seen yet" would render alone and get shoved down when your titles
