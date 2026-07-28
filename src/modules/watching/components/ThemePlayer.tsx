@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Heart, Loader2, Maximize2, Music, Pause, Play, SkipBack, SkipForward, Video, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/shared/components/ui/dialog";
 import { Hint } from "@/shared/components/ui/tooltip";
+import { cn } from "@/shared/utils/utils";
 import { LOVE } from "./shared/Marks";
 import { useThemePlayer } from "../store/theme-player";
 import { useThemeFavorites, useToggleThemeFavorite } from "../hooks/useThemeFavorites";
@@ -16,6 +17,61 @@ function fmt(t: number) {
   const m = Math.floor(t / 60);
   const s = Math.floor(t % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// A Spotify-style scrubber: a filled track with a draggable thumb at the playhead. Dragging shows the
+// new position live and commits the seek on release (so the audio doesn't stutter mid-drag). The
+// thumb is always there — touch has no hover — and the whole strip is a generous pointer target.
+function SeekBar({
+  pct,
+  duration,
+  onSeek,
+  trackClass,
+}: {
+  pct: number;
+  duration: number;
+  onSeek: (fraction: number) => void;
+  trackClass: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<number | null>(null);
+
+  const fracAt = (clientX: number) => {
+    const r = ref.current?.getBoundingClientRect();
+    if (!r || !r.width) return 0;
+    return Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+  };
+
+  const shown = drag !== null ? drag * 100 : pct;
+
+  return (
+    <div
+      ref={ref}
+      onPointerDown={(e) => {
+        if (!duration) return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        setDrag(fracAt(e.clientX));
+      }}
+      onPointerMove={(e) => { if (drag !== null) setDrag(fracAt(e.clientX)); }}
+      onPointerUp={(e) => { if (drag !== null) { onSeek(fracAt(e.clientX)); setDrag(null); } }}
+      onPointerCancel={() => setDrag(null)}
+      className="group/prog relative -my-1.5 cursor-pointer touch-none py-1.5"
+    >
+      <div className={cn("w-full rounded-full", trackClass)}>
+        <div
+          className={cn("relative h-full rounded-full bg-white", drag === null && "transition-[width] duration-100")}
+          style={{ width: `${shown}%` }}
+        >
+          <span
+            className={cn(
+              "absolute right-0 top-1/2 h-3 w-3 -translate-y-1/2 translate-x-1/2 rounded-full bg-white shadow transition-transform",
+              drag !== null ? "scale-110" : "scale-100 group-hover/prog:scale-110",
+            )}
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function ThemePlayer() {
@@ -79,11 +135,9 @@ export function ThemePlayer() {
 
   const cover = current.cover;
   const pct = duration ? (time / duration) * 100 : 0;
-  const seek = (e: React.MouseEvent<HTMLDivElement>) => {
+  const seekTo = (fraction: number) => {
     const el = audioRef.current;
-    if (!el || !duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    el.currentTime = ((e.clientX - rect.left) / rect.width) * duration;
+    if (el && duration) el.currentTime = fraction * duration;
   };
 
   return (
@@ -144,9 +198,7 @@ export function ThemePlayer() {
 
             {/* Progress — under the track, times flanking it (like the expanded card) */}
             <div className="px-3 pb-2.5">
-              <div className="group/prog h-1 w-full cursor-pointer rounded-full bg-white/10" onClick={seek}>
-                <div className="h-full rounded-full bg-white transition-[width] duration-100" style={{ width: `${pct}%` }} />
-              </div>
+              <SeekBar pct={pct} duration={duration} onSeek={seekTo} trackClass="h-1 bg-white/10" />
               <div className="mt-1 flex justify-between text-micro tabular-nums text-white/35">
                 <span>{fmt(time)}</span>
                 <span>{fmt(duration)}</span>
@@ -222,9 +274,7 @@ export function ThemePlayer() {
 
                   {/* Progress */}
                   <div className="mt-4 md:mt-3">
-                    <div className="group/prog h-1.5 w-full cursor-pointer rounded-full bg-white/15" onClick={seek}>
-                      <div className="h-full rounded-full bg-white transition-[width] duration-100" style={{ width: `${pct}%` }} />
-                    </div>
+                    <SeekBar pct={pct} duration={duration} onSeek={seekTo} trackClass="h-1.5 bg-white/15" />
                     <div className="mt-1.5 flex justify-between text-micro tabular-nums text-white/50">
                       <span>{fmt(time)}</span>
                       <span>-{fmt(Math.max(0, duration - time))}</span>
