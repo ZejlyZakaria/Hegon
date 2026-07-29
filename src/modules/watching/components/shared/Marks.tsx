@@ -24,8 +24,14 @@ export const LOVE = "#f43f5e";   // rose-500 — affection, and only affection
  *   right = ACTIONS  — what you can do to it (favorite, menu)
  * Same inset, same 24px item height, same gap. They then align BY CONSTRUCTION — which
  * three separate `top-2` / `top-3` / `right-10` guesses never could.
+ *
+ * THE INSET IS 8px (top-2 / left-2 / right-2), and it is 8px on purpose: a poster is
+ * `rounded-tile` (8px), so an 8px inset nests the mark exactly inside the corner curve —
+ * the safe area — instead of floating a couple of pixels past it. This is THE inset for
+ * anything on artwork across the whole module; the only surfaces that opt out are the
+ * full-bleed heroes (MediaHero / PersonHero), whose scale earns a larger margin.
  */
-export const OVERLAY_CLUSTER = "absolute top-2.5 z-10 flex h-6 items-center gap-1.5";
+export const OVERLAY_CLUSTER = "absolute top-2 z-10 flex h-6 items-center gap-1.5";
 
 /**
  * A round overlay control (the favorite heart, the `…` menu). FLAT — it was frosted glass,

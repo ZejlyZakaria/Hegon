@@ -667,7 +667,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
               reads as the same thing, and `OVERLAY_CLUSTER` aligns it with the actions opposite by
               construction instead of by two matching numbers that have to be kept in step. */}
           {rank !== null && (
-            <div className={cn(OVERLAY_CLUSTER, "left-2.5")}>
+            <div className={cn(OVERLAY_CLUSTER, "left-2")}>
               <RankMark rank={rank} />
             </div>
           )}
@@ -679,7 +679,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
       </div>
 
       {/* …and the right cluster = ACTIONS, on the same inset and the same 24px rung as the rank. */}
-      <div className={cn(OVERLAY_CLUSTER, "right-2.5 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100")}>
+      <div className={cn(OVERLAY_CLUSTER, "right-2 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100")}>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setNoteOpen(!noteOpen); }}

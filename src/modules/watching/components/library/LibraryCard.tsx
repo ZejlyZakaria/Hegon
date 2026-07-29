@@ -92,7 +92,7 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
             rest and in motion. (The menu portals its dropdown, so `overflow-hidden` here
             can't clip it.) */}
         {item.favorite && (
-          <div className={cn(OVERLAY_CLUSTER, "left-2.5")}>
+          <div className={cn(OVERLAY_CLUSTER, "left-2")}>
             <span className={OVERLAY_CIRCLE}>
               <LoveMark size={12} />
             </span>
@@ -100,7 +100,7 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
         )}
 
         <div
-          className={cn(OVERLAY_CLUSTER, "right-2.5 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100")}
+          className={cn(OVERLAY_CLUSTER, "right-2 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100")}
           onClick={(e) => e.stopPropagation()}
         >
           <button

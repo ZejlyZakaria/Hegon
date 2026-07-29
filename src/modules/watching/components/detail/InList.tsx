@@ -79,7 +79,7 @@ function ListCard({ list, onOpen, onRemove }: {
             size="icon-xs"
             aria-label="Remove from list"
             onClick={(e) => { e.stopPropagation(); onRemove(); }}
-            className="absolute right-1.5 top-1.5 z-10 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+            className="absolute right-2 top-2 z-10 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
           >
             <X />
           </Button>

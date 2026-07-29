@@ -278,7 +278,7 @@ export function SeasonHistoryStrip({
                   variant="flag"
                   size="sm"
                   color={year ? "#ffffff" : "rgba(255,255,255,0.7)"}
-                  className="absolute left-1.5 top-1.5 tabular-nums"
+                  className="absolute left-2 top-2 tabular-nums"
                 >
                   {year ?? "Year"}
                 </Badge>
@@ -288,7 +288,7 @@ export function SeasonHistoryStrip({
                   word) was the only glass chip in the app that ever looked right — it's now
                   the primitive's own behaviour, so the hand-rolled dot goes. */}
               {current && !comingSoon && (
-                <Badge variant="flag" size="sm" dot color={TEAL} className="absolute right-1.5 top-1.5">
+                <Badge variant="flag" size="sm" dot color={TEAL} className="absolute right-2 top-2">
                   Now
                 </Badge>
               )}

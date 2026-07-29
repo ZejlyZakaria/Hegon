@@ -139,7 +139,7 @@ function MovieCard({
             left = IDENTITY (what this title is: rank, priority), right = ACTIONS (favorite,
             menu). Same inset, same 24px item height, same gap → they align by construction
             instead of by three separate `top-2` / `top-3` guesses. */}
-        <div className={cn(OVERLAY_CLUSTER, "left-2.5")}>
+        <div className={cn(OVERLAY_CLUSTER, "left-2")}>
           {showRankBadge && item.priority && <RankMark rank={item.priority} />}
           {/* Priority is "how badly do I want to watch this" — meaningless for a film that isn't out
               yet. In the Waiting for rail (showCountdown) the countdown is the only mark that belongs. */}

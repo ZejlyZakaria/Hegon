@@ -211,7 +211,7 @@ function DontMissCard({
           size="md"
           uppercase
           color="var(--color-accent-watching-vivid)"
-          className="absolute left-3 top-3 z-10"
+          className="absolute left-2 top-2 z-10"
         >
           <TrendingUp size={10} />
           Trending
