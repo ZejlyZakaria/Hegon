@@ -1091,7 +1091,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
         )}
 
         {!isLoading && items.length > 0 && view === "grid" && (
-          <div className="grid grid-cols-3 gap-3 p-4 sm:grid-cols-5 sm:gap-4 sm:p-6 md:grid-cols-8 lg:grid-cols-10">
+          <div className="grid grid-cols-3 gap-3 p-4 sm:grid-cols-4 sm:p-6 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
             {items.map((item, idx) => (
               <GridItem
                 key={item.list_item_id}
