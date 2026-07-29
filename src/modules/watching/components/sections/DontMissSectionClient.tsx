@@ -137,8 +137,8 @@ function DontMissCard({
                       and 0.8 made the genres the brightest thing in the panel — louder than the
                       name of the film. Same primitive, weight tuned to the title it serves. */}
                   {genres.map((g) => (
-                    <Badge key={g} variant="overlay" size="md" color="rgba(255,255,255,0.45)" className="min-w-0 shrink truncate">
-                      {g}
+                    <Badge key={g} variant="overlay" size="md" color="rgba(255,255,255,0.45)" className="min-w-0 shrink">
+                      <span className="truncate">{g}</span>
                     </Badge>
                   ))}
                 </div>

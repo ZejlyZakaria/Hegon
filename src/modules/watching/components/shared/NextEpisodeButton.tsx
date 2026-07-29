@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Check, Clock, Plus } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Hint } from "@/shared/components/ui/tooltip";
+import { CaughtUpBadge } from "./Marks";
 import { toast } from "@/shared/utils/toast";
 import { useWatchActions } from "../../hooks/useWatchActions";
-import { nextStep } from "../../lib/series-state";
+import { nextStep, caughtUpOn } from "../../lib/series-state";
 import { formatPosition } from "../../lib/progress";
 import type { WatchingMedia } from "../../types";
 
@@ -45,7 +46,9 @@ export function NextEpisodeButton({ item }: { item: WatchingMedia }) {
         variant="overlay"
         size="xs"
         onClick={(e) => { e.stopPropagation(); router.push(`/perso/watching/${item.id}`); }}
-        className="shrink-0"
+        // h-5: the on-artwork chip rung (see FLAG_SIZES.sm) — this button shares the poster line
+        // with the position chip and the caught-up badge, so it sits on the same 20px height.
+        className="h-5 shrink-0"
       >
         <Check />
         Finish
@@ -56,11 +59,16 @@ export function NextEpisodeButton({ item }: { item: WatchingMedia }) {
   // Everything aired, but the story isn't over. You are not "done" — you are WAITING. Saying
   // "watched" here is the lie the whole model was built to stop telling.
   if (step.kind === "caught-up") {
+    // Episode vs season, because the re-bucketing split them: a weekly show mid-run waits on the
+    // next EPISODE and stays in In Progress (this is where the button shows); one between seasons
+    // waits on the next SEASON and is moved to Last Watched. The old copy always said "season".
+    const waitingFor = caughtUpOn(item) === "season" ? "the next season" : "the next episode";
     return (
-      <Hint label="You've seen everything that's out. Waiting on the next season.">
-        <span className="inline-flex h-6 shrink-0 cursor-default items-center gap-1 rounded-control px-2 text-xs font-medium text-white/60 bg-white/10">
-          <Clock size={12} />
-          Caught up
+      <Hint label={`You've seen everything that's out. Waiting on ${waitingFor}.`}>
+        {/* The SAME badge as Last Watched — one component, zero per-place overrides, so it is
+            byte-for-byte identical wherever it lands on artwork. */}
+        <span className="cursor-default">
+          <CaughtUpBadge className="shrink-0" />
         </span>
       </Hint>
     );
@@ -114,7 +122,8 @@ export function NextEpisodeButton({ item }: { item: WatchingMedia }) {
       onClick={advance}
       disabled={actions.isPending}
       aria-label={`Mark ${formatPosition(step.season, step.episode)} as watched`}
-      className="shrink-0"
+      // h-5: same on-artwork chip rung as the position chip + caught-up badge beside it.
+      className="h-5 shrink-0"
     >
       <Plus />
       1 ep

@@ -78,8 +78,12 @@ const OVERLAY_SIZES: Record<NonNullable<BadgeProps["size"]>, string> = {
   lg: "gap-1.5 px-3 py-1 text-micro",
 };
 
+// `sm` carries a FIXED height (h-5 = 20px), not padding-derived: it is THE on-artwork chip rung.
+// Every flag on a poster/backdrop lands on the same 20px line, so a status, a "New", a countdown
+// and the episode chip beside them all agree by construction — and, sharing one height, they snap
+// to the pixel grid in unison when a card scales (no per-item drift). md/lg stay padding-sized.
 const FLAG_SIZES: Record<NonNullable<BadgeProps["size"]>, string> = {
-  sm: "gap-1.5 px-2 py-1 text-caption",
+  sm: "h-5 gap-1.5 px-2 text-caption",
   md: "gap-1.5 px-2.5 py-1.5 text-caption",
   lg: "gap-2 px-3 py-1.5 text-micro",
 };

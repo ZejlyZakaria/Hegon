@@ -1,5 +1,6 @@
-import { Bookmark, Heart, Star } from "lucide-react";
+import { Bookmark, CheckCheck, Heart, Star } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
+import { Badge } from "@/shared/components/ui/badge";
 
 /**
  * THE GRAMMAR OF WATCHING'S MARKS. Every star, heart and rank chip in the module comes from
@@ -155,5 +156,24 @@ export function RankMark({ rank, className }: { rank: number; className?: string
         {String(rank).padStart(2, "0")}
       </span>
     </span>
+  );
+}
+
+/**
+ * "Caught up" — ONE badge for ONE status, so it can never fragment into three again. It means the
+ * same thing wherever it appears — "you've seen everything that's aired, you're waiting on more" —
+ * whether that's a weekly show between episodes (In Progress) or a series between seasons (Last
+ * Watched). The distinction is carried by WHICH RAIL the card sits in, never by the badge.
+ *
+ * `flag` because the primitive says so: a STATUS added to a title is a flag. Teal because it's YOUR
+ * state (colour = source). `CheckCheck` = "everything seen", distinct from the generic confirm-check.
+ * No forced height — the natural flag `sm` size, exactly like the ago/countdown flags it sits beside.
+ */
+export function CaughtUpBadge({ className }: { className?: string }) {
+  return (
+    <Badge variant="flag" size="sm" color={MINE} className={className}>
+      <CheckCheck size={11} />
+      Caught up
+    </Badge>
   );
 }

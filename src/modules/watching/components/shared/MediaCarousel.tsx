@@ -13,13 +13,13 @@ import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
-import { LoveMark, PriorityMark, RankMark, ScoreMark, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
+import { LoveMark, PriorityMark, RankMark, ScoreMark, CaughtUpBadge, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
 
 // Priority: the order of the rail carries the ranking, and `PriorityMark` flags only its top.
 // See Marks.tsx — the reasoning lives with the grammar, not here.
 import { displayTitle, watchedAgo, releaseCountdown } from "@/modules/watching/utils";
-import { Clock, CalendarClock, Check } from "lucide-react";
+import { Clock, CalendarClock } from "lucide-react";
 import { isAwaitingNextSeason } from "@/modules/watching/lib/series-state";
 import { formatPosition, overallProgress } from "@/modules/watching/lib/progress";
 import { useMediaViews } from "@/modules/watching/hooks/useMediaView";
@@ -93,7 +93,9 @@ function MovieCard({
 
   return (
     <div
-      className={cn("group relative w-full cursor-pointer transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]", isPoster ? "rounded-tile" : "rounded-card")}
+      // origin-bottom: the whole card still scales (the pop you like), but it grows FROM the bottom
+      // edge — so the bottom row (categories, rating) stays anchored instead of sliding down.
+      className={cn("group relative w-full cursor-pointer origin-bottom transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]", isPoster ? "rounded-tile" : "rounded-card")}
       onClick={onView}
       onMouseEnter={onIntent}
       onFocus={onIntent}
@@ -116,7 +118,11 @@ function MovieCard({
           }
           alt={item.title}
           fill
-          className="object-cover transition-opacity duration-200"
+          // scale-[1.02]: overscan by ~1% each side so the art always covers the container to the
+          // pixel. A `fill` image can fall a sub-pixel short of the rounded edge, letting the
+          // `bg-zinc-800` behind it show as a 1px hairline ("le trait") at the bottom. Overscanning
+          // leaves no gap for it; the overflow-hidden clips the excess so nothing shows.
+          className="object-cover scale-[1.02] transition-opacity duration-200"
           style={{ opacity: imgLoaded ? 1 : 0 }}
           sizes={isPoster ? "(max-width: 1024px) 45vw, 180px" : "(max-width: 1024px) 45vw, 380px"}
           loading={eagerLoad ? "eager" : "lazy"}
@@ -160,13 +166,15 @@ function MovieCard({
               {countdown}
             </Badge>
           )}
-          {/* Up to date on an ongoing show — teal (it's your state), so it reads apart from the
-              neutral-white world facts above. Only the Last Watched rail passes showCaughtUp. */}
+          {/* Caught up — DESKTOP only. A wide card has room beside the heart + menu, and the
+              top-left is where the other states (ago, countdown) already live, so it belongs here.
+              On a narrow mobile card it collided with the actions opposite, so THERE it drops into
+              the metadata row instead (see below). `sm:contents` so the Badge stays a direct flex
+              child of the cluster on desktop. Teal (your state), CheckCheck ("everything seen"). */}
           {caughtUp && (
-            <Badge variant="flag" size="sm" color="var(--color-accent-watching-vivid)">
-              <Check size={11} />
-              Caught up
-            </Badge>
+            <span className="hidden sm:contents">
+              <CaughtUpBadge />
+            </span>
           )}
         </div>
 
@@ -199,7 +207,7 @@ function MovieCard({
                       then "S03 E12". No position is honest; a retracted one is not. */}
                   {!view?.pending && (
                   <span
-                    className="inline-flex h-6 shrink-0 items-center rounded-chip px-2 text-micro font-semibold leading-none"
+                    className="inline-flex h-5 shrink-0 items-center rounded-chip px-2 text-micro font-semibold leading-none"
                     style={{
                       backgroundColor: "color-mix(in srgb, var(--color-accent-watching) 40%, transparent)",
                       color: "var(--color-accent-watching-vivid)",
@@ -228,6 +236,11 @@ function MovieCard({
             )}
 
           <div className="mt-1.5 flex min-w-0 items-center gap-2">
+            {/* Caught up — MOBILE only, on the same line as the year + rating. The narrow card
+                has no room for it top-left beside the actions, so it lives here instead; desktop
+                shows the top-left badge (above) and hides this. Same teal chip grammar as the
+                episode-position chip. */}
+            {caughtUp && <CaughtUpBadge className="shrink-0 sm:hidden" />}
             {/* `truncate` on the Badge itself did nothing: the badge is an inline-flex box, and
                 text-overflow only applies to the element that HOLDS the text. So the label gets
                 its own span — "Science Fiction" ellipsises instead of shoving the year and the
@@ -238,8 +251,8 @@ function MovieCard({
                 metadata; it must sit under the title that names the thing. This card's title is
                 `text-sm`, so the pill is quieter than the hero's and matches Don't Miss. */}
             {!isPoster && item.tags?.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="overlay" size="sm" color="rgba(255,255,255,0.45)" className="max-w-24 shrink truncate">
-                {tag}
+              <Badge key={tag} variant="overlay" size="sm" color="rgba(255,255,255,0.45)" className="min-w-0 max-w-24 shrink">
+                <span className="truncate">{tag}</span>
               </Badge>
             ))}
             <span className="shrink-0 text-xs text-text-tertiary">{item.year}</span>
@@ -256,7 +269,7 @@ function MovieCard({
       {/* Right cluster = ACTIONS. The favorite mark lives here too — it used to float at
           `right-10 top-3` while the menu sat at `right-2 top-2`, so nothing lined up.
           (MediaActionMenu portals its dropdown, so no overflow clip.) */}
-      <div className={cn(OVERLAY_CLUSTER, "right-2.5")} onClick={(e) => e.stopPropagation()}>
+      <div className={cn(OVERLAY_CLUSTER, "right-2")} onClick={(e) => e.stopPropagation()}>
         {item.favorite && (
           <span className={OVERLAY_CIRCLE}>
             <LoveMark size={12} />
@@ -428,7 +441,7 @@ export function MediaCarousel({
 
       <div
         ref={scrollRef}
-        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-1.5 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
+        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-3 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {sortedItems.map((item, i) => (
