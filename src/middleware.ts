@@ -74,21 +74,22 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // TRACEABILITY (2026-07-29, PROD OUTAGE hotfix — explicit owner request): reverted the
-  // getClaims() introduced on 2026-06-10 back to getUser().
-  //
-  // In prod, getClaims() — which verifies the JWT IN-PROCESS against Supabase's asymmetric signing
-  // keys — began rejecting EVERY token, including freshly minted ones, while getUser() (the
-  // authoritative network check the /auth page uses to decide whether to redirect) accepted them.
-  // That disagreement is a redirect loop: `/` (getClaims → null) → 307 → /auth (getUser → valid) →
-  // finalize → `/` → … until the browser gives up with ERR_TOO_MANY_REDIRECTS ("site inaccessible"),
-  // for everyone, on every device. The root of the getClaims failure lives in the Supabase JWT
-  // signing-key configuration (Dashboard → Auth → JWT Keys) and is to be sorted there separately;
-  // going back to getUser() makes the middleware and /auth agree again, which stops the loop
-  // regardless of the key state. It is a ~150-300ms network round-trip per navigation (the cost the
-  // 2026-06-10 change removed), and it still refreshes + re-sets the session cookies. No gating logic
-  // below changed — only how `user` is derived.
-  const { data: { user } } = await supabase.auth.getUser();
+  // TRACEABILITY (2026-06-10, perf — explicit owner request): replaced
+  // `getUser()` (a network round-trip to the Supabase Auth server on EVERY
+  // navigation, ~200-300ms) with `getClaims()`. When asymmetric JWT signing keys
+  // are enabled, getClaims verifies the JWT cryptographically in-process (zero
+  // network) → middleware drops to single-digit ms. When they are NOT enabled it
+  // transparently falls back to a server getUser() validation, so security and
+  // behaviour are never weaker than before — only faster when the keys allow it.
+  // Session refresh is preserved: getClaims reads the session, which refreshes and
+  // re-sets the auth cookies when the access token is expired. No gating logic below
+  // changed — only how `user` is derived. To realise the speed-up, the Supabase
+  // project must use asymmetric JWT signing keys (Dashboard → Auth → JWT Keys,
+  // zero-downtime migration). See hq/progress.md for the rollout note.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims
+    ? { id: claimsData.claims.sub, email: claimsData.claims.email }
+    : null;
 
   // Auth page: no user → allow; user → redirect away
   if (pathname === "/auth") {

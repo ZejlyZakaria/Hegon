@@ -10,8 +10,8 @@ const IMDB_ID = /^tt\d+$/;
 export async function GET(request: NextRequest) {
   const supabase = await createServerClient();
   // Local JWT verification (same pattern as /api/tmdb — see CLAUDE.md §8).
-  // Reverted getClaims() → getUser() (2026-07-29 prod-outage hotfix — see middleware.ts).
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims ?? null;
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

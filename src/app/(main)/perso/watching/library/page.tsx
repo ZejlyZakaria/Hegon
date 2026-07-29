@@ -6,10 +6,10 @@ import type { WatchingMedia } from "@/modules/watching/types";
 
 export default async function LibraryPage() {
   const supabase = await createServerClient();
-  // Reverted getClaims() → getUser() (2026-07-29 prod-outage hotfix — see middleware.ts): getClaims'
-  // in-process JWT verification began rejecting every valid token in prod. getUser() is authoritative.
-  const { data: { user } } = await supabase.auth.getUser();
-  const userId = user?.id ?? null;
+  // Local JWT verification — the middleware already did it for this request. See lists/page.tsx
+  // for the measurement (78.5ms of network against 0.47ms local).
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = claimsData?.claims?.sub ?? null;
 
   if (!userId) {
     return <div className="p-8 text-zinc-500">Sign in to access your library.</div>;
