@@ -567,7 +567,7 @@ function TableRow({
         </div>
 
         {/* Actions — always visible on touch, hover-reveal on desktop */}
-        <div className="flex w-14 shrink-0 items-center justify-end gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+        <div className="flex w-14 shrink-0 items-center justify-end gap-0.5 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100">
           <Hint label={item.note ? "Edit note" : "Add a note"}>
             <Button
               variant="subtle"
@@ -679,7 +679,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
       </div>
 
       {/* …and the right cluster = ACTIONS, on the same inset and the same 24px rung as the rank. */}
-      <div className={cn(OVERLAY_CLUSTER, "right-2.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100")}>
+      <div className={cn(OVERLAY_CLUSTER, "right-2.5 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100")}>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setNoteOpen(!noteOpen); }}

@@ -6,6 +6,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* A device whose PRIMARY input can hover — a mouse/trackpad, not a touchscreen. Reveal-on-hover
+   affordances must gate on THIS, not on a width breakpoint: an iPad has a wide (`sm:`+) viewport but
+   no hover, so `sm:` hid the action buttons forever. `can-hover:` reveals them only where a cursor
+   can actually trigger the hover; every touch device (phone, tablet) keeps them always visible. */
+@custom-variant can-hover (@media (hover: hover));
+
 /* ════════════════════════════════════════════════════════════════════════
    HEGON GLOBALS
    Source of truth:

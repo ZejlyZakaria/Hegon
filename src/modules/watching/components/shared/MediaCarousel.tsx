@@ -262,7 +262,7 @@ function MovieCard({
             <LoveMark size={12} />
           </span>
         )}
-        <span className="opacity-100 transition-opacity duration-150 ease-out sm:opacity-0 sm:group-hover:opacity-100">
+        <span className="opacity-100 transition-opacity duration-150 ease-out can-hover:opacity-0 can-hover:group-hover:opacity-100">
           <MediaActionMenu item={item} onView={onView} onDelete={onDelete} />
         </span>
       </div>

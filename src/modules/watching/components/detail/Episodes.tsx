@@ -246,7 +246,7 @@ function StillCard({
                   // on hover (or when the menu / best-ep star is active).
                   highlighted
                     ? "opacity-100"
-                    : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:data-[state=open]:opacity-100",
+                    : "opacity-100 can-hover:opacity-0 can-hover:group-hover:opacity-100 can-hover:data-[state=open]:opacity-100",
                 )}
               >
                 <MoreVertical size={14} />

@@ -100,7 +100,7 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
         )}
 
         <div
-          className={cn(OVERLAY_CLUSTER, "right-2.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100")}
+          className={cn(OVERLAY_CLUSTER, "right-2.5 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100")}
           onClick={(e) => e.stopPropagation()}
         >
           <button
