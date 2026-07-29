@@ -41,10 +41,9 @@ function trimProviderRegions(block: unknown, want: string[]): unknown {
 
 export async function GET(request: NextRequest) {
   const supabase = await createServerClient();
-  // Local JWT verification via getClaims() (asymmetric keys → no network round-trip;
-  // falls back to getUser() otherwise). Same perf fix as middleware — see CLAUDE.md §8.
-  const { data: claimsData } = await supabase.auth.getClaims();
-  const user = claimsData?.claims ?? null;
+  // Reverted getClaims() → getUser() (2026-07-29 prod-outage hotfix — see middleware.ts): getClaims'
+  // in-process JWT verification began rejecting every valid token. getUser() is authoritative.
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

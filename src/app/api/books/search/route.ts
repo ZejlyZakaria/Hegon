@@ -13,10 +13,8 @@ const JUNK_TITLE = /\b(study guide|sparknotes|cliffs?\s?notes|key takeaways|conv
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerClient();
-    // Local JWT verification via getClaims() (asymmetric keys → no network round-trip;
-    // falls back to getUser() otherwise). Same perf fix as middleware — see CLAUDE.md §8.
-    const { data: claimsData } = await supabase.auth.getClaims();
-    const user = claimsData?.claims ?? null;
+    // Reverted getClaims() → getUser() (2026-07-29 prod-outage hotfix — see middleware.ts).
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

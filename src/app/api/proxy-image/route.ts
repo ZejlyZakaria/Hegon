@@ -15,8 +15,9 @@ export async function GET(req: NextRequest) {
   // the server. The one caller (Stats → WrappedCard) is behind the auth middleware, so a signed-in
   // check costs it nothing. Local JWT verification, same as the other API routes — see CLAUDE.md §8.
   const supabase = await createServerClient();
-  const { data: claimsData } = await supabase.auth.getClaims();
-  if (!claimsData?.claims?.sub) {
+  // Reverted getClaims() → getUser() (2026-07-29 prod-outage hotfix — see middleware.ts).
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
