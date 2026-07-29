@@ -1181,7 +1181,7 @@ function franchiseBase(name: string): string {
 export async function searchAnimeThemes(title: string, year?: number | null): Promise<AnimeThemeGroup[]> {
   const url =
     `https://api.animethemes.moe/search?q=${encodeURIComponent(title)}` +
-    `&fields[search]=anime&include[anime]=animethemes.song.artists,animethemes.animethemeentries.videos.audio`;
+    `&fields[search]=anime&include[anime]=animesynonyms,animethemes.song.artists,animethemes.animethemeentries.videos.audio`;
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
@@ -1190,11 +1190,29 @@ export async function searchAnimeThemes(title: string, year?: number | null): Pr
   const tv = animeList.filter((a) => a.media_format === "TV");
   if (tv.length === 0) return [];
 
-  // Anchor = the TV entry closest to the media's year (the season being viewed).
+  // IDENTITY CHECK. AnimeThemes' fuzzy search returns *an* anime even for a title it doesn't have —
+  // so "Idaten Jump" (absent from its library) came back as the look-alike "Heion Sedai no
+  // Idaten-tachi". Only trust a result whose NAME or one of its SYNONYMS genuinely matches the title:
+  // the English title lives in the synonyms, which is how a romaji-named show (Shingeki no Kyojin)
+  // still matches "Attack on Titan". No verified match → show nothing, not the wrong show.
+  const key = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const wanted = key(title);
+  const matchesTitle = (a: any) =>
+    [a.name, ...(a.animesynonyms ?? []).map((s: any) => s.text)]
+      .filter(Boolean)
+      .map(key)
+      // Exact title (covers short names like "Air"), or a length-guarded substring either way
+      // (covers "Demon Slayer: Kimetsu no Yaiba" ⊇ "Kimetsu no Yaiba"), never a 2-letter coincidence.
+      .some((c: string) => c === wanted || (c.length >= 5 && (c.includes(wanted) || wanted.includes(c))));
+
+  const verified = tv.filter(matchesTitle);
+  if (verified.length === 0) return [];
+
+  // Anchor = the VERIFIED entry closest to the media's year (the season being viewed).
   const anchor =
     year != null
-      ? [...tv].sort((a, b) => Math.abs((a.year ?? 9999) - year) - Math.abs((b.year ?? 9999) - year))[0]
-      : tv[0];
+      ? [...verified].sort((a, b) => Math.abs((a.year ?? 9999) - year) - Math.abs((b.year ?? 9999) - year))[0]
+      : verified[0];
   const base = franchiseBase(anchor.name);
   const floor = anchor.year ?? 0; // the adaptation you're viewing — exclude older remakes
 

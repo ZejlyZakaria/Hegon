@@ -134,10 +134,17 @@ export function ThemePlayer() {
   if (!current) return null;
 
   const cover = current.cover;
-  const pct = duration ? (time / duration) * 100 : 0;
+  // iOS Safari mis-reads the duration of AnimeThemes' Ogg/WebM audio (a 1:50 opening reported as 400
+  // minutes). An OP/ED is a couple of minutes at most, so past this ceiling the value is garbage — the
+  // audio itself plays fine, we just stop SHOWING a lying total/remaining and tick elapsed only.
+  const hasDuration = Number.isFinite(duration) && duration > 0 && duration < 15 * 60;
+  const pct = hasDuration ? (time / duration) * 100 : 0;
+  // The countdown both players now share — the mini used to print the fixed TOTAL, which read as
+  // "frozen" next to the expanded card's decrementing remaining. Blank when the duration is unknown.
+  const remaining = hasDuration ? `-${fmt(Math.max(0, duration - time))}` : "";
   const seekTo = (fraction: number) => {
     const el = audioRef.current;
-    if (el && duration) el.currentTime = fraction * duration;
+    if (el && hasDuration) el.currentTime = fraction * duration;
   };
 
   return (
@@ -198,10 +205,10 @@ export function ThemePlayer() {
 
             {/* Progress — under the track, times flanking it (like the expanded card) */}
             <div className="px-3 pb-2.5">
-              <SeekBar pct={pct} duration={duration} onSeek={seekTo} trackClass="h-1 bg-white/10" />
+              <SeekBar pct={pct} duration={hasDuration ? duration : 0} onSeek={seekTo} trackClass="h-1 bg-white/10" />
               <div className="mt-1 flex justify-between text-micro tabular-nums text-white/35">
                 <span>{fmt(time)}</span>
-                <span>{fmt(duration)}</span>
+                <span>{remaining}</span>
               </div>
             </div>
 
@@ -274,10 +281,10 @@ export function ThemePlayer() {
 
                   {/* Progress */}
                   <div className="mt-4 md:mt-3">
-                    <SeekBar pct={pct} duration={duration} onSeek={seekTo} trackClass="h-1.5 bg-white/15" />
+                    <SeekBar pct={pct} duration={hasDuration ? duration : 0} onSeek={seekTo} trackClass="h-1.5 bg-white/15" />
                     <div className="mt-1.5 flex justify-between text-micro tabular-nums text-white/50">
                       <span>{fmt(time)}</span>
-                      <span>-{fmt(Math.max(0, duration - time))}</span>
+                      <span>{remaining}</span>
                     </div>
                   </div>
 
