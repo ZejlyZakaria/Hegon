@@ -19,6 +19,12 @@ function fmt(t: number) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// An OP/ED is a couple of minutes at most. Safari iOS mis-reads the duration of AnimeThemes' Ogg/WebM
+// audio (a 1:50 opening reported as 72:50), so any value past this ceiling means iOS hasn't actually
+// parsed the media yet — it is not a real length.
+const MAX_THEME_SECONDS = 15 * 60;
+const plausibleDuration = (d: number) => Number.isFinite(d) && d > 0 && d < MAX_THEME_SECONDS;
+
 // A Spotify-style scrubber: a filled track with a draggable thumb at the playhead. Dragging shows the
 // new position live and commits the seek on release (so the audio doesn't stutter mid-drag). The
 // thumb is always there — touch has no hover — and the whole strip is a generous pointer target.
@@ -151,7 +157,21 @@ export function ThemePlayer() {
         onCanPlay={() => setBuffering(false)}
         onPlaying={() => setBuffering(false)}
         onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onLoadedMetadata={(e) => {
+          const el = e.currentTarget;
+          if (plausibleDuration(el.duration)) { setDuration(el.duration); return; }
+          // iOS reported a bogus duration. Force it to parse the whole file by seeking far past the
+          // end; it then emits `durationchange` with the real length, which we take and rewind. If it
+          // never corrects, duration stays 0 (a clean "0:00") instead of a lying "72:50".
+          const onFix = () => {
+            if (!plausibleDuration(el.duration)) return;
+            setDuration(el.duration);
+            el.removeEventListener("durationchange", onFix);
+            try { el.currentTime = 0; } catch { /* not seekable yet */ }
+          };
+          el.addEventListener("durationchange", onFix);
+          try { el.currentTime = 1e7; } catch { /* not seekable yet */ }
+        }}
         onError={() => { setBuffering(false); next(); }}
         onEnded={next}
       />
