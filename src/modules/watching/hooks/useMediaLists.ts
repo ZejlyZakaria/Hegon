@@ -15,6 +15,7 @@ import {
   updateListItemNote,
   searchMediaForList,
   searchTmdbForList,
+  searchCatalogue,
   addTmdbItemToList,
 } from "../service";
 import type { TmdbListResult } from "../types";
@@ -207,6 +208,16 @@ export function useSearchTmdbForList(query: string) {
   return useQuery({
     queryKey: [...WATCHING_KEYS.all, "tmdb-list-search", query],
     queryFn: () => searchTmdbForList(query),
+    enabled: query.trim().length >= 2,
+    staleTime: 60_000,
+  });
+}
+
+/** The Watching header search: titles + people from one /search/multi call, in relevance order. */
+export function useSearchCatalogue(query: string) {
+  return useQuery({
+    queryKey: [...WATCHING_KEYS.all, "catalogue-search", query],
+    queryFn: () => searchCatalogue(query),
     enabled: query.trim().length >= 2,
     staleTime: 60_000,
   });

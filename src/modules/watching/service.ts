@@ -3,7 +3,7 @@
 import { downscaleImage } from "@/shared/utils/downscale-image";
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
-import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, ThemeFavorite, ThemeFavoriteInput, Rewatch } from "./types";
+import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch } from "./types";
 import { deriveWatchStatus } from "./lib/watch-status";
 import { airedFromTmdb } from "./lib/series-state";
 import { runtimeFromTmdb } from "./lib/tmdb-runtime";
@@ -574,29 +574,67 @@ export async function searchMediaForList(userId: string, query: string): Promise
   return (data as WatchingMedia[]) ?? [];
 }
 
-export async function searchTmdbForList(query: string): Promise<TmdbListResult[]> {
+async function fetchMultiSearch(query: string): Promise<any[]> {
   const res = await fetch(
     `/api/tmdb?endpoint=search/multi&query=${encodeURIComponent(query)}&language=en-US&page=1`
   );
   if (!res.ok) return [];
   const data: { results?: any[] } = await res.json();
-  return (data.results ?? [])
+  return data.results ?? [];
+}
+
+function toTmdbListResult(r: any): TmdbListResult {
+  return {
+    id: r.id,
+    media_type: r.media_type,
+    title: r.title ?? r.name ?? "",
+    original_title: r.original_title ?? r.original_name ?? null,
+    poster_path: r.poster_path ?? null,
+    backdrop_path: r.backdrop_path ?? null,
+    release_date: r.release_date ?? null,
+    first_air_date: r.first_air_date ?? null,
+    vote_average: r.vote_average ?? 0,
+    overview: r.overview ?? "",
+    genre_ids: r.genre_ids ?? [],
+    origin_country: r.origin_country ?? [],
+  };
+}
+
+function toTmdbPersonResult(r: any): TmdbPersonResult {
+  return {
+    id: r.id,
+    name: r.name ?? "",
+    profile_path: r.profile_path ?? null,
+    known_for_department: r.known_for_department ?? null,
+    known_for: (r.known_for ?? [])
+      .map((k: any) => k.title ?? k.name)
+      .filter(Boolean)
+      .slice(0, 2)
+      .join(" · "),
+  };
+}
+
+export async function searchTmdbForList(query: string): Promise<TmdbListResult[]> {
+  const results = await fetchMultiSearch(query);
+  return results
     .filter((r: any) => r.media_type === "movie" || r.media_type === "tv")
-    .map((r: any): TmdbListResult => ({
-      id: r.id,
-      media_type: r.media_type,
-      title: r.title ?? r.name ?? "",
-      original_title: r.original_title ?? r.original_name ?? null,
-      poster_path: r.poster_path ?? null,
-      backdrop_path: r.backdrop_path ?? null,
-      release_date: r.release_date ?? null,
-      first_air_date: r.first_air_date ?? null,
-      vote_average: r.vote_average ?? 0,
-      overview: r.overview ?? "",
-      genre_ids: r.genre_ids ?? [],
-      origin_country: r.origin_country ?? [],
-    }))
+    .map(toTmdbListResult)
     .slice(0, 8);
+}
+
+// The catalogue search behind the Watching header field — titles AND people, kept in TMDB's own
+// relevance order (so "Nolan" leads with the person, "Dune" with the films). List-adding keeps
+// `searchTmdbForList`: you add a title to a list, never a person.
+export async function searchCatalogue(query: string): Promise<CatalogueResult[]> {
+  const results = await fetchMultiSearch(query);
+  return results
+    .map((r: any): CatalogueResult | null => {
+      if (r.media_type === "movie" || r.media_type === "tv") return { kind: "title", title: toTmdbListResult(r) };
+      if (r.media_type === "person" && r.name) return { kind: "person", person: toTmdbPersonResult(r) };
+      return null;
+    })
+    .filter((r: CatalogueResult | null): r is CatalogueResult => r !== null)
+    .slice(0, 10);
 }
 
 /**

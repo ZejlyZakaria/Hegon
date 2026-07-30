@@ -196,6 +196,22 @@ export interface TmdbListResult {
   origin_country: string[];
 }
 
+/** A person hit from the catalogue search — an actor or director, routed to their Person page. */
+export interface TmdbPersonResult {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  /** TMDB's department: "Acting" | "Directing" | "Writing" | … — mapped to a noun for display. */
+  known_for_department: string | null;
+  /** A couple of the titles they're known for, joined — context so two same-named people differ. */
+  known_for: string;
+}
+
+/** One catalogue-search row: a title OR a person, kept in TMDB's own relevance order. */
+export type CatalogueResult =
+  | { kind: "title"; title: TmdbListResult }
+  | { kind: "person"; person: TmdbPersonResult };
+
 export interface TMDBMediaDetails {
   id: number;
   title?: string;

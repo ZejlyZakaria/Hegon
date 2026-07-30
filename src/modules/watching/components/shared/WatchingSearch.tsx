@@ -8,6 +8,10 @@
  * added. Merging them would mean typing "Dune" and getting your Dune next to the world's Dune —
  * the same name twice, meaning two different things, in one list.
  *
+ * It searches TITLES *and* PEOPLE, in TMDB's own relevance order: "Nolan" leads with the person
+ * (→ their Person page), "Dune" leads with the films (→ your fiche if owned, else /discover). One
+ * field, one question ("who or what exists?"), two kinds of destination.
+ *
  * ⚠️ THIS FILE USED TO ROUTE EVERYTHING TO /discover and let that page discover you owned the
  * title and bounce. The comment defending it said "one rule, no stale ownership cache to keep in
  * sync" — which was true, and was optimising the wrong side of the trade. It cost a full page load
@@ -30,13 +34,18 @@ import { SearchInput } from "@/shared/components/ui/search-input";
 import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
-import { useSearchTmdbForList } from "../../hooks/useMediaLists";
+import { useSearchCatalogue } from "../../hooks/useMediaLists";
 import { useOwnedMediaIds } from "../../hooks/useOwnedTmdbIds";
 import { ownedRowFor, type OwnedMap } from "../../lib/possession";
 import { tmdbResultType } from "../../service";
-import type { TmdbListResult } from "../../types";
+import type { CatalogueResult, TmdbListResult, TmdbPersonResult } from "../../types";
 
 const TYPE_LABEL = { film: "Movie", serie: "TV", anime: "Anime" } as const;
+// TMDB's department → the noun the app shows. Same map as the Person page's header.
+const ROLE_LABEL: Record<string, string> = {
+  Acting: "Actor", Directing: "Director", Writing: "Writer", Production: "Producer",
+};
+const roleOf = (p: TmdbPersonResult) => ROLE_LABEL[p.known_for_department ?? ""] ?? p.known_for_department ?? "Person";
 const TEAL = "var(--color-accent-watching-vivid)";
 
 
@@ -50,11 +59,11 @@ function Results({
 }: {
   /** Keyboard cursor. -1 while you are still typing and have not moved down into the list. */
   activeIndex?: number;
-  results: TmdbListResult[];
+  results: CatalogueResult[];
   loading: boolean;
   query: string;
   owned: OwnedMap;
-  onPick: (r: TmdbListResult) => void;
+  onPick: (r: CatalogueResult) => void;
 }) {
   if (query.trim().length < 2) {
     return <p className="px-3 py-6 text-center text-xs text-text-tertiary">Type to search the catalogue.</p>;
@@ -72,18 +81,38 @@ function Results({
 
   return (
     <ul className="max-h-96 overflow-y-auto py-1 scrollbar-hide">
-      {results.map((r, i) => {
+      {results.map((entry, i) => {
+        const isActive = i === activeIndex;
+        // The keyboard cursor scrolls into view — the list runs past ten items. `selected` on the
+        // row wears the same highlight as hover, whichever way you reached it.
+        const ref = (el: HTMLLIElement | null) => { if (isActive) el?.scrollIntoView({ block: "nearest" }); };
+
+        if (entry.kind === "person") {
+          const p = entry.person;
+          return (
+            <li key={`person-${p.id}`} ref={ref}>
+              <MediaRow
+                onClick={() => onPick(entry)}
+                selected={isActive}
+                posterUrl={p.profile_path ? `https://image.tmdb.org/t/p/w185${p.profile_path}` : null}
+                title={p.name}
+                meta={
+                  <span className="truncate text-micro text-text-tertiary">
+                    {roleOf(p)}{p.known_for ? ` · ${p.known_for}` : ""}
+                  </span>
+                }
+              />
+            </li>
+          );
+        }
+
+        const r = entry.title;
         const type = tmdbResultType(r);
         const year = yearOf(r);
-        const isActive = i === activeIndex;
         return (
-          <li key={`${r.media_type}-${r.id}`}
-            // The keyboard cursor scrolls into view — the list runs past ten items. `selected` on
-            // the row wears the same highlight as hover, whichever way you reached it.
-            ref={(el) => { if (isActive) el?.scrollIntoView({ block: "nearest" }); }}
-          >
+          <li key={`title-${r.id}`} ref={ref}>
             <MediaRow
-              onClick={() => onPick(r)}
+              onClick={() => onPick(entry)}
               selected={isActive}
               posterUrl={r.poster_path ? `https://image.tmdb.org/t/p/w500${r.poster_path}` : null}
               title={r.title}
@@ -109,13 +138,17 @@ export function WatchingSearch() {
   const [open, setOpen] = useState(false);          // desktop dropdown
   const [sheetOpen, setSheetOpen] = useState(false); // mobile full-screen
   const debounced = useDebounce(query, 200);
-  const { data: results = [], isFetching } = useSearchTmdbForList(debounced);
+  const { data: results = [], isFetching } = useSearchCatalogue(debounced);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  // Which of these are already yours — one query for the whole list, fired as the results paint.
-  // Nothing blocks on it: the marker appears when it lands, and `pick` degrades to /discover.
+  // Which of the TITLE results are already yours — one query for the whole list, fired as the
+  // results paint. Nothing blocks on it: the marker appears when it lands, `pick` degrades to
+  // /discover. People carry no ownership, so they're excluded from the id list.
   const userId = useCurrentUserId();
-  const tmdbIds = useMemo(() => results.map((r) => r.id), [results]);
+  const tmdbIds = useMemo(
+    () => results.flatMap((e) => (e.kind === "title" ? [e.title.id] : [])),
+    [results],
+  );
   const { data: owned = {} } = useOwnedMediaIds(userId ?? "", tmdbIds);
 
   // A dropdown that outlives the click that dismissed it is the classic bug — close on any
@@ -160,12 +193,19 @@ export function WatchingSearch() {
     }
   };
 
-  const pick = (r: TmdbListResult) => {
+  const pick = (entry: CatalogueResult) => {
     setOpen(false);
     setSheetOpen(false);
     setQuery("");
-    // THE ROUTE IS DECIDED HERE, ONCE. Owned → straight to your fiche, one page, one skeleton.
-    // Not owned (or not yet known) → /discover, which remains correct in every case.
+    // A person goes straight to their Person page — it renders for ANY tmdb id (your titles
+    // surface as "your titles with…", the rest as "Not seen yet").
+    if (entry.kind === "person") {
+      router.push(`/perso/watching/person/${entry.person.id}`);
+      return;
+    }
+    // A title: THE ROUTE IS DECIDED HERE, ONCE. Owned → straight to your fiche, one page, one
+    // skeleton. Not owned (or not yet known) → /discover, which remains correct in every case.
+    const r = entry.title;
     const mine = ownedRowFor(r, owned);
     router.push(mine ? `/perso/watching/${mine.id}` : `/perso/watching/discover/${tmdbResultType(r)}/${r.id}`);
   };
@@ -180,7 +220,7 @@ export function WatchingSearch() {
         <SearchInput
           size="sm"
           containerClassName="w-full"
-          placeholder="Search titles…"
+          placeholder="Search titles & people…"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
@@ -197,7 +237,7 @@ export function WatchingSearch() {
       <button
         type="button"
         onClick={() => setSheetOpen(true)}
-        aria-label="Search titles"
+        aria-label="Search titles & people"
         className="flex h-8 w-8 items-center justify-center rounded-control text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary sm:hidden"
       >
         <Search size={16} />
@@ -209,7 +249,7 @@ export function WatchingSearch() {
             <SearchInput
               size="sm"
               containerClassName="flex-1"
-              placeholder="Search titles…"
+              placeholder="Search titles & people…"
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
