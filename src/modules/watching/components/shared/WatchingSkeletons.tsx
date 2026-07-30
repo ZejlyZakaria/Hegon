@@ -80,7 +80,9 @@ export function DontMissSkeleton() {
       {/* Desktop: mirrors the real accordion card while images stream — a dark card
           with a pulsing poster anchored left (same as DontMissCard), and the same
           py-1.5 wrapper, so skeleton → real-cards is seamless in shape AND spacing. */}
-      <div className="hidden py-1.5 lg:block">
+      {/* Desktop WITH a mouse only — mirrors the real accordion's `lg:can-hover:block`, so a touch
+          tablet never gets the accordion skeleton it won't get as content either. */}
+      <div className="hidden py-1.5 lg:can-hover:block">
         <div className={`flex gap-4 ${ROW_VARS}`}>
           {Array.from({ length: 6 }).map((_, i) => (
             <div
@@ -96,10 +98,11 @@ export function DontMissSkeleton() {
           ))}
         </div>
       </div>
-      {/* Mobile: poster rail */}
-      <div className="flex gap-3 py-1.5 lg:hidden">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="aspect-2/3 w-[42%] shrink-0 animate-pulse rounded-card bg-surface-2" />
+      {/* Touch + narrow — mirrors the real rail: a phone shows ~2 posters (the rest clipped, no
+          scroll on a placeholder), a tablet (md+) shows the full 6-up grid. */}
+      <div className="flex gap-3 overflow-hidden py-1.5 md:grid md:grid-cols-6 md:overflow-visible lg:can-hover:hidden">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="aspect-2/3 w-[42%] md:w-auto shrink-0 animate-pulse rounded-tile bg-surface-2" />
         ))}
       </div>
     </section>

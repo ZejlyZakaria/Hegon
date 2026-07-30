@@ -242,10 +242,9 @@ function TrendingMobileCard({
     <button
       type="button"
       onClick={onAdd}
-      // A % width shows the SAME card count at any viewport, so 42% (≈2 cards + a peek of the 3rd)
-      // stays right on a phone but blows the posters up huge on an iPad. From md up (tablets) the
-      // card narrows to ≈4 cards + a peek of the 5th, matching the density of the rest of the page.
-      className="relative shrink-0 w-[42%] md:w-[22%] aspect-2/3 snap-start overflow-hidden rounded-tile bg-surface-2 text-left"
+      // Phone: 42% ≈ 2 cards + a peek of the 3rd in the scroll rail. From md up the parent becomes a
+      // 6-column grid, so the card hands its width to the grid (w-auto) — all 6 visible, no scroll.
+      className="relative shrink-0 w-[42%] md:w-auto aspect-2/3 snap-start overflow-hidden rounded-tile bg-surface-2 text-left"
     >
       {posterUrl && (
         <Image src={tmdbImageFor(posterUrl, 170) || posterUrl} alt={title} fill loading="lazy" sizes="(max-width: 1024px) 45vw, 180px" className="object-cover" />
@@ -302,11 +301,11 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
         <p className="mt-1 text-xs text-text-tertiary">Trending now, plus recent gems</p>
       </div>
 
-      {/* Touch (any width) + every narrow screen: the swipeable poster rail. The accordion is a
-          HOVER interaction, so the split is by pointer, not just width — `lg:hidden` alone handed
-          iPad landscape (1024px, touch) an accordion it can't open (activeIndex stuck on card 0).
-          `lg:can-hover:hidden` only hides this rail when the viewport is BOTH ≥lg AND has a mouse. */}
-      <div className="flex gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory py-1.5 lg:can-hover:hidden">
+      {/* Touch (any width) + every narrow screen — the accordion is a HOVER interaction, so the
+          split is by pointer, not width (`lg:can-hover:hidden` hides this only when ≥lg AND mouse).
+          Below md: a swipeable poster rail. From md up (tablets): the 6 items fit at once, so it
+          becomes a static 6-up grid — no scroll, matching the page's grid density. */}
+      <div className="flex gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory py-1.5 md:grid md:grid-cols-6 md:overflow-visible md:snap-none lg:can-hover:hidden">
         {items.map((item, i) => (
           <TrendingMobileCard
             key={`m-${item.id}-${i}`}
