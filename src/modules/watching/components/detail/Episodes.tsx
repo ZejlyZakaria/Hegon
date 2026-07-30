@@ -301,12 +301,9 @@ function StillCard({
       <div className="mt-2">
         <p className="mb-0.5 text-micro font-medium text-text-tertiary">{line1}</p>
         <p className="truncate text-xs font-semibold text-text-primary">{line2}</p>
-        {/* Always reserve two lines — even when the overview is short or missing. The skeleton
-            always draws two bars here; without a matching floor, a season whose episodes have a
-            short/empty overview builds a card SHORTER than the skeleton, so swapping skeleton→
-            content on a season switch nudged the whole rail up, then down. `line-clamp-2` caps the
-            text; `min-h-[2lh]` holds the floor so the card is the skeleton's height either way. */}
-        <p className="mt-1 line-clamp-2 min-h-[2lh] text-micro leading-relaxed text-text-tertiary">{overview}</p>
+        {overview && (
+          <p className="mt-1 line-clamp-2 text-micro leading-relaxed text-text-tertiary">{overview}</p>
+        )}
       </div>
     </div>
   );
@@ -427,7 +424,12 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
   if (!media.tmdb_id || seasonCount < 1) return null;
 
   const scroll = (dir: number) => scrollRef.current?.scrollBy({ left: dir * 560, behavior: "smooth" });
-  const showChevrons = (view === "all" ? episodes.length : highlightRows.length) > 3;
+  // Keep the header's scroll arrows STABLE while a season loads. Mid-fetch `episodes` is [], which
+  // flipped the arrows off and then on again on every season switch — and since the arrows (h-8)
+  // are the tallest thing in the header, that toggle changed the header's height (and could trip
+  // `flex-wrap`), shoving the whole section up then down. The skeleton always shows 5 cards, so a
+  // loading rail always scrolls: hold the arrows on until the real count says otherwise.
+  const showChevrons = view === "all" ? (isLoading || episodes.length > 3) : highlightRows.length > 3;
 
   // A scrolling rail — no panel. (See CastCrew: a frame its own content escapes reads as a bug.)
   return (
