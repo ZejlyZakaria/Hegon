@@ -301,9 +301,12 @@ function StillCard({
       <div className="mt-2">
         <p className="mb-0.5 text-micro font-medium text-text-tertiary">{line1}</p>
         <p className="truncate text-xs font-semibold text-text-primary">{line2}</p>
-        {overview && (
-          <p className="mt-1 line-clamp-2 text-micro leading-relaxed text-text-tertiary">{overview}</p>
-        )}
+        {/* Always reserve two lines — even when the overview is short or missing. The skeleton
+            always draws two bars here; without a matching floor, a season whose episodes have a
+            short/empty overview builds a card SHORTER than the skeleton, so swapping skeleton→
+            content on a season switch nudged the whole rail up, then down. `line-clamp-2` caps the
+            text; `min-h-[2lh]` holds the floor so the card is the skeleton's height either way. */}
+        <p className="mt-1 line-clamp-2 min-h-[2lh] text-micro leading-relaxed text-text-tertiary">{overview}</p>
       </div>
     </div>
   );
