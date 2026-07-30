@@ -1,6 +1,7 @@
 import type { StatsRawItem, RewatchStatItem } from "../../service";
 import type { Achievement } from "@/shared/components/achievements/types";
 import { buildMediaView, type MediaView } from "../../lib/media-view";
+import { isAwaitingNextSeason } from "../../lib/series-state";
 import type { AnimeCoursRow } from "../../types";
 
 /**
@@ -68,8 +69,8 @@ export interface ComputedStats {
   counts: { film: number; serie: number; anime: number; total: number };
   // Per-type status split of the counted shows (watched / in progress / paused / dropped).
   statusCounts: {
-    serie: { watched: number; inProgress: number; paused: number; dropped: number };
-    anime: { watched: number; inProgress: number; paused: number; dropped: number };
+    serie: { watched: number; inProgress: number; caughtUp: number; paused: number; dropped: number };
+    anime: { watched: number; inProgress: number; caughtUp: number; paused: number; dropped: number };
   };
   rewatches: number;  // rewatch events in the period (they add hours, not unique titles)
   // Hours Watched — rewatch time is its own 4th slice (pulled out of the per-type
@@ -325,7 +326,13 @@ export function computeStats(
     const of = periodItems.filter((i) => i.type === type);
     return {
       watched:    of.filter((i) => i.watched).length,
-      inProgress: of.filter((i) => i.in_progress).length,
+      // "In progress" means you're BEHIND what's aired — actively watching. A show you've caught up
+      // to and are now waiting on a new season for is `in_progress` in the DB (it isn't over), but
+      // it is NOT something you're mid-watch on: it's `caught-up`, exactly as the Last Watched rail
+      // re-buckets it. Counting those as "in progress" made the card claim 3 in progress when only
+      // one (an airing show) truly was. Same `isAwaitingNextSeason` split as the rails.
+      inProgress: of.filter((i) => i.in_progress && !isAwaitingNextSeason(i)).length,
+      caughtUp:   of.filter((i) => i.in_progress && isAwaitingNextSeason(i)).length,
       paused:     of.filter((i) => i.paused).length,
       dropped:    of.filter((i) => i.dropped).length,
     };

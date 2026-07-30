@@ -87,11 +87,12 @@ function MetricCard({ label, value, sub, icon }: {
 // Status breakdown line for the TV Shows / Anime cards — only the non-empty statuses,
 // same wording as before plus paused/dropped. Wraps if long (that's fine). Hidden
 // when everything is watched (the value already says it).
-function statusSub(s: { watched: number; inProgress: number; paused: number; dropped: number }): string | undefined {
-  if (s.inProgress + s.paused + s.dropped === 0) return undefined;
+function statusSub(s: { watched: number; inProgress: number; caughtUp: number; paused: number; dropped: number }): string | undefined {
+  if (s.inProgress + s.caughtUp + s.paused + s.dropped === 0) return undefined;
   const parts: string[] = [];
   if (s.watched > 0)    parts.push(`${s.watched} watched`);
   if (s.inProgress > 0) parts.push(`${s.inProgress} in progress`);
+  if (s.caughtUp > 0)   parts.push(`${s.caughtUp} caught up`);
   if (s.paused > 0)     parts.push(`${s.paused} paused`);
   if (s.dropped > 0)    parts.push(`${s.dropped} dropped`);
   return parts.join(" · ");
@@ -657,14 +658,19 @@ export function StatsPage() {
         </div>
       )}
 
-      {/* Row 2 — charts */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      {/* Row 2 — charts. These want ~400px each: at 3-across on an iPad (≤~380px) the donut's
+          legend truncated ("S…104h") and the activity labels bunched. So it's a LADDER — stacked on
+          a phone, TWO up on an iPad (~540px, roomy) with the rating line spanning the full width
+          below, and three only once a desktop gives each column real room. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
         <HoursCard
           hours={stats.hours}
           onOpen={(key, color, label) => setOpenSlice({ key, color, label })}
         />
         <ActivityCard activity={stats.activity} selectedYear={selectedYear} />
-        <RatingDistributionCard distribution={stats.ratingDistribution} />
+        <div className="lg:col-span-2 xl:col-span-1">
+          <RatingDistributionCard distribution={stats.ratingDistribution} />
+        </div>
       </div>
 
       {/* Top Picks + Genres */}

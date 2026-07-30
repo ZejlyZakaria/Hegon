@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Plus, TrendingUp } from "lucide-react";
@@ -11,7 +12,8 @@ import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
 import { tmdbImage, tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
 import { useWatchingHero } from "@/modules/watching/hooks/useWatchingHero";
-import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
+import { useOwnedTmdbIds, useOwnedMediaIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
+import { ownedRowFor } from "@/modules/watching/lib/possession";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { DontMissSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
@@ -29,6 +31,7 @@ function DontMissCard({
   isOwned,
   onHover,
   onAdd,
+  onOpenDetail,
 }: {
   item: any;
   isActive: boolean;
@@ -37,6 +40,8 @@ function DontMissCard({
   isOwned: boolean;
   onHover: () => void;
   onAdd: () => void;
+  /** Defined when you own it AND the internal id has resolved — opens your fiche directly. */
+  onOpenDetail?: () => void;
 }) {
   const [posterLoaded, setPosterLoaded] = useState(false);
   const posterUrl = item.poster_path ? `${TMDB_W500}${item.poster_path}` : null;
@@ -64,6 +69,9 @@ function DontMissCard({
         backgroundColor: CARD_BG,
       }}
       onMouseEnter={onHover}
+      // Click anywhere on the card opens it: your fiche if you own it, else /discover (where you add
+      // it). The buttons inside stopPropagation so they don't fire this twice.
+      onClick={() => (onOpenDetail ?? onAdd)()}
     >
       {/* ── ambient: the poster's own artwork, blurred, always fills the card so the
             area beside the sharp poster reads as glow, never a flat dark panel ── */}
@@ -163,10 +171,14 @@ function DontMissCard({
               {/* Already yours → don't offer to "add" it. A trending rail that invites you to add a
                   film you finished last week is the app not knowing what you own. */}
               {isOwned ? (
-                <div className="self-start flex items-center gap-1.5 rounded-control bg-white/12 px-3 py-2 text-xs font-semibold text-white/75">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); (onOpenDetail ?? onAdd)(); }}
+                  className="self-start flex items-center gap-1.5 rounded-control bg-white/12 px-3 py-2 text-xs font-semibold text-white/75 transition-colors hover:bg-white/20 hover:text-white"
+                >
                   <Check size={12} />
                   In your library
-                </div>
+                </button>
               ) : (
                 <button
                   type="button"
@@ -228,11 +240,14 @@ function TrendingMobileCard({
   isTrending,
   isOwned,
   onAdd,
+  onOpenDetail,
 }: {
   item: any;
   isTrending: boolean;
   isOwned: boolean;
   onAdd: () => void;
+  /** Defined when you own it — tapping the card opens your fiche instead of /discover. */
+  onOpenDetail?: () => void;
 }) {
   const posterUrl = item.poster_path ? `${TMDB_W500}${item.poster_path}` : null;
   const title  = item.title || item.name;
@@ -241,7 +256,7 @@ function TrendingMobileCard({
   return (
     <button
       type="button"
-      onClick={onAdd}
+      onClick={onOpenDetail ?? onAdd}
       // Phone: 42% ≈ 2 cards + a peek of the 3rd in the scroll rail. From md up the parent becomes a
       // 6-column grid, so the card hands its width to the grid (w-auto) — all 6 visible, no scroll.
       className="relative shrink-0 w-[42%] md:w-auto aspect-2/3 snap-start overflow-hidden rounded-tile bg-surface-2 text-left"
@@ -279,6 +294,7 @@ function TrendingMobileCard({
 // ─── section ──────────────────────────────────────────────────────────────────
 
 export default function DontMissSectionClient({ config }: { config: WatchingConfig }) {
+  const router = useRouter();
   const { data } = useWatchingHero(config.type);
   const { openTitle } = useWatching();
   const userId = useCurrentUserId();
@@ -286,12 +302,27 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
   const owned = new Set(ownedIds);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  if (!data) return <DontMissSkeleton />;
+  // dedup: never show the same item twice (trending may appear in recommendations). In a memo so it
+  // — and the possession lookup below — can run BEFORE the early returns without breaking hook order.
+  const items = useMemo(() => {
+    if (!data) return [] as any[];
+    const trendingId = data.trending?.id;
+    const recs = (data.recommendations as any[]).filter((r) => r.id !== trendingId);
+    return [data.trending, ...recs].filter(Boolean).slice(0, 6);
+  }, [data]);
 
-  // dedup: never show the same item twice (trending may appear in recommendations)
-  const trendingId = data.trending?.id;
-  const recs  = (data.recommendations as any[]).filter((r) => r.id !== trendingId);
-  const items = [data.trending, ...recs].filter(Boolean).slice(0, 6);
+  // Your internal id for each trending tmdb_id, resolved as the rail paints — so an owned card opens
+  // straight on YOUR fiche instead of bouncing through /discover. tmdb reuses ids across movies/shows,
+  // so ownership is checked with the page's own kind (film→movie, else→tv), never by id alone.
+  const tmdbIds = useMemo(() => items.map((i: any) => i.id), [items]);
+  const { data: ownedMap = {} } = useOwnedMediaIds(userId ?? "", tmdbIds);
+  const mediaType = config.type === "film" ? "movie" : "tv";
+  const openDetailFor = (item: any) => {
+    const row = ownedRowFor({ id: item.id, media_type: mediaType }, ownedMap);
+    return row ? () => router.push(`/perso/watching/${row.id}`) : undefined;
+  };
+
+  if (!data) return <DontMissSkeleton />;
   if (items.length === 0) return null;
 
   return (
@@ -313,6 +344,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
             isTrending={i === 0}
             isOwned={owned.has(item.id)}
             onAdd={() => openTitle(item)}
+            onOpenDetail={openDetailFor(item)}
           />
         ))}
       </div>
@@ -331,6 +363,7 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
               isOwned={owned.has(item.id)}
               onHover={() => setActiveIndex(i)}
               onAdd={() => openTitle(item)}
+              onOpenDetail={openDetailFor(item)}
             />
           ))}
         </div>

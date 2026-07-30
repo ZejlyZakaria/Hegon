@@ -241,7 +241,7 @@ export default function ForYouSectionClient({
       {/* Mobile: swipeable poster rail (~2.4 visible) */}
       <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory">
         {items.map((item, i) => (
-          <div key={item.id} className="w-[42%] shrink-0 snap-start">
+          <div key={item.id} className="w-[42%] md:w-[28%] shrink-0 snap-start">
             <ForYouCard
               orientation="poster"
               item={item}

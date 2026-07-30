@@ -26,9 +26,9 @@ export function MoreLikeThisSkeleton() {
   return (
     <section>
       <SectionHeader title="More Like This" />
-      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 py-1 scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-6">
+      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="w-(--rail-peek) shrink-0 sm:w-auto">
+          <div key={i} className="w-(--rail-peek) shrink-0 sm:w-(--poster-lg)">
             <div className="aspect-2/3 w-full animate-pulse rounded-tile bg-surface-2" />
             <p className="mt-2 text-xs">
               <span className="inline-block h-2 w-4/5 animate-pulse rounded-full bg-surface-2 align-middle" />
@@ -64,10 +64,12 @@ export function MoreLikeThis({ items, loading = false, onAddClick }: Props) {
   return (
     <section>
       <SectionHeader title="More Like This" />
-      {/* Mobile: one scrolling row — a 3-wide grid of tiny posters wrapped onto two lines and
-          ate the screen. Desktop keeps the grid. py-1 leaves room for the hover scale, which
-          an overflow-x container would otherwise clip. */}
-      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 py-1 scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-6">
+      {/* One scrolling rail at EVERY size — the same shape as Watch History, so the poster is one
+          fixed rung (`--poster-lg` past `sm`, `--rail-peek` on mobile) instead of a grid column that
+          resizes with the viewport. That keeps the poster identical on iPad portrait, iPad landscape
+          and desktop; you scroll for more rather than cramming a different count into each width.
+          py-1.5 leaves room for the hover scale the overflow-x container would otherwise clip. */}
+      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5">
         {items.slice(0, 6).map((sim) => {
           const title = sim.title || sim.name || "";
           // The year earns its place here: in a franchise it's the fastest way to read the order —
@@ -80,14 +82,14 @@ export function MoreLikeThis({ items, loading = false, onAddClick }: Props) {
               type="button"
               disabled={!clickable}
               onClick={() => onAddClick?.(sim)}
-              className="group block w-(--rail-peek) shrink-0 snap-start cursor-pointer text-left disabled:cursor-default sm:w-auto"
+              className="group block w-(--rail-peek) shrink-0 snap-start cursor-pointer text-left disabled:cursor-default sm:w-(--poster-lg)"
             >
               <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
                 <Image
-                  src={sim.poster_path ? `https://image.tmdb.org/t/p/w300${sim.poster_path}` : "/placeholder.svg"}
+                  src={sim.poster_path ? `https://image.tmdb.org/t/p/w500${sim.poster_path}` : "/placeholder.svg"}
                   alt={title}
                   fill
-                  sizes="(max-width: 1024px) 33vw, 200px"
+                  sizes="(max-width: 640px) 40vw, 200px"
                   loading="lazy"
                   className="object-cover"
                 />

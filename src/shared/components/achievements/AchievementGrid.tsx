@@ -61,8 +61,10 @@ export function AchievementGrid({ achievements, accent, title = "Achievements", 
         </span>
       </div>
 
-      {/* Six to a row on desktop — a compact wall you scan by colour and icon, not by reading. */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      {/* Six to a row on a real desktop — a compact wall you scan by colour and icon, not by
+          reading. But six only from xl: at lg (an iPad landscape) six columns crushed each badge to
+          ~175px, so the ladder stops at four there and the tiles keep room to breathe. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {achievements.map((a) => (
           <AchievementBadge key={a.key} a={a} accent={accent} />
         ))}

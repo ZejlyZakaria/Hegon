@@ -55,10 +55,10 @@ export function CarouselSkeleton() {
           <div key={i} className="animate-pulse rounded-card overflow-hidden bg-surface-2 aspect-video" />
         ))}
       </div>
-      {/* Mobile: poster rail (~2.4 visible) */}
-      <div className="flex gap-3 py-1.5 lg:hidden">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="w-[42%] shrink-0 animate-pulse rounded-card overflow-hidden bg-surface-2 aspect-2/3" />
+      {/* Touch + narrow: poster rail (~2.4 on a phone, ~3.5 on an iPad-portrait md screen). */}
+      <div className="flex gap-3 overflow-hidden py-1.5 lg:hidden">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="w-[42%] md:w-[28%] shrink-0 animate-pulse rounded-card overflow-hidden bg-surface-2 aspect-2/3" />
         ))}
       </div>
     </div>
@@ -139,10 +139,10 @@ export function ForYouSkeleton() {
           <div key={i} className="flex-1 aspect-video rounded-card bg-surface-2 animate-pulse" />
         ))}
       </div>
-      {/* Mobile: poster rail */}
-      <div className="flex gap-3 py-1.5 lg:hidden">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="aspect-2/3 w-[42%] shrink-0 rounded-card bg-surface-2 animate-pulse" />
+      {/* Touch + narrow: poster rail (denser on an iPad-portrait md screen). */}
+      <div className="flex gap-3 overflow-hidden py-1.5 lg:hidden">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="aspect-2/3 w-[42%] md:w-[28%] shrink-0 rounded-card bg-surface-2 animate-pulse" />
         ))}
       </div>
     </section>
@@ -228,9 +228,12 @@ export function StatsSkeleton() {
         </div>
       </div>
 
-      {/* Row 2 — charts: Hours Watched (donut), Activity (bars), Rating Distribution (line) */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        {[1, 2, 3].map((i) => <div key={i} className="h-60 rounded-card surface-card" />)}
+      {/* Row 2 — charts. Mirrors the real ladder: stacked on a phone, two-up on an iPad with the
+          third spanning the full width below, three only on a desktop. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="h-60 rounded-card surface-card" />
+        <div className="h-60 rounded-card surface-card" />
+        <div className="h-60 rounded-card surface-card lg:col-span-2 xl:col-span-1" />
       </div>
 
       {/* Top Picks + Top Genres */}
@@ -239,12 +242,12 @@ export function StatsSkeleton() {
         <div className="h-60 rounded-card surface-card" />
       </div>
 
-      {/* Achievements — exactly 8, always (a fixed set defined in computeStats.ts; only the
-          unlocked/locked state is data). */}
+      {/* Achievements — the fixed set from computeStats.ts (only unlocked/locked is data). Same
+          grid ladder as the shared AchievementGrid: four across on an iPad, six on a desktop. */}
       <div>
         <div className="mb-4 h-4 w-32 rounded bg-surface-2" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 8 }, (_, i) => (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          {Array.from({ length: 12 }, (_, i) => (
             <div key={i} className="rounded-xl border border-border-subtle bg-surface-1 p-4">
               <div className="flex items-center gap-2.5">
                 <div className="h-9 w-9 rounded-lg bg-surface-2" />

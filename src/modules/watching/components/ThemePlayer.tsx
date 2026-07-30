@@ -144,7 +144,13 @@ export function ThemePlayer() {
   const remaining = hasDuration ? `-${fmt(Math.max(0, duration - time))}` : "";
   const seekTo = (fraction: number) => {
     const el = audioRef.current;
-    if (el && hasDuration) el.currentTime = fraction * duration;
+    if (!el || !hasDuration) return;
+    const t = fraction * duration;
+    el.currentTime = t;
+    // Optimistic: paint the new playhead NOW. Without it the bar snapped back to the OLD `time` the
+    // instant the drag ended (release clears `drag`, and `pct` still read the pre-seek time), then
+    // jumped forward only when `timeupdate` fired after the seek buffered — the "goes back, returns".
+    setTime(t);
   };
 
   return (
@@ -159,6 +165,10 @@ export function ThemePlayer() {
         onPlaying={() => setBuffering(false)}
         onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        // The browser gives a rough duration at loadedmetadata and REFINES it as more of the Ogg/WebM
+        // is parsed. Take the refined value too — but only when it's sane, so a transient Infinity
+        // during a seek can never blank the bar.
+        onDurationChange={(e) => { const d = e.currentTarget.duration; if (Number.isFinite(d) && d > 0 && d < 15 * 60) setDuration(d); }}
         onError={() => { setBuffering(false); next(); }}
         onEnded={next}
       />
