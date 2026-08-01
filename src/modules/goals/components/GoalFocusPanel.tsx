@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { LifeCompass } from "./LifeCompass";
+import { isGoalOverdue } from "../constants";
 import type { Goal, GoalCategory, GoalPriority } from "../types";
 
 const PRIORITY_RANK: Record<GoalPriority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -37,12 +38,7 @@ export function GoalRightPanel({
 
   const active = goals.filter((g) => g.status === "active").length;
   const completed = goals.filter((g) => g.status === "completed").length;
-  const overdue = goals.filter(
-    (g) =>
-      g.status === "active" &&
-      g.target_date &&
-      new Date(g.target_date) < new Date(),
-  ).length;
+  const overdue = goals.filter(isGoalOverdue).length;
 
   return (
     <div className="space-y-3">

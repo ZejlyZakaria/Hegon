@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { CATEGORY_COLOR } from "../constants";
 import type { Goal, GoalCategory, CategoryStats } from "../types";
 
 const ACCENT = "var(--color-accent-goals)";
@@ -21,15 +22,6 @@ const CATEGORY_LABELS: Record<GoalCategory, string> = {
   growth: "Growth",
   lifestyle: "Lifestyle",
   other: "Other",
-};
-
-const CATEGORY_COLORS: Record<GoalCategory, string> = {
-  career: "#60a5fa",
-  health: "#f87171",
-  finance: "#22d3ee",
-  growth: "#facc15",
-  lifestyle: "#f472b6",
-  other: "#a1a1aa",
 };
 
 function computeStats(goals: Goal[]): CategoryStats[] {
@@ -153,7 +145,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
               const angle = i * angleStep;
               const dotPos = polarToXY(angle, (s.avgProgress / 100) * MAX_R);
               const labelPos = polarToXY(angle, MAX_R + 18);
-              const color = CATEGORY_COLORS[s.category];
+              const color = CATEGORY_COLOR[s.category];
               const isActive = activeCategory === s.category;
 
               return (
@@ -216,7 +208,7 @@ export function LifeCompass({ goals, activeCategory, onCategoryClick }: Props) {
           <div className="mt-2 rounded-control border border-border-default bg-surface-1 px-3 py-2 text-xs text-text-secondary">
             <span
               className="font-medium"
-              style={{ color: CATEGORY_COLORS[tooltipStat.category] }}
+              style={{ color: CATEGORY_COLOR[tooltipStat.category] }}
             >
               {CATEGORY_LABELS[tooltipStat.category]}
             </span>

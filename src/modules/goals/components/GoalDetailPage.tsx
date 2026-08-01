@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ArrowLeft, MoreHorizontal, Unlink, Pencil, Trash2, Plus, Search, Folder, Check, ChevronDown } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Unlink, Pencil, Trash2, Plus, Search, Folder, Check, ChevronDown, Pause, TrendingUp } from "lucide-react";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
 import { StatusIcon } from "@/shared/components/icons/StatusIcon";
 import { resolveIcon } from "@/shared/constants/icons";
@@ -41,7 +41,7 @@ import * as GoalService from "../service";
 import { useQueryClient } from "@tanstack/react-query";
 import { GOAL_KEYS } from "../hooks/query-keys";
 import { useRealtimeGoals } from "../hooks/useRealtimeGoals";
-import { categoryColor } from "../constants";
+import { categoryColor, isGoalOverdue } from "../constants";
 import { Badge } from "@/shared/components/ui/badge";
 import { FadeIn } from "@/shared/components/ui/motion";
 import type { GoalStatus, GoalProgressPoint } from "../types";
@@ -107,9 +107,17 @@ function MomentumCard({ history: raw, pace }: { history: GoalProgressPoint[]; pa
 
       {/* Headline — am I advancing right now? */}
       {stalled ? (
-        <p className="text-xs font-medium text-amber-400">⏸ No progress in {daysSince} days</p>
+        <p className="flex items-center gap-2 text-xs font-medium text-amber-400">
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-amber-400/15">
+            <Pause size={9} strokeWidth={0} fill="currentColor" />
+          </span>
+          No progress in {daysSince} days
+        </p>
       ) : delta30 > 0 ? (
-        <p className="text-xs font-medium text-green-400">▲ +{delta30}% · last 30 days</p>
+        <p className="flex items-center gap-1.5 text-xs font-medium text-green-400">
+          <TrendingUp size={13} className="shrink-0" />
+          +{delta30}% · last 30 days
+        </p>
       ) : (
         <p className="text-xs font-medium text-text-tertiary">Steady · no recent change</p>
       )}
@@ -253,7 +261,7 @@ export function GoalDetailPage({ id }: Props) {
   const displayProgress = displayMode === "auto"
     ? goal.progress
     : (localProgress ?? goal.progress);
-  const isOverdue       = goal.target_date && goal.status === "active" && new Date(goal.target_date) < new Date();
+  const isOverdue       = isGoalOverdue(goal);
 
   // Goal↔goal links. childGoals = the goals contributing to THIS one. parentCandidates
   // excludes self + direct children (cheap loop guard) + abandoned.

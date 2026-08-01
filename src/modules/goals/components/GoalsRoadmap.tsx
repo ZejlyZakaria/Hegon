@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { cn } from "@/shared/utils/utils";
 import { FadeIn, StaggerList, StaggerItem } from "@/shared/components/ui/motion";
-import { CATEGORY_COLOR } from "../constants";
+import { CATEGORY_COLOR, isGoalOverdue } from "../constants";
 import type { Goal, GoalCategory } from "../types";
 
 const colorOf = (c: GoalCategory | null) => CATEGORY_COLOR[c ?? "other"];
@@ -52,8 +52,6 @@ function Roadmap({ goals }: { goals: Goal[] }) {
     return <p className="py-16 text-center text-sm text-text-tertiary">No goals to place on the timeline.</p>;
   }
 
-  const now = new Date();
-
   return (
     <FadeIn className="surface-card rounded-card p-4">
       {/* Month axis */}
@@ -92,7 +90,7 @@ function Roadmap({ goals }: { goals: Goal[] }) {
               const end = new Date(g.target_date!);
               const left = pct(start);
               const width = Math.max(2, pct(end) - left);
-              const overdue = end < now && g.status === "active";
+              const overdue = isGoalOverdue(g);
               const done = g.status === "completed";
               const color = colorOf(g.category);
               const milestones = (g.milestones ?? []).filter((m) => m.due_date);
@@ -199,7 +197,7 @@ function bucketOf(g: Goal): (typeof BUCKETS)[number]["key"] {
   if (!g.target_date) return "someday";
   const now = new Date();
   const d = new Date(g.target_date);
-  if (d < now && g.status === "active") return "overdue";
+  if (isGoalOverdue(g)) return "overdue";
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   if (d <= endOfMonth) return "month";
   const in3mo = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate());

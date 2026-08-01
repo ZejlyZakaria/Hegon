@@ -139,7 +139,7 @@ export function GoalsPage() {
   // Search + filters — rendered on the tab row (desktop) OR a second row (mobile).
   const filtersBlock = (
     <>
-      <div className="relative flex flex-1 items-center sm:w-48 sm:flex-none">
+      <div className="relative flex flex-1 items-center lg:w-48 lg:flex-none">
         <Search size={14} className="pointer-events-none absolute left-2.5 text-text-tertiary" />
         <Input
           placeholder="Search goals…"
@@ -183,7 +183,7 @@ export function GoalsPage() {
 
                 <div className="ml-auto flex items-center gap-2 pb-1.5">
                   {view === "list" && (
-                    <div className="hidden items-center gap-2 sm:flex">{filtersBlock}</div>
+                    <div className="hidden items-center gap-2 lg:flex">{filtersBlock}</div>
                   )}
                   <button
                     type="button"
@@ -198,9 +198,11 @@ export function GoalsPage() {
                 </div>
               </div>
 
-              {/* Row 2 (mobile only) — search + filters */}
+              {/* Row 2 (mobile + iPad portrait) — search + filters. Kept off the tab
+                   row until lg so the 5-tab nav isn't squeezed into a tiny scroller
+                   on an iPad in portrait (the classic sm-treated-as-desktop trap). */}
               {view === "list" && (
-                <div className="mt-1.5 flex items-center gap-2 pb-2 sm:hidden">{filtersBlock}</div>
+                <div className="mt-1.5 flex items-center gap-2 pb-2 lg:hidden">{filtersBlock}</div>
               )}
             </FadeIn>
           )}

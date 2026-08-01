@@ -4,22 +4,13 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { cn } from "@/shared/utils/utils";
 import { PriorityIcon } from "@/shared/components/icons/PriorityIcon";
-import { categoryColor } from "../constants";
+import { categoryColor, isGoalOverdue } from "../constants";
 import { Badge } from "@/shared/components/ui/badge";
 import type { Goal } from "../types";
 
 function formatDate(dateStr: string | null) {
   if (!dateStr) return null;
   return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
-
-function isOverdue(targetDate: string | null, status: string) {
-  if (!targetDate || status === "completed") return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(targetDate);
-  due.setHours(0, 0, 0, 0);
-  return due < today;
 }
 
 function getMilestoneText(goal: Goal) {
@@ -34,7 +25,7 @@ interface Props {
 }
 
 export function GoalCard({ goal }: Props) {
-  const overdue = isOverdue(goal.target_date, goal.status);
+  const overdue = isGoalOverdue(goal);
   const isCompleted = goal.status === "completed";
   const accent = categoryColor(goal.category);
   const milestoneText = getMilestoneText(goal);

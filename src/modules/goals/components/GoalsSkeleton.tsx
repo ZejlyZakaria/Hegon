@@ -38,21 +38,31 @@ function GoalCardSkeleton() {
 
 function GoalToolbarSkeleton() {
   return (
-    <div className="flex items-center gap-x-3">
-      {/* Tabs */}
-      <div className="flex items-center py-2">
-        {[32, 46, 72, 68, 62].map((w, i) => (
-          <Bar key={i} className="mx-3 h-5" style={{ width: w }} />
-        ))}
-      </div>
-      {/* Filters + action (desktop) */}
-      <div className="ml-auto flex items-center gap-2 pb-1.5">
-        <div className="hidden items-center gap-2 sm:flex">
-          <div className="h-9 w-48 animate-pulse rounded-control bg-surface-2" />
-          <div className="h-9 w-32 animate-pulse rounded-control bg-surface-2" />
-          <div className="h-9 w-28 animate-pulse rounded-control bg-surface-2" />
+    <div>
+      {/* Row 1 — tabs + action (filters inline only from lg, mirroring the real page) */}
+      <div className="flex items-center gap-x-3">
+        {/* Tabs */}
+        <div className="flex items-center py-2">
+          {[32, 46, 72, 68, 62].map((w, i) => (
+            <Bar key={i} className="mx-3 h-5" style={{ width: w }} />
+          ))}
         </div>
-        <div className="h-9 w-9 animate-pulse rounded-control bg-surface-2 sm:w-28" />
+        {/* Filters + action */}
+        <div className="ml-auto flex items-center gap-2 pb-1.5">
+          <div className="hidden items-center gap-2 lg:flex">
+            <div className="h-9 w-48 animate-pulse rounded-control bg-surface-2" />
+            <div className="h-9 w-32 animate-pulse rounded-control bg-surface-2" />
+            <div className="h-9 w-28 animate-pulse rounded-control bg-surface-2" />
+          </div>
+          <div className="h-9 w-9 animate-pulse rounded-control bg-surface-2 sm:w-28" />
+        </div>
+      </div>
+
+      {/* Row 2 (mobile + iPad portrait) — search + filters, matching the real toolbar */}
+      <div className="mt-1.5 flex items-center gap-2 pb-2 lg:hidden">
+        <div className="h-9 flex-1 animate-pulse rounded-control bg-surface-2" />
+        <div className="h-9 w-32 animate-pulse rounded-control bg-surface-2" />
+        <div className="h-9 w-28 animate-pulse rounded-control bg-surface-2" />
       </div>
     </div>
   );
