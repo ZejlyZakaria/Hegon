@@ -1699,20 +1699,30 @@ export async function getPeopleCounts(userId: string): Promise<PeopleCounts> {
     .or("watched.eq.true,in_progress.eq.true,paused.eq.true,dropped.eq.true");
   if (error) throw error;
 
+  // Mirror getPersonBundle's filmography curation: a "Self" / "(uncredited)" cast credit is NOT
+  // shown on a person's filmography, so it must not inflate their rank either — the count has to
+  // agree with the titles the page actually DISPLAYS (otherwise a page shows 12 posters and reads
+  // "15 titles"). Cast only — directors are never curated for this. `cast_members` carries the
+  // `character`, so the same test applies here.
+  const curatedOut = (role: string | null | undefined) =>
+    !!role && (SELF_ROLE.test(role) || UNCREDITED_ROLE.test(role));
+
   for (const row of (data ?? []) as any[]) {
     // A person can be listed twice on one title — count the title once per role
     // (an actor-director like Eastwood still counts in both buckets).
-    const bump = (bucket: Record<number, PersonCount>, people: PersonRef[] | null) => {
+    const bump = (bucket: Record<number, PersonCount>, people: PersonRef[] | null, curate = false) => {
       const seen = new Set<number>();
       for (const p of people ?? []) {
         if (!p?.id || seen.has(p.id)) continue;
+        // Uncredited / Self turns are hidden from the filmography, so they don't count here either.
+        if (curate && curatedOut(p.character)) continue;
         seen.add(p.id);
         const prev = bucket[p.id];
         if (prev) prev.n += 1;
         else bucket[p.id] = { n: 1, name: p.name };
       }
     };
-    bump(row.type === "anime" ? voiceActors : actors, row.cast_members);
+    bump(row.type === "anime" ? voiceActors : actors, row.cast_members, true);
     bump(directing, row.directors);
   }
   return { actors, voiceActors, directing };
