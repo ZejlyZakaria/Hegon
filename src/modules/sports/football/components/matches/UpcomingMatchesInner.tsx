@@ -5,11 +5,13 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, MapPin } from "lucide-react";
 import { displayCompetition } from "@/modules/sports/football/lib/football-utils";
+import { useMatchPanel } from "@/modules/sports/football/hooks/useMatchPanelStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface UpcomingMatch {
   id: string;
+  external_match_id: number;
   home_team_name: string;
   away_team_name: string;
   home_team_crest: string | null;
@@ -63,6 +65,7 @@ function getCountdown(dateStr: string) {
 // ─── Match Card ───────────────────────────────────────────────────────────────
 
 function MatchCard({ match, index }: { match: UpcomingMatch; index: number }) {
+  const open = useMatchPanel((s) => s.open);
   const isHome   = match.home_team_name.toLowerCase().includes(match.followed_team_name.toLowerCase().split(" ")[0]);
   const countdown = getCountdown(match.match_date);
   const compName  = displayCompetition(match.competition_name);
@@ -72,7 +75,9 @@ function MatchCard({ match, index }: { match: UpcomingMatch; index: number }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, delay: index * 0.07 }}
-      className="group relative overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-900/40 hover:border-zinc-700/80 hover:bg-zinc-900/60 transition-all duration-300"
+      onClick={() => match.external_match_id && open(match.external_match_id)}
+      role="button"
+      className="group relative cursor-pointer overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-900/40 hover:border-zinc-700/80 hover:bg-zinc-900/60 transition-all duration-300"
     >
       {/* hover glow — bleu/violet pour prochains matchs */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.06),transparent_70%)]" />

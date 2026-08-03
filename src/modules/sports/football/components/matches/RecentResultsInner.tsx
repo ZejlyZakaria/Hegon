@@ -5,11 +5,13 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar } from "lucide-react";
 import { displayCompetition } from "@/modules/sports/football/lib/football-utils";
+import { useMatchPanel } from "@/modules/sports/football/hooks/useMatchPanelStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface PastMatch {
   id: string;
+  external_match_id: number;
   home_team_name: string;
   away_team_name: string;
   home_team_crest: string | null;
@@ -87,6 +89,7 @@ function formatMatchDate(date: string) {
 // ─── Result Card ──────────────────────────────────────────────────────────────
 
 function ResultCard({ match, index }: { match: PastMatch; index: number }) {
+  const open = useMatchPanel((s) => s.open);
   const isHome = match.home_team_name
     .toLowerCase()
     .includes(match.followed_team_name.toLowerCase().split(" ")[0]);
@@ -100,7 +103,9 @@ function ResultCard({ match, index }: { match: PastMatch; index: number }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, delay: index * 0.07 }}
-      className="group relative overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-950 hover:border-zinc-700/80 transition-all duration-300"
+      onClick={() => match.external_match_id && open(match.external_match_id)}
+      role="button"
+      className="group relative cursor-pointer overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-950 hover:border-zinc-700/80 transition-all duration-300"
     >
       {/* hover glow — couleur selon résultat */}
       <div

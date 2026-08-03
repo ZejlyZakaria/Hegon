@@ -527,6 +527,89 @@ export async function getGoalContributingBooks(
 }
 
 // =====================================================
+// FOOTBALL METRIC GOALS  (fed by the Fan Log — sport.football_watched_matches)
+// =====================================================
+
+// Recompute every active football-metric goal for the current org (called after a match is logged
+// / unlogged). Same shape as recalcWatchingGoals — module-agnostic delta.
+export async function recalcFootballGoals(): Promise<WatchingGoalDelta[]> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+
+  const { data: goals, error } = await supabase
+    .from("goals")
+    .select("id, title, progress, metric_key, metric_target")
+    .eq("org_id", orgId)
+    .eq("status", "active")
+    .eq("progress_mode", "auto")
+    .eq("metric_module", "football");
+  if (error) throw error;
+  if (!goals || goals.length === 0) return [];
+
+  type GoalRow = { id: string; title: string; progress: number; metric_key: string | null; metric_target: number | null };
+  return Promise.all(
+    (goals as GoalRow[]).map(async (g) => {
+      const next = await recalculateProgress(g.id);
+      if (g.progress < 100 && next >= 100) {
+        await supabase
+          .from("goals")
+          .update({ status: "completed", completed_at: new Date().toISOString() })
+          .eq("id", g.id);
+      }
+      return {
+        id: g.id, title: g.title, metric_key: g.metric_key, metric_target: g.metric_target,
+        oldProgress: g.progress, newProgress: next >= 0 ? next : g.progress,
+      };
+    }),
+  );
+}
+
+// The matches you've logged that fill a football-metric goal — exact count + the most recent ones.
+// Returns the ContributingMedia shape (no poster — a match has none) so the Goal detail's grid
+// renders them as text tiles, and each tile links to the match route.
+export async function getGoalContributingMatches(
+  goal: Goal,
+): Promise<{ count: number; items: ContributingMedia[] }> {
+  if (goal.metric_module !== "football") return { count: 0, items: [] };
+  const supabase = createClient();
+
+  const yearStart = goal.metric_period === "year" && goal.metric_year ? `${goal.metric_year}-01-01` : null;
+  const yearEnd   = goal.metric_period === "year" && goal.metric_year ? `${goal.metric_year + 1}-01-01` : null;
+
+  let q = supabase
+    .schema("sport").from("football_watched_matches")
+    .select("external_match_id, watched_at", { count: "exact" })
+    .eq("user_id", goal.user_id)
+    .eq("watched", true);
+  if (goal.metric_key === "stadium") q = q.eq("watched_where", "stadium");
+  if (yearStart && yearEnd) q = q.gte("watched_at", yearStart).lt("watched_at", yearEnd);
+
+  const { data, count, error } = await q.order("watched_at", { ascending: false }).limit(18);
+  if (error) throw error;
+
+  const rows = (data ?? []) as { external_match_id: number; watched_at: string | null }[];
+  const ids = rows.map((r) => r.external_match_id);
+  const names: Record<number, string> = {};
+  if (ids.length) {
+    const { data: matches } = await supabase
+      .schema("sport").from("football_matches")
+      .select("external_match_id, home_team_name, away_team_name")
+      .in("external_match_id", ids);
+    for (const m of (matches ?? []) as { external_match_id: number; home_team_name: string; away_team_name: string }[]) {
+      names[m.external_match_id] = `${m.home_team_name} – ${m.away_team_name}`;
+    }
+  }
+
+  const items: ContributingMedia[] = rows.map((r) => ({
+    id: String(r.external_match_id),
+    title: names[r.external_match_id] ?? "Match",
+    poster_url: null,
+    watched_at: r.watched_at,
+  }));
+  return { count: count ?? 0, items };
+}
+
+// =====================================================
 // MILESTONES
 // =====================================================
 

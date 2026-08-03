@@ -40,6 +40,10 @@ const WATCHING_KEYS = [
   { value: "anime",  label: "Animes" },
   { value: "titles", label: "Any title" },
 ];
+const FOOTBALL_KEYS = [
+  { value: "matches", label: "Matches" },
+  { value: "stadium", label: "Stadium visits" },
+];
 const PERIODS: { value: MetricPeriod; label: string }[] = [
   { value: "year",     label: "This year" },
   { value: "all_time", label: "All time" },
@@ -186,14 +190,17 @@ function EditBody({ goal }: { goal: Goal }) {
   }
 
   function setSource(src: MetricModule) {
-    patch({ metric_module: src, metric_key: src === "books" ? "books" : (goal.metric_key && goal.metric_key !== "books" ? goal.metric_key : "films") });
+    const valid = src === "football" ? ["matches", "stadium"] : ["films", "series", "anime", "titles"];
+    const key = goal.metric_key && valid.includes(goal.metric_key) ? goal.metric_key : valid[0];
+    patch({ metric_module: src, metric_key: src === "books" ? "books" : key });
   }
   function setPeriod(p: MetricPeriod) {
     patch({ metric_period: p, metric_year: p === "year" ? currentYear : null });
   }
 
   const categoryLabel = CATEGORIES.find((c) => c.value === (goal.category ?? "none"))!.label;
-  const keyLabel = WATCHING_KEYS.find((k) => k.value === goal.metric_key)?.label ?? "Films";
+  const activeKeys = goal.metric_module === "football" ? FOOTBALL_KEYS : WATCHING_KEYS;
+  const keyLabel = activeKeys.find((k) => k.value === goal.metric_key)?.label ?? activeKeys[0].label;
 
   return (
     <div className="flex flex-col">
@@ -305,7 +312,7 @@ function EditBody({ goal }: { goal: Goal }) {
           <>
             <Prop label="Source">
               <Menu trigger={<span className="capitalize">{goal.metric_module ?? "watching"}</span>} width="w-40">
-                {(close) => (["watching", "books"] as MetricModule[]).map((src) => (
+                {(close) => (["watching", "books", "football"] as MetricModule[]).map((src) => (
                   <Option key={src} selected={(goal.metric_module ?? "watching") === src} onClick={() => { setSource(src); close(); }}>
                     <span className="capitalize">{src}</span>
                   </Option>
@@ -316,7 +323,7 @@ function EditBody({ goal }: { goal: Goal }) {
             {goal.metric_module !== "books" && (
               <Prop label="Count">
                 <Menu trigger={<span>{keyLabel}</span>} width="w-40">
-                  {(close) => WATCHING_KEYS.map((k) => (
+                  {(close) => activeKeys.map((k) => (
                     <Option key={k.value} selected={goal.metric_key === k.value} onClick={() => { patch({ metric_key: k.value }); close(); }}>
                       {k.label}
                     </Option>

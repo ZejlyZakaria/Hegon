@@ -2,7 +2,7 @@
 
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
-import type { FootballTeams, FootballTeam } from "./types";
+import type { FootballTeams, FootballTeam, FootballMatchRow, FootballFanLogEntry, FanLogInput, FootballPrediction } from "./types";
 
 // =====================================================
 // FOOTBALL SERVICE
@@ -46,6 +46,96 @@ export async function getFootballTeams(userId: string): Promise<FootballTeams> {
   for (const t of otherFavoriteTeams) allTeams[t.id] = t;
 
   return { mainTeam, mainTeamId, otherFavoriteTeams, allFavoriteTeamIds, allTeams };
+}
+
+// ── Fiche match — read via the cache-aside route (server holds the football-data key) ──
+export async function getFootballMatch(externalId: number): Promise<FootballMatchRow> {
+  const res = await fetch(`/api/football/match/${externalId}`);
+  if (!res.ok) throw new Error(`Match fetch failed: ${res.status}`);
+  const { match } = await res.json();
+  return match as FootballMatchRow;
+}
+
+// ── Fan Log — YOUR data, written straight to Supabase (RLS guards the rows) ──
+export async function getFootballFanLog(userId: string, externalId: number): Promise<FootballFanLogEntry | null> {
+  if (!userId) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_watched_matches")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("external_match_id", externalId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as FootballFanLogEntry | null) ?? null;
+}
+
+// Upsert: the match must already exist in football_matches (the FK) — the fiche loads it first via
+// the cache-aside route, so by the time you log, the row is there. `watched: true` on every write —
+// existence IS the "I saw it"; the flags/rating/note refine it.
+export async function upsertFootballFanLog(userId: string, input: FanLogInput): Promise<FootballFanLogEntry> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_watched_matches")
+    .upsert({
+      user_id: userId,
+      external_match_id: input.external_match_id,
+      watched: true,
+      watched_where: input.watched_where ?? null,
+      rating: input.rating ?? null,
+      note: input.note ?? null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,external_match_id" })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as FootballFanLogEntry;
+}
+
+export async function deleteFootballFanLog(userId: string, externalId: number): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("sport").from("football_watched_matches")
+    .delete()
+    .eq("user_id", userId)
+    .eq("external_match_id", externalId);
+  if (error) throw error;
+}
+
+// ── Predictions — your score guess BEFORE kickoff (client, RLS) ──
+export async function getFootballPrediction(userId: string, externalId: number): Promise<FootballPrediction | null> {
+  if (!userId) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_predictions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("external_match_id", externalId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as FootballPrediction | null) ?? null;
+}
+
+export async function upsertFootballPrediction(
+  userId: string,
+  externalId: number,
+  predHome: number,
+  predAway: number,
+): Promise<FootballPrediction> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_predictions")
+    .upsert({
+      user_id: userId,
+      external_match_id: externalId,
+      pred_home: predHome,
+      pred_away: predAway,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,external_match_id" })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as FootballPrediction;
 }
 
 export async function getCrestsByExternalIds(externalIds: string[]): Promise<Record<string, string | null>> {
@@ -101,14 +191,14 @@ export async function getFootballPageData(): Promise<any> {
     supabase
       .schema("sport")
       .from("football_next_matches")
-      .select("id, team_id, home_team_name, away_team_name, home_team_external_id, away_team_external_id, match_date, football_competitions ( name, emblem_url )")
+      .select("id, external_match_id, team_id, home_team_name, away_team_name, home_team_external_id, away_team_external_id, match_date, football_competitions ( name, emblem_url )")
       .in("team_id", allFavoriteTeamIds)
       .gt("match_date", new Date().toISOString())
       .order("match_date", { ascending: true }),
     supabase
       .schema("sport")
       .from("football_past_matches")
-      .select("id, team_id, home_team_name, away_team_name, home_team_external_id, away_team_external_id, match_date, home_score, away_score, football_competitions ( name, emblem_url )")
+      .select("id, external_match_id, team_id, home_team_name, away_team_name, home_team_external_id, away_team_external_id, match_date, home_score, away_score, football_competitions ( name, emblem_url )")
       .in("team_id", allFavoriteTeamIds)
       .order("match_date", { ascending: false })
       .limit(allFavoriteTeamIds.length * 3),
@@ -170,6 +260,7 @@ export async function getFootballPageData(): Promise<any> {
       const comp = m.football_competitions as any;
       return {
         id: m.id,
+        external_match_id: m.external_match_id,
         home_team_name: m.home_team_name,
         away_team_name: m.away_team_name,
         home_team_crest: crestMap[m.home_team_external_id] ?? null,
@@ -197,6 +288,7 @@ export async function getFootballPageData(): Promise<any> {
       const comp = m.football_competitions as any;
       return {
         id: m.id,
+        external_match_id: m.external_match_id,
         home_team_name: m.home_team_name,
         away_team_name: m.away_team_name,
         home_team_crest: crestMap[m.home_team_external_id] ?? null,

@@ -47,8 +47,8 @@ const goalSchema = z
     priority:    z.enum(["low", "medium", "high", "critical"]),
     target_date: z.date().optional().nullable(),
     tracking:      z.enum(["manual", "tasks", "activity"]),
-    metric_source: z.enum(["watching", "books"]).optional(),
-    metric_key:    z.enum(["films", "series", "anime", "titles", "books"]).optional(),
+    metric_source: z.enum(["watching", "books", "football"]).optional(),
+    metric_key:    z.enum(["films", "series", "anime", "titles", "books", "matches", "stadium"]).optional(),
     metric_period: z.enum(["year", "all_time"]).optional(),
     metric_target: z.string().optional(),
   })
@@ -68,8 +68,8 @@ type GoalFormData = {
   priority:    "low" | "medium" | "high" | "critical";
   target_date?: Date | null;
   tracking:      "manual" | "tasks" | "activity";
-  metric_source?: "watching" | "books";
-  metric_key?:   "films" | "series" | "anime" | "titles" | "books";
+  metric_source?: "watching" | "books" | "football";
+  metric_key?:   "films" | "series" | "anime" | "titles" | "books" | "matches" | "stadium";
   metric_period?: "year" | "all_time";
   metric_target?: string;
 };
@@ -138,9 +138,12 @@ export function GoalPanel({ open, onClose, goal }: Props) {
   const metricSource = form.watch("metric_source");
 
   const handleClose = () => {
-    // Revert any unsaved edits — create clears, edit snaps back to the goal.
-    form.reset(editValues ?? EMPTY);
     onClose();
+    // Revert unsaved edits AFTER the panel has left. Resetting while it is still mounted (during the
+    // exit animation) flashed the target's "Choose what to count and a target" for one frame — the
+    // reset blanks metric_target while the "activity" section is still on screen. Deferred, invisible.
+    // (create clears the form, edit snaps back to the goal.)
+    setTimeout(() => form.reset(editValues ?? EMPTY), 300);
   };
 
   const onSubmit = async (data: GoalFormData) => {
@@ -166,10 +169,11 @@ export function GoalPanel({ open, onClose, goal }: Props) {
     try {
       if (isEdit && goal) {
         await updateGoal.mutateAsync({ id: goal.id, ...input });
+        handleClose();
       } else {
         await createGoal.mutateAsync(input);
+        handleClose();
       }
-      handleClose();
     } catch {
       /* create/updateGoal onError shows the toast (read-only demo notice or failure) */
     }
@@ -412,7 +416,16 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs font-medium text-text-secondary">Source</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value ?? "watching"}>
+                    <Select
+                      onValueChange={(v) => {
+                        field.onChange(v);
+                        // Reset the count to the source's default so a watching key never lingers on
+                        // football (or vice-versa). Books ignore the key.
+                        if (v === "watching") form.setValue("metric_key", "films");
+                        else if (v === "football") form.setValue("metric_key", "matches");
+                      }}
+                      value={field.value ?? "watching"}
+                    >
                       <FormControl>
                         <SelectTrigger variant="legacy" className="w-full bg-surface-2 focus:border-border-focus">
                           <SelectValue />
@@ -421,6 +434,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                       <SelectContent variant="legacy" >
                         <SelectItem value="watching">Watching</SelectItem>
                         <SelectItem value="books">Books</SelectItem>
+                        <SelectItem value="football">Football</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -442,17 +456,26 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs font-medium text-text-secondary">Count</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value ?? "films"}>
+                        <Select onValueChange={field.onChange} value={field.value ?? (metricSource === "football" ? "matches" : "films")}>
                           <FormControl>
                             <SelectTrigger variant="legacy" className="w-full bg-surface-2 focus:border-border-focus">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent variant="legacy" >
-                            <SelectItem value="films">Films</SelectItem>
-                            <SelectItem value="series">TV Shows</SelectItem>
-                            <SelectItem value="anime">Animes</SelectItem>
-                            <SelectItem value="titles">Any title</SelectItem>
+                            {metricSource === "football" ? (
+                              <>
+                                <SelectItem value="matches">Matches</SelectItem>
+                                <SelectItem value="stadium">Stadium visits</SelectItem>
+                              </>
+                            ) : (
+                              <>
+                                <SelectItem value="films">Films</SelectItem>
+                                <SelectItem value="series">TV Shows</SelectItem>
+                                <SelectItem value="anime">Animes</SelectItem>
+                                <SelectItem value="titles">Any title</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -471,7 +494,7 @@ export function GoalPanel({ open, onClose, goal }: Props) {
                           {...field}
                           type="number"
                           min={1}
-                          placeholder="50"
+                          placeholder={metricSource === "football" ? "30" : metricSource === "books" ? "24" : "50"}
                           className="bg-surface-2 focus:border-border-focus"
                         />
                       </FormControl>
@@ -504,7 +527,9 @@ export function GoalPanel({ open, onClose, goal }: Props) {
               <p className="text-[11px] leading-snug text-text-tertiary">
                 {metricSource === "books"
                   ? "Progress fills automatically as you mark books read."
-                  : "Progress fills automatically as you mark titles watched."}
+                  : metricSource === "football"
+                    ? "Progress fills automatically as you log matches in Football."
+                    : "Progress fills automatically as you mark titles watched."}
               </p>
             </div>
           )}

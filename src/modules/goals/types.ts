@@ -11,7 +11,7 @@ export type MilestoneStatus = 'pending' | 'completed';
 // Cross-module metric — when set, an `auto` goal derives its progress from an
 // activity count (e.g. films watched) instead of linked tasks. Module-agnostic
 // so Books/Sport plug in later.
-export type MetricModule = 'watching' | 'books';
+export type MetricModule = 'watching' | 'books' | 'football';
 export type MetricPeriod = 'year' | 'all_time';
 
 export interface Goal {

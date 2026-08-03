@@ -32,6 +32,7 @@ import {
 } from "../hooks/useLinkedHabits";
 import { useGoalContributingMedia } from "../hooks/useGoalContributingMedia";
 import { useGoalContributingBooks } from "../hooks/useGoalContributingBooks";
+import { useGoalContributingMatches } from "../hooks/useGoalContributingMatches";
 import { useGoalMomentum } from "../hooks/useGoalMomentum";
 import { MilestoneList } from "./MilestoneList";
 import { GoalEditPanel } from "./GoalEditPanel";
@@ -196,6 +197,7 @@ export function GoalDetailPage({ id }: Props) {
   const { data: availableHabits = [] } = useAvailableHabitsForGoal();
   const { data: contributingMedia } = useGoalContributingMedia(goal);
   const { data: contributingBooks } = useGoalContributingBooks(goal);
+  const { data: contributingMatches } = useGoalContributingMatches(goal);
   const { data: progressHistory = [] } = useGoalMomentum(goal);
   const { data: allGoals = [] } = useGoals();
 
@@ -251,9 +253,10 @@ export function GoalDetailPage({ id }: Props) {
   const accent          = goal.category ? categoryColor(goal.category) : ACCENT;
   const isMetric        = !!goal.metric_module;
   const isBooks         = goal.metric_module === "books";
-  const contributing    = isBooks ? contributingBooks : contributingMedia;
-  const metricVerb      = isBooks ? "read" : "watched";
-  const metricRoutePrefix = isBooks ? "/life/books/" : "/perso/watching/";
+  const isFootball      = goal.metric_module === "football";
+  const contributing    = isBooks ? contributingBooks : isFootball ? contributingMatches : contributingMedia;
+  const metricVerb      = isBooks ? "read" : isFootball ? (goal.metric_key === "stadium" ? "attended" : "watched") : "watched";
+  const metricRoutePrefix = isBooks ? "/life/books/" : isFootball ? "/perso/sports/football/match/" : "/perso/watching/";
   const tasksTotal      = linkedTasks.length;
   const tasksCompleted  = linkedTasks.filter((t) => t.completed_at !== null).length;
   // Single source of truth: auto goals (task + metric) always read the server-recalc'd
@@ -275,6 +278,7 @@ export function GoalDetailPage({ id }: Props) {
   const metricToGo   = Math.max(0, metricTarget - metricCount);
   const metricLabel  =
     isBooks ? "books"
+    : isFootball ? (goal.metric_key === "stadium" ? "stadium visits" : "matches")
     : goal.metric_key === "films"  ? "films"
     : goal.metric_key === "series" ? "TV shows"
     : goal.metric_key === "anime"  ? "animes"
@@ -740,7 +744,9 @@ export function GoalDetailPage({ id }: Props) {
                 <p className="text-xs text-text-tertiary">
                   {isBooks
                     ? "Mark books as read in Books to fill this goal."
-                    : "Mark titles as watched in Watching to fill this goal."}
+                    : isFootball
+                      ? "Log matches in Football to fill this goal."
+                      : "Mark titles as watched in Watching to fill this goal."}
                 </p>
               )}
             </FadeIn>

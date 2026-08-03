@@ -6,6 +6,7 @@ import FootballUpcomingMatchesSection from "./matches/FootballUpcomingMatchesSec
 import FootballRecentResultsSection from "./matches/FootballRecentResultsSection";
 import FootballStandingsSection from "./standings/FootballStandingsSection";
 import FootballBestXI from "./squad/FootballBestXI";
+import { FootballMatchPanel } from "./match/FootballMatchPanel";
 import {
   FootballHeroSkeleton,
   FootballRecentResultsSkeleton,
@@ -62,6 +63,9 @@ export default function FootballPageWrapper() {
         userId={data.userId}
         bestXI={data.bestXI}
       />
+
+      {/* Rendered once — any match card opens it via the store (portal to <body>). */}
+      <FootballMatchPanel />
     </div>
   );
 }
