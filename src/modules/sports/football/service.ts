@@ -152,6 +152,110 @@ export async function getCrestsByExternalIds(externalIds: string[]): Promise<Rec
   return map;
 }
 
+// ─── Independent match rails (read from football_matches — the durable, full-calendar table) ─────
+// These replace the capped football_next/past_matches reads. Each is its OWN query (no monolith
+// waterfall — perf audit Finding 3): the page mounts them as independent sections.
+
+export interface FootballMatchLite {
+  external_match_id: number;
+  utc_date: string;
+  status: string | null;
+  matchday: number | null;
+  venue: string | null;
+  home_name: string;
+  away_name: string;
+  home_external_id: string;
+  away_external_id: string;
+  home_crest: string | null;
+  away_crest: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  competition_name: string | null;
+  brand_color: string | null;
+  logo_url: string | null;
+}
+
+type MatchRow = {
+  external_match_id: number;
+  utc_date: string;
+  status: string | null;
+  matchday: number | null;
+  venue: string | null;
+  home_team_external_id: string;
+  away_team_external_id: string;
+  home_team_name: string;
+  away_team_name: string;
+  home_score: number | null;
+  away_score: number | null;
+  football_competitions: { name: string | null; brand_color: string | null; logo_url: string | null } | null;
+};
+
+const MATCH_SELECT =
+  "external_match_id, utc_date, status, matchday, venue, home_team_external_id, away_team_external_id, home_team_name, away_team_name, home_score, away_score, football_competitions ( name, brand_color, logo_url )";
+
+function toMatchLite(r: MatchRow, crests: Record<string, string | null>): FootballMatchLite {
+  const c = r.football_competitions;
+  return {
+    external_match_id: r.external_match_id,
+    utc_date: r.utc_date,
+    status: r.status,
+    matchday: r.matchday,
+    venue: r.venue,
+    home_name: r.home_team_name,
+    away_name: r.away_team_name,
+    home_external_id: r.home_team_external_id,
+    away_external_id: r.away_team_external_id,
+    home_crest: crests[r.home_team_external_id] ?? null,
+    away_crest: crests[r.away_team_external_id] ?? null,
+    home_score: r.home_score,
+    away_score: r.away_score,
+    competition_name: c?.name ?? null,
+    brand_color: c?.brand_color ?? null,
+    logo_url: c?.logo_url ?? null,
+  };
+}
+
+async function crestsForRows(rows: MatchRow[]): Promise<Record<string, string | null>> {
+  const extIds = [...new Set(rows.flatMap((r) => [r.home_team_external_id, r.away_team_external_id]).filter(Boolean))];
+  return extIds.length ? getCrestsByExternalIds(extIds) : {};
+}
+
+// Upcoming (not-finished) matches involving any of the followed teams, soonest first.
+export async function getUpcomingMatches(teamExternalIds: string[]): Promise<FootballMatchLite[]> {
+  if (!teamExternalIds.length) return [];
+  const supabase = createClient();
+  const list = teamExternalIds.join(",");
+  const { data, error } = await supabase
+    .schema("sport").from("football_matches")
+    .select(MATCH_SELECT)
+    .or(`home_team_external_id.in.(${list}),away_team_external_id.in.(${list})`)
+    .in("status", ["SCHEDULED", "TIMED", "IN_PLAY", "PAUSED"])
+    .order("utc_date", { ascending: true })
+    .limit(60);
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as MatchRow[];
+  const crests = await crestsForRows(rows);
+  return rows.map((r) => toMatchLite(r, crests));
+}
+
+// Recent FINISHED matches involving any of the followed teams, most recent first.
+export async function getRecentMatches(teamExternalIds: string[]): Promise<FootballMatchLite[]> {
+  if (!teamExternalIds.length) return [];
+  const supabase = createClient();
+  const list = teamExternalIds.join(",");
+  const { data, error } = await supabase
+    .schema("sport").from("football_matches")
+    .select(MATCH_SELECT)
+    .or(`home_team_external_id.in.(${list}),away_team_external_id.in.(${list})`)
+    .eq("status", "FINISHED")
+    .order("utc_date", { ascending: false })
+    .limit(30);
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as MatchRow[];
+  const crests = await crestsForRows(rows);
+  return rows.map((r) => toMatchLite(r, crests));
+}
+
 // ─── Master page data ─────────────────────────────────────────────────────────
 
 // userId is passed in from the caller (useCurrentUserId — synchronous, reads localStorage, 0 network).

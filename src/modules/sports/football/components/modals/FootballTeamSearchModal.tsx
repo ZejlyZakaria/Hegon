@@ -103,6 +103,12 @@ export default function FootballTeamSearchModal({
           org_id: orgId,
         });
       if (err) throw err;
+      // Populate this team's whole-season calendar into football_matches right away, so its next &
+      // recent matches are on screen immediately (one football-data call = the full season). Best-
+      // effort: if it fails (rate limit…), the refresh cron backfills — never block the follow on it.
+      try {
+        await fetch(`/api/football/sync-team/${team.api_external_id}`, { method: "POST" });
+      } catch { /* non-blocking — the cron will catch up */ }
       setAddedIds((prev) => new Set([...prev, team.id]));
       onTeamAdded(team);
     } catch (err: any) {
