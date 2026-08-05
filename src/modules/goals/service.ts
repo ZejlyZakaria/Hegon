@@ -564,12 +564,31 @@ export async function recalcFootballGoals(): Promise<WatchingGoalDelta[]> {
   );
 }
 
-// The matches you've logged that fill a football-metric goal — exact count + the most recent ones.
-// Returns the ContributingMedia shape (no poster — a match has none) so the Goal detail's grid
-// renders them as text tiles, and each tile links to the match route.
+// A logged match enriched for the football match card (score · crests · competition branding · venue).
+export interface ContributingMatch {
+  external_match_id: number;
+  home_name:  string;
+  away_name:  string;
+  home_crest: string | null;
+  away_crest: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  status:     string | null;
+  matchday:   number | null;
+  venue:      string | null;
+  watched_at:    string | null;
+  watched_where: string | null;
+  competition_name: string | null;
+  competition_code: string | null;
+  brand_color: string | null;   // the card's --competition-color
+  logo_url:    string | null;    // curated mark-only league logo
+}
+
+// The matches you've logged that fill a football-metric goal — exact count + the most recent ones,
+// enriched so the Goal detail renders them as real match cards (gradient-top, crests, score, venue).
 export async function getGoalContributingMatches(
   goal: Goal,
-): Promise<{ count: number; items: ContributingMedia[] }> {
+): Promise<{ count: number; items: ContributingMatch[] }> {
   if (goal.metric_module !== "football") return { count: 0, items: [] };
   const supabase = createClient();
 
@@ -578,7 +597,7 @@ export async function getGoalContributingMatches(
 
   let q = supabase
     .schema("sport").from("football_watched_matches")
-    .select("external_match_id, watched_at", { count: "exact" })
+    .select("external_match_id, watched_at, watched_where", { count: "exact" })
     .eq("user_id", goal.user_id)
     .eq("watched", true);
   if (goal.metric_key === "stadium") q = q.eq("watched_where", "stadium");
@@ -587,25 +606,70 @@ export async function getGoalContributingMatches(
   const { data, count, error } = await q.order("watched_at", { ascending: false }).limit(18);
   if (error) throw error;
 
-  const rows = (data ?? []) as { external_match_id: number; watched_at: string | null }[];
+  const rows = (data ?? []) as { external_match_id: number; watched_at: string | null; watched_where: string | null }[];
+  if (!rows.length) return { count: count ?? 0, items: [] };
+
   const ids = rows.map((r) => r.external_match_id);
-  const names: Record<number, string> = {};
-  if (ids.length) {
-    const { data: matches } = await supabase
-      .schema("sport").from("football_matches")
-      .select("external_match_id, home_team_name, away_team_name")
-      .in("external_match_id", ids);
-    for (const m of (matches ?? []) as { external_match_id: number; home_team_name: string; away_team_name: string }[]) {
-      names[m.external_match_id] = `${m.home_team_name} – ${m.away_team_name}`;
+  const { data: matchData } = await supabase
+    .schema("sport").from("football_matches")
+    .select("external_match_id, home_team_name, away_team_name, home_team_external_id, away_team_external_id, home_score, away_score, status, matchday, venue, competition_id")
+    .in("external_match_id", ids);
+
+  type MRow = {
+    external_match_id: number; home_team_name: string; away_team_name: string;
+    home_team_external_id: string; away_team_external_id: string;
+    home_score: number | null; away_score: number | null;
+    status: string | null; matchday: number | null; venue: string | null; competition_id: string | null;
+  };
+  const matches = (matchData ?? []) as MRow[];
+  const byId = new Map(matches.map((m) => [m.external_match_id, m] as const));
+
+  // Competition branding (name · colour · mark).
+  const compIds = [...new Set(matches.map((m) => m.competition_id).filter((v): v is string => !!v))];
+  const comps: Record<string, { name: string | null; code: string | null; brand_color: string | null; logo_url: string | null }> = {};
+  if (compIds.length) {
+    const { data: compData } = await supabase
+      .schema("sport").from("football_competitions")
+      .select("id, name, code, brand_color, logo_url").in("id", compIds);
+    for (const c of (compData ?? []) as { id: string; name: string | null; code: string | null; brand_color: string | null; logo_url: string | null }[]) {
+      comps[c.id] = { name: c.name, code: c.code, brand_color: c.brand_color, logo_url: c.logo_url };
     }
   }
 
-  const items: ContributingMedia[] = rows.map((r) => ({
-    id: String(r.external_match_id),
-    title: names[r.external_match_id] ?? "Match",
-    poster_url: null,
-    watched_at: r.watched_at,
-  }));
+  // Crests (best-effort — only teams present in football_teams; the card falls back to a monogram).
+  const extIds = [...new Set(matches.flatMap((m) => [m.home_team_external_id, m.away_team_external_id]).filter(Boolean))];
+  const crests: Record<string, string | null> = {};
+  if (extIds.length) {
+    const { data: teams } = await supabase
+      .schema("sport").from("football_teams").select("api_external_id, crest_url").in("api_external_id", extIds);
+    for (const t of (teams ?? []) as { api_external_id: string; crest_url: string | null }[]) {
+      crests[t.api_external_id] = t.crest_url && !t.crest_url.startsWith("http")
+        ? `https://crests.football-data.org/${t.crest_url}` : t.crest_url;
+    }
+  }
+
+  const items: ContributingMatch[] = rows.map((r) => {
+    const m = byId.get(r.external_match_id);
+    const c = m?.competition_id ? comps[m.competition_id] : undefined;
+    return {
+      external_match_id: r.external_match_id,
+      home_name:  m?.home_team_name ?? "Home",
+      away_name:  m?.away_team_name ?? "Away",
+      home_crest: m ? crests[m.home_team_external_id] ?? null : null,
+      away_crest: m ? crests[m.away_team_external_id] ?? null : null,
+      home_score: m?.home_score ?? null,
+      away_score: m?.away_score ?? null,
+      status:     m?.status ?? null,
+      matchday:   m?.matchday ?? null,
+      venue:      m?.venue ?? null,
+      watched_at:    r.watched_at,
+      watched_where: r.watched_where,
+      competition_name: c?.name ?? null,
+      competition_code: c?.code ?? null,
+      brand_color: c?.brand_color ?? null,
+      logo_url:    c?.logo_url ?? null,
+    };
+  });
   return { count: count ?? 0, items };
 }
 

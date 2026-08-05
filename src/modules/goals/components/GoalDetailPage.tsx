@@ -33,6 +33,7 @@ import {
 import { useGoalContributingMedia } from "../hooks/useGoalContributingMedia";
 import { useGoalContributingBooks } from "../hooks/useGoalContributingBooks";
 import { useGoalContributingMatches } from "../hooks/useGoalContributingMatches";
+import { FootballMatchCard } from "@/modules/sports/football/components/FootballMatchCard";
 import { useGoalMomentum } from "../hooks/useGoalMomentum";
 import { MilestoneList } from "./MilestoneList";
 import { GoalEditPanel } from "./GoalEditPanel";
@@ -255,6 +256,8 @@ export function GoalDetailPage({ id }: Props) {
   const isBooks         = goal.metric_module === "books";
   const isFootball      = goal.metric_module === "football";
   const contributing    = isBooks ? contributingBooks : isFootball ? contributingMatches : contributingMedia;
+  // Books + Watching share the poster grid (ContributingMedia); football has its own card branch.
+  const posterItems     = (isBooks ? contributingBooks : contributingMedia)?.items ?? [];
   const metricVerb      = isBooks ? "read" : isFootball ? (goal.metric_key === "stadium" ? "attended" : "watched") : "watched";
   const metricRoutePrefix = isBooks ? "/life/books/" : isFootball ? "/perso/sports/football/match/" : "/perso/watching/";
   const tasksTotal      = linkedTasks.length;
@@ -708,32 +711,42 @@ export function GoalDetailPage({ id }: Props) {
 
               {contributing && contributing.items.length > 0 ? (
                 <>
-                <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-9">
-                  {contributing.items.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => router.push(`${metricRoutePrefix}${m.id}`)}
-                      title={m.title}
-                      className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-control border border-border-subtle"
-                    >
-                      {m.poster_url ? (
-                        <Image
-                          src={m.poster_url}
-                          alt={m.title}
-                          fill
-                          sizes="80px"
-                          unoptimized
-                          className="object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-surface-2 p-1 text-center text-[9px] leading-tight text-text-tertiary">
-                          {m.title}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                {isFootball ? (
+                  // Real match cards — competition-coloured glow, crests · score · venue; a stadium match is a ticket.
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {(contributingMatches?.items ?? []).map((m) => (
+                      <FootballMatchCard key={m.external_match_id} match={m} />
+                    ))}
+                  </div>
+                ) : (
+                  // Watching + Books share the poster grid.
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-9">
+                    {posterItems.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => router.push(`${metricRoutePrefix}${m.id}`)}
+                        title={m.title}
+                        className="group relative aspect-2/3 cursor-pointer overflow-hidden rounded-control border border-border-subtle transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]"
+                      >
+                        {m.poster_url ? (
+                          <Image
+                            src={m.poster_url}
+                            alt={m.title}
+                            fill
+                            sizes="80px"
+                            unoptimized
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-surface-2 p-1 text-center text-[9px] leading-tight text-text-tertiary">
+                            {m.title}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {metricCount > contributing.items.length && (
                   <p className="mt-2 text-[11px] text-text-tertiary">
                     +{metricCount - contributing.items.length} more
