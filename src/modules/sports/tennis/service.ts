@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from "@/infrastructure/supabase/client";
-import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import type { TennisPlayers, TennisPlayer } from "./types";
 
 // =====================================================
@@ -37,11 +36,10 @@ export async function getTennisPlayers(userId: string): Promise<TennisPlayers> {
 
 // ─── Master page data ─────────────────────────────────────────────────────────
 
-export async function getTennisPageData(): Promise<any> {
+// userId passed in from useCurrentUserId (synchronous, 0 network) — no more auth.getUser() round-trip
+// at the head of the waterfall. Same fix as football.
+export async function getTennisPageData(userId: string): Promise<any> {
   const supabase = createClient();
-
-  // Step 1: get userId once
-  const userId = await getCurrentUserId();
   if (!userId) return null;
 
   const now = new Date().toISOString();

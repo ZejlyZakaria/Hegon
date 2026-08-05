@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from "@/infrastructure/supabase/client";
-import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import type { FootballTeams, FootballTeam, FootballMatchRow, FootballFanLogEntry, FanLogInput, FootballPrediction } from "./types";
 
 // =====================================================
@@ -155,11 +154,11 @@ export async function getCrestsByExternalIds(externalIds: string[]): Promise<Rec
 
 // ─── Master page data ─────────────────────────────────────────────────────────
 
-export async function getFootballPageData(): Promise<any> {
+// userId is passed in from the caller (useCurrentUserId — synchronous, reads localStorage, 0 network).
+// It used to call auth.getUser() here (a ~150-300ms network round-trip at the HEAD of the waterfall);
+// removing it matches Watching's path and unblocks the first query immediately.
+export async function getFootballPageData(userId: string): Promise<any> {
   const supabase = createClient();
-
-  // Step 1: get userId once
-  const userId = await getCurrentUserId();
   if (!userId) return null;
 
   // Step 2: user settings + favorites (2 parallel), then team details (2 parallel)

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from "@/infrastructure/supabase/client";
-import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import type { F1Team } from "./types";
 
 // =====================================================
@@ -236,9 +235,8 @@ export async function getConstructorStandings(season: number = 2026): Promise<an
   return data || [];
 }
 
-export async function getUserFavoriteTeams(): Promise<F1Team[]> {
+export async function getUserFavoriteTeams(userId: string): Promise<F1Team[]> {
   const supabase = createClient();
-  const userId = await getCurrentUserId();
   if (!userId) return [];
 
   const { data: favorites } = await supabase
@@ -262,7 +260,7 @@ export async function getUserFavoriteTeams(): Promise<F1Team[]> {
 
 // ─── Master page data ─────────────────────────────────────────────────────────
 
-export async function getF1PageData(): Promise<any> {
+export async function getF1PageData(userId: string): Promise<any> {
   const [nextRace, upcomingRaces, recentRaces, driverStandings, constructorStandings, userFavoriteTeams] =
     await Promise.all([
       getNextRace(),
@@ -270,7 +268,7 @@ export async function getF1PageData(): Promise<any> {
       getRecentRaces(3),
       getDriverStandings(2026),
       getConstructorStandings(2026),
-      getUserFavoriteTeams(),
+      getUserFavoriteTeams(userId),
     ]);
 
   return {
