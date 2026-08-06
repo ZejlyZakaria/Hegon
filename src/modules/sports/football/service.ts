@@ -295,6 +295,63 @@ export async function unfollowCompetition(userId: string, competitionId: string)
   if (error) throw error;
 }
 
+// ─── Competition page reads (standings + a competition's own matches) — independent queries ──────
+
+export interface StandingRow {
+  team_id: string;
+  team_name: string | null;
+  team_crest: string | null;
+  played: number;
+  won: number;
+  draw: number;
+  lost: number;
+  points: number;
+  goals_for: number;
+  goals_against: number;
+  goal_difference: number;
+}
+
+// The league table of ONE competition, ordered like a real table (points, then goal difference).
+export async function getStandings(competitionId: string): Promise<StandingRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_standings")
+    .select("team_id, played_games, won, draw, lost, points, goals_for, goals_against, goal_difference, football_teams ( name, crest_url )")
+    .eq("competition_id", competitionId)
+    .order("points", { ascending: false })
+    .order("goal_difference", { ascending: false });
+  if (error) throw error;
+  type SRow = {
+    team_id: string; played_games: number; won: number; draw: number; lost: number;
+    points: number; goals_for: number; goals_against: number; goal_difference: number;
+    football_teams: { name: string | null; crest_url: string | null } | null;
+  };
+  const rows = (data ?? []) as unknown as SRow[];
+  return rows.map((r) => ({
+    team_id: r.team_id,
+    team_name: r.football_teams?.name ?? null,
+    team_crest: r.football_teams?.crest_url ?? null,
+    played: r.played_games, won: r.won, draw: r.draw, lost: r.lost,
+    points: r.points, goals_for: r.goals_for, goals_against: r.goals_against, goal_difference: r.goal_difference,
+  }));
+}
+
+// All stored matches of a competition (fixtures + results), soonest first — the Competition page
+// groups them by matchday. Only present for competitions we've synced (followed → sync-competition).
+export async function getCompetitionMatches(competitionId: string): Promise<FootballMatchLite[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_matches")
+    .select(MATCH_SELECT)
+    .eq("competition_id", competitionId)
+    .order("utc_date", { ascending: true })
+    .limit(400);
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as MatchRow[];
+  const crests = await crestsForRows(rows);
+  return rows.map((r) => toMatchLite(r, crests));
+}
+
 // ─── Top scorers (Golden Boot) — read through the server route (key stays server-side) ──────────
 
 export interface Scorer {
