@@ -11,4 +11,5 @@ export const FOOTBALL_KEYS = {
   prediction: (externalId: number) => [...FOOTBALL_KEYS.all, 'prediction', externalId] as const,
   upcoming: (teamExternalIds: string[]) => [...FOOTBALL_KEYS.all, 'upcoming', ...teamExternalIds] as const,
   recent: (teamExternalIds: string[]) => [...FOOTBALL_KEYS.all, 'recent', ...teamExternalIds] as const,
+  followedCompetitions: () => [...FOOTBALL_KEYS.all, 'followed-competitions'] as const,
 } as const;

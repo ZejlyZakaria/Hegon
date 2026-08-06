@@ -256,6 +256,45 @@ export async function getRecentMatches(teamExternalIds: string[]): Promise<Footb
   return rows.map((r) => toMatchLite(r, crests));
 }
 
+// ─── Follow COMPETITIONS (the 2nd follow axis — alongside follow-team via user_favorites) ────────
+
+export interface FollowedCompetition {
+  id: string;
+  name: string | null;
+  code: string | null;
+  api_external_id: string | null;
+  brand_color: string | null;
+  logo_url: string | null;
+  emblem_url: string | null;
+}
+
+export async function getFollowedCompetitions(userId: string): Promise<FollowedCompetition[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_user_competitions")
+    .select("football_competitions ( id, name, code, api_external_id, brand_color, logo_url, emblem_url )")
+    .eq("user_id", userId);
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as { football_competitions: FollowedCompetition | null }[];
+  return rows.map((r) => r.football_competitions).filter((c): c is FollowedCompetition => !!c);
+}
+
+export async function followCompetition(userId: string, competitionId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("sport").from("football_user_competitions")
+    .insert({ user_id: userId, competition_id: competitionId });
+  if (error) throw error;
+}
+
+export async function unfollowCompetition(userId: string, competitionId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("sport").from("football_user_competitions")
+    .delete().eq("user_id", userId).eq("competition_id", competitionId);
+  if (error) throw error;
+}
+
 // ─── Master page data ─────────────────────────────────────────────────────────
 
 // userId is passed in from the caller (useCurrentUserId — synchronous, reads localStorage, 0 network).
