@@ -2,48 +2,28 @@
 
 // The Team Panel body — opened from a Following-strip card. Composes existing reads (no new API):
 //   · YOUR record for the team (football_watched_matches) · next match · recent form.
-// The Unfollow control lives here (the strip is a launcher, not an editor) — a two-step inline
-// confirm, no separate modal.
+// Unfollow lives in the panel header ("..." menu, always visible) — not in this scrolling body.
 
-import { useState } from "react";
 import Image from "next/image";
-import { Star, MapPin, Clock, Trash2, Loader2 } from "lucide-react";
+import { Star, MapPin, Clock } from "lucide-react";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useUpcomingMatches, useRecentMatches } from "../../hooks/useFootballMatches";
 import { useTeamPersonalStats } from "../../hooks/useTeamPersonalStats";
-import { useUnfollowTeam } from "../../hooks/useFootballTeams";
 import type { TeamPanelTeam } from "../../hooks/useTeamPanelStore";
 import type { FootballMatchLite } from "../../service";
 
 const CREST_FALLBACK = "/placeholder-logo.svg";
 
-export function FootballTeamPanelClient({
-  team,
-  onUnfollowed,
-}: {
-  team: TeamPanelTeam;
-  onUnfollowed: () => void;
-}) {
+export function FootballTeamPanelClient({ team }: { team: TeamPanelTeam }) {
   const userId = useCurrentUserId();
   const ext = team.api_external_id;
 
   const { data: stats } = useTeamPersonalStats(userId, ext);
   const { data: upcoming } = useUpcomingMatches(ext ? [ext] : []);
   const { data: recent } = useRecentMatches(ext ? [ext] : []);
-  const unfollow = useUnfollowTeam(userId);
-
-  const [confirming, setConfirming] = useState(false);
 
   const nextMatch = upcoming?.[0] ?? null;
   const recentFive = (recent ?? []).slice(0, 5);
-
-  const handleUnfollow = () => {
-    if (!confirming) {
-      setConfirming(true);
-      return;
-    }
-    unfollow.mutate(team.id, { onSuccess: onUnfollowed });
-  };
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -99,20 +79,6 @@ export function FootballTeamPanelClient({
           <Empty>No recent results</Empty>
         )}
       </Block>
-
-      {/* Unfollow */}
-      <button
-        onClick={handleUnfollow}
-        disabled={unfollow.isPending}
-        className={`mt-1 flex items-center justify-center gap-2 rounded-control px-4 py-2.5 text-sm font-semibold transition-colors ${
-          confirming
-            ? "bg-red-500/15 text-red-400 hover:bg-red-500/25"
-            : "text-text-tertiary hover:bg-white/5 hover:text-red-400"
-        }`}
-      >
-        {unfollow.isPending ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-        {confirming ? "Confirm unfollow" : "Unfollow"}
-      </button>
     </div>
   );
 }

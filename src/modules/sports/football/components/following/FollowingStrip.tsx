@@ -8,25 +8,22 @@
 // that would shift the row's alignment. Removal lives in the Team Panel (not here).
 // Data is its own concern: useFootballTeams + useFollowedCompetitions (no page monolith).
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import { Plus, Star } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useFootballTeams } from "../../hooks/useFootballTeams";
 import { useFollowedCompetitions } from "../../hooks/useFollowedCompetitions";
 import { useTeamPanel } from "../../hooks/useTeamPanelStore";
-import { FOOTBALL_KEYS } from "../../hooks/query-keys";
 import type { FootballTeam } from "../../types";
 import type { FollowedCompetition } from "../../service";
-import FootballTeamSearchModal from "../modals/FootballTeamSearchModal";
+import FootballAddModal from "../modals/FootballAddModal";
 
 const CREST_FALLBACK = "/placeholder-logo.svg";
 const CARD_BASE = "relative flex w-28 min-h-26 shrink-0 flex-col items-center gap-2 rounded-card px-3 pb-3 pt-4 transition-all";
 
 export default function FollowingStrip() {
   const userId = useCurrentUserId();
-  const qc = useQueryClient();
   const openTeam = useTeamPanel((s) => s.open);
 
   const { data: teams, isLoading: teamsLoading } = useFootballTeams(userId);
@@ -44,7 +41,6 @@ export default function FollowingStrip() {
   }, [teams]);
 
   const followedCompetitions = competitions ?? [];
-  const currentFavoriteIds = teams?.allFavoriteTeamIds ?? [];
 
   if (teamsLoading && !teams) return <FollowingStripSkeleton />;
 
@@ -101,15 +97,7 @@ export default function FollowingStrip() {
         </button>
       </div>
 
-      {userId && (
-        <FootballTeamSearchModal
-          open={addOpen}
-          onClose={() => setAddOpen(false)}
-          userId={userId}
-          currentFavoriteIds={currentFavoriteIds}
-          onTeamAdded={() => qc.invalidateQueries({ queryKey: FOOTBALL_KEYS.teams() })}
-        />
-      )}
+      <FootballAddModal open={addOpen} onClose={() => setAddOpen(false)} />
     </section>
   );
 }
@@ -118,24 +106,28 @@ export default function FollowingStrip() {
 
 function CompetitionCard({ comp }: { comp: FollowedCompetition }) {
   const logo = comp.logo_url || comp.emblem_url;
-  const brand = comp.brand_color;
+  const c = comp.brand_color;
   return (
     <div
-      className={`${CARD_BASE} surface-card`}
-      style={
-        brand
-          ? { boxShadow: `inset 0 -22px 30px -22px ${brand}, 0 6px 22px -16px ${brand}` }
-          : undefined
-      }
+      className={`${CARD_BASE} surface-card overflow-hidden${c ? " comp-glow-border" : ""}`}
+      style={c ? ({ "--glow": c } as CSSProperties) : undefined}
     >
+      {/* Fill: a soft downward wash rising from the bottom — low opacity + long fade so it's smooth,
+          not a hard band. No colour climbs the sides. */}
+      {c && (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2"
+          style={{ background: `linear-gradient(to top, ${c}40, transparent 92%)` }}
+        />
+      )}
       <div className="relative h-9 w-9 shrink-0">
         {logo ? (
           <Image src={logo} alt={comp.name ?? "Competition"} fill sizes="36px" className="object-contain" />
         ) : (
-          <div className="h-full w-full rounded-full" style={{ background: brand ?? "var(--color-surface-2)" }} />
+          <div className="h-full w-full rounded-full" style={{ background: c ?? "var(--color-surface-2)" }} />
         )}
       </div>
-      <span className="line-clamp-2 max-w-full text-center text-xs font-semibold leading-tight text-text-secondary">
+      <span className="relative line-clamp-2 max-w-full text-center text-xs font-semibold leading-tight text-text-primary">
         {comp.name}
       </span>
     </div>

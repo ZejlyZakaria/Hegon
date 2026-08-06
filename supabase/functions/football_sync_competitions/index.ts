@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
-const ALLOWED_CODES = ["PD", "CL", "PL"]
+// The 13 competitions our football-data key can access (big-5 leagues + CL, plus Eredivisie,
+// Primeira, Championship, Brazil Série A, Copa Libertadores, and the two national-team tournaments
+// World Cup + Euro). Registering them all is what makes every team searchable + crested.
+const ALLOWED_CODES = ["PD", "CL", "PL", "BL1", "SA", "FL1", "DED", "PPL", "ELC", "BSA", "CLI", "WC", "EC"]
 
 serve(async () => {
   try {

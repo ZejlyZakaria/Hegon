@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from "@/infrastructure/supabase/client";
+import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type { FootballTeams, FootballTeam, FootballMatchRow, FootballFanLogEntry, FanLogInput, FootballPrediction } from "./types";
 
 // =====================================================
@@ -45,6 +46,42 @@ export async function getFootballTeams(userId: string): Promise<FootballTeams> {
   for (const t of otherFavoriteTeams) allTeams[t.id] = t;
 
   return { mainTeam, mainTeamId, otherFavoriteTeams, allFavoriteTeamIds, allTeams };
+}
+
+// ─── Add-modal reads/writes (Teams tab: search + follow) ─────────────────────────────────────────
+
+export interface FootballTeamSearchResult {
+  id: string;
+  name: string;
+  crest_url: string | null;
+  api_external_id: string;
+  country: string | null;
+  tla: string | null;
+}
+
+// Search the local reference table (football_teams, ~287 rows, all crested) — no API call.
+export async function searchTeams(query: string): Promise<FootballTeamSearchResult[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_teams")
+    .select("id, name, crest_url, api_external_id, country, tla")
+    .ilike("name", `%${q}%`)
+    .order("name")
+    .limit(12);
+  if (error) throw error;
+  return (data ?? []) as FootballTeamSearchResult[];
+}
+
+// Follow a team (1st axis). The full-season calendar fill happens in the hook (sync-team route).
+export async function followTeam(userId: string, teamId: string): Promise<void> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { error } = await supabase
+    .schema("sport").from("user_favorites")
+    .insert({ user_id: userId, entity_type: "football_team", entity_id: teamId, org_id: orgId });
+  if (error) throw error;
 }
 
 // ── Fiche match — read via the cache-aside route (server holds the football-data key) ──
@@ -277,6 +314,17 @@ export async function getFollowedCompetitions(userId: string): Promise<FollowedC
   if (error) throw error;
   const rows = (data ?? []) as unknown as { football_competitions: FollowedCompetition | null }[];
   return rows.map((r) => r.football_competitions).filter((c): c is FollowedCompetition => !!c);
+}
+
+// All registered competitions (the 13) — the Competitions tab of the add modal lists these.
+export async function getAllCompetitions(): Promise<FollowedCompetition[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_competitions")
+    .select("id, name, code, api_external_id, brand_color, logo_url, emblem_url")
+    .order("name");
+  if (error) throw error;
+  return (data ?? []) as FollowedCompetition[];
 }
 
 export async function followCompetition(userId: string, competitionId: string): Promise<void> {

@@ -450,6 +450,22 @@
     inset 0 0 0 1px rgba(255, 255, 255, 0.05);   /* hairline edge */
 }
 
+/* Competition card — a brand-coloured gradient BORDER (no shadow, no wash): colour is strongest at the
+   bottom-centre and fades to nothing by the mid-height of the left/right sides. Colour = --glow, set
+   inline per competition. Standard `mask` ONLY — Lightning CSS adds the -webkit- prefix; writing it by
+   hand would drop the standard property (see reference_lightning_css_webkit_prefix). */
+.comp-glow-border::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: radial-gradient(90% 78% at 50% 100%, var(--glow), transparent 68%);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    GLASS — and THE ONE RULE THAT SAYS WHERE IT MAY GO
    ════════════════════════════════════════════════════════════════════════

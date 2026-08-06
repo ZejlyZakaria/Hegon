@@ -68,6 +68,10 @@ serve(async () => {
               crest_url: team.crest ?? null,
               founded: team.founded ?? null,
               venue: team.venue ?? null,
+              // Rich club meta (free in the same call) → feeds the club fiche in the Team Panel v2.
+              country: team.area?.name ?? null,
+              club_colors: team.clubColors ?? null,
+              website: team.website ?? null,
             }),
           }
         )
@@ -105,8 +109,8 @@ serve(async () => {
         }
       }
 
-      // 1s entre compétitions pour éviter le rate limit API football-data
-      await new Promise(r => setTimeout(r, 1000))
+      // 6.5s entre compétitions : 13 compètes désormais → rester sous la limite football-data (10 req/min)
+      await new Promise(r => setTimeout(r, 6500))
     }
 
     return new Response(
