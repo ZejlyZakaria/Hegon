@@ -12,4 +12,5 @@ export const FOOTBALL_KEYS = {
   upcoming: (teamExternalIds: string[]) => [...FOOTBALL_KEYS.all, 'upcoming', ...teamExternalIds] as const,
   recent: (teamExternalIds: string[]) => [...FOOTBALL_KEYS.all, 'recent', ...teamExternalIds] as const,
   followedCompetitions: () => [...FOOTBALL_KEYS.all, 'followed-competitions'] as const,
+  scorers: (code: string) => [...FOOTBALL_KEYS.all, 'scorers', code] as const,
 } as const;

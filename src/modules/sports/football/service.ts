@@ -295,6 +295,26 @@ export async function unfollowCompetition(userId: string, competitionId: string)
   if (error) throw error;
 }
 
+// ─── Top scorers (Golden Boot) — read through the server route (key stays server-side) ──────────
+
+export interface Scorer {
+  rank: number;
+  player_name: string;
+  team_name: string;
+  team_crest: string | null;
+  goals: number;
+  assists: number | null;
+  penalties: number | null;
+  played_matches: number | null;
+}
+
+export async function getScorers(code: string): Promise<Scorer[]> {
+  const res = await fetch(`/api/football/scorers/${code}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data?.scorers ?? []) as Scorer[];
+}
+
 // ─── Master page data ─────────────────────────────────────────────────────────
 
 // userId is passed in from the caller (useCurrentUserId — synchronous, reads localStorage, 0 network).
