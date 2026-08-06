@@ -295,6 +295,58 @@ export async function unfollowCompetition(userId: string, competitionId: string)
   if (error) throw error;
 }
 
+// Unfollow a team (the 1st axis — user_favorites). Mirror of the inline delete the old hero did.
+export async function unfollowTeam(userId: string, teamId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("sport").from("user_favorites")
+    .delete()
+    .eq("user_id", userId)
+    .eq("entity_type", "football_team")
+    .eq("entity_id", teamId);
+  if (error) throw error;
+}
+
+// ─── Team panel: YOUR record for one team (derived from your Fan Log) ─────────────────────────────
+
+export interface TeamPersonalStats {
+  watchedCount: number;   // matches of this team you logged as watched
+  stadiumCount: number;   // of those, seen at the stadium
+  avgRating: number | null;
+}
+
+// Read your watched-match logs (small — your own data) with the match's team ids embedded, then keep
+// the ones that involve this team. Filtering in JS keeps the query trivial and reliable.
+export async function getTeamPersonalStats(userId: string, teamExternalId: string): Promise<TeamPersonalStats> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_watched_matches")
+    .select("watched_where, rating, football_matches!inner ( home_team_external_id, away_team_external_id )")
+    .eq("user_id", userId)
+    .eq("watched", true);
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as {
+    watched_where: string | null;
+    rating: number | null;
+    football_matches: { home_team_external_id: string; away_team_external_id: string } | null;
+  }[];
+
+  const mine = rows.filter(
+    (r) =>
+      r.football_matches &&
+      (r.football_matches.home_team_external_id === teamExternalId ||
+        r.football_matches.away_team_external_id === teamExternalId),
+  );
+  const ratings = mine.map((r) => r.rating).filter((n): n is number => n != null);
+
+  return {
+    watchedCount: mine.length,
+    stadiumCount: mine.filter((r) => r.watched_where === "stadium").length,
+    avgRating: ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null,
+  };
+}
+
 // ─── Competition page reads (standings + a competition's own matches) — independent queries ──────
 
 export interface StandingRow {

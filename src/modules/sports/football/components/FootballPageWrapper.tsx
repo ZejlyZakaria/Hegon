@@ -1,14 +1,14 @@
 "use client";
 
 import { useFootballData } from "@/modules/sports/football/hooks/useFootball";
-import FootballHeroSection from "./hero/FootballHeroSection";
+import FollowingStrip from "./following/FollowingStrip";
 import FootballUpcomingMatchesSection from "./matches/FootballUpcomingMatchesSection";
 import FootballRecentResultsSection from "./matches/FootballRecentResultsSection";
 import FootballStandingsSection from "./standings/FootballStandingsSection";
 import FootballBestXI from "./squad/FootballBestXI";
 import { FootballMatchPanel } from "./match/FootballMatchPanel";
+import { FootballTeamPanel } from "./team/FootballTeamPanel";
 import {
-  FootballHeroSkeleton,
   FootballRecentResultsSkeleton,
   FootballUpcomingSkeleton,
   FootballStandingsSkeleton,
@@ -18,54 +18,53 @@ import {
 export default function FootballPageWrapper() {
   const { data, isLoading } = useFootballData();
 
-  if (isLoading || !data) {
-    return (
-      <div className="p-6 space-y-4">
-        <FootballHeroSkeleton />
-        <FootballUpcomingSkeleton />
-        <FootballRecentResultsSkeleton />
-        <FootballStandingsSkeleton />
-        <FootballBestXISkeleton />
-      </div>
-    );
-  }
-
   return (
-    <div className=" p-6 space-y-4">
-      <FootballHeroSection
-        teamHeroes={data.teamHeroes}
-        userId={data.userId}
-        favoriteTeamIds={data.favoriteTeamIds}
-      />
+    <div className="p-6 space-y-4">
+      {/* Following strip — loads on its own hooks, independent of the page monolith. */}
+      <FollowingStrip />
 
-      {data.upcomingMatches.length > 0 && (
-        <FootballUpcomingMatchesSection
-          matches={data.upcomingMatches}
-          followedTeams={data.followedTeams}
-        />
+      {/* Team Panel — rendered once; a Following card opens it via the store (portal to <body>). */}
+      <FootballTeamPanel />
+
+      {isLoading || !data ? (
+        <>
+          <FootballUpcomingSkeleton />
+          <FootballRecentResultsSkeleton />
+          <FootballStandingsSkeleton />
+          <FootballBestXISkeleton />
+        </>
+      ) : (
+        <>
+          {data.upcomingMatches.length > 0 && (
+            <FootballUpcomingMatchesSection
+              matches={data.upcomingMatches}
+              followedTeams={data.followedTeams}
+            />
+          )}
+
+          {data.recentMatches.length > 0 && (
+            <FootballRecentResultsSection
+              matches={data.recentMatches}
+              followedTeams={data.followedTeamResults}
+            />
+          )}
+
+          {data.standings.length > 0 && (
+            <FootballStandingsSection
+              standings={data.standings}
+              favoriteTeamIds={data.favoriteTeamIds}
+            />
+          )}
+
+          <FootballBestXI
+            userId={data.userId}
+            bestXI={data.bestXI}
+          />
+
+          {/* Rendered once — any match card opens it via the store (portal to <body>). */}
+          <FootballMatchPanel />
+        </>
       )}
-
-      {data.recentMatches.length > 0 && (
-        <FootballRecentResultsSection
-          matches={data.recentMatches}
-          followedTeams={data.followedTeamResults}
-        />
-      )}
-
-      {data.standings.length > 0 && (
-        <FootballStandingsSection
-          standings={data.standings}
-          favoriteTeamIds={data.favoriteTeamIds}
-        />
-      )}
-
-      <FootballBestXI
-        userId={data.userId}
-        bestXI={data.bestXI}
-      />
-
-      {/* Rendered once — any match card opens it via the store (portal to <body>). */}
-      <FootballMatchPanel />
     </div>
   );
 }

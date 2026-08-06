@@ -42,7 +42,7 @@ export const NAV_GROUPS: NavItem[][] = [
     { key: "books",   label: "Books",   href: "/life/books",   icon: <Library size={18} />,   accent: "#0ea5e9" },
   ],
   [
-    { key: "sport",    label: "Sport",    href: "/perso/sports/football", activePrefix: "/perso/sports",   icon: <Trophy size={18} />,   accent: "#10b981" },
+    { key: "sport",    label: "Sport",    href: "/perso/sports/football", activePrefix: "/perso/sports",   icon: <Trophy size={18} />,   accent: "#B6FF2E" },
     { key: "watching", label: "Watching", href: "/perso/watching/movies", activePrefix: "/perso/watching", icon: <Tv size={18} />,       accent: "var(--color-accent-watching-vivid)" },
     { key: "travel",   label: "Travel",   href: "/perso/travel",          icon: <Plane size={18} />,      accent: "#0ea5e9", comingSoon: true },
   ],
@@ -60,7 +60,7 @@ const SECTION_COLORS: Record<string, { from: string; glow: string }> = {
   "/life/habits":    { from: "rgba(139,92,246,0.08)",   glow: "#8b5cf6" },
   "/life/journal":   { from: "rgba(249,115,22,0.08)",   glow: "#f97316" },
   "/life/books":     { from: "rgba(14,165,233,0.08)",   glow: "#0ea5e9" },
-  "/perso/sports":   { from: "rgba(16,185,129,0.08)",   glow: "#10b981" },
+  "/perso/sports":   { from: "rgba(182,255,46,0.08)",   glow: "#B6FF2E" },
   "/perso/watching": { from: "rgba(45,212,191,0.06)",   glow: "#2dd4bf" },
   "/perso/travel":   { from: "rgba(14,165,233,0.08)",   glow: "#0ea5e9" },
   "/pro/tasks":      { from: "rgba(113,113,122,0.12)",  glow: "#71717a" },

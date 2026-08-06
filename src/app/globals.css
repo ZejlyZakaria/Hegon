@@ -52,6 +52,7 @@
   --color-accent-watching: var(--color-accent-watching);
   --color-accent-watching-vivid: var(--color-accent-watching-vivid);
   --color-accent-sports: var(--color-accent-sports);
+  --color-accent-sports-deep: var(--color-accent-sports-deep);
   --color-accent-books: var(--color-accent-books);
   --color-accent-books-vivid: var(--color-accent-books-vivid);
 
@@ -213,7 +214,8 @@
   --color-accent-tasks: #71717a;
   --color-accent-watching: #0C3D4A;        /* fond solide — My Record, boutons | bordeaux cinéma : #6D0F1E */
   --color-accent-watching-vivid: #2dd4bf; /* dock icône, tab underline, indicators */
-  --color-accent-sports: #10b981;
+  --color-accent-sports: #B6FF2E;       /* LIME SPARK — vivid accent (tabs, live dot, key numbers, active states). Dose comme une étincelle, JAMAIS en grand aplat (ratio ~90% neutre / ~10% lime). */
+  --color-accent-sports-deep: #23262F;  /* GRAPHITE — solid branded surface (main-team elevation, etc.) */
   --color-accent-books: #082f49;        /* deep blue — solid surfaces */
   --color-accent-books-vivid: #0ea5e9;  /* sky blue — accents, tabs, progress, rating (owner preference) */
 
