@@ -505,6 +505,25 @@ export async function getCompetitionMatches(competitionId: string): Promise<Foot
   return rows.map((r) => toMatchLite(r, crests));
 }
 
+// ─── Past winners (roll of honour) — Wikidata-sourced, cached in football_competition_winners ──────
+export interface CompetitionWinner {
+  season_year: number | null;
+  season_label: string | null;
+  winner_name: string;
+  winner_wikidata_id: string | null;
+}
+
+export async function getCompetitionWinners(competitionId: string): Promise<CompetitionWinner[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_competition_winners")
+    .select("season_year, season_label, winner_name, winner_wikidata_id")
+    .eq("competition_id", competitionId)
+    .order("season_year", { ascending: false, nullsFirst: false });
+  if (error) throw error;
+  return (data ?? []) as CompetitionWinner[];
+}
+
 // ─── Top scorers (Golden Boot) — read through the server route (key stays server-side) ──────────
 
 export interface Scorer {

@@ -7,22 +7,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { useCompetition, useCompetitionMatches } from "../../hooks/useFootballCompetition";
+import { useCompetition, useCompetitionMatches, useCompetitionWinners } from "../../hooks/useFootballCompetition";
 import { useScorers } from "../../hooks/useScorers";
 import { useMatchPanel } from "../../hooks/useMatchPanelStore";
 import { FootballMatchPanel } from "../match/FootballMatchPanel";
 import { displayCompetitionName, computeStandings } from "../../service";
-import type { FootballMatchLite, Scorer } from "../../service";
+import type { FootballMatchLite, Scorer, CompetitionWinner } from "../../service";
 import StandingsTable from "../standings/StandingsTable";
 
 const CREST_FALLBACK = "/placeholder-logo.svg";
-type Tab = "summary" | "standings" | "fixtures" | "scorers";
+type Tab = "summary" | "standings" | "fixtures" | "scorers" | "honours";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "summary", label: "Summary" },
   { key: "standings", label: "Standings" },
   { key: "fixtures", label: "Fixtures" },
   { key: "scorers", label: "Top Scorers" },
+  { key: "honours", label: "Honours" },
 ];
 
 interface SeasonInfo {
@@ -40,6 +41,7 @@ export default function FootballCompetitionPage({ id }: { id: string }) {
   const code = comp?.code ?? null;
   const { data: matches } = useCompetitionMatches(id);
   const { data: scorers } = useScorers(code);
+  const { data: winners } = useCompetitionWinners(id);
 
   const [tab, setTab] = useState<Tab>("summary");
   const openMatch = useMatchPanel((s) => s.open);
@@ -110,6 +112,7 @@ export default function FootballCompetitionPage({ id }: { id: string }) {
       {tab === "standings" && <StandingsTable rows={standings} />}
       {tab === "fixtures" && <FixturesTab matches={matches ?? []} onOpen={openMatch} />}
       {tab === "scorers" && <ScorersTab scorers={scorers ?? []} />}
+      {tab === "honours" && <HonoursTab winners={winners ?? []} />}
 
       <FootballMatchPanel />
     </div>
@@ -215,6 +218,51 @@ function ScorersTab({ scorers }: { scorers: Scorer[] }) {
           <span className="shrink-0 text-sm font-bold tabular-nums text-accent-sports">{s.goals}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Honours (roll of honour, Wikidata-sourced) ──────────────────────────────────
+
+function HonoursTab({ winners }: { winners: CompetitionWinner[] }) {
+  const mostTitles = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const w of winners) map.set(w.winner_name, (map.get(w.winner_name) ?? 0) + 1);
+    return [...map.entries()].map(([name, titles]) => ({ name, titles })).sort((a, b) => b.titles - a.titles);
+  }, [winners]);
+
+  if (!winners.length) return <Empty>No honours yet</Empty>;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Most titles */}
+      <div>
+        <p className="text-caption mb-2 text-text-tertiary">Most titles</p>
+        <div className="flex flex-col gap-0.5">
+          {mostTitles.slice(0, 10).map((t, i) => (
+            <div key={t.name} className="flex items-center gap-3 rounded-control px-2 py-2">
+              <span className="w-5 shrink-0 text-center text-sm font-bold tabular-nums text-text-tertiary">{i + 1}</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{t.name}</span>
+              <span className="shrink-0 text-sm font-bold tabular-nums text-accent-sports">{t.titles}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Roll of honour — year by year */}
+      <div>
+        <p className="text-caption mb-2 text-text-tertiary">Roll of honour</p>
+        <div className="flex flex-col gap-0.5">
+          {winners.map((w, i) => (
+            <div key={`${w.season_label ?? w.season_year}-${i}`} className="flex items-center gap-3 rounded-control px-2 py-1.5">
+              <span className="w-14 shrink-0 text-xs tabular-nums text-text-tertiary">
+                {w.season_label ?? w.season_year ?? "—"}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{w.winner_name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
