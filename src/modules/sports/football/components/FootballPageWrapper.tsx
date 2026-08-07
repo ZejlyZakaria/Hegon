@@ -2,15 +2,13 @@
 
 import { useFootballData } from "@/modules/sports/football/hooks/useFootball";
 import FollowingStrip from "./following/FollowingStrip";
-import FootballUpcomingMatchesSection from "./matches/FootballUpcomingMatchesSection";
-import FootballRecentResultsSection from "./matches/FootballRecentResultsSection";
+import FootballUpcomingSection from "./matches/FootballUpcomingSection";
+import FootballRecentSection from "./matches/FootballRecentSection";
 import FootballStandingsSection from "./standings/FootballStandingsSection";
 import FootballBestXI from "./squad/FootballBestXI";
 import { FootballMatchPanel } from "./match/FootballMatchPanel";
 import { FootballTeamPanel } from "./team/FootballTeamPanel";
 import {
-  FootballRecentResultsSkeleton,
-  FootballUpcomingSkeleton,
   FootballStandingsSkeleton,
   FootballBestXISkeleton,
 } from "@/modules/sports/components/SportSkeletons";
@@ -26,29 +24,17 @@ export default function FootballPageWrapper() {
       {/* Team Panel — rendered once; a Following card opens it via the store (portal to <body>). */}
       <FootballTeamPanel />
 
+      {/* Upcoming + Recent — independent sections (own hooks, DB), each with its own select filter. */}
+      <FootballUpcomingSection />
+      <FootballRecentSection />
+
       {isLoading || !data ? (
         <>
-          <FootballUpcomingSkeleton />
-          <FootballRecentResultsSkeleton />
           <FootballStandingsSkeleton />
           <FootballBestXISkeleton />
         </>
       ) : (
         <>
-          {data.upcomingMatches.length > 0 && (
-            <FootballUpcomingMatchesSection
-              matches={data.upcomingMatches}
-              followedTeams={data.followedTeams}
-            />
-          )}
-
-          {data.recentMatches.length > 0 && (
-            <FootballRecentResultsSection
-              matches={data.recentMatches}
-              followedTeams={data.followedTeamResults}
-            />
-          )}
-
           {data.standings.length > 0 && (
             <FootballStandingsSection
               standings={data.standings}

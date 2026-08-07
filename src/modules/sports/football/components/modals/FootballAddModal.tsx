@@ -26,6 +26,7 @@ import {
   useFollowCompetition,
   useUnfollowCompetition,
 } from "../../hooks/useFollowedCompetitions";
+import { displayCompetitionName } from "../../service";
 import type { FootballTeamSearchResult, FollowedCompetition } from "../../service";
 
 const ACCENT = "var(--color-accent-sports)";
@@ -204,7 +205,7 @@ export default function FootballAddModal({ open, onClose }: { open: boolean; onC
                         <div className="h-full w-full rounded-full" style={{ background: comp.brand_color ?? "var(--color-surface-3)" }} />
                       )}
                     </div>
-                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">{comp.name}</p>
+                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">{displayCompetitionName(comp.name)}</p>
                     {isToggling ? (
                       <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-tertiary" />
                     ) : isFollowed ? (

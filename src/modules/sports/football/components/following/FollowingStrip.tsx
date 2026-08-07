@@ -10,12 +10,13 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Plus, Star } from "lucide-react";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useFootballTeams } from "../../hooks/useFootballTeams";
 import { useFollowedCompetitions } from "../../hooks/useFollowedCompetitions";
-import { useTeamPanel } from "../../hooks/useTeamPanelStore";
 import type { FootballTeam } from "../../types";
+import { displayCompetitionName } from "../../service";
 import type { FollowedCompetition } from "../../service";
 import FootballAddModal from "../modals/FootballAddModal";
 
@@ -24,7 +25,6 @@ const CARD_BASE = "relative flex w-28 min-h-26 shrink-0 flex-col items-center ga
 
 export default function FollowingStrip() {
   const userId = useCurrentUserId();
-  const openTeam = useTeamPanel((s) => s.open);
 
   const { data: teams, isLoading: teamsLoading } = useFootballTeams(userId);
   const { data: competitions } = useFollowedCompetitions(userId);
@@ -50,47 +50,51 @@ export default function FollowingStrip() {
         <h3 className="text-title text-text-primary">Following</h3>
       </div>
 
-      {/* py-2 -my-2: room for the hover lift + shadow/glow (overflow-x makes overflow-y clip). */}
-      <div className="flex items-stretch gap-2.5 overflow-x-auto py-2 -my-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {/* Teams — click opens the Team Panel */}
-        {orderedTeams.map(({ team, isMain }) => (
-          <button
-            key={team.id}
-            onClick={() => openTeam({ ...team, isMain })}
-            className={`${CARD_BASE} ${isMain ? "bg-accent-sports-deep" : "surface-card"} hover:-translate-y-0.5`}
-          >
-            {isMain && (
-              <Star size={13} className="absolute right-2 top-2 fill-accent-sports text-accent-sports" />
-            )}
-            <div className="relative h-11 w-11 shrink-0">
-              <Image
-                src={team.crest_url || CREST_FALLBACK}
-                alt={team.name}
-                fill
-                sizes="44px"
-                className="object-contain drop-shadow"
-              />
-            </div>
-            <span className="line-clamp-2 max-w-full text-center text-xs font-semibold leading-tight text-text-primary">
-              {team.name}
-            </span>
-          </button>
-        ))}
+      {/* Cards scroll under a Follow button that's pinned right once the rail overflows. */}
+      <div className="flex items-stretch gap-2.5">
+        {/* Scroll area — sizes to content, shrinks + scrolls (scrollbar hidden) once it hits the edge.
+            py-2 -my-2: room for the hover lift + shadow (overflow-x makes overflow-y clip). */}
+        <div className="scrollbar-hide flex min-w-0 items-stretch gap-2.5 overflow-x-auto py-2 -my-2">
+          {/* Teams — click opens the Team page */}
+          {orderedTeams.map(({ team, isMain }) => (
+            <Link
+              key={team.id}
+              href={`/perso/sports/football/team/${team.api_external_id}`}
+              className={`${CARD_BASE} ${isMain ? "bg-accent-sports-deep" : "surface-card"} hover:-translate-y-0.5`}
+            >
+              {isMain && (
+                <Star size={13} className="absolute right-2 top-2 fill-accent-sports text-accent-sports" />
+              )}
+              <div className="relative h-11 w-11 shrink-0">
+                <Image
+                  src={team.crest_url || CREST_FALLBACK}
+                  alt={team.name}
+                  fill
+                  sizes="44px"
+                  className="object-contain drop-shadow"
+                />
+              </div>
+              <span className="line-clamp-2 max-w-full text-center text-xs font-semibold leading-tight text-text-primary">
+                {team.name}
+              </span>
+            </Link>
+          ))}
 
-        {/* Divider between the two follow axes */}
-        {orderedTeams.length > 0 && followedCompetitions.length > 0 && (
-          <div className="mx-1 my-2 w-px shrink-0 self-stretch bg-white/8" />
-        )}
+          {/* Divider between the two follow axes */}
+          {orderedTeams.length > 0 && followedCompetitions.length > 0 && (
+            <div className="mx-1 my-2 w-px shrink-0 self-stretch bg-white/8" />
+          )}
 
-        {/* Competitions — brand glow carries their identity. (Click → Competition panel: later pass.) */}
-        {followedCompetitions.map((comp) => (
-          <CompetitionCard key={comp.id} comp={comp} />
-        ))}
+          {/* Competitions — brand glow carries their identity. (Click → Competition panel: later pass.) */}
+          {followedCompetitions.map((comp) => (
+            <CompetitionCard key={comp.id} comp={comp} />
+          ))}
+        </div>
 
-        {/* Follow — add a team (competition-add comes with the modal redesign) */}
+        {/* Follow — pinned to the right; stays put while the cards scroll under it. */}
         <button
           onClick={() => setAddOpen(true)}
-          className={`${CARD_BASE} justify-center border border-dashed border-border-strong text-text-tertiary transition-colors hover:border-border-focus hover:text-text-secondary`}
+          className={`${CARD_BASE} shrink-0 justify-center border border-dashed border-border-strong text-text-tertiary transition-colors hover:border-border-focus hover:text-text-secondary`}
         >
           <Plus size={18} />
           <span className="text-xs font-semibold">Follow</span>
@@ -108,8 +112,9 @@ function CompetitionCard({ comp }: { comp: FollowedCompetition }) {
   const logo = comp.logo_url || comp.emblem_url;
   const c = comp.brand_color;
   return (
-    <div
-      className={`${CARD_BASE} surface-card overflow-hidden${c ? " comp-glow-border" : ""}`}
+    <Link
+      href={`/perso/sports/football/competition/${comp.id}`}
+      className={`${CARD_BASE} surface-card overflow-hidden${c ? " comp-glow-border" : ""} hover:-translate-y-0.5`}
       style={c ? ({ "--glow": c } as CSSProperties) : undefined}
     >
       {/* Fill: a soft downward wash rising from the bottom — low opacity + long fade so it's smooth,
@@ -128,9 +133,9 @@ function CompetitionCard({ comp }: { comp: FollowedCompetition }) {
         )}
       </div>
       <span className="relative line-clamp-2 max-w-full text-center text-xs font-semibold leading-tight text-text-primary">
-        {comp.name}
+        {displayCompetitionName(comp.name)}
       </span>
-    </div>
+    </Link>
   );
 }
 

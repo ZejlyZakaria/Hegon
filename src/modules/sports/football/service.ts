@@ -84,8 +84,17 @@ export async function followTeam(userId: string, teamId: string): Promise<void> 
   if (error) throw error;
 }
 
-// ── Fiche match — read via the cache-aside route (server holds the football-data key) ──
+// ── Fiche match — DB-FIRST: football_matches already holds it → instant, no football-data round-trip.
+// The cache-aside route is only a fallback for a match we somehow haven't stored yet. ──
 export async function getFootballMatch(externalId: number): Promise<FootballMatchRow> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .schema("sport").from("football_matches")
+    .select("*")
+    .eq("external_match_id", externalId)
+    .maybeSingle();
+  if (data) return data as FootballMatchRow;
+
   const res = await fetch(`/api/football/match/${externalId}`);
   if (!res.ok) throw new Error(`Match fetch failed: ${res.status}`);
   const { match } = await res.json();
@@ -210,6 +219,8 @@ export interface FootballMatchLite {
   competition_name: string | null;
   brand_color: string | null;
   logo_url: string | null;
+  emblem_url: string | null;   // colour emblem (football-data) — for cards on a light chip
+  season: number | null;       // season start year (2026 = 2026/2027)
 }
 
 type MatchRow = {
@@ -218,17 +229,18 @@ type MatchRow = {
   status: string | null;
   matchday: number | null;
   venue: string | null;
+  season: number | null;
   home_team_external_id: string;
   away_team_external_id: string;
   home_team_name: string;
   away_team_name: string;
   home_score: number | null;
   away_score: number | null;
-  football_competitions: { name: string | null; brand_color: string | null; logo_url: string | null } | null;
+  football_competitions: { name: string | null; brand_color: string | null; logo_url: string | null; emblem_url: string | null } | null;
 };
 
 const MATCH_SELECT =
-  "external_match_id, utc_date, status, matchday, venue, home_team_external_id, away_team_external_id, home_team_name, away_team_name, home_score, away_score, football_competitions ( name, brand_color, logo_url )";
+  "external_match_id, utc_date, status, matchday, venue, season, home_team_external_id, away_team_external_id, home_team_name, away_team_name, home_score, away_score, football_competitions ( name, brand_color, logo_url, emblem_url )";
 
 function toMatchLite(r: MatchRow, crests: Record<string, string | null>): FootballMatchLite {
   const c = r.football_competitions;
@@ -249,6 +261,8 @@ function toMatchLite(r: MatchRow, crests: Record<string, string | null>): Footba
     competition_name: c?.name ?? null,
     brand_color: c?.brand_color ?? null,
     logo_url: c?.logo_url ?? null,
+    emblem_url: c?.emblem_url ?? null,
+    season: r.season,
   };
 }
 
@@ -445,9 +459,13 @@ export async function getCompetitionMatches(competitionId: string): Promise<Foot
     .select(MATCH_SELECT)
     .eq("competition_id", competitionId)
     .order("utc_date", { ascending: true })
-    .limit(400);
+    .limit(1000);
   if (error) throw error;
-  const rows = (data ?? []) as unknown as MatchRow[];
+  const all = (data ?? []) as unknown as MatchRow[];
+  // football_matches keeps SEVERAL seasons for the same competition (last season's finished games +
+  // this season's fixtures). Keep only the latest season — else old results pollute the page & table.
+  const maxSeason = all.reduce((mx, r) => Math.max(mx, r.season ?? 0), 0);
+  const rows = maxSeason ? all.filter((r) => (r.season ?? 0) === maxSeason) : all;
   const crests = await crestsForRows(rows);
   return rows.map((r) => toMatchLite(r, crests));
 }
@@ -470,6 +488,121 @@ export async function getScorers(code: string): Promise<Scorer[]> {
   if (!res.ok) return [];
   const data = await res.json();
   return (data?.scorers ?? []) as Scorer[];
+}
+
+// ─── Competition PAGE — the record + its season/progress + live standings ────────────────────────
+
+export interface FootballCompetition {
+  id: string;
+  name: string | null;
+  code: string | null;
+  api_external_id: string | null;
+  country: string | null;
+  emblem_url: string | null;
+  logo_url: string | null;
+  brand_color: string | null;
+}
+
+// football-data names some competitions by their local name — override for display.
+const COMPETITION_NAME_OVERRIDES: Record<string, string> = {
+  "Primera Division": "La Liga",
+};
+export function displayCompetitionName(name: string | null | undefined): string {
+  if (!name) return "";
+  return COMPETITION_NAME_OVERRIDES[name] ?? name;
+}
+
+export async function getCompetitionById(id: string): Promise<FootballCompetition | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_competitions")
+    .select("id, name, code, api_external_id, country, emblem_url, logo_url, brand_color")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as FootballCompetition | null) ?? null;
+}
+
+export interface CompetitionSeason {
+  start: string | null;
+  end: string | null;
+  label: string;           // "2026/2027"
+  currentMatchday: number;
+  totalMatchdays: number;
+  progress: number;        // 0..1
+  started: boolean;
+}
+
+// Season + progress — passthrough server route (key stays server-side).
+export async function getCompetitionSeason(code: string): Promise<CompetitionSeason | null> {
+  const res = await fetch(`/api/football/competition/${code}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return (data?.season ?? null) as CompetitionSeason | null;
+}
+
+export interface LiveStanding {
+  position: number;
+  team_name: string;
+  team_crest: string | null;
+  team_external_id: string;
+  played: number;
+  won: number;
+  draw: number;
+  lost: number;
+  goal_difference: number;
+  points: number;
+}
+
+// Live league table — passthrough server route (fresh, no DB dependency on the standings sync).
+export async function getLiveStandings(code: string): Promise<LiveStanding[]> {
+  const res = await fetch(`/api/football/standings/${code}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data?.standings ?? []) as LiveStanding[];
+}
+
+// ─── Team PAGE — the record + all its matches (deep stats are derived from these in the component) ──
+
+export interface FootballTeamFull {
+  id: string;
+  api_external_id: string;
+  name: string;
+  short_name: string | null;
+  tla: string | null;
+  crest_url: string | null;
+  country: string | null;
+  founded: number | null;
+  venue: string | null;
+  club_colors: string | null;
+  website: string | null;
+}
+
+export async function getTeamByExternalId(externalId: string): Promise<FootballTeamFull | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_teams")
+    .select("id, api_external_id, name, short_name, tla, crest_url, country, founded, venue, club_colors, website")
+    .eq("api_external_id", externalId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as FootballTeamFull | null) ?? null;
+}
+
+// All stored matches a team plays in (home OR away), any competition/season — the page groups by
+// season and derives its stats from these.
+export async function getTeamMatches(externalId: string): Promise<FootballMatchLite[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_matches")
+    .select(MATCH_SELECT)
+    .or(`home_team_external_id.eq.${externalId},away_team_external_id.eq.${externalId}`)
+    .order("utc_date", { ascending: true })
+    .limit(1000);
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as MatchRow[];
+  const crests = await crestsForRows(rows);
+  return rows.map((r) => toMatchLite(r, crests));
 }
 
 // ─── Master page data ─────────────────────────────────────────────────────────
