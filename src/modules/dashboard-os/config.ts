@@ -38,7 +38,7 @@ export const OS_APPS: Record<string, OsApp> = {
   habits: { key: "habits", label: "Habits", href: "/life/habits", icon: Repeat2, from: "#8b5cf6", to: "#2e1065" },
   journal: { key: "journal", label: "Journal", href: "/life/journal", icon: NotebookPen, from: "#f97316", to: "#431407" },
   books: { key: "books", label: "Books", href: "/life/books", icon: Library, from: "#0ea5e9", to: "#082f49" },
-  sport: { key: "sport", label: "Sport", href: "/perso/sports/football", icon: Trophy, from: "#10b981", to: "#064e3b" },
+  sport: { key: "sport", label: "Sport", href: "/perso/sports/football", icon: Trophy, from: "#B6FF2E", to: "#1a2e05" },
   watching: { key: "watching", label: "Watching", href: "/perso/watching/movies", icon: Tv, from: "#2dd4bf", to: "#0c3d4a" },
   tasks: { key: "tasks", label: "Tasks", href: "/pro/tasks", icon: CheckSquare, from: "#a1a1aa", to: "#3f3f46" },
   travel: { key: "travel", label: "Travel", href: "/perso/travel", icon: Plane, from: "#38bdf8", to: "#075985", comingSoon: true },

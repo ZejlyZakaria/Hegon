@@ -6,14 +6,15 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { MapPin, CalendarDays, Flag } from "lucide-react";
+import { MapPin, CalendarDays, Flag, Star, Check, Plus, Loader2 } from "lucide-react";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useTeam, useTeamMatches } from "../../hooks/useFootballTeamPage";
+import { useFootballTeams, useFollowTeam, useUnfollowTeam } from "../../hooks/useFootballTeams";
 import { useTeamPersonalStats } from "../../hooks/useTeamPersonalStats";
 import { useMatchPanel } from "../../hooks/useMatchPanelStore";
 import { FootballMatchPanel } from "../match/FootballMatchPanel";
 import { displayCompetitionName } from "../../service";
-import type { FootballMatchLite } from "../../service";
+import type { FootballMatchLite, FootballTeamFull } from "../../service";
 
 const CREST_FALLBACK = "/placeholder-logo.svg";
 
@@ -65,17 +66,20 @@ export default function FootballTeamPage({ externalId }: { externalId: string })
           </div>
         </div>
 
-        {seasons.length > 0 && (
-          <select
-            value={activeSeason ?? ""}
-            onChange={(e) => setSeason(Number(e.target.value))}
-            className="h-8 rounded-control border border-border-subtle bg-surface-2 px-2 text-xs font-semibold text-text-secondary outline-none"
-          >
-            {seasons.map((s) => (
-              <option key={s} value={s}>{seasonLabel(s)}</option>
-            ))}
-          </select>
-        )}
+        <div className="flex items-center gap-2">
+          {team && <FollowButton userId={userId} team={team} />}
+          {seasons.length > 0 && (
+            <select
+              value={activeSeason ?? ""}
+              onChange={(e) => setSeason(Number(e.target.value))}
+              className="h-8 rounded-control border border-border-subtle bg-surface-2 px-2 text-xs font-semibold text-text-secondary outline-none"
+            >
+              {seasons.map((s) => (
+                <option key={s} value={s}>{seasonLabel(s)}</option>
+              ))}
+            </select>
+          )}
+        </div>
       </header>
 
       {/* Your record */}
@@ -163,6 +167,54 @@ export default function FootballTeamPage({ externalId }: { externalId: string })
 }
 
 // ─── Bits ───────────────────────────────────────────────────────────────────────
+
+// Follow / Following toggle (1st axis — user_favorites). The main team is shown as a non-clickable
+// badge: unfollowing wouldn't clear football_user_settings.main_team_id, so we don't offer it here.
+function FollowButton({ userId, team }: { userId: string | null; team: FootballTeamFull }) {
+  const { data: teams } = useFootballTeams(userId);
+  const follow = useFollowTeam(userId);
+  const unfollow = useUnfollowTeam(userId);
+
+  const isMain = teams?.mainTeamId != null && team.id === teams.mainTeamId;
+  const isFollowing = (teams?.allFavoriteTeamIds ?? []).includes(team.id);
+  const pending = follow.isPending || unfollow.isPending;
+
+  if (isMain) {
+    return (
+      <span className="inline-flex h-8 items-center gap-1.5 rounded-control bg-accent-sports/15 px-3 text-xs font-semibold text-accent-sports">
+        <Star size={13} className="fill-accent-sports" />
+        Main team
+      </span>
+    );
+  }
+
+  const onClick = () => {
+    if (pending || !userId) return;
+    if (isFollowing) unfollow.mutate(team.id);
+    else follow.mutate({ teamId: team.id, apiExternalId: team.api_external_id });
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={pending || !userId}
+      className={`group inline-flex h-8 items-center gap-1.5 rounded-control px-3 text-xs font-semibold transition-colors disabled:opacity-60 ${
+        isFollowing
+          ? "bg-surface-2 text-text-secondary hover:bg-red-500/15 hover:text-red-400"
+          : "bg-accent-sports text-black hover:bg-accent-sports/90"
+      }`}
+    >
+      {pending ? (
+        <Loader2 size={13} className="animate-spin" />
+      ) : isFollowing ? (
+        <Check size={13} className="group-hover:hidden" />
+      ) : (
+        <Plus size={13} />
+      )}
+      <span>{isFollowing ? <><span className="group-hover:hidden">Following</span><span className="hidden group-hover:inline">Unfollow</span></> : "Follow"}</span>
+    </button>
+  );
+}
 
 function Stat({ value, label, accent }: { value: number | string; label: string; accent?: boolean }) {
   return (
