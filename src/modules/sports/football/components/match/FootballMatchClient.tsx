@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Tv, MapPin, Radio, Trash2, Star, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
+import { useMatchPanel } from "../../hooks/useMatchPanelStore";
 import { useFootballMatch } from "../../hooks/useFootballMatch";
 import {
   useFootballFanLog,
@@ -31,9 +33,9 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
-function Side({ name, crest, big }: { name: string; crest: string | null; big: boolean }) {
-  return (
-    <div className="flex flex-1 flex-col items-center gap-2 text-center">
+function Side({ name, crest, big, href, onNavigate }: { name: string; crest: string | null; big: boolean; href?: string; onNavigate?: () => void }) {
+  const inner = (
+    <>
       <div className="relative h-14 w-14 sm:h-20 sm:w-20">
         {crest ? (
           <Image src={crest} alt={name} fill sizes="80px" className="object-contain" unoptimized />
@@ -42,7 +44,13 @@ function Side({ name, crest, big }: { name: string; crest: string | null; big: b
         )}
       </div>
       <p className={cn("text-xs sm:text-sm", big ? "font-semibold text-text-primary" : "text-text-secondary")}>{name}</p>
-    </div>
+    </>
+  );
+  const cls = "flex flex-1 flex-col items-center gap-2 text-center";
+  return href ? (
+    <Link href={href} onClick={onNavigate} className={cn(cls, "transition-opacity hover:opacity-80")}>{inner}</Link>
+  ) : (
+    <div className={cls}>{inner}</div>
   );
 }
 
@@ -72,6 +80,7 @@ function Stepper({ value, onChange }: { value: number; onChange: (n: number) => 
 
 export function FootballMatchClient({ externalId }: { externalId: number }) {
   const userId = useCurrentUserId();
+  const closePanel = useMatchPanel((s) => s.close);
 
   const { data: match, isLoading } = useFootballMatch(externalId);
   const { data: fanLog } = useFootballFanLog(userId ?? "", externalId);
@@ -161,7 +170,7 @@ export function FootballMatchClient({ externalId }: { externalId: number }) {
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <Side name={match.home_team_name} crest={crests[match.home_team_external_id] ?? null} big={homeWon} />
+          <Side name={match.home_team_name} crest={crests[match.home_team_external_id] ?? null} big={homeWon} href={`/perso/sports/football/team/${match.home_team_external_id}`} onNavigate={closePanel} />
 
           <div className="flex shrink-0 flex-col items-center px-2">
             {isFinished ? (
@@ -185,7 +194,7 @@ export function FootballMatchClient({ externalId }: { externalId: number }) {
             )}
           </div>
 
-          <Side name={match.away_team_name} crest={crests[match.away_team_external_id] ?? null} big={awayWon} />
+          <Side name={match.away_team_name} crest={crests[match.away_team_external_id] ?? null} big={awayWon} href={`/perso/sports/football/team/${match.away_team_external_id}`} onNavigate={closePanel} />
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-micro text-text-tertiary">

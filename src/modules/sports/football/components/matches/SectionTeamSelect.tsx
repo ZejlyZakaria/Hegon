@@ -21,10 +21,16 @@ export default function SectionTeamSelect({
   teams,
   value,
   onChange,
+  allLabel = "All teams",
+  searchPlaceholder = "Search team…",
+  includeAll = true,
 }: {
   teams: SelectTeam[];
-  value: string; // "all" | api_external_id
+  value: string; // "all" | api_external_id (or an id when includeAll is false)
   onChange: (v: string) => void;
+  allLabel?: string;
+  searchPlaceholder?: string;
+  includeAll?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -50,7 +56,7 @@ export default function SectionTeamSelect({
             <span className="max-w-32 truncate">{current.name}</span>
           </>
         ) : (
-          <span>All teams</span>
+          <span>{allLabel}</span>
         )}
         <ChevronDown size={13} className="text-text-tertiary" />
       </button>
@@ -65,7 +71,7 @@ export default function SectionTeamSelect({
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search team…"
+                placeholder={searchPlaceholder}
                 autoFocus
                 className="flex-1 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-tertiary"
               />
@@ -77,9 +83,9 @@ export default function SectionTeamSelect({
             </div>
             {/* list */}
             <div className="max-h-64 overflow-y-auto py-1">
-              {!q && (
+              {includeAll && !q && (
                 <Row active={value === "all"} onClick={() => pick("all")}>
-                  <span className="text-sm text-text-primary">All teams</span>
+                  <span className="text-sm text-text-primary">{allLabel}</span>
                 </Row>
               )}
               {filtered.map((t) => (

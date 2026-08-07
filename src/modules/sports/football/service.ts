@@ -409,6 +409,41 @@ export async function getTeamPersonalStats(userId: string, teamExternalId: strin
   };
 }
 
+// ─── Fan Log — YOUR football diary: every match you logged as watched, newest first ──────────────
+
+export interface FanLogItem extends FootballMatchLite {
+  watched_where: string | null;
+  rating: number | null;
+  note: string | null;
+}
+
+export async function getFanLog(userId: string): Promise<FanLogItem[]> {
+  if (!userId) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_watched_matches")
+    .select(`watched_where, rating, note, football_matches!inner ( ${MATCH_SELECT} )`)
+    .eq("user_id", userId)
+    .eq("watched", true)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as {
+    watched_where: string | null;
+    rating: number | null;
+    note: string | null;
+    football_matches: MatchRow;
+  }[];
+  const matchRows = rows.map((r) => r.football_matches).filter(Boolean);
+  const crests = await crestsForRows(matchRows);
+  return rows.map((r) => ({
+    ...toMatchLite(r.football_matches, crests),
+    watched_where: r.watched_where,
+    rating: r.rating,
+    note: r.note,
+  }));
+}
+
 // ─── Competition page reads (standings + a competition's own matches) — independent queries ──────
 
 export interface StandingRow {
@@ -560,6 +595,36 @@ export async function getLiveStandings(code: string): Promise<LiveStanding[]> {
   if (!res.ok) return [];
   const data = await res.json();
   return (data?.standings ?? []) as LiveStanding[];
+}
+
+// Derive a league table from a set of matches (finished ones count) — pure, used by the Competition
+// page AND the main-page Standings section. Always consistent with the matches we actually hold.
+export function computeStandings(matches: FootballMatchLite[]): LiveStanding[] {
+  type Row = { name: string; crest: string | null; p: number; w: number; d: number; l: number; gf: number; ga: number; pts: number };
+  const teams = new Map<string, Row>();
+  const ensure = (extId: string, name: string, crest: string | null) => {
+    if (!teams.has(extId)) teams.set(extId, { name, crest, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 });
+    return teams.get(extId)!;
+  };
+  for (const m of matches) {
+    const home = ensure(m.home_external_id, m.home_name, m.home_crest);
+    const away = ensure(m.away_external_id, m.away_name, m.away_crest);
+    if (m.status !== "FINISHED" || m.home_score == null || m.away_score == null) continue;
+    home.p++; away.p++;
+    home.gf += m.home_score; home.ga += m.away_score;
+    away.gf += m.away_score; away.ga += m.home_score;
+    if (m.home_score > m.away_score) { home.w++; home.pts += 3; away.l++; }
+    else if (m.home_score < m.away_score) { away.w++; away.pts += 3; home.l++; }
+    else { home.d++; away.d++; home.pts++; away.pts++; }
+  }
+  return [...teams.entries()]
+    .map(([extId, t]) => ({
+      team_external_id: extId, team_name: t.name, team_crest: t.crest,
+      played: t.p, won: t.w, draw: t.d, lost: t.l,
+      goal_difference: t.gf - t.ga, points: t.pts, position: 0,
+    }))
+    .sort((a, b) => b.points - a.points || b.goal_difference - a.goal_difference || a.team_name.localeCompare(b.team_name))
+    .map((r, i) => ({ ...r, position: i + 1 }));
 }
 
 // ─── Team PAGE — the record + all its matches (deep stats are derived from these in the component) ──

@@ -11,8 +11,9 @@ import { useCompetition, useCompetitionMatches } from "../../hooks/useFootballCo
 import { useScorers } from "../../hooks/useScorers";
 import { useMatchPanel } from "../../hooks/useMatchPanelStore";
 import { FootballMatchPanel } from "../match/FootballMatchPanel";
-import { displayCompetitionName } from "../../service";
-import type { FootballMatchLite, LiveStanding, Scorer } from "../../service";
+import { displayCompetitionName, computeStandings } from "../../service";
+import type { FootballMatchLite, Scorer } from "../../service";
+import StandingsTable from "../standings/StandingsTable";
 
 const CREST_FALLBACK = "/placeholder-logo.svg";
 type Tab = "summary" | "standings" | "fixtures" | "scorers";
@@ -106,7 +107,7 @@ export default function FootballCompetitionPage({ id }: { id: string }) {
 
       {/* Tab content */}
       {tab === "summary" && <SummaryTab matches={matches ?? []} onOpen={openMatch} />}
-      {tab === "standings" && <StandingsTab rows={standings} />}
+      {tab === "standings" && <StandingsTable rows={standings} />}
       {tab === "fixtures" && <FixturesTab matches={matches ?? []} onOpen={openMatch} />}
       {tab === "scorers" && <ScorersTab scorers={scorers ?? []} />}
 
@@ -191,51 +192,6 @@ function RoundSection({ label, matches, onOpen }: { label: string; matches: Foot
           <MatchRow key={m.external_match_id} m={m} onOpen={onOpen} />
         ))}
       </div>
-    </div>
-  );
-}
-
-// ─── Standings (computed from the DB matches) ───────────────────────────────────
-
-function StandingsTab({ rows }: { rows: LiveStanding[] }) {
-  if (!rows.length) return <Empty>No standings available</Empty>;
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-caption text-text-tertiary">
-            <th className="py-2 pl-2 text-left font-medium">#</th>
-            <th className="py-2 text-left font-medium">Team</th>
-            <th className="py-2 text-center font-medium">P</th>
-            <th className="hidden py-2 text-center font-medium sm:table-cell">W</th>
-            <th className="hidden py-2 text-center font-medium sm:table-cell">D</th>
-            <th className="hidden py-2 text-center font-medium sm:table-cell">L</th>
-            <th className="py-2 text-center font-medium">GD</th>
-            <th className="py-2 pr-2 text-center font-semibold text-text-secondary">Pts</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.team_external_id} className="border-t border-border-subtle">
-              <td className="py-2 pl-2 tabular-nums text-text-tertiary">{r.position}</td>
-              <td className="py-2">
-                <div className="flex items-center gap-2">
-                  <div className="relative h-5 w-5 shrink-0">
-                    <Image src={r.team_crest || CREST_FALLBACK} alt={r.team_name} fill sizes="20px" className="object-contain" />
-                  </div>
-                  <span className="truncate text-text-primary">{r.team_name}</span>
-                </div>
-              </td>
-              <td className="py-2 text-center tabular-nums text-text-secondary">{r.played}</td>
-              <td className="hidden py-2 text-center tabular-nums text-text-tertiary sm:table-cell">{r.won}</td>
-              <td className="hidden py-2 text-center tabular-nums text-text-tertiary sm:table-cell">{r.draw}</td>
-              <td className="hidden py-2 text-center tabular-nums text-text-tertiary sm:table-cell">{r.lost}</td>
-              <td className="py-2 text-center tabular-nums text-text-secondary">{r.goal_difference > 0 ? `+${r.goal_difference}` : r.goal_difference}</td>
-              <td className="py-2 pr-2 text-center font-bold tabular-nums text-text-primary">{r.points}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }
@@ -330,38 +286,6 @@ function computeSeason(matches: FootballMatchLite[]): SeasonInfo | null {
 
   const progress = matches.length ? finished.length / matches.length : 0;
   return { label, start, end, started, currentMatchday, totalMatchdays, progress };
-}
-
-function computeStandings(matches: FootballMatchLite[]): LiveStanding[] {
-  type Row = { name: string; crest: string | null; p: number; w: number; d: number; l: number; gf: number; ga: number; pts: number };
-  const teams = new Map<string, Row>();
-  const ensure = (extId: string, name: string, crest: string | null) => {
-    if (!teams.has(extId)) teams.set(extId, { name, crest, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 });
-    return teams.get(extId)!;
-  };
-  for (const m of matches) {
-    const home = ensure(m.home_external_id, m.home_name, m.home_crest);
-    const away = ensure(m.away_external_id, m.away_name, m.away_crest);
-    if (m.status !== "FINISHED" || m.home_score == null || m.away_score == null) continue;
-    home.p++; away.p++;
-    home.gf += m.home_score; home.ga += m.away_score;
-    away.gf += m.away_score; away.ga += m.home_score;
-    if (m.home_score > m.away_score) { home.w++; home.pts += 3; away.l++; }
-    else if (m.home_score < m.away_score) { away.w++; away.pts += 3; home.l++; }
-    else { home.d++; away.d++; home.pts++; away.pts++; }
-  }
-  return [...teams.entries()]
-    .map(([extId, t]) => ({
-      team_external_id: extId,
-      team_name: t.name,
-      team_crest: t.crest,
-      played: t.p, won: t.w, draw: t.d, lost: t.l,
-      goal_difference: t.gf - t.ga,
-      points: t.pts,
-      position: 0,
-    }))
-    .sort((a, b) => b.points - a.points || b.goal_difference - a.goal_difference || a.team_name.localeCompare(b.team_name))
-    .map((r, i) => ({ ...r, position: i + 1 }));
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
