@@ -6,29 +6,22 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { Calendar } from "lucide-react";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useFootballTeams } from "../../hooks/useFootballTeams";
 import { useRecentMatches } from "../../hooks/useFootballMatches";
 import { useMatchPanel } from "../../hooks/useMatchPanelStore";
 import { displayCompetitionName } from "../../service";
 import type { FootballMatchLite } from "../../service";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 import SectionTeamSelect, { type SelectTeam } from "./SectionTeamSelect";
 
 const CREST_FALLBACK = "/placeholder-logo.svg";
 
 type Result = "W" | "D" | "L" | "N"; // N = neutral (focus team not in this match)
 
-const RESULT_CONFIG: Record<Result, { label: string; pill: string; accent: string; glow: string; scoreColor: string }> = {
-  W: { label: "W", pill: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400", accent: "via-emerald-500/30", glow: "rgba(52,211,153,0.06)", scoreColor: "text-emerald-400" },
-  D: { label: "D", pill: "bg-zinc-700/40 border-zinc-600/30 text-zinc-400", accent: "via-zinc-500/20", glow: "rgba(113,113,122,0.04)", scoreColor: "text-zinc-300" },
-  L: { label: "L", pill: "bg-red-500/15 border-red-500/30 text-red-400", accent: "via-red-500/25", glow: "rgba(239,68,68,0.06)", scoreColor: "text-red-400" },
-  N: { label: "FT", pill: "bg-zinc-700/40 border-zinc-600/30 text-zinc-400", accent: "via-zinc-500/20", glow: "rgba(113,113,122,0.04)", scoreColor: "text-zinc-200" },
-};
-
 export default function FootballRecentSection() {
   const userId = useCurrentUserId();
-  const { data: teams } = useFootballTeams(userId);
+  const { data: teams, isLoading: teamsLoading } = useFootballTeams(userId);
 
   const ordered = useMemo(() => {
     if (!teams) return [] as { id: string; name: string; crest: string | null; isMain: boolean }[];
@@ -39,39 +32,85 @@ export default function FootballRecentSection() {
   }, [teams]);
 
   const extIds = ordered.map((t) => t.id);
-  const { data: matches } = useRecentMatches(extIds);
+  const { data: matches, isLoading: matchesLoading } = useRecentMatches(extIds);
 
-  const [selected, setSelected] = useState<string>("all");
-  const focusExt = selected !== "all" ? selected : (teams?.mainTeam?.api_external_id ?? null);
+  // Default the filter to the user's main team (if any) until they pick something else.
+  const [selected, setSelected] = useState<string>("");
+  const active = selected || (teams?.mainTeam?.api_external_id ?? "all");
+  const focusExt = active !== "all" ? active : null;
 
   const filtered = (matches ?? []).filter(
-    (m) => selected === "all" || m.home_external_id === selected || m.away_external_id === selected,
+    (m) => active === "all" || m.home_external_id === active || m.away_external_id === active,
   );
-  const shown = filtered.slice(0, 4);
+  const shown = filtered.slice(0, 6);
 
+  if (teamsLoading) return <RecentSkeleton withHeader />;
   if (!ordered.length) return null;
 
   const selectTeams: SelectTeam[] = ordered.map((t) => ({ id: t.id, name: t.name, crest: t.crest, isMain: t.isMain }));
+  const loadingMatches = matchesLoading && !matches;
 
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-text-primary">Recent Results</h2>
-        <SectionTeamSelect teams={selectTeams} value={selected} onChange={setSelected} />
-      </div>
+      <SectionHeader
+        title="Recent results"
+        subtitle="Latest results for your teams"
+        actions={<SectionTeamSelect teams={selectTeams} value={active} onChange={setSelected} />}
+      />
 
-      {shown.length === 0 ? (
+      {loadingMatches ? (
+        <ResultGridSkeleton />
+      ) : shown.length === 0 ? (
         <div className="rounded-card border border-border-subtle bg-surface-1 py-8 text-center text-sm text-text-tertiary">
           No recent results
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {shown.map((m) => (
-            <ResultCard key={m.external_match_id} m={m} focusExt={focusExt} />
+            <ResultRow key={m.external_match_id} m={m} focusExt={focusExt} />
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+// ─── Skeleton (matches the list rows) ────────────────────────────────────────────
+
+function RecentSkeleton({ withHeader }: { withHeader?: boolean }) {
+  return (
+    <section>
+      {withHeader && (
+        <div className="mb-3 space-y-1.5">
+          <div className="h-5 w-36 rounded bg-white/5" />
+          <div className="h-3 w-48 rounded bg-white/5" />
+        </div>
+      )}
+      <ResultGridSkeleton />
+    </section>
+  );
+}
+
+function ResultGridSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="surface-card animate-pulse rounded-card p-3.5">
+          <div className="flex items-center gap-1.5">
+            <div className="h-5 w-5 rounded-full bg-white/5" />
+            <div className="h-2.5 w-16 rounded bg-white/5" />
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-6 w-6 rounded-full bg-white/5" />
+            <div className="h-3 flex-1 rounded bg-white/5" />
+            <div className="h-3 w-10 rounded bg-white/5" />
+            <div className="h-3 flex-1 rounded bg-white/5" />
+            <div className="h-6 w-6 rounded-full bg-white/5" />
+          </div>
+          <div className="mt-2 h-2.5 w-20 rounded bg-white/5" />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -87,73 +126,88 @@ function resultFor(m: FootballMatchLite, focusExt: string | null): Result {
   return "D";
 }
 
-// ─── Card (current result-card design, adapted to FootballMatchLite) ─────────────
+// ─── Row (list style): competition + W/L/D badge · both crests + names + score · date ────────────
 
-function ResultCard({ m, focusExt }: { m: FootballMatchLite; focusExt: string | null }) {
+function ResultRow({ m, focusExt }: { m: FootballMatchLite; focusExt: string | null }) {
   const open = useMatchPanel((s) => s.open);
-  const isHome = focusExt != null && m.home_external_id === focusExt;
-  const isAway = focusExt != null && m.away_external_id === focusExt;
-  const cfg = RESULT_CONFIG[resultFor(m, focusExt)];
+  const res = resultFor(m, focusExt);
   const compName = displayCompetitionName(m.competition_name);
+  const homeWin = m.home_score != null && m.away_score != null && m.home_score > m.away_score;
+  const awayWin = m.home_score != null && m.away_score != null && m.away_score > m.home_score;
 
   return (
-    <div
+    <button
       onClick={() => open(m.external_match_id)}
-      role="button"
-      className="group relative cursor-pointer overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-950 transition-all duration-300 hover:border-zinc-700/80"
+      className="group surface-card relative flex w-full flex-col gap-2 rounded-card p-3.5 text-left transition-all hover:-translate-y-0.5"
     >
-      <div className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ background: `radial-gradient(ellipse at top, ${cfg.glow}, transparent 70%)` }} />
-      <div className={`absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent ${cfg.accent} to-transparent`} />
+      {/* result badge — top right, reads as the MATCH result (not tied to a team's side) */}
+      <ResultBadge res={res} className="absolute right-2.5 top-2.5" />
 
-      <div className="relative flex flex-col gap-4 p-4">
-        {/* competition + result badge */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            {m.emblem_url && (
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-white p-1">
-                <span className="relative h-full w-full">
-                  <Image src={m.emblem_url} alt={compName} fill sizes="24px" className="object-contain" />
-                </span>
-              </span>
-            )}
-            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">{compName}</span>
-          </div>
-          <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-black ${cfg.pill}`}>{cfg.label}</span>
-        </div>
-
-        {/* teams + score */}
-        <div className="flex items-center gap-2">
-          <TeamCol name={m.home_name} crest={m.home_crest} focused={isHome} />
-          <div className="flex min-w-13 shrink-0 flex-col items-center gap-1">
-            <div className={`flex items-center gap-1.5 rounded-lg border border-zinc-800/80 bg-zinc-900 px-3 py-1 ${cfg.scoreColor}`}>
-              <span className="text-2xl font-black tabular-nums tracking-tight">{m.home_score}</span>
-              <span className="text-lg font-bold text-zinc-700">-</span>
-              <span className="text-2xl font-black tabular-nums tracking-tight">{m.away_score}</span>
-            </div>
-          </div>
-          <TeamCol name={m.away_name} crest={m.away_crest} focused={isAway} />
-        </div>
-
-        {/* date */}
-        <div className="flex items-center justify-center gap-2 border-t border-zinc-800/60 pt-3 text-xs text-zinc-500">
-          <Calendar size={11} />
-          <span>{fmtDate(m.utc_date)}</span>
-        </div>
+      {/* competition — left, colour logo, normal case */}
+      <div className="flex items-center gap-1.5 pr-8">
+        <CompMark logoUrl={m.logo_url} emblemUrl={m.emblem_url} name={compName} />
+        <span className="truncate text-[11px] font-medium text-text-tertiary">{compName}</span>
       </div>
-    </div>
+
+      {/* home crest · name · score · name · away crest */}
+      <div className="flex items-center gap-2">
+        <Crest src={m.home_crest} alt={m.home_name} />
+        <span className={`min-w-0 flex-1 truncate text-sm ${homeWin ? "font-semibold text-text-primary" : "text-text-secondary"}`}>{m.home_name}</span>
+        <span className="shrink-0 text-sm font-bold tabular-nums text-text-primary">
+          {m.home_score}<span className="mx-1 text-text-tertiary">-</span>{m.away_score}
+        </span>
+        <span className={`min-w-0 flex-1 truncate text-right text-sm ${awayWin ? "font-semibold text-text-primary" : "text-text-secondary"}`}>{m.away_name}</span>
+        <Crest src={m.away_crest} alt={m.away_name} />
+      </div>
+
+      {/* date */}
+      <span className="text-[11px] text-text-tertiary">{fmtDate(m.utc_date)}</span>
+    </button>
   );
 }
 
-function TeamCol({ name, crest, focused }: { name: string; crest: string | null; focused: boolean }) {
+function ResultBadge({ res, className = "" }: { res: Result; className?: string }) {
+  const cls =
+    res === "W" ? "bg-accent-sports/15 text-accent-sports"
+      : res === "L" ? "bg-red-500/15 text-red-400"
+        : "bg-surface-3 text-text-secondary";
   return (
-    <div className="flex flex-1 flex-col items-center gap-2 text-center">
-      <div className="relative h-11 w-11">
-        {focused && <div className="absolute inset-0 scale-150 rounded-full bg-emerald-400/10 blur-xl" />}
-        <Image src={crest || CREST_FALLBACK} alt={name} fill sizes="44px" className="relative z-10 object-contain" />
-      </div>
-      <span className={`line-clamp-2 text-[11px] font-semibold leading-tight ${focused ? "text-white" : "text-zinc-400"}`}>{name}</span>
-    </div>
+    <span className={`flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 text-xs font-black ${cls} ${className}`}>
+      {res === "N" ? "FT" : res}
+    </span>
   );
+}
+
+function Crest({ src, alt }: { src: string | null; alt: string }) {
+  return (
+    <span className="relative h-6 w-6 shrink-0">
+      <Image src={src || CREST_FALLBACK} alt={alt} fill sizes="24px" className="object-contain" />
+    </span>
+  );
+}
+
+// Competition mark — colour asset logo (UCL stays white); football-data emblem on a white chip as fallback.
+function CompMark({ logoUrl, emblemUrl, name }: { logoUrl: string | null; emblemUrl: string | null; name: string }) {
+  const asset = logoUrl
+    ? logoUrl.includes("champions-league") ? logoUrl : logoUrl.replace("/leagues-white-logos/", "/leagues-logos/")
+    : null;
+  if (asset) {
+    return (
+      <span className="relative h-5 w-5 shrink-0">
+        <Image src={asset} alt={name} fill sizes="20px" className="object-contain" />
+      </span>
+    );
+  }
+  if (emblemUrl) {
+    return (
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-white p-0.5">
+        <span className="relative h-full w-full">
+          <Image src={emblemUrl} alt={name} fill sizes="16px" className="object-contain" />
+        </span>
+      </span>
+    );
+  }
+  return null;
 }
 
 function fmtDate(iso: string) {

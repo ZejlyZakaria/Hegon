@@ -183,6 +183,23 @@ export async function upsertFootballPrediction(
   return data as FootballPrediction;
 }
 
+// All of the user's predictions as a map by match — lets the Upcoming cards show "your pick" without
+// a query per card. Small (the user's own rows).
+export async function getUserPredictions(userId: string): Promise<Record<number, { home: number; away: number }>> {
+  if (!userId) return {};
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_predictions")
+    .select("external_match_id, pred_home, pred_away")
+    .eq("user_id", userId);
+  if (error) throw error;
+  const map: Record<number, { home: number; away: number }> = {};
+  for (const p of (data ?? []) as { external_match_id: number; pred_home: number; pred_away: number }[]) {
+    map[p.external_match_id] = { home: p.pred_home, away: p.pred_away };
+  }
+  return map;
+}
+
 export async function getCrestsByExternalIds(externalIds: string[]): Promise<Record<string, string | null>> {
   if (!externalIds.length) return {};
   const supabase = createClient();
@@ -242,20 +259,23 @@ type MatchRow = {
 const MATCH_SELECT =
   "external_match_id, utc_date, status, matchday, venue, season, home_team_external_id, away_team_external_id, home_team_name, away_team_name, home_score, away_score, football_competitions ( name, brand_color, logo_url, emblem_url )";
 
-function toMatchLite(r: MatchRow, crests: Record<string, string | null>): FootballMatchLite {
+type TeamMeta = { crest: string | null; venue: string | null };
+
+function toMatchLite(r: MatchRow, meta: Record<string, TeamMeta>): FootballMatchLite {
   const c = r.football_competitions;
   return {
     external_match_id: r.external_match_id,
     utc_date: r.utc_date,
     status: r.status,
     matchday: r.matchday,
-    venue: r.venue,
+    // football-data leaves match.venue null → the home team's stadium IS the venue for a league match.
+    venue: r.venue ?? meta[r.home_team_external_id]?.venue ?? null,
     home_name: r.home_team_name,
     away_name: r.away_team_name,
     home_external_id: r.home_team_external_id,
     away_external_id: r.away_team_external_id,
-    home_crest: crests[r.home_team_external_id] ?? null,
-    away_crest: crests[r.away_team_external_id] ?? null,
+    home_crest: meta[r.home_team_external_id]?.crest ?? null,
+    away_crest: meta[r.away_team_external_id]?.crest ?? null,
     home_score: r.home_score,
     away_score: r.away_score,
     competition_name: c?.name ?? null,
@@ -266,9 +286,23 @@ function toMatchLite(r: MatchRow, crests: Record<string, string | null>): Footba
   };
 }
 
-async function crestsForRows(rows: MatchRow[]): Promise<Record<string, string | null>> {
+// Crest + stadium for every team in a match list — one query on football_teams (the crest chip and the
+// derived venue both come from here).
+async function crestsForRows(rows: MatchRow[]): Promise<Record<string, TeamMeta>> {
   const extIds = [...new Set(rows.flatMap((r) => [r.home_team_external_id, r.away_team_external_id]).filter(Boolean))];
-  return extIds.length ? getCrestsByExternalIds(extIds) : {};
+  if (!extIds.length) return {};
+  const supabase = createClient();
+  const { data } = await supabase.schema("sport").from("football_teams")
+    .select("api_external_id, crest_url, venue").in("api_external_id", extIds);
+  const map: Record<string, TeamMeta> = {};
+  for (const t of data ?? []) {
+    const url = t.crest_url as string | null;
+    map[t.api_external_id] = {
+      crest: url && !url.startsWith("http") ? `https://crests.football-data.org/${url}` : url,
+      venue: (t.venue as string | null) ?? null,
+    };
+  }
+  return map;
 }
 
 // Upcoming (not-finished) matches involving any of the followed teams, soonest first.

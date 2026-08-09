@@ -10,6 +10,7 @@ export const FOOTBALL_KEYS = {
   fanLog: (externalId: number) => [...FOOTBALL_KEYS.all, 'fan-log', externalId] as const,
   fanLogList: () => [...FOOTBALL_KEYS.all, 'fan-log-list'] as const,
   prediction: (externalId: number) => [...FOOTBALL_KEYS.all, 'prediction', externalId] as const,
+  userPredictions: () => [...FOOTBALL_KEYS.all, 'user-predictions'] as const,
   upcoming: (teamExternalIds: string[]) => [...FOOTBALL_KEYS.all, 'upcoming', ...teamExternalIds] as const,
   recent: (teamExternalIds: string[]) => [...FOOTBALL_KEYS.all, 'recent', ...teamExternalIds] as const,
   followedCompetitions: () => [...FOOTBALL_KEYS.all, 'followed-competitions'] as const,

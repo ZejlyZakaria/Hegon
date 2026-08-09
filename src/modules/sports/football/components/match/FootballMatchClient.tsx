@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -15,10 +15,12 @@ import {
   useDeleteFootballFanLog,
 } from "../../hooks/useFootballFanLog";
 import { useFootballPrediction, useUpsertFootballPrediction } from "../../hooks/useFootballPrediction";
+import { useRecentMatches } from "../../hooks/useFootballMatches";
 import { getCrestsByExternalIds } from "../../service";
+import type { FootballMatchLite } from "../../service";
 import type { WatchedWhere } from "../../types";
 
-const ACCENT = "var(--color-accent-sports)"; // emerald #10b981
+const ACCENT = "var(--color-accent-sports)"; // lime spark — used for the range slider's accentColor
 
 const WHERE: { key: WatchedWhere; label: string; icon: typeof Tv }[] = [
   { key: "tv", label: "TV", icon: Tv },
@@ -31,6 +33,30 @@ function fmtDate(iso: string) {
 }
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+// Each team's last-4 form (most recent first), from the recent finished matches of both teams.
+function formFor(matches: FootballMatchLite[], ext: string): ("W" | "D" | "L")[] {
+  return matches
+    .filter((m) => (m.home_external_id === ext || m.away_external_id === ext) && m.home_score != null && m.away_score != null)
+    .slice(0, 4)
+    .map((m) => {
+      const isHome = m.home_external_id === ext;
+      const gf = isHome ? m.home_score! : m.away_score!;
+      const ga = isHome ? m.away_score! : m.home_score!;
+      return gf > ga ? "W" : gf < ga ? "L" : "D";
+    });
+}
+
+// A prediction locks at kickoff — a small countdown gives it urgency.
+function lockLabel(iso: string): string {
+  const diff = new Date(iso).getTime() - Date.now();
+  if (diff <= 0) return "Locked";
+  const days = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+  if (days >= 1) return `Locks in ${days}d`;
+  if (hours >= 1) return `Locks in ${hours}h`;
+  return "Locks soon";
 }
 
 function Side({ name, crest, big, href, onNavigate }: { name: string; crest: string | null; big: boolean; href?: string; onNavigate?: () => void }) {
@@ -78,6 +104,28 @@ function Stepper({ value, onChange }: { value: number; onChange: (n: number) => 
   );
 }
 
+function FormDot({ r }: { r: "W" | "D" | "L" }) {
+  const cls =
+    r === "W" ? "bg-accent-sports text-accent-sports-deep"
+      : r === "L" ? "bg-red-500/80 text-white"
+        : "bg-surface-3 text-text-secondary";
+  return <span className={cn("flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold", cls)}>{r}</span>;
+}
+
+function FormCard({ crest, name, form }: { crest: string | null; name: string; form: ("W" | "D" | "L")[] }) {
+  return (
+    <div className="rounded-control bg-surface-2 p-3 text-center">
+      <div className="relative mx-auto h-9 w-9">
+        {crest ? <Image src={crest} alt={name} fill sizes="36px" className="object-contain" unoptimized /> : <div className="h-full w-full rounded-full bg-surface-3" />}
+      </div>
+      <p className="mt-1.5 truncate text-xs font-medium text-text-primary">{name}</p>
+      <div className="mt-2 flex items-center justify-center gap-1">
+        {form.length ? form.map((r, i) => <FormDot key={i} r={r} />) : <span className="text-micro text-text-tertiary">No recent form</span>}
+      </div>
+    </div>
+  );
+}
+
 export function FootballMatchClient({ externalId }: { externalId: number }) {
   const userId = useCurrentUserId();
   const closePanel = useMatchPanel((s) => s.close);
@@ -94,6 +142,11 @@ export function FootballMatchClient({ externalId }: { externalId: number }) {
     queryFn: () => getCrestsByExternalIds([match!.home_team_external_id, match!.away_team_external_id]),
     enabled: !!match,
   });
+
+  // Recent finished matches for BOTH teams — the form guide that helps you predict.
+  const { data: recent = [] } = useRecentMatches(
+    match ? [match.home_team_external_id, match.away_team_external_id] : [],
+  );
 
   // The Fan Log form — seeded from the stored row. Re-seeded when the row's IDENTITY changes (load,
   // delete, re-create) during render — the React-blessed way — so it never clobbers an edit in
@@ -121,6 +174,15 @@ export function FootballMatchClient({ externalId }: { externalId: number }) {
     setPredAway(prediction?.pred_away ?? 0);
   }
 
+  // Inline prediction — no confirm button. A short debounce keeps it from writing on every tap.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setPrediction = (home: number, away: number) => {
+    setPredHome(home);
+    setPredAway(away);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => predict.mutate({ home, away }), 500);
+  };
+
   if (isLoading || !match) {
     return (
       <div className="p-4">
@@ -137,6 +199,8 @@ export function FootballMatchClient({ externalId }: { externalId: number }) {
   const homeWon = match.winner === "HOME_TEAM";
   const awayWon = match.winner === "AWAY_TEAM";
   const logged = !!fanLog;
+  const homeForm = formFor(recent, match.home_team_external_id);
+  const awayForm = formFor(recent, match.away_team_external_id);
 
   // How your prediction fared, once the match is over. Exact score > right result > missed.
   const predOutcome: "exact" | "result" | "miss" | null = (() => {
@@ -166,7 +230,7 @@ export function FootballMatchClient({ externalId }: { externalId: number }) {
                 ? `Matchday ${match.matchday}`
                 : "Match"}
           </span>
-          {logged && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: ACCENT }} />}
+          {logged && <span className="h-1.5 w-1.5 rounded-full bg-accent-sports" />}
         </div>
 
         <div className="flex items-center justify-between gap-2">
@@ -186,10 +250,23 @@ export function FootballMatchClient({ externalId }: { externalId: number }) {
                   </span>
                 )}
               </>
+            ) : !started ? (
+              // Future match — the scoreboard is yours to set (this IS the prediction).
+              <>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Stepper value={predHome} onChange={(n) => setPrediction(n, predAway)} />
+                  <span className="text-2xl font-bold text-text-tertiary">–</span>
+                  <Stepper value={predAway} onChange={(n) => setPrediction(predHome, n)} />
+                </div>
+                <span className="mt-1 text-micro font-semibold uppercase tracking-wide text-accent-sports">
+                  {lockLabel(match.utc_date)}
+                </span>
+              </>
             ) : (
+              // Kicked off (in play / paused)
               <>
                 <span className="text-2xl font-bold tabular-nums text-text-primary">{fmtTime(match.utc_date)}</span>
-                <span className="mt-1 text-micro uppercase tracking-wide text-text-tertiary">upcoming</span>
+                <span className="mt-1 text-micro uppercase tracking-wide text-accent-sports">Live</span>
               </>
             )}
           </div>
@@ -204,113 +281,106 @@ export function FootballMatchClient({ externalId }: { externalId: number }) {
         </div>
       </div>
 
-      {/* ── Mon avis (Fan Log) ── */}
-      <div className="surface-card mt-4 rounded-card p-5">
-        <h2 className="mb-4 text-sm font-semibold text-text-primary">My take</h2>
+      {/* ── Predict (future match) — form guide + lock in ── */}
+      {!started && (
+        <div className="surface-card mt-4 rounded-card p-5">
+          <p className="mb-3 text-micro uppercase tracking-wide text-text-tertiary">Recent form</p>
+          <div className="grid grid-cols-2 gap-3">
+            <FormCard crest={crests[match.home_team_external_id] ?? null} name={match.home_team_name} form={homeForm} />
+            <FormCard crest={crests[match.away_team_external_id] ?? null} name={match.away_team_name} form={awayForm} />
+          </div>
+        </div>
+      )}
 
-        {!started ? (
-          <>
-            <p className="mb-4 text-center text-micro uppercase tracking-wide text-text-tertiary">Predict the score</p>
-            <div className="flex items-center justify-center gap-5">
-              <Stepper value={predHome} onChange={setPredHome} />
-              <span className="text-xl font-bold text-text-tertiary">–</span>
-              <Stepper value={predAway} onChange={setPredAway} />
+      {/* ── My take (Fan Log) — after kickoff ── */}
+      {started && (
+        <div className="surface-card mt-4 rounded-card p-5">
+          <h2 className="mb-4 text-sm font-semibold text-text-primary">My take</h2>
+
+          {predOutcome && (
+            <div className={cn(
+              "mb-4 flex items-center justify-center gap-1.5 rounded-control border py-2 text-xs font-medium",
+              predOutcome === "exact" ? "border-accent-sports/30 bg-accent-sports/10 text-accent-sports"
+                : predOutcome === "result" ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
+                : "border-border-subtle text-text-tertiary",
+            )}>
+              Your prediction {prediction!.pred_home}–{prediction!.pred_away} ·{" "}
+              {predOutcome === "exact" ? "Exact score" : predOutcome === "result" ? "Right result" : "Missed"}
             </div>
-            <button
-              type="button"
-              onClick={() => predict.mutate({ home: predHome, away: predAway })}
-              disabled={predict.isPending}
-              className="mt-5 w-full rounded-control py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: ACCENT }}
-            >
-              {prediction ? "Update prediction" : "Predict"}
-            </button>
-          </>
-        ) : (
-        <>
-        {predOutcome && (
-          <div className={cn(
-            "mb-4 flex items-center justify-center gap-1.5 rounded-control border py-2 text-xs font-medium",
-            predOutcome === "exact" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-              : predOutcome === "result" ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-              : "border-border-subtle text-text-tertiary",
-          )}>
-            Your prediction {prediction!.pred_home}–{prediction!.pred_away} ·{" "}
-            {predOutcome === "exact" ? "Exact score" : predOutcome === "result" ? "Right result" : "Missed"}
-          </div>
-        )}
-        {/* Où */}
-        <p className="mb-1.5 text-micro uppercase tracking-wide text-text-tertiary">Where did you watch it?</p>
-        <div className="flex gap-2">
-          {WHERE.map(({ key, label, icon: Icon }) => {
-            const on = where === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setWhere(on ? null : key)}
-                className={cn(
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-control border py-2 text-xs font-medium transition-colors",
-                  on ? "text-white" : "border-border-subtle text-text-secondary hover:bg-surface-2",
-                )}
-                style={on ? { backgroundColor: ACCENT, borderColor: ACCENT } : undefined}
-              >
-                <Icon size={14} /> {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Note */}
-        <div className="mt-4">
-          <div className="mb-1.5 flex items-baseline justify-between">
-            <p className="text-micro uppercase tracking-wide text-text-tertiary">Your rating</p>
-            <span className="flex items-center gap-1 text-sm font-bold tabular-nums" style={{ color: ACCENT }}>
-              <Star size={12} style={{ color: ACCENT, fill: ACCENT }} /> {rating > 0 ? rating.toFixed(1) : "—"}
-            </span>
-          </div>
-          <input
-            type="range" min={0} max={10} step={0.5}
-            value={rating}
-            onChange={(e) => setRating(Number(e.target.value))}
-            className="w-full accent-emerald-500"
-          />
-        </div>
-
-        {/* Mot */}
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="A word on this match…"
-          rows={3}
-          className="mt-4 w-full resize-none rounded-control border border-border-subtle bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-border-focus focus:outline-none"
-        />
-
-        <div className="mt-4 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={save}
-            disabled={upsert.isPending}
-            className="flex-1 rounded-control py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: ACCENT }}
-          >
-            {logged ? "Update" : "I watched this match"}
-          </button>
-          {logged && (
-            <button
-              type="button"
-              onClick={() => remove.mutate()}
-              disabled={remove.isPending}
-              className="flex h-10 w-10 items-center justify-center rounded-control border border-border-subtle text-text-tertiary transition-colors hover:border-red-400/40 hover:text-red-400"
-              aria-label="Remove"
-            >
-              <Trash2 size={15} />
-            </button>
           )}
+
+          {/* Where */}
+          <p className="mb-1.5 text-micro uppercase tracking-wide text-text-tertiary">Where did you watch it?</p>
+          <div className="flex gap-2">
+            {WHERE.map(({ key, label, icon: Icon }) => {
+              const on = where === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setWhere(on ? null : key)}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-control border py-2 text-xs font-medium transition-colors",
+                    on
+                      ? "border-transparent bg-accent-sports text-accent-sports-deep"
+                      : "border-border-subtle text-text-secondary hover:bg-surface-2",
+                  )}
+                >
+                  <Icon size={14} /> {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Rating */}
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-baseline justify-between">
+              <p className="text-micro uppercase tracking-wide text-text-tertiary">Your rating</p>
+              <span className="flex items-center gap-1 text-sm font-bold tabular-nums text-accent-sports">
+                <Star size={12} className="fill-accent-sports text-accent-sports" /> {rating > 0 ? rating.toFixed(1) : "—"}
+              </span>
+            </div>
+            <input
+              type="range" min={0} max={10} step={0.5}
+              value={rating}
+              onChange={(e) => setRating(Number(e.target.value))}
+              className="w-full"
+              style={{ accentColor: ACCENT }}
+            />
+          </div>
+
+          {/* Note */}
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="A word on this match…"
+            rows={3}
+            className="mt-4 w-full resize-none rounded-control border border-border-subtle bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-border-focus focus:outline-none"
+          />
+
+          <div className="mt-4 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={save}
+              disabled={upsert.isPending}
+              className="flex-1 rounded-control bg-accent-sports py-2.5 text-sm font-bold text-accent-sports-deep transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {logged ? "Update" : "I watched this match"}
+            </button>
+            {logged && (
+              <button
+                type="button"
+                onClick={() => remove.mutate()}
+                disabled={remove.isPending}
+                className="flex h-10 w-10 items-center justify-center rounded-control border border-border-subtle text-text-tertiary transition-colors hover:border-red-400/40 hover:text-red-400"
+                aria-label="Remove"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+          </div>
         </div>
-        </>
-        )}
-      </div>
+      )}
     </div>
   );
 }

@@ -8,11 +8,13 @@
 // that would shift the row's alignment. Removal lives in the Team Panel (not here).
 // Data is its own concern: useFootballTeams + useFollowedCompetitions (no page monolith).
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useRef, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Plus, Star } from "lucide-react";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
+import { SectionHeader } from "@/shared/components/ui/section-header";
+import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { useFootballTeams } from "../../hooks/useFootballTeams";
 import { useFollowedCompetitions } from "../../hooks/useFollowedCompetitions";
 import type { FootballTeam } from "../../types";
@@ -42,21 +44,34 @@ export default function FollowingStrip() {
 
   const followedCompetitions = competitions ?? [];
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollByDir = (dir: number) => scrollRef.current?.scrollBy({ left: dir * 260, behavior: "smooth" });
+
   if (teamsLoading && !teams) return <FollowingStripSkeleton />;
 
   return (
     <section>
-      <div className="px-1 pb-2">
-        <h3 className="text-title text-text-primary">Following</h3>
-      </div>
+      <SectionHeader
+        title="Following"
+        subtitle="Teams and competitions you follow"
+        actions={
+          <>
+            <CarouselNav onPrev={() => scrollByDir(-1)} onNext={() => scrollByDir(1)} />
+            <button
+              onClick={() => setAddOpen(true)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-control bg-accent-sports px-3 text-xs font-bold text-accent-sports-deep transition-colors hover:bg-accent-sports/90"
+            >
+              <Plus size={15} />
+              Add
+            </button>
+          </>
+        }
+      />
 
-      {/* Cards scroll under a Follow button that's pinned right once the rail overflows. */}
-      <div className="flex items-stretch gap-2.5">
-        {/* Scroll area — sizes to content, shrinks + scrolls (scrollbar hidden) once it hits the edge.
-            py-2 -my-2: room for the hover lift + shadow (overflow-x makes overflow-y clip). */}
-        <div className="scrollbar-hide flex min-w-0 items-stretch gap-2.5 overflow-x-auto py-2 -my-2">
-          {/* Teams — click opens the Team page */}
-          {orderedTeams.map(({ team, isMain }) => (
+      {/* Cards scroll horizontally; the header arrows drive it. py-2 -my-2 gives room for the hover lift. */}
+      <div ref={scrollRef} className="scrollbar-hide flex items-stretch gap-2.5 overflow-x-auto py-2 -my-2">
+        {/* Teams — click opens the Team page */}
+        {orderedTeams.map(({ team, isMain }) => (
             <Link
               key={team.id}
               href={`/perso/sports/football/team/${team.api_external_id}`}
@@ -85,20 +100,10 @@ export default function FollowingStrip() {
             <div className="mx-1 my-2 w-px shrink-0 self-stretch bg-white/8" />
           )}
 
-          {/* Competitions — brand glow carries their identity. (Click → Competition panel: later pass.) */}
-          {followedCompetitions.map((comp) => (
-            <CompetitionCard key={comp.id} comp={comp} />
-          ))}
-        </div>
-
-        {/* Follow — pinned to the right; stays put while the cards scroll under it. */}
-        <button
-          onClick={() => setAddOpen(true)}
-          className={`${CARD_BASE} shrink-0 justify-center border border-dashed border-border-strong text-text-tertiary transition-colors hover:border-border-focus hover:text-text-secondary`}
-        >
-          <Plus size={18} />
-          <span className="text-xs font-semibold">Follow</span>
-        </button>
+        {/* Competitions — brand glow carries their identity. (Click → Competition panel: later pass.) */}
+        {followedCompetitions.map((comp) => (
+          <CompetitionCard key={comp.id} comp={comp} />
+        ))}
       </div>
 
       <FootballAddModal open={addOpen} onClose={() => setAddOpen(false)} />
@@ -144,8 +149,9 @@ function CompetitionCard({ comp }: { comp: FollowedCompetition }) {
 function FollowingStripSkeleton() {
   return (
     <section>
-      <div className="px-1 pb-2">
-        <div className="h-4 w-24 rounded bg-white/5" />
+      <div className="mb-3 space-y-1.5">
+        <div className="h-5 w-28 rounded bg-white/5" />
+        <div className="h-3 w-44 rounded bg-white/5" />
       </div>
       <div className="flex gap-2.5">
         {Array.from({ length: 5 }).map((_, i) => (

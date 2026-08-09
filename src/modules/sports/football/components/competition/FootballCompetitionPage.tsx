@@ -109,7 +109,7 @@ export default function FootballCompetitionPage({ id }: { id: string }) {
 
       {/* Tab content */}
       {tab === "summary" && <SummaryTab matches={matches ?? []} onOpen={openMatch} />}
-      {tab === "standings" && <StandingsTable rows={standings ?? []} />}
+      {tab === "standings" && <StandingsTable rows={standings ?? []} competitionCode={comp?.code} />}
       {tab === "fixtures" && <FixturesTab matches={matches ?? []} onOpen={openMatch} />}
       {tab === "scorers" && <ScorersTab scorers={scorers ?? []} />}
       {tab === "honours" && <HonoursTab winners={winners ?? []} />}
