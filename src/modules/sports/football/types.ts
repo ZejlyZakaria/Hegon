@@ -17,36 +17,6 @@ export interface FootballTeams {
   allTeams: Record<string, FootballTeam>;
 }
 
-export interface FootballMatch {
-  id: string;
-  home_team: string;
-  away_team: string;
-  home_score: number | null;
-  away_score: number | null;
-  match_date: string;
-  status: string;
-  competition: string;
-}
-
-export interface FootballStanding {
-  position: number;
-  team: string;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  points: number;
-  goal_difference: number;
-}
-
-export interface FootballCompetition {
-  id: string;
-  name: string;
-  code: string;
-  type: string;
-  emblem: string | null;
-}
-
 // A durable, first-class match row (sport.football_matches) — the spine of the fiche, the full
 // calendar/results and the Fan Log. Shape mirrors the table 1:1.
 export interface FootballMatchRow {

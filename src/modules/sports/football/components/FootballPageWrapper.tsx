@@ -1,6 +1,7 @@
 "use client";
 
-import { useFootballData } from "@/modules/sports/football/hooks/useFootball";
+import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
+import { useBestXI } from "@/modules/sports/football/hooks/useFootball";
 import FollowingStrip from "./following/FollowingStrip";
 import FootballUpcomingSection from "./matches/FootballUpcomingSection";
 import FootballRecentSection from "./matches/FootballRecentSection";
@@ -11,7 +12,8 @@ import { FootballMatchPanel } from "./match/FootballMatchPanel";
 import { FootballBestXISkeleton } from "@/modules/sports/components/SportSkeletons";
 
 export default function FootballPageWrapper() {
-  const { data, isLoading } = useFootballData();
+  const userId = useCurrentUserId();
+  const { data, isLoading } = useBestXI(userId);
 
   return (
     <div className="p-6 space-y-4">
@@ -22,11 +24,11 @@ export default function FootballPageWrapper() {
       <FootballStandings />
       <FootballFanLog />
 
-      {/* Best XI — still on the shared monolith data for now. */}
-      {isLoading || !data ? (
+      {/* Best XI — its own small query (2 tables), no page monolith. */}
+      {!userId || isLoading || !data ? (
         <FootballBestXISkeleton />
       ) : (
-        <FootballBestXI userId={data.userId} bestXI={data.bestXI} />
+        <FootballBestXI userId={userId} bestXI={data} />
       )}
 
       {/* Rendered once — any match card (any section) opens it via the store (portal to <body>). */}

@@ -66,42 +66,41 @@ serve(async () => {
       const data = await apiRes.json()
       const table = data?.standings?.[0]?.table ?? []
 
-      for (const row of table) {
-        // Lookup O(1) depuis le Map — zéro appel DB
-        const team_id = teamMap.get(row.team.id.toString())
+      // Build the whole competition's rows, then upsert in ONE request (was 1 POST per team).
+      const rows = table
+        .map((row: any) => {
+          const team_id = teamMap.get(row.team.id.toString())
+          if (!team_id) {
+            console.warn(`Team not in map: ${row.team.name} (${row.team.id})`)
+            return null
+          }
+          return {
+            competition_id: comp.id,
+            team_id,
+            position: row.position ?? null,   // the OFFICIAL rank (deductions + tiebreakers applied)
+            played_games: row.playedGames,
+            won: row.won,
+            draw: row.draw,
+            lost: row.lost,
+            points: row.points,
+            goals_for: row.goalsFor,
+            goals_against: row.goalsAgainst,
+            goal_difference: row.goalDifference,
+          }
+        })
+        .filter(Boolean)
 
-        if (!team_id) {
-          console.warn(`Team not in map: ${row.team.name} (${row.team.id})`)
-          results.push({ team: row.team.name, error: "not found in team map" })
-          continue
-        }
-
+      if (rows.length) {
         const res = await fetch(
           `${SUPABASE_URL}/rest/v1/football_standings?on_conflict=competition_id,team_id`,
-          {
-            method: "POST",
-            headers: writeHeaders,
-            body: JSON.stringify({
-              competition_id: comp.id,
-              team_id,
-              played_games: row.playedGames,
-              won: row.won,
-              draw: row.draw,
-              lost: row.lost,
-              points: row.points,
-              goals_for: row.goalsFor,
-              goals_against: row.goalsAgainst,
-              goal_difference: row.goalDifference,
-            }),
-          }
+          { method: "POST", headers: writeHeaders, body: JSON.stringify(rows) }
         )
-
         if (!res.ok) {
           const err = await res.text()
-          console.error(`Standing upsert failed: ${row.team.name}`, err)
-          results.push({ team: row.team.name, error: err })
+          console.error(`Standings upsert failed for ${comp.api_external_id}`, err)
+          results.push({ competition: comp.api_external_id, error: err })
         } else {
-          results.push({ team: row.team.name, success: true })
+          results.push({ competition: comp.api_external_id, rows: rows.length })
         }
       }
 

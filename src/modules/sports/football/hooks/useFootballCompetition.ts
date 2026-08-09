@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getStandings, getCompetitionMatches, getCompetitionById, getCompetitionSeason, getLiveStandings, getCompetitionWinners } from "../service";
+import { getStandings, getCompetitionMatches, getCompetitionById, getCompetitionWinners } from "../service";
 import { FOOTBALL_KEYS } from "./query-keys";
 
 // The competition record (name, logo, code, brand colour) — Competition page header.
@@ -12,27 +12,7 @@ export function useCompetition(id: string | null | undefined) {
   });
 }
 
-// Season + progress (passthrough). Slow-moving → 1h client cache.
-export function useCompetitionSeason(code: string | null | undefined) {
-  return useQuery({
-    queryKey: FOOTBALL_KEYS.competitionSeason(code ?? ""),
-    queryFn: () => getCompetitionSeason(code!),
-    enabled: !!code,
-    staleTime: 1000 * 60 * 60,
-  });
-}
-
-// Live league table (passthrough).
-export function useLiveStandings(code: string | null | undefined) {
-  return useQuery({
-    queryKey: FOOTBALL_KEYS.liveStandings(code ?? ""),
-    queryFn: () => getLiveStandings(code!),
-    enabled: !!code,
-    staleTime: 1000 * 60 * 30,
-  });
-}
-
-// The league table of a competition (Competition page / Standings section). Its own query.
+// The OFFICIAL league table of a competition (football_standings, cron-fed). Its own query.
 export function useStandings(competitionId: string | null | undefined) {
   return useQuery({
     queryKey: FOOTBALL_KEYS.standings(competitionId ?? ""),

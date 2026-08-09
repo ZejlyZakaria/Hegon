@@ -7,8 +7,8 @@ import { useMemo, useState } from "react";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useFootballTeams } from "../../hooks/useFootballTeams";
 import { useFollowedCompetitions } from "../../hooks/useFollowedCompetitions";
-import { useCompetitionMatches } from "../../hooks/useFootballCompetition";
-import { computeStandings, displayCompetitionName } from "../../service";
+import { useStandings } from "../../hooks/useFootballCompetition";
+import { displayCompetitionName } from "../../service";
 import SectionTeamSelect, { type SelectTeam } from "../matches/SectionTeamSelect";
 import StandingsTable from "./StandingsTable";
 
@@ -28,8 +28,7 @@ export default function FootballStandings() {
   const comps = competitions ?? [];
   const activeComp = selected || comps[0]?.id || "";
 
-  const { data: matches } = useCompetitionMatches(activeComp || null);
-  const standings = useMemo(() => computeStandings(matches ?? []), [matches]);
+  const { data: standings } = useStandings(activeComp || null);
 
   if (!comps.length) return null;
 
@@ -52,7 +51,7 @@ export default function FootballStandings() {
         />
       </div>
       <div className="rounded-card bg-surface-1 p-3">
-        <StandingsTable rows={standings} highlightExtIds={favExtIds} />
+        <StandingsTable rows={standings ?? []} highlightExtIds={favExtIds} />
       </div>
     </section>
   );

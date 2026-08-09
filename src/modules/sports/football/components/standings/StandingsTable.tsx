@@ -2,13 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { LiveStanding } from "../../service";
+import type { StandingRow } from "../../service";
 
 const CREST_FALLBACK = "/placeholder-logo.svg";
 
 // The league table — shared by the Competition page and the main-page Standings section. Highlights
 // the rows matching `highlightExtIds` (the user's favourite teams).
-export default function StandingsTable({ rows, highlightExtIds }: { rows: LiveStanding[]; highlightExtIds?: Set<string> }) {
+export default function StandingsTable({ rows, highlightExtIds }: { rows: StandingRow[]; highlightExtIds?: Set<string> }) {
   if (!rows.length) return <p className="py-10 text-center text-sm text-text-tertiary">No standings available</p>;
   return (
     <div className="overflow-x-auto">
@@ -37,7 +37,7 @@ export default function StandingsTable({ rows, highlightExtIds }: { rows: LiveSt
                     className="flex items-center gap-2 transition-opacity hover:opacity-80"
                   >
                     <div className="relative h-5 w-5 shrink-0">
-                      <Image src={r.team_crest || CREST_FALLBACK} alt={r.team_name} fill sizes="20px" className="object-contain" />
+                      <Image src={r.team_crest || CREST_FALLBACK} alt={r.team_name ?? ""} fill sizes="20px" className="object-contain" />
                     </div>
                     <span className={`truncate ${mine ? "font-semibold text-accent-sports" : "text-text-primary"}`}>{r.team_name}</span>
                   </Link>

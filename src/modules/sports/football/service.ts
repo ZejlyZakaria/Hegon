@@ -447,7 +447,9 @@ export async function getFanLog(userId: string): Promise<FanLogItem[]> {
 // ─── Competition page reads (standings + a competition's own matches) — independent queries ──────
 
 export interface StandingRow {
+  position: number;           // the OFFICIAL rank (football-data) — respects deductions + tiebreakers
   team_id: string;
+  team_external_id: string;
   team_name: string | null;
   team_crest: string | null;
   played: number;
@@ -460,24 +462,29 @@ export interface StandingRow {
   goal_difference: number;
 }
 
-// The league table of ONE competition, ordered like a real table (points, then goal difference).
+// The league table of ONE competition — the OFFICIAL football-data table (mirrored into
+// football_standings by the 6h cron). `points` already carries point deductions; `position` is the
+// real rank (head-to-head tiebreakers etc.), so we order by it. nullsLast + points fallback keeps a
+// sensible order if a row was stored before the position column was backfilled.
 export async function getStandings(competitionId: string): Promise<StandingRow[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("sport").from("football_standings")
-    .select("team_id, played_games, won, draw, lost, points, goals_for, goals_against, goal_difference, football_teams ( name, crest_url )")
+    .select("position, team_id, played_games, won, draw, lost, points, goals_for, goals_against, goal_difference, football_teams ( name, crest_url, api_external_id )")
     .eq("competition_id", competitionId)
-    .order("points", { ascending: false })
-    .order("goal_difference", { ascending: false });
+    .order("position", { ascending: true, nullsFirst: false })
+    .order("points", { ascending: false });
   if (error) throw error;
   type SRow = {
-    team_id: string; played_games: number; won: number; draw: number; lost: number;
+    position: number | null; team_id: string; played_games: number; won: number; draw: number; lost: number;
     points: number; goals_for: number; goals_against: number; goal_difference: number;
-    football_teams: { name: string | null; crest_url: string | null } | null;
+    football_teams: { name: string | null; crest_url: string | null; api_external_id: string | null } | null;
   };
   const rows = (data ?? []) as unknown as SRow[];
-  return rows.map((r) => ({
+  return rows.map((r, i) => ({
+    position: r.position ?? i + 1,
     team_id: r.team_id,
+    team_external_id: r.football_teams?.api_external_id ?? "",
     team_name: r.football_teams?.name ?? null,
     team_crest: r.football_teams?.crest_url ?? null,
     played: r.played_games, won: r.won, draw: r.draw, lost: r.lost,
@@ -577,74 +584,6 @@ export async function getCompetitionById(id: string): Promise<FootballCompetitio
   return (data as FootballCompetition | null) ?? null;
 }
 
-export interface CompetitionSeason {
-  start: string | null;
-  end: string | null;
-  label: string;           // "2026/2027"
-  currentMatchday: number;
-  totalMatchdays: number;
-  progress: number;        // 0..1
-  started: boolean;
-}
-
-// Season + progress — passthrough server route (key stays server-side).
-export async function getCompetitionSeason(code: string): Promise<CompetitionSeason | null> {
-  const res = await fetch(`/api/football/competition/${code}`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  return (data?.season ?? null) as CompetitionSeason | null;
-}
-
-export interface LiveStanding {
-  position: number;
-  team_name: string;
-  team_crest: string | null;
-  team_external_id: string;
-  played: number;
-  won: number;
-  draw: number;
-  lost: number;
-  goal_difference: number;
-  points: number;
-}
-
-// Live league table — passthrough server route (fresh, no DB dependency on the standings sync).
-export async function getLiveStandings(code: string): Promise<LiveStanding[]> {
-  const res = await fetch(`/api/football/standings/${code}`);
-  if (!res.ok) return [];
-  const data = await res.json();
-  return (data?.standings ?? []) as LiveStanding[];
-}
-
-// Derive a league table from a set of matches (finished ones count) — pure, used by the Competition
-// page AND the main-page Standings section. Always consistent with the matches we actually hold.
-export function computeStandings(matches: FootballMatchLite[]): LiveStanding[] {
-  type Row = { name: string; crest: string | null; p: number; w: number; d: number; l: number; gf: number; ga: number; pts: number };
-  const teams = new Map<string, Row>();
-  const ensure = (extId: string, name: string, crest: string | null) => {
-    if (!teams.has(extId)) teams.set(extId, { name, crest, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 });
-    return teams.get(extId)!;
-  };
-  for (const m of matches) {
-    const home = ensure(m.home_external_id, m.home_name, m.home_crest);
-    const away = ensure(m.away_external_id, m.away_name, m.away_crest);
-    if (m.status !== "FINISHED" || m.home_score == null || m.away_score == null) continue;
-    home.p++; away.p++;
-    home.gf += m.home_score; home.ga += m.away_score;
-    away.gf += m.away_score; away.ga += m.home_score;
-    if (m.home_score > m.away_score) { home.w++; home.pts += 3; away.l++; }
-    else if (m.home_score < m.away_score) { away.w++; away.pts += 3; home.l++; }
-    else { home.d++; away.d++; home.pts++; away.pts++; }
-  }
-  return [...teams.entries()]
-    .map(([extId, t]) => ({
-      team_external_id: extId, team_name: t.name, team_crest: t.crest,
-      played: t.p, won: t.w, draw: t.d, lost: t.l,
-      goal_difference: t.gf - t.ga, points: t.pts, position: 0,
-    }))
-    .sort((a, b) => b.points - a.points || b.goal_difference - a.goal_difference || a.team_name.localeCompare(b.team_name))
-    .map((r, i) => ({ ...r, position: i + 1 }));
-}
 
 // ─── Team PAGE — the record + all its matches (deep stats are derived from these in the component) ──
 
@@ -689,194 +628,33 @@ export async function getTeamMatches(externalId: string): Promise<FootballMatchL
   return rows.map((r) => toMatchLite(r, crests));
 }
 
-// ─── Master page data ─────────────────────────────────────────────────────────
+// ─── Best XI — the user's manual dream-team. The ONLY piece of the old page monolith kept: the page
+// now mounts independent sections (each its own query), so this replaces getFootballPageData’s ~11
+// queries with just these two. ─────────────────────────────────────────────────────────────────────
+export interface BestXIData {
+  id: string | null;
+  formation: string;
+  players: {
+    id: string; name: string; nationality: string | null; image_url: string | null;
+    position_key: string; is_substitute: boolean; substitute_order: number | null;
+  }[];
+}
 
-// userId is passed in from the caller (useCurrentUserId — synchronous, reads localStorage, 0 network).
-// It used to call auth.getUser() here (a ~150-300ms network round-trip at the HEAD of the waterfall);
-// removing it matches Watching's path and unblocks the first query immediately.
-export async function getFootballPageData(userId: string): Promise<any> {
+export async function getBestXI(userId: string): Promise<BestXIData> {
   const supabase = createClient();
-  if (!userId) return null;
-
-  // Step 2: user settings + favorites (2 parallel), then team details (2 parallel)
-  const teams = await getFootballTeams(userId);
-  const { mainTeam, otherFavoriteTeams, allFavoriteTeamIds, allTeams } = teams;
-
-  if (!allFavoriteTeamIds.length) {
-    return {
-      userId,
-      teamHeroes: [],
-      favoriteTeamIds: [],
-      upcomingMatches: [],
-      followedTeams: [],
-      recentMatches: [],
-      followedTeamResults: [],
-      standings: [],
-      bestXI: { id: null, formation: "4-3-3", players: [] },
-    };
-  }
-
-  // Step 3: all data in parallel — no per-team next-match queries (derived below)
-  const [
-    { data: upcomingRaw },
-    { data: pastRaw },
-    { data: competitions },
-    { data: allStandingsRaw },
-    { data: bestXiData },
-  ] = await Promise.all([
-    supabase
-      .schema("sport")
-      .from("football_next_matches")
-      .select("id, external_match_id, team_id, home_team_name, away_team_name, home_team_external_id, away_team_external_id, match_date, football_competitions ( name, emblem_url )")
-      .in("team_id", allFavoriteTeamIds)
-      .gt("match_date", new Date().toISOString())
-      .order("match_date", { ascending: true }),
-    supabase
-      .schema("sport")
-      .from("football_past_matches")
-      .select("id, external_match_id, team_id, home_team_name, away_team_name, home_team_external_id, away_team_external_id, match_date, home_score, away_score, football_competitions ( name, emblem_url )")
-      .in("team_id", allFavoriteTeamIds)
-      .order("match_date", { ascending: false })
-      .limit(allFavoriteTeamIds.length * 3),
-    supabase.schema("sport").from("football_competitions").select("id, name, code, emblem_url"),
-    supabase
-      .schema("sport")
-      .from("football_standings")
-      .select("team_id, competition_id, played_games, won, draw, lost, points, goals_for, goals_against, goal_difference, football_teams ( name, crest_url )"),
-    supabase.schema("sport").from("football_best_xi")
-      .select("id, formation").eq("user_id", userId).maybeSingle(),
-  ]);
-
-  // Step 4: crests + bestXI players in parallel (no dependency on each other)
-  const allExternalIds = [...new Set([
-    ...(upcomingRaw ?? []).map((m: any) => m.home_team_external_id),
-    ...(upcomingRaw ?? []).map((m: any) => m.away_team_external_id),
-    ...(pastRaw ?? []).map((m: any) => m.home_team_external_id),
-    ...(pastRaw ?? []).map((m: any) => m.away_team_external_id),
-  ].filter(Boolean))];
-
-  const [crestMap, bestXiPlayers] = await Promise.all([
-    getCrestsByExternalIds(allExternalIds),
-    bestXiData?.id
-      ? supabase.schema("sport").from("football_best_xi_players")
-          .select("*").eq("best_xi_id", bestXiData.id).then((r: { data: unknown[] | null }) => r.data ?? [])
-      : Promise.resolve([]),
-  ]);
-
-  // Derive next match per team from upcomingRaw (already fetched — no extra queries)
-  const nextMatchByTeam: Record<string, any> = {};
-  for (const m of upcomingRaw ?? []) {
-    if (!nextMatchByTeam[m.team_id]) {
-      const comp = m.football_competitions as any;
-      nextMatchByTeam[m.team_id] = {
-        start_time: m.match_date,
-        home_team_name: m.home_team_name,
-        away_team_name: m.away_team_name,
-        competition_name: comp?.name ?? "",
-      };
-    }
-  }
-
-  const allTeamsList = [
-    ...(mainTeam ? [{ team: mainTeam, isMainTeam: true }] : []),
-    ...otherFavoriteTeams.map((t) => ({ team: t, isMainTeam: false })),
-  ];
-
-  const teamHeroes = allTeamsList.map(({ team, isMainTeam }) => ({
-    team,
-    isMainTeam,
-    nextMatch: nextMatchByTeam[team.id] ?? null,
-  }));
-
-  // Upcoming matches
-  const upcomingMatches = (upcomingRaw ?? [])
-    .map((m: any) => {
-      const followedTeam = allTeams[m.team_id];
-      if (!followedTeam) return null;
-      const comp = m.football_competitions as any;
-      return {
-        id: m.id,
-        external_match_id: m.external_match_id,
-        home_team_name: m.home_team_name,
-        away_team_name: m.away_team_name,
-        home_team_crest: crestMap[m.home_team_external_id] ?? null,
-        away_team_crest: crestMap[m.away_team_external_id] ?? null,
-        match_date: m.match_date,
-        competition_name: comp?.name ?? null,
-        competition_emblem_url: comp?.emblem_url ?? null,
-        followed_team_id: m.team_id,
-        followed_team_name: followedTeam.name,
-        followed_team_crest: followedTeam.crest_url,
-      };
-    })
-    .filter(Boolean);
-
-  const followedTeams = [
-    ...(mainTeam ? [{ ...mainTeam, isMainTeam: true }] : []),
-    ...otherFavoriteTeams.map((t) => ({ ...t, isMainTeam: false })),
-  ];
-
-  // Recent matches
-  const recentMatches = (pastRaw ?? [])
-    .map((m: any) => {
-      const followedTeam = allTeams[m.team_id];
-      if (!followedTeam) return null;
-      const comp = m.football_competitions as any;
-      return {
-        id: m.id,
-        external_match_id: m.external_match_id,
-        home_team_name: m.home_team_name,
-        away_team_name: m.away_team_name,
-        home_team_crest: crestMap[m.home_team_external_id] ?? null,
-        away_team_crest: crestMap[m.away_team_external_id] ?? null,
-        match_date: m.match_date,
-        home_score: m.home_score,
-        away_score: m.away_score,
-        competition_name: comp?.name ?? null,
-        competition_emblem_url: comp?.emblem_url ?? null,
-        followed_team_id: m.team_id,
-        followed_team_name: followedTeam.name,
-      };
-    })
-    .filter(Boolean);
-
-  // Standings
-  const COMPETITION_ORDER = ["PD", "PL", "CL"];
-  const allStandings = (allStandingsRaw ?? []).map((s: any) => ({
-    ...s,
-    football_teams: Array.isArray(s.football_teams)
-      ? (s.football_teams[0] ?? null)
-      : (s.football_teams ?? null),
-  }));
-  const standings = (competitions ?? [])
-    .sort((a: any, b: any) => COMPETITION_ORDER.indexOf(a.code) - COMPETITION_ORDER.indexOf(b.code))
-    .map((comp: any) => ({
-      competition: comp,
-      standings: allStandings.filter((s: any) => s.competition_id === comp.id),
-    }))
-    .filter((c: any) => c.standings.length > 0);
-
+  const { data: xi } = await supabase.schema("sport").from("football_best_xi")
+    .select("id, formation").eq("user_id", userId).maybeSingle();
+  if (!xi?.id) return { id: null, formation: "4-3-3", players: [] };
+  const { data: players } = await supabase.schema("sport").from("football_best_xi_players")
+    .select("player_external_id, player_name, nationality, image_url, position_key, is_substitute, substitute_order")
+    .eq("best_xi_id", xi.id);
+  type Raw = { player_external_id: string; player_name: string; nationality: string | null; image_url: string | null; position_key: string; is_substitute: boolean; substitute_order: number | null };
   return {
-    userId,
-    teamHeroes,
-    favoriteTeamIds: allFavoriteTeamIds,
-    upcomingMatches,
-    followedTeams,
-    recentMatches,
-    followedTeamResults: followedTeams,
-    standings,
-    bestXI: {
-      id: bestXiData?.id ?? null,
-      formation: bestXiData?.formation ?? "4-3-3",
-      players: (bestXiPlayers as any[]).map((p: any) => ({
-        id: p.player_external_id,
-        name: p.player_name,
-        nationality: p.nationality,
-        image_url: p.image_url,
-        position_key: p.position_key,
-        is_substitute: p.is_substitute,
-        substitute_order: p.substitute_order,
-      })),
-    },
+    id: xi.id,
+    formation: (xi.formation as string) ?? "4-3-3",
+    players: ((players ?? []) as unknown as Raw[]).map((p) => ({
+      id: p.player_external_id, name: p.player_name, nationality: p.nationality, image_url: p.image_url,
+      position_key: p.position_key, is_substitute: p.is_substitute, substitute_order: p.substitute_order,
+    })),
   };
 }

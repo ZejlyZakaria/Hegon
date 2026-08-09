@@ -4,7 +4,7 @@
 
 export const FOOTBALL_KEYS = {
   all: ['football'] as const,
-  page: () => [...FOOTBALL_KEYS.all, 'page'] as const,
+  bestXi: () => [...FOOTBALL_KEYS.all, 'best-xi'] as const,
   teams: () => [...FOOTBALL_KEYS.all, 'teams'] as const,
   match: (externalId: number) => [...FOOTBALL_KEYS.all, 'match', externalId] as const,
   fanLog: (externalId: number) => [...FOOTBALL_KEYS.all, 'fan-log', externalId] as const,
@@ -23,6 +23,4 @@ export const FOOTBALL_KEYS = {
   winners: (competitionId: string) => [...FOOTBALL_KEYS.all, 'winners', competitionId] as const,
   teamFull: (externalId: string) => [...FOOTBALL_KEYS.all, 'team-full', externalId] as const,
   teamMatches: (externalId: string) => [...FOOTBALL_KEYS.all, 'team-matches', externalId] as const,
-  competitionSeason: (code: string) => [...FOOTBALL_KEYS.all, 'competition-season', code] as const,
-  liveStandings: (code: string) => [...FOOTBALL_KEYS.all, 'live-standings', code] as const,
 } as const;

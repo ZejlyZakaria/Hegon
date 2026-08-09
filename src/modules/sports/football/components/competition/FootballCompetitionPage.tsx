@@ -7,11 +7,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { useCompetition, useCompetitionMatches, useCompetitionWinners } from "../../hooks/useFootballCompetition";
+import { useCompetition, useCompetitionMatches, useCompetitionWinners, useStandings } from "../../hooks/useFootballCompetition";
 import { useScorers } from "../../hooks/useScorers";
 import { useMatchPanel } from "../../hooks/useMatchPanelStore";
 import { FootballMatchPanel } from "../match/FootballMatchPanel";
-import { displayCompetitionName, computeStandings } from "../../service";
+import { displayCompetitionName } from "../../service";
 import type { FootballMatchLite, Scorer, CompetitionWinner } from "../../service";
 import StandingsTable from "../standings/StandingsTable";
 
@@ -47,7 +47,7 @@ export default function FootballCompetitionPage({ id }: { id: string }) {
   const openMatch = useMatchPanel((s) => s.open);
 
   const season = useMemo(() => computeSeason(matches ?? []), [matches]);
-  const standings = useMemo(() => computeStandings(matches ?? []), [matches]);
+  const { data: standings } = useStandings(id);
 
   // A competition registered but never synced has 0 matches → fill it in the background (the calendar
   // shows up on the next view). Fire-and-forget, keepalive so it survives navigation.
@@ -109,7 +109,7 @@ export default function FootballCompetitionPage({ id }: { id: string }) {
 
       {/* Tab content */}
       {tab === "summary" && <SummaryTab matches={matches ?? []} onOpen={openMatch} />}
-      {tab === "standings" && <StandingsTable rows={standings} />}
+      {tab === "standings" && <StandingsTable rows={standings ?? []} />}
       {tab === "fixtures" && <FixturesTab matches={matches ?? []} onOpen={openMatch} />}
       {tab === "scorers" && <ScorersTab scorers={scorers ?? []} />}
       {tab === "honours" && <HonoursTab winners={winners ?? []} />}
