@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, Clock, MoreVertical, Star } from "lucide-react";
+import { BarChart3, Clock, ImageOff, MoreVertical, Star } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { cn } from "@/shared/utils/utils";
@@ -170,9 +170,30 @@ function StillCard({
         {still ? (
           <img src={still} alt={line2} loading="lazy" className="h-full w-full object-cover" />
         ) : !unaired ? (
-          <div className="flex h-full w-full items-center justify-center bg-surface-2 text-xs text-text-tertiary">
-            No image
-          </div>
+          /* AIRED, but TMDB has no still for it yet. TMDB uploads episode stills LATE (fans post
+             them hours/days after air), and our caches (1 h server + client) hold that null a while
+             longer — so a "No image" box was appearing for episodes whose photo does exist, just not
+             yet in the snapshot we cached. Rather than that bug-looking box, the card borrows the
+             SHOW's backdrop, lightly treated. LIGHT blur (not the heavy 5px of an unaired card) and
+             NO clock: this HAS aired, the photo is merely missing, and it swaps to the real still on
+             the next load once TMDB (and the cache) catch up. */
+          <>
+            {backdrop ? (
+              <img
+                src={backdrop}
+                alt=""
+                aria-hidden
+                loading="lazy"
+                className="absolute inset-0 h-full w-full scale-105 object-cover opacity-80 blur-[2px] saturate-75"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-surface-2" />
+            )}
+            <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/15 to-black/25" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <ImageOff size={18} className="text-white/45 filter-[drop-shadow(0_1px_2px_rgba(0,0,0,0.7))]" />
+            </div>
+          </>
         ) : (
           <div className="h-full w-full bg-surface-2" />
         )}
@@ -564,6 +585,7 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
                 line2={h.title ?? `Episode ${h.episode}`}
                 highlighted
                 rating={ratingMap.get(`${h.season}-${h.episode}`) ?? null}
+                backdrop={media.backdrop_url}
                 onToggle={() => toggleHighlight(h.season, h.episode)}
                 onRate={(r) => handleRate(h.season, h.episode, { title: h.title, still_path: h.still_path }, r)}
               />
