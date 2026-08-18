@@ -24,4 +24,7 @@ export const FOOTBALL_KEYS = {
   winners: (competitionId: string) => [...FOOTBALL_KEYS.all, 'winners', competitionId] as const,
   teamFull: (externalId: string) => [...FOOTBALL_KEYS.all, 'team-full', externalId] as const,
   teamMatches: (externalId: string) => [...FOOTBALL_KEYS.all, 'team-matches', externalId] as const,
+  teamHonours: (externalId: string) => [...FOOTBALL_KEYS.all, 'team-honours', externalId] as const,
+  teamStanding: (externalId: string) => [...FOOTBALL_KEYS.all, 'team-standing', externalId] as const,
+  teamArtwork: (externalId: string) => [...FOOTBALL_KEYS.all, 'team-artwork', externalId] as const,
 } as const;

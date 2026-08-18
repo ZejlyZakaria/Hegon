@@ -633,17 +633,63 @@ export interface FootballTeamFull {
   venue: string | null;
   club_colors: string | null;
   website: string | null;
+  // Enrichment (TheSportsDB, filled on-demand by /api/football/enrich-team)
+  fanart_url: string | null;
+  banner_url: string | null;
+  description: string | null;
+  stadium_capacity: number | null;
+  enriched_at: string | null;
 }
 
 export async function getTeamByExternalId(externalId: string): Promise<FootballTeamFull | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("sport").from("football_teams")
-    .select("id, api_external_id, name, short_name, tla, crest_url, country, founded, venue, club_colors, website")
+    .select("id, api_external_id, name, short_name, tla, crest_url, country, founded, venue, club_colors, website, fanart_url, banner_url, description, stadium_capacity, enriched_at")
     .eq("api_external_id", externalId)
     .maybeSingle();
   if (error) throw error;
   return (data as FootballTeamFull | null) ?? null;
+}
+
+// ── Honours — the FULL palmarès (all major trophies), Wikidata-sourced into football_team_honours by
+//    the enrich-team route (matched by QID, whitelist-filtered). Not just the 13 tracked competitions. ──
+export interface TeamHonour {
+  competition_name: string;
+  category: string | null;   // league | domestic_cup | domestic_super | continental | world
+  titles: number;
+}
+export async function getTeamHonours(teamExternalId: string): Promise<TeamHonour[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_team_honours")
+    .select("competition_name, category, titles, football_teams!inner ( api_external_id )")
+    .eq("football_teams.api_external_id", teamExternalId)
+    .order("titles", { ascending: false });
+  if (error) throw error;
+  type Row = { competition_name: string; category: string | null; titles: number };
+  return ((data ?? []) as unknown as Row[]).map((r) => ({ competition_name: r.competition_name, category: r.category, titles: r.titles }));
+}
+
+// ── Current league position(s) — from the official standings table. ──
+export interface TeamStanding {
+  competition_name: string;
+  position: number;
+  points: number;
+  played: number;
+}
+export async function getTeamStanding(teamExternalId: string): Promise<TeamStanding[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("sport").from("football_standings")
+    .select("position, points, played_games, football_competitions ( name ), football_teams!inner ( api_external_id )")
+    .eq("football_teams.api_external_id", teamExternalId);
+  if (error) throw error;
+  type Row = { position: number | null; points: number; played_games: number; football_competitions: { name: string | null } | null };
+  return ((data ?? []) as unknown as Row[])
+    .map((r) => ({ competition_name: r.football_competitions?.name ?? "", position: r.position ?? 0, points: r.points, played: r.played_games }))
+    .filter((r) => r.position > 0)
+    .sort((a, b) => a.position - b.position);
 }
 
 // All stored matches a team plays in (home OR away), any competition/season — the page groups by
