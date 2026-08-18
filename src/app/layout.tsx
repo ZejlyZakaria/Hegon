@@ -26,7 +26,20 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="en" translate="no" suppressHydrationWarning>
+      {/**
+       * TRACEABILITY — 2026-08-18, explicit owner request (crash fix on iOS).
+       *
+       * `lang` said "fr" while every visible string in this app is English. Inside the Google app's
+       * in-app browser on iOS, that mismatch is an invitation to auto-translate — and a translator
+       * rewrites text nodes (wrapping them in <font>) under the tree React owns. React then unmounts
+       * a node the DOM no longer holds and throws `NotFoundError: The object can not be found here.`
+       * (DOMException 8) from removeChild. Sentry 2c94a302, /perso/watching/:id, caught by the route
+       * error boundary — recovered, but the page died under the user.
+       *
+       * So `lang="en"` states the truth, and `translate="no"` asks translators to keep their hands
+       * off. Nothing else in this file changes: no provider, no layout, no auth logic.
+       */}
       {/**
        * TRACEABILITY — 2026-07-21, explicit owner request (image performance pass).
        *
