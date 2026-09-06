@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "ds:coverage": "node scripts/ds-coverage.mjs"
+    "ds:coverage": "node scripts/ds-coverage.mjs",
+    "map": "node scripts/map.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-12",
+  "generatedAt": "2026-09-05",
   "primitives": [
     "ErrorFallback",
     "badge",
@@ -7,7 +7,6 @@
     "calendar",
     "carousel-nav",
     "color-palette",
-    "command",
     "dialog",
     "dropdown-menu",
     "filter-select",
@@ -26,7 +25,6 @@
     "slider",
     "sliding-panel",
     "tab-nav",
-    "tabs",
     "textarea",
     "tooltip"
   ],
@@ -114,13 +112,13 @@
       }
     },
     "dashboard": {
-      "files": 8,
+      "files": 3,
       "uses": [],
       "smells": {},
       "worst": {}
     },
     "dashboard-os": {
-      "files": 21,
+      "files": 20,
       "uses": [
         "motion",
         "sliding-panel"
@@ -128,7 +126,7 @@
       "smells": {
         "arbitrary-type": 60,
         "handrolled-glass": 6,
-        "arbitrary-radius": 10,
+        "arbitrary-radius": 9,
         "raw-scrim": 3
       },
       "worst": {
@@ -151,7 +149,7 @@
       }
     },
     "goals": {
-      "files": 29,
+      "files": 30,
       "uses": [
         "badge",
         "button",
@@ -258,7 +256,7 @@
       }
     },
     "orgs": {
-      "files": 4,
+      "files": 2,
       "uses": [],
       "smells": {},
       "worst": {}
@@ -270,24 +268,35 @@
       "worst": {}
     },
     "sports": {
-      "files": 66,
+      "files": 78,
       "uses": [
         "button",
-        "select"
+        "carousel-nav",
+        "dialog",
+        "filter-select",
+        "input",
+        "section-header",
+        "select",
+        "sliding-panel"
       ],
       "smells": {
-        "handrolled-glass": 13,
-        "arbitrary-type": 128,
-        "raw-scrim": 13
+        "handrolled-glass": 10,
+        "arbitrary-type": 125,
+        "arbitrary-radius": 1,
+        "raw-scrim": 10
       },
       "worst": {
         "handrolled-glass": {
-          "file": "src/modules/sports/football/components/hero/HeroSwiper.tsx",
+          "file": "src/modules/sports/football/components/squad/FootballLegends.tsx",
           "n": 2
         },
         "arbitrary-type": {
           "file": "src/modules/sports/football/components/squad/FootballLegends.tsx",
           "n": 15
+        },
+        "arbitrary-radius": {
+          "file": "src/modules/sports/football/components/modals/FootballAddModal.tsx",
+          "n": 1
         },
         "raw-scrim": {
           "file": "src/modules/sports/football/components/squad/FootballLegends.tsx",
@@ -328,7 +337,7 @@
       }
     },
     "watching": {
-      "files": 103,
+      "files": 136,
       "uses": [
         "badge",
         "button",
@@ -347,22 +356,22 @@
         "tooltip"
       ],
       "smells": {
-        "raw-scrim": 41,
-        "handrolled-glass": 19,
-        "arbitrary-type": 11
+        "raw-scrim": 28,
+        "arbitrary-type": 5,
+        "handrolled-glass": 5
       },
       "worst": {
         "raw-scrim": {
           "file": "src/modules/watching/components/lists/ListDetail.tsx",
-          "n": 10
+          "n": 7
+        },
+        "arbitrary-type": {
+          "file": "src/modules/watching/components/stats/StatsPage.tsx",
+          "n": 2
         },
         "handrolled-glass": {
           "file": "src/modules/watching/components/ThemePlayer.tsx",
           "n": 4
-        },
-        "arbitrary-type": {
-          "file": "src/modules/watching/components/detail/MediaHero.tsx",
-          "n": 3
         }
       }
     }
@@ -388,17 +397,18 @@
       "tasks"
     ],
     "carousel-nav": [
+      "sports",
       "watching"
     ],
     "color-palette": [
       "tasks"
     ],
-    "command": [],
     "dialog": [
       "books",
       "goals",
       "habits",
       "journal",
+      "sports",
       "tasks",
       "watching"
     ],
@@ -409,6 +419,7 @@
       "watching"
     ],
     "filter-select": [
+      "sports",
       "watching"
     ],
     "form": [
@@ -429,6 +440,7 @@
       "goals",
       "habits",
       "journal",
+      "sports",
       "tasks"
     ],
     "label": [],
@@ -455,6 +467,7 @@
       "watching"
     ],
     "section-header": [
+      "sports",
       "watching"
     ],
     "segmented-control": [
@@ -477,6 +490,7 @@
       "dashboard-os",
       "goals",
       "journal",
+      "sports",
       "watching"
     ],
     "tab-nav": [
@@ -485,7 +499,6 @@
       "habits",
       "journal"
     ],
-    "tabs": [],
     "textarea": [
       "books",
       "goals",

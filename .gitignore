@@ -66,11 +66,23 @@ next-env.d.ts
 /src/app/(main)/icon-lab/
 /src/shared/components/app-icon/
 
-# Supabase — local CLI state, migrations and demo seeds stay out of git…
-/supabase/*
-# …but the edge functions are SOURCE CODE and live nowhere else: they exist only
-# in the cloud. Downloading them is not a backup — committing them is.
-!/supabase/functions/
+# Supabase — TOUT est suivi sauf l'état local de la CLI.
+#
+# Le raisonnement qui protégeait déjà les edge functions — « elles n'existent
+# nulle part ailleurs que dans le cloud ; les télécharger n'est pas une
+# sauvegarde, les committer en est une » — vaut MOT POUR MOT pour le schéma et
+# les crons. Il ne leur avait pas été appliqué : les migrations sont restées
+# hors de git, et le repo est devenu incapable de reconstruire HEGON.
+# Corrigé le 2026-09-06 (chantier d'audit, phase 1).
+#
+# Vérifié avant ouverture : aucune valeur de secret dans supabase/ (ni
+# `sb_secret_`, ni JWT). La clé `sb_publishable_` du baseline est déjà livrée à
+# tous les navigateurs. Les seeds démo ne contiennent que du fictif
+# (`demo@example.com`).
+#
+# Seul `.temp/` reste dehors, et c'est une question d'hygiène, pas de sécurité :
+# état local de la CLI, propre à la machine, réécrit à chaque commande.
+/supabase/.temp/
 
 # Personal — CV + LinkedIn, liés à HEGON mais hors base de connaissance
 /personal/
