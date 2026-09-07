@@ -32,7 +32,6 @@ type ModuleCoverage = {
   worst: Record<string, { file: string; n: number }>;
 };
 type Coverage = {
-  generatedAt: string;
   primitives: string[];
   smells: { key: string; label: string; fix: string }[];
   modules: Record<string, ModuleCoverage>;
@@ -781,7 +780,7 @@ export function StyleguidePage() {
         <Block
           id="coverage"
           title="Coverage"
-          note={`Generated from the code by scripts/ds-coverage.mjs on ${coverage.generatedAt} — never hand-written, so it can't flatter us. It counts what each module IMPORTS from the system, and what it still hand-rolls.`}
+          note="Generated from the code by scripts/ds-coverage.mjs and re-checked on every CI run — never hand-written, so it can't flatter us. It counts what each module IMPORTS from the system, and what it still hand-rolls."
         >
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <FilterSelect

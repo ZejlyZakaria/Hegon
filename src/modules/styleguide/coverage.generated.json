@@ -1,5 +1,4 @@
 {
-  "generatedAt": "2026-09-05",
   "primitives": [
     "ErrorFallback",
     "badge",
@@ -268,7 +267,7 @@
       "worst": {}
     },
     "sports": {
-      "files": 78,
+      "files": 70,
       "uses": [
         "button",
         "carousel-nav",
@@ -276,31 +275,30 @@
         "filter-select",
         "input",
         "section-header",
-        "select",
         "sliding-panel"
       ],
       "smells": {
-        "handrolled-glass": 10,
-        "arbitrary-type": 125,
+        "handrolled-glass": 7,
+        "arbitrary-type": 105,
         "arbitrary-radius": 1,
-        "raw-scrim": 10
+        "raw-scrim": 5
       },
       "worst": {
         "handrolled-glass": {
-          "file": "src/modules/sports/football/components/squad/FootballLegends.tsx",
+          "file": "src/modules/sports/tennis/components/hero/TennisHeroSwiper.tsx",
           "n": 2
         },
         "arbitrary-type": {
-          "file": "src/modules/sports/football/components/squad/FootballLegends.tsx",
-          "n": 15
+          "file": "src/modules/sports/football/components/matches/UpcomingMatchCard.tsx",
+          "n": 12
         },
         "arbitrary-radius": {
           "file": "src/modules/sports/football/components/modals/FootballAddModal.tsx",
           "n": 1
         },
         "raw-scrim": {
-          "file": "src/modules/sports/football/components/squad/FootballLegends.tsx",
-          "n": 3
+          "file": "src/modules/sports/tennis/components/hero/TennisHeroSwiper.tsx",
+          "n": 2
         }
       }
     },
@@ -479,7 +477,6 @@
       "books",
       "goals",
       "habits",
-      "sports",
       "tasks",
       "watching"
     ],

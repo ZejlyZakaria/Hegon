@@ -114,8 +114,12 @@ for (const p of PRIMITIVES) {
     .sort();
 }
 
+// ⚠️ PAS de `generatedAt` ici — retiré le 2026-09-07 (chantier d'audit, phase 1).
+// La CI régénère ce fichier et exige que le résultat soit IDENTIQUE au fichier commité : c'est ce qui
+// rend vraie la promesse « generated from the code, it cannot lie ». Une date rendait la sortie non
+// déterministe — le lendemain d'un commit, la CI aurait échoué alors que rien n'avait changé, et un
+// cliquet qui crie au loup finit désactivé. Git sait déjà quand le fichier a changé : `git log`.
 const payload = {
-  generatedAt: new Date().toISOString().slice(0, 10),
   primitives: PRIMITIVES,
   smells: SMELLS.map(({ key, label, fix }) => ({ key, label, fix })),
   modules,

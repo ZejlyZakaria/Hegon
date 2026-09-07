@@ -1,5 +1,11 @@
 name: CI
 
+# Les CLIQUETS du projet. Chaque étape ici rend une règle impossible à violer en silence —
+# c'est le principe du chantier d'audit : « un mécanisme, jamais un état ».
+#
+# Ordre délibéré : du moins cher au plus cher. `build` est lent et demande les secrets,
+# il passe en dernier — inutile d'attendre 3 minutes pour apprendre qu'un test échoue.
+
 on:
   push:
     branches: [main]
@@ -8,7 +14,7 @@ on:
 
 jobs:
   check:
-    name: Lint, Typecheck & Build
+    name: Lint, Typecheck, Test, Dead code & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -27,6 +33,29 @@ jobs:
 
       - name: Typecheck
         run: npx tsc --noEmit
+
+      # Ajouté le 2026-09-07 — les 14 fichiers de test existaient mais ne tournaient QUE si
+      # quelqu'un tapait `npm run test` à la main. Personne ne le faisait.
+      - name: Test
+        run: npm run test
+
+      # Ajouté le 2026-09-07 — empêche le code mort de s'accumuler.
+      # Ne bloque QUE sur les catégories non ambiguës (fichiers orphelins, dépendances inutilisées,
+      # imports non résolus). Les *exports* inutilisés restent en information : les primitifs
+      # vendorisés exposent l'API complète du composant, et un cliquet insupportable finit désactivé.
+      # ⚠️ `knip.json` déclare les edge functions et les scripts .mjs comme points d'entrée — sans
+      # cela knip les croit morts. Voir knip.README.md AVANT d'y toucher.
+      - name: Dead code (knip)
+        run: npm run knip:ci
+
+      # Ajouté le 2026-09-07 — `coverage.generated.json` proclame en tête « generated from the code,
+      # it cannot lie ». Il avait DEUX MOIS de retard (28 primitifs annoncés dont 2 supprimés).
+      # On régénère et on exige que le fichier commité soit identique : la promesse devient vraie.
+      - name: Design-system coverage is not stale
+        run: |
+          npm run ds:coverage
+          git diff --exit-code -- src/modules/styleguide/coverage.generated.json \
+            || (echo "::error::coverage.generated.json est périmé — lance 'npm run ds:coverage' et commite le résultat." && exit 1)
 
       - name: Build
         run: npm run build
