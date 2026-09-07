@@ -1,37 +1,12 @@
 // =====================================================
 // DASHBOARD TYPES
 // =====================================================
-
-export type SportType = "football" | "f1" | "tennis";
-
-export interface DashboardSportEvent {
-  type: SportType;
-  title: string;
-  subtitle: string;
-  date: string; // ISO
-  badge: string; // "FOOTBALL" | "RACING" | "TENNIS"
-  href: string;
-  // Football
-  homeTeam?: string;
-  awayTeam?: string;
-  homeTeamCrest?: string | null;
-  awayTeamCrest?: string | null;
-  competition?: string | null;
-  isMainTeam?: boolean;
-  // F1
-  circuit?: string | null;
-  country?: string | null;
-  // Tennis - tournament (upcoming section)
-  surface?: string | null;
-  location?: string | null;
-  endDate?: string | null;
-  // Tennis - match (today section)
-  playerName?: string | null;
-  playerPhotoUrl?: string | null;
-  opponentName?: string | null;
-  round?: string | null;
-  tournamentName?: string | null;
-}
+//
+// TRACEABILITY (2026-09-06, chantier d'audit phase 1) — `DashboardData` portait 10 champs ; le
+// dashboard actuel (`dashboard-os`) n'en lit que 2. Les 8 autres (tâche prioritaire, événements
+// football/tennis/F1 du jour et à venir) décrivaient l'ANCIEN dashboard, remplacé par le home screen.
+// Supprimés avec les fonctions qui les produisaient — voir l'en-tête de `service.ts`.
+// `DashboardSportEvent` et `SportType` sont partis avec eux : plus aucun consommateur.
 
 export interface DashboardMedia {
   id: string;
@@ -58,15 +33,5 @@ export interface DashboardTask {
 
 export interface DashboardData {
   tasks: DashboardTask[];
-  priorityTask: DashboardTask | null;
-  inProgressMedia: DashboardMedia | null;
   inProgressMediaList: DashboardMedia[];
-  // Today's events — separated by sport for layout logic
-  todayFootballEvents: DashboardSportEvent[];
-  todayTennisEvents: DashboardSportEvent[];
-  todayF1Event: DashboardSportEvent | null;
-  todaySportEvents: DashboardSportEvent[]; // kept for UpcomingSports section compat
-  // Future events (for Upcoming Sports section)
-  sportEvents: DashboardSportEvent[];
-  upNextEvent: DashboardSportEvent | null;
 }
