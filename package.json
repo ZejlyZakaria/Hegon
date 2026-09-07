@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "ds:coverage": "node scripts/ds-coverage.mjs",
-    "map": "node scripts/map.mjs"
+    "map": "node scripts/map.mjs",
+    "knip": "knip",
+    "knip:ci": "knip --include files,dependencies,unlisted,unresolved"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -66,6 +68,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "husky": "^9.1.7",
+    "knip": "^6.34.0",
     "lint-staged": "^16.4.0",
     "msw": "^2.13.5",
     "playwright": "^1.60.0",
