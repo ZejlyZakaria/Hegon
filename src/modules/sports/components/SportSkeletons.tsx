@@ -23,46 +23,6 @@ function PulseRoundedFull({
     <div className={`rounded-full bg-zinc-800 ${className}`} style={style} />
   );
 }
-// ─── Hero skeleton ────────────────────────────────────────────────────────────
-
-export function FootballHeroSkeleton() {
-  return (
-    <div className="relative h-72 md:h-60 rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800/60 animate-pulse">
-      <div className="absolute inset-0 flex flex-col md:flex-row items-center justify-center md:justify-between h-full p-4 md:p-8 gap-6 md:gap-4">
-        <div className="flex flex-col md:flex-row items-center gap-4">
-          <PulseRoundedFull className="w-16 h-16 md:w-24 md:h-24 rounded-full shrink-0" />
-          <div className="flex flex-col items-center md:items-start gap-2">
-            <Pulse className="w-20 h-3" />
-            <Pulse className="w-44 h-7" />
-            <Pulse className="w-16 h-3" />
-          </div>
-        </div>
-        <div className="flex flex-col items-center md:items-end gap-3">
-          <div className="flex items-center gap-3 justify-end">
-            <div className="flex flex-col items-end gap-2">
-              <Pulse className="w-36 h-4" />
-              <Pulse className="w-54 h-4" />
-            </div>
-            <Pulse className="w-12 h-12" />
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <Pulse className="w-20 h-4" />
-            <Pulse className="w-20 h-4" />
-          </div>
-        </div>
-      </div>
-      {/* progress bars */}
-      <div className="absolute bottom-3 left-4 right-4 flex gap-1.5">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex-1 h-0.5 rounded-full bg-zinc-800" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Recent results skeleton ──────────────────────────────────────────────────
-
 export function FootballRecentResultsSkeleton() {
   return (
     <div className="space-y-5 animate-pulse">
@@ -230,56 +190,6 @@ export function FootballStandingsSkeleton() {
             />
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── BestXI skeleton ──────────────────────────────────────────────────────────
-
-export function FootballBestXISkeleton() {
-  return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:gap-6 w-full animate-pulse">
-      <div className="flex-1 lg:w-2/3 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <Pulse className="h-9 w-24 rounded-xl" />
-          <Pulse className="h-4 w-10" />
-          <Pulse className="h-9 w-28 rounded-xl" />
-        </div>
-        <div
-          className="relative w-full rounded-2xl bg-zinc-800/60"
-          style={{ paddingBottom: "72%" }}
-        >
-          <div className="absolute inset-0 flex flex-col justify-around py-6 px-4">
-            {[1, 4, 3, 1].map((count, row) => (
-              <div key={row} className="flex justify-around">
-                {Array.from({ length: count }).map((_, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1">
-                    <Pulse className="w-12 h-12 rounded-full" />
-                    <Pulse className="w-10 h-2" />
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="lg:w-1/3">
-        <div className="bg-zinc-950 border border-zinc-800/60 rounded-2xl p-4 flex flex-col gap-5">
-          <Pulse className="h-4 w-28" />
-          <div className="grid grid-cols-4 gap-y-4 gap-x-2 place-items-center">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <Pulse className="w-10 h-10 rounded-full" />
-                <Pulse className="w-8 h-2" />
-              </div>
-            ))}
-          </div>
-          <div className="pt-4 border-t border-zinc-800/50 grid grid-cols-2 gap-2">
-            <Pulse className="h-16 rounded-xl" />
-            <Pulse className="h-16 rounded-xl" />
-          </div>
-        </div>
       </div>
     </div>
   );

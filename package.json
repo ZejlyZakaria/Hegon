@@ -26,7 +26,6 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.2.2",
-    "@radix-ui/react-dialog": "^1.1.21",
     "@radix-ui/react-popover": "^1.1.21",
     "@radix-ui/react-select": "^2.3.5",
     "@sentry/nextjs": "^10.48.0",
