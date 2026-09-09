@@ -85,10 +85,22 @@ const created = new Set(
 );
 const neverMigrated = tables.filter((t) => !created.has(t));
 
-// Un cron versionné = un `cron.schedule` non commenté.
-const scheduledInRepo = migrationSql
-  .split("\n")
-  .filter((l) => l.includes("cron.schedule") && !l.trim().startsWith("--")).length;
+// Un cron versionné = une PAIRE (nom de job, expression cron) déclarée dans les migrations.
+//
+// ⚠️ CORRIGÉ le 2026-09-09. L'ancienne version comptait les lignes contenant `cron.schedule` :
+// elle annonçait « 1 » alors que 15 jobs étaient versionnés, parce que `20260906000100_crons.sql`
+// les programme dans une BOUCLE (un seul appel `cron.schedule` pour 15 tuples). Le chiffre faux
+// n'était pas le pire : un compteur qui ne sait pas voir 15 jobs ne verrait pas non plus leur
+// disparition. **Un cliquet qui ment est pire que pas de cliquet.**
+//
+// On compte donc les paires nom + expression cron (5 champs), ce qui couvre les deux écritures :
+//   cron.schedule('mon-job', '0 4 * * *', …)        ← forme classique
+//   ('mon-job', '0 4 * * *', $$…$$)                 ← forme en boucle values
+const CRON_EXPR = /'([^']+)'\s*,\s*'((?:[\d*,\-/]+\s+){4}[\d*,\-/]+)'/g;
+const scheduledNames = [
+  ...new Set([...migrationSql.matchAll(CRON_EXPR)].map((m) => m[1])),
+].sort();
+const scheduledInRepo = scheduledNames.length;
 
 // Une edge function est « déclenchée depuis le repo » si son nom apparaît ailleurs que chez elle.
 const callerHaystack = [...srcFiles.map(read), migrationSql].join("\n");

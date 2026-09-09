@@ -80,9 +80,10 @@ next-env.d.ts
 # tous les navigateurs. Les seeds démo ne contiennent que du fictif
 # (`demo@example.com`).
 #
-# Seul `.temp/` reste dehors, et c'est une question d'hygiène, pas de sécurité :
+# Seuls `.temp/` et `.branches/` restent dehors, et c'est une question d'hygiène, pas de sécurité :
 # état local de la CLI, propre à la machine, réécrit à chaque commande.
 /supabase/.temp/
+/supabase/.branches/
 
 # Personal — CV + LinkedIn, liés à HEGON mais hors base de connaissance
 /personal/
