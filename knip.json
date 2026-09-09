@@ -10,7 +10,13 @@
 
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.mjs", "supabase/functions/**/*.ts"],
 
-  "ignoreDependencies": ["tailwindcss", "tw-animate-css", "shadcn"],
+  "ignoreDependencies": [
+    "tailwindcss",
+    "tw-animate-css",
+    "shadcn",
+    "playwright",
+    "lint-staged"
+  ],
 
   "ignoreExportsUsedInFile": true,
 

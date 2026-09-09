@@ -41,8 +41,34 @@ restent donc visibles dans `npm run knip`, en information, à trier à la main.
 | Entrée | Pourquoi |
 |---|---|
 | `shadcn` | CLI lancée à la main (`npx shadcn add`), jamais importée |
-| `tailwindcss`, `@tailwindcss/postcss`, `tw-animate-css` | chargées par PostCSS/CSS, pas par un `import` |
-| `src/app/(main)/icon-lab/**`, `src/shared/components/app-icon/**` | déjà gitignorés (labo local) |
+| `tailwindcss`, `tw-animate-css` | chargées par PostCSS/CSS, pas par un `import` |
+| `lint-staged` | lancé par le hook git `.husky/pre-commit`, jamais importé |
+| `playwright` | ⚠️ voir ci-dessous — utilisé **uniquement** par des scripts gitignorés |
+
+## ⚠️⚠️ LE PIÈGE QUI A FAIT ÉCHOUER LA CI (2026-09-09)
+
+**La CI ne voit pas le même dépôt que ton disque.** Tout ce qui est gitignoré est **invisible** pour
+elle. `knip:ci` passait en local et **échouait en CI** — pendant deux commits.
+
+La cause : `playwright` n'est utilisé que par `scripts/shoot.mjs` et `scripts/auth-setup.mjs`, le
+harnais de capture d'écran **gitignoré à dessein** (« local-only dev tooling »). Sur le poste, knip voit
+ses utilisateurs ; en CI, ces fichiers n'existent pas, donc la dépendance paraît orpheline et le cliquet
+casse le build.
+
+⭐ **La leçon de méthode, plus importante que le correctif** : vérifier un cliquet en local **n'est pas
+une preuve**, parce qu'on l'exécute dans un environnement qui n'est pas le sien. La preuve, c'est de
+**cloner le dépôt dans un dossier propre** — le clone ne contient que ce qui est versionné, exactement
+comme un checkout de CI :
+
+```bash
+git clone . /tmp/ci-sim && cd /tmp/ci-sim
+npm ci && npm run knip:ci && npm run test && npm run build
+```
+
+**À faire avant de toucher à `knip.json`, à `ci.yml`, ou à quoi que ce soit qui dépend de la liste des
+fichiers.** Autres pièges de la même famille dans ce projet : `src/app/(main)/icon-lab/`,
+`src/shared/components/app-icon/`, `hq/`, `memory/`, `CLAUDE.md` — tous gitignorés, tous invisibles à
+la CI.
 
 ## À savoir en le modifiant
 
