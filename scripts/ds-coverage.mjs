@@ -60,9 +60,11 @@ const SMELLS = [
   },
 ];
 
+// ⚠️ `.sort()` OBLIGATOIRE sur chaque `readdirSync` — voir la note de déterminisme plus bas.
+// Ici l'ordre décide du départage des égalités dans `worst` (le premier fichier au score max gagne).
 function walk(dir) {
   const out = [];
-  for (const entry of readdirSync(dir)) {
+  for (const entry of readdirSync(dir).sort()) {
     const p = join(dir, entry);
     if (statSync(p).isDirectory()) out.push(...walk(p));
     else if (/\.(tsx|ts)$/.test(p)) out.push(p);
@@ -72,8 +74,19 @@ function walk(dir) {
 
 const IMPORT_RE = /from\s+["']@\/shared\/components\/ui\/([a-z0-9-]+)["']/g;
 
+// ⚠️⚠️ DÉTERMINISME — `.sort()` obligatoire, la CI en dépend (corrigé le 2026-09-09).
+//
+// La CI régénère ce fichier et exige qu'il soit IDENTIQUE au fichier commité. Or `readdirSync` rend
+// les entrées dans l'ordre du SYSTÈME DE FICHIERS : alphabétique sur NTFS (Windows), arbitraire sur
+// ext4 (Linux, donc la CI). Les clés de `modules` étaient insérées dans cet ordre, et
+// `JSON.stringify` conserve l'ordre d'insertion ⇒ **le fichier généré différait entre le poste et la
+// CI**, qui échouait sur « coverage.generated.json est périmé » alors que rien n'avait changé.
+//
+// C'est la même faute que le `generatedAt` retiré deux jours plus tôt : une sortie non déterministe
+// rend le cliquet ininterprétable, et un cliquet qui crie au loup finit désactivé.
+// ⇒ Toute sortie contrôlée par un gate doit être triée, jamais laissée à l'ordre du disque.
 const modules = {};
-for (const name of readdirSync(MODULES_DIR)) {
+for (const name of readdirSync(MODULES_DIR).sort()) {
   if (NOT_A_MODULE.has(name)) continue;
   const dir = join(MODULES_DIR, name);
   if (!statSync(dir).isDirectory()) continue;
@@ -97,11 +110,20 @@ for (const name of readdirSync(MODULES_DIR)) {
     }
   }
 
+  // Ceinture et bretelles : les clés de `smells` et `worst` étaient insérées dans l'ordre de
+  // DÉCOUVERTE des fichiers. Le `walk()` trié suffit à les rendre déterministes aujourd'hui, mais on
+  // trie explicitement pour que la sortie ne dépende PLUS JAMAIS de l'ordre de parcours — sinon une
+  // future modif de `walk()` recasserait la CI en silence, pour la troisième fois.
+  // (`.sort()` par défaut = ordre lexicographique UTF-16, identique sur toutes les plateformes ;
+  //  surtout pas `localeCompare`, qui dépend de la locale de la machine.)
+  const sortKeys = (o) =>
+    Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+
   modules[name] = {
     files: files.length,
     uses: [...uses].sort(),
-    smells,
-    worst,
+    smells: sortKeys(smells),
+    worst: sortKeys(worst),
   };
 }
 
