@@ -1,0 +1,29 @@
+{
+  "_comment": [
+    "Valeurs de RÉFÉRENCE du schéma HEGON, comparées par .github/workflows/watchdog.yml",
+    "à la sortie de schema-drift.sql. Un écart = un objet créé ou supprimé HORS migration",
+    "(règle R10 de hq/rules/system-design.md).",
+    "",
+    "⛔ NE PAS mettre à jour ces chiffres pour faire taire le garde. La seule raison",
+    "légitime de les changer est une MIGRATION VERSIONNÉE qui vient d'être appliquée —",
+    "et le commit qui touche ce fichier doit alors contenir cette migration.",
+    "",
+    "⚠️ Les valeurs ci-dessous marquées null n'ont pas encore été relevées : elles",
+    "demandent un accès à la base. Pour les semer, une fois :",
+    "    psql \"$DB_URL\" -f supabase/checks/schema-drift.sql",
+    "puis reporter chaque nombre ici. Tant qu'une valeur est null, le garde",
+    "affiche la mesure sans échouer dessus.",
+    "",
+    "Repères connus (relevés le 2026-09-06 pendant le test de restauration, et",
+    "confirmés par le baseline pour tables/policies/fonctions) : 68 / 206 / 35 / ~250 / 15.",
+    "L'écart sur les index (138 `create index` dans le baseline) vient des index",
+    "implicites de clés primaires et de contraintes unique — voir schema-drift.sql."
+  ],
+
+  "tables": 68,
+  "colonnes": null,
+  "policies": 206,
+  "fonctions": 35,
+  "index": null,
+  "crons": 15
+}

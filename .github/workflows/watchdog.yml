@@ -1,0 +1,130 @@
+name: Watchdog
+
+# LE CHIEN DE GARDE — livrable en code de la phase 2 de l'audit.
+#
+# La CI (`ci.yml`) surveille le CODE. Rien ne surveillait la moitié invisible de
+# HEGON : les 15 crons et les 20 edge functions qui remplissent la base par
+# derrière. Zéro ligne de Sentry chez elles ; 55 `console.error` dans des logs
+# que personne n'ouvre. C'est ce trou qui a produit 40 h de panne silencieuse.
+#
+# ⚠️ TOUTES LES 6 HEURES, ET C'EST STRUCTUREL, PAS UN CONFORT.
+# `net._http_response` — la seule source qui dise si une fonction edge a vraiment
+# répondu — n'est conservée que ~6 h. Un contrôle quotidien en raterait 18 sur 24.
+#
+# PRÉREQUIS — un secret GitHub à créer, sur le dépôt `ZejlyZakaria/Hegon` :
+#   HEGON_DB_URL = la chaîne de connexion Postgres (Supabase → Project Settings →
+#   Database → Connection string, onglet "Session pooler" — surtout PAS "Direct
+#   connection", qui est en IPv6 seul alors que les runners GitHub n'ont pas d'IPv6).
+#
+# ⚠️ TANT QUE CE SECRET N'EXISTE PAS, CE WORKFLOW ÉCHOUE — VOLONTAIREMENT.
+# La première version s'arrêtait « proprement » avec un `::warning::` et passait au
+# VERT sans rien observer. C'est très exactement le mode de panne qu'il est censé
+# détecter : un job qui rapporte `succeeded` en n'ayant rien fait — la signature des
+# 40 h de cron mort. Et une violation de la règle R8 de `hq/rules/system-design.md`
+# (« un échec silencieux est un BUG, pas une dégradation gracieuse »), écrite le même
+# jour. Un chien de garde aveugle doit ABOYER, pas dormir en silence.
+# Corrigé le 2026-09-10 après contre-examen.
+
+on:
+  schedule:
+    - cron: "20 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  watch:
+    name: Crons, fonctions edge et dérive du schéma
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # ⚠️ ÉCHEC VOLONTAIRE si le secret manque — voir l'en-tête. Un watchdog qui
+      # passe au vert sans rien observer reproduit la panne qu'il doit détecter.
+      - name: Le secret est-il configuré ?
+        id: guard
+        env:
+          DB_URL: ${{ secrets.HEGON_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::error::HEGON_DB_URL n'est pas configuré — le watchdog ne peut RIEN observer."
+            echo "::error::Crée-le : github.com/ZejlyZakaria/Hegon → Settings → Secrets and variables → Actions."
+            echo "::error::Valeur : Supabase → Project Settings → Database → Connection string → onglet 'Session pooler'."
+            exit 1
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      # Le client fourni par le runner est en 16 ; le serveur est en 17.6.
+      # Pour de simples SELECT ça passe, mais on installe le client PGDG 17 pour
+      # ne pas se faire surprendre plus tard (c'est le même piège que pour pg_dump).
+      - name: Client PostgreSQL 17
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      # ── 1 · Les crons et les fonctions edge ────────────────────────────────
+      # Zéro ligne = tout va bien. Toute ligne est une alerte.
+      - name: Crons et fonctions edge
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          DB_URL: ${{ secrets.HEGON_DB_URL }}
+        run: |
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/checks/job-freshness.sql > /tmp/jobs.txt
+          cat /tmp/jobs.txt
+          # psql imprime toujours l'en-tête + le compteur de lignes ; on lit le compteur.
+          if grep -qE '^\(0 (rows?|lignes?)\)' /tmp/jobs.txt; then
+            echo "✅ Aucun cron en échec, aucune fonction edge en erreur, aucune donnée périmée."
+          else
+            echo "::error::Le watchdog a trouvé des alertes — voir la sortie ci-dessus."
+            exit 1
+          fi
+
+      # ── 2 · La dérive du schéma (règle R10) ────────────────────────────────
+      # Un objet créé hors migration se voit ici en moins d'une semaine.
+      - name: Dérive du schéma
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          DB_URL: ${{ secrets.HEGON_DB_URL }}
+        run: |
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/checks/schema-drift.sql > /tmp/objects.txt
+          cat /tmp/objects.txt
+          node - <<'NODE'
+          const fs = require("fs");
+          const expected = JSON.parse(fs.readFileSync("supabase/checks/expected-objects.json", "utf8"));
+          const actual = Object.fromEntries(
+            fs.readFileSync("/tmp/objects.txt", "utf8")
+              .split("\n").map((l) => l.trim()).filter(Boolean)
+              .map((l) => { const [k, v] = l.split(/\s+/); return [k, Number(v)]; })
+          );
+          let drift = false, unseeded = [];
+          for (const [k, exp] of Object.entries(expected)) {
+            if (k.startsWith("_")) continue;
+            const got = actual[k];
+            if (exp === null) { unseeded.push(`${k}=${got}`); continue; }
+            if (got !== exp) {
+              console.log(`::error::DÉRIVE — ${k} : attendu ${exp}, trouvé ${got}`);
+              drift = true;
+            }
+          }
+          if (unseeded.length) {
+            console.log(`::warning::Valeurs de référence non semées : ${unseeded.join(", ")} — reporte-les dans expected-objects.json.`);
+          }
+          if (drift) {
+            console.log("Un objet a été créé ou supprimé HORS migration (règle R10). Soit tu ajoutes la migration qui manque, soit tu annules le changement.");
+            process.exit(1);
+          }
+          console.log("✅ Le schéma correspond aux valeurs de référence du repo.");
+          NODE
+
+      # ── 3 · La sauvegarde des données personnelles ─────────────────────────
+      # ⛔ PAS ENCORE CONSTRUITE — la destination est une décision owner
+      # (dépôt privé `hegon-hq` ? artefact GitHub avec rétention ?), et elle
+      # change le code. C'est le dernier poste irréversible ouvert (règle R11).
+      # Le reste de la plomberie est ici : même workflow, même secret, même
+      # client PG 17. Il ne manque que la décision.
