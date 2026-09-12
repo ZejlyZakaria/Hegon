@@ -11,10 +11,14 @@ name: Watchdog
 # `net._http_response` — la seule source qui dise si une fonction edge a vraiment
 # répondu — n'est conservée que ~6 h. Un contrôle quotidien en raterait 18 sur 24.
 #
-# PRÉREQUIS — un secret GitHub à créer, sur le dépôt `ZejlyZakaria/Hegon` :
+# PRÉREQUIS — deux secrets GitHub, sur le dépôt `ZejlyZakaria/Hegon` :
 #   HEGON_DB_URL = la chaîne de connexion Postgres (Supabase → Project Settings →
 #   Database → Connection string, onglet "Session pooler" — surtout PAS "Direct
 #   connection", qui est en IPv6 seul alors que les runners GitHub n'ont pas d'IPv6).
+#   HEALTHCHECKS_PING_KEY = la clé de ping healthchecks.io (Settings → Ping key) —
+#   le témoin EXTERNE qui alerte si ce watchdog cesse de tourner (dernière étape).
+#   Ajouté le 2026-09-12 : la règle des 60 jours de GitHub coupe les `schedule`
+#   d'un dépôt public sans commit, sans run donc sans mail.
 #
 # ⚠️ TANT QUE CE SECRET N'EXISTE PAS, CE WORKFLOW ÉCHOUE — VOLONTAIREMENT.
 # La première version s'arrêtait « proprement » avec un `::warning::` et passait au
@@ -40,15 +44,20 @@ jobs:
 
       # ⚠️ ÉCHEC VOLONTAIRE si le secret manque — voir l'en-tête. Un watchdog qui
       # passe au vert sans rien observer reproduit la panne qu'il doit détecter.
-      - name: Le secret est-il configuré ?
+      - name: Les secrets sont-ils configurés ?
         id: guard
         env:
           DB_URL: ${{ secrets.HEGON_DB_URL }}
+          PING_KEY: ${{ secrets.HEALTHCHECKS_PING_KEY }}
         run: |
           if [ -z "$DB_URL" ]; then
             echo "::error::HEGON_DB_URL n'est pas configuré — le watchdog ne peut RIEN observer."
             echo "::error::Crée-le : github.com/ZejlyZakaria/Hegon → Settings → Secrets and variables → Actions."
             echo "::error::Valeur : Supabase → Project Settings → Database → Connection string → onglet 'Session pooler'."
+            exit 1
+          fi
+          if [ -z "$PING_KEY" ]; then
+            echo "::error::HEALTHCHECKS_PING_KEY n'est pas configuré — sans témoin externe, un watchdog qui ne tourne plus ne prévient personne (règle des 60 jours)."
             exit 1
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -123,8 +132,29 @@ jobs:
           NODE
 
       # ── 3 · La sauvegarde des données personnelles ─────────────────────────
-      # ⛔ PAS ENCORE CONSTRUITE — la destination est une décision owner
-      # (dépôt privé `hegon-hq` ? artefact GitHub avec rétention ?), et elle
-      # change le code. C'est le dernier poste irréversible ouvert (règle R11).
-      # Le reste de la plomberie est ici : même workflow, même secret, même
-      # client PG 17. Il ne manque que la décision.
+      # → `backup.yml`, workflow séparé (décision owner du 2026-09-12 : dépôt
+      # privé `hegon-backups`, gzip, chiffré ; OneDrive = dump manuel figé, pas
+      # un second emplacement). Séparé parce
+      # que sa cadence est hebdomadaire, pas 6 h — deux horloges dans un même
+      # fichier, c'est un `if` sur le cron qui finit par se tromper. Même secret
+      # `HEGON_DB_URL`, même client PG 17.
+
+      # ── 4 · Le témoin EXTERNE — healthchecks.io ─────────────────────────────
+      # Un watchdog qui ne tourne plus ne prévient personne : règle des 60 jours
+      # (GitHub coupe les `schedule` d'un dépôt public sans commit), workflow
+      # désactivé par erreur, panne d'Actions. healthchecks.io attend un ping
+      # toutes les 6 h (+1 h de grâce) et alerte sur son ABSENCE. `if: always()`
+      # pour que le ping parte même quand le watchdog a trouvé une alerte —
+      # dans ce cas `/fail`, et healthchecks relaie aussi.
+      - name: Ping healthchecks.io
+        if: always()
+        env:
+          PING_KEY: ${{ secrets.HEALTHCHECKS_PING_KEY }}
+          STATUS: ${{ job.status }}
+        run: |
+          [ -n "$PING_KEY" ] || exit 0   # déjà signalé en rouge à l'étape 1
+          url="https://hc-ping.com/$PING_KEY/hegon-watchdog"
+          [ "$STATUS" = "success" ] || url="$url/fail"
+          curl -fsS -m 10 --retry 5 -o /dev/null "$url?create=1&timeout=21600&grace=3600" \
+            && echo "✅ Ping envoyé ($STATUS)." \
+            || echo "::warning::Le ping healthchecks.io a échoué — le témoin externe alertera de lui-même."

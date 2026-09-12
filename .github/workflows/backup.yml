@@ -1,0 +1,347 @@
+name: Backup
+
+# LA SAUVEGARDE — dernier poste irréversible du chantier d'audit (règle R11 de
+# `hq/rules/system-design.md`).
+#
+# La STRUCTURE de HEGON se reconstruit depuis le repo (migrations versionnées,
+# garde anti-dérive). Les DONNÉES — journal, habitudes, takes, notes — ne se
+# reconstruisent depuis rien. Le plan Supabase est Free : aucune sauvegarde
+# automatique côté fournisseur. Ce workflow est la seule copie régulière.
+#
+# CE QU'IL PRODUIT, chaque dimanche, dans le dépôt privé `hegon-backups` :
+#   YYYY-MM-DD.data.sql.gz.gpg    les données, chiffrées (AES-256, passphrase)
+#   YYYY-MM-DD.schema.sql.gz.gpg  le schéma versionné à cette date, chiffré
+#   YYYY-MM-DD.counts.txt         lignes par table (en clair : noms + nombres)
+#   RESTORE.md                    la procédure, écrite pour un jour de panique
+#
+# ⭐ LE JOB VÉRIFIE SA PROPRE SORTIE, ET ÉCHOUE BRUYAMMENT SINON (condition
+# owner n°2). Un dump de 0 octet pendant six mois avec un run vert, c'est la
+# panne des 40 h. Donc, dans l'ordre :
+#   1. chaque table de la base est dans le dump avec EXACTEMENT son nombre de
+#      lignes (comptage côté Postgres vs comptage des INSERT dans le fichier) ;
+#   2. taille plausible, et jamais < 70 % de la sauvegarde précédente ;
+#   3. gzip valide ;
+#   4. ROUND-TRIP : on déchiffre avec la passphrase, on décompresse, on
+#      recompte — ce qui est poussé est prouvé restaurable AVANT d'être poussé ;
+#   5. après le push : aucune table n'a perdu > 20 % de ses lignes depuis la
+#      sauvegarde précédente — le seul contrôle qui voit une BASE amputée.
+#
+# ⚠️ PAS DE CHEMIN « DÉGRADÉ ». Secret manquant, dump court, déchiffrement
+# raté : le job échoue. GitHub envoie un mail à l'owner sur l'échec d'un
+# workflow programmé — c'est l'alerte.
+#
+# ⚠️ LA RÈGLE DES 60 JOURS — et son témoin externe. GitHub DÉSACTIVE les
+# workflows `schedule` d'un dépôt PUBLIC sans commit depuis 60 jours. Pas de
+# run → pas d'échec → pas de mail : un silence parfait. D'où la dernière
+# étape : un ping healthchecks.io, qui alerte sur l'ABSENCE de ping — un
+# observateur qui ne dépend pas de ce qu'il observe. Le watchdog a le sien.
+# (Décision owner du 2026-09-12, sur contre-examen.)
+#
+# RPO ASSUMÉ : 7 jours. Une panne le samedi coûte la semaine.
+#
+# SECRETS (dépôt `ZejlyZakaria/Hegon` → Settings → Secrets → Actions) :
+#   HEGON_DB_URL               déjà créé pour le watchdog (session pooler)
+#   HEGON_BACKUP_PASSPHRASE    la passphrase de chiffrement — condition owner
+#                              n°1 : elle vit en DEUX endroits (gestionnaire de
+#                              mots de passe + support hors-ligne). La perdre =
+#                              perdre TOUTES ces sauvegardes. Le seul filet est
+#                              alors le dump MANUEL de OneDrive, en clair, figé
+#                              à la date où l'owner l'a fait à la main (09/09) :
+#                              rien ici ne l'alimente.
+#   HEGON_BACKUPS_DEPLOY_KEY   clé SSH privée ; sa clé publique est une deploy
+#                              key EN ÉCRITURE sur `hegon-backups` (condition
+#                              owner n°3 : le GITHUB_TOKEN ne peut pas pousser
+#                              vers un autre dépôt). Deploy key plutôt que PAT
+#                              pour sa PORTÉE — un seul dépôt, écriture seule.
+#
+# NON COUVERT, ASSUMÉ : les fichiers des buckets Storage (affiches uploadées,
+# avatar, fonds d'écran) ne sont pas dans Postgres. 1 fichier au 2026-09-09.
+# CROISSANCE : ~4 Mo/semaine chiffrés ⇒ ~210 Mo/an dans `hegon-backups`.
+
+on:
+  schedule:
+    - cron: "30 3 * * 0"
+  workflow_dispatch:
+
+env:
+  BACKUPS_REPO: git@github.com:ZejlyZakaria/hegon-backups.git
+  MIN_DATA_BYTES: 5000000
+
+jobs:
+  backup:
+    name: Dump, vérifier, chiffrer, pousser
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # ⚠️ ÉCHEC VOLONTAIRE si un secret manque — un job de sauvegarde qui passe
+      # au vert sans avoir sauvegardé est pire qu'un job absent.
+      - name: Les quatre secrets sont-ils configurés ?
+        env:
+          DB_URL: ${{ secrets.HEGON_DB_URL }}
+          PASSPHRASE: ${{ secrets.HEGON_BACKUP_PASSPHRASE }}
+          DEPLOY_KEY: ${{ secrets.HEGON_BACKUPS_DEPLOY_KEY }}
+          PING_KEY: ${{ secrets.HEALTHCHECKS_PING_KEY }}
+        run: |
+          missing=0
+          [ -z "$DB_URL" ]     && { echo "::error::HEGON_DB_URL manquant."; missing=1; }
+          [ -z "$PASSPHRASE" ] && { echo "::error::HEGON_BACKUP_PASSPHRASE manquant — la passphrase de chiffrement."; missing=1; }
+          [ -z "$DEPLOY_KEY" ] && { echo "::error::HEGON_BACKUPS_DEPLOY_KEY manquant — la clé SSH privée dont la clé publique est deploy key (écriture) sur hegon-backups."; missing=1; }
+          [ -z "$PING_KEY" ]   && { echo "::error::HEALTHCHECKS_PING_KEY manquant — la clé de ping healthchecks.io (Settings → Ping key)."; missing=1; }
+          [ "$missing" = 1 ] && exit 1
+          echo "✅ Les quatre secrets sont présents."
+
+      # pg_dump DOIT être de la même version majeure que le serveur (17.6) —
+      # le client 16 du runner refuse de dumper un serveur 17.
+      - name: Client PostgreSQL 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          pg_dump --version
+
+      # ── 1 · Ce que la base contient, table par table ───────────────────────
+      # Le référentiel contre lequel le dump sera vérifié. Comptage EXACT
+      # (count(*) réel via query_to_xml), pas l'estimation de pg_stat.
+      #
+      # 3e colonne : `p` = PERSONNEL (irremplaçable) · `r` = RÉFÉRENCE (un cron
+      # la reconstruit). Sert à la vérification n°5, qui ne doit sonner que sur
+      # une perte irremplaçable. La règle, calculée depuis le schéma pour ne pas
+      # rouiller : est référence une table de `sport` SANS `user_id`/`org_id`
+      # (matchs, classements, palmarès…), plus les deux caches de `watching`.
+      # Tout le reste est personnel — y compris `habit_completions`, qui n'a pas
+      # de `user_id` (rattaché par `habit_id`), et `sport.user_favorites`, qui en
+      # a un. Ni « tout `sport.*` est référence » ni « personnel = a un user_id »
+      # ne suffisait seul (contre-examen du 2026-09-12).
+      - name: Compter les lignes dans la base
+        env:
+          DB_URL: ${{ secrets.HEGON_DB_URL }}
+        run: |
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -At -c "
+            select n.nspname || '.' || c.relname || ' ' ||
+                   (xpath('/row/cnt/text()',
+                          query_to_xml(format('select count(*) as cnt from %I.%I', n.nspname, c.relname),
+                                       false, true, '')))[1]::text || ' ' ||
+                   case
+                     when n.nspname = 'sport' and not exists (
+                       select 1 from information_schema.columns k
+                       where k.table_schema = 'sport' and k.table_name = c.relname
+                         and k.column_name in ('user_id', 'org_id'))
+                       then 'r'
+                     when n.nspname = 'watching' and c.relname in ('anime_cours', 'trending_cache')
+                       then 'r'
+                     else 'p'
+                   end
+            from pg_class c
+            join pg_namespace n on n.oid = c.relnamespace
+            where c.relkind = 'r'
+              and (   n.nspname in ('public', 'watching', 'sport')
+                   or (n.nspname = 'auth'    and c.relname in ('users', 'identities'))
+                   or (n.nspname = 'storage' and c.relname in ('buckets', 'objects')))
+            order by 1;" > /tmp/db-counts.txt
+          total=$(awk '{s+=$2} END {print s}' /tmp/db-counts.txt)
+          tables=$(wc -l < /tmp/db-counts.txt)
+          prot=$(awk '$3 == "p"' /tmp/db-counts.txt | wc -l)
+          echo "$tables tables · $total lignes dans la base · $prot tables personnelles"
+          [ "$total" -gt 0 ] || { echo "::error::La base rapporte 0 ligne — connexion sur la mauvaise base ?"; exit 1; }
+
+      # ── 2 · Le dump ─────────────────────────────────────────────────────────
+      # --column-inserts = le format de la sauvegarde manuelle DÉJÀ RESTAURÉE
+      # avec succès (RESTORE.md) : une ligne INSERT par ligne de table, colonnes
+      # nommées. Plus lent à rejouer qu'un COPY, indifférent à ~8 000 lignes,
+      # et il survit à une colonne réordonnée.
+      - name: Dump des données
+        env:
+          DB_URL: ${{ secrets.HEGON_DB_URL }}
+        run: |
+          mkdir -p /tmp/out
+          # --quote-all-identifiers : sans lui pg_dump n'écrit PAS de guillemets
+          # (INSERT INTO sport.f1_races …) et la vérification n°1, qui les attend,
+          # matcherait 0 ligne. La CLI Supabase le passe — c'est pour ça que le
+          # dump OneDrive en a. Trouvé au contre-examen du 2026-09-12.
+          pg_dump "$DB_URL" \
+            --data-only --column-inserts --quote-all-identifiers --no-owner --no-privileges \
+            -t 'public.*' -t 'watching.*' -t 'sport.*' \
+            -t auth.users -t auth.identities \
+            -t storage.buckets -t storage.objects \
+            > /tmp/out/data.sql
+          ls -l /tmp/out/data.sql
+
+      # ── 3 · VÉRIFICATION n°1 — chaque ligne de la base est dans le dump ────
+      # ⭐ C'EST LA SEULE VÉRIFICATION QUI PROTÈGE LE PERSONNEL. `media_items`
+      # pèse 85 % du dump ; tout `public.*` (journal, habitudes, tâches) ≈ 200 Ko.
+      # Perdre le journal entier passerait le plancher de taille ET le seuil des
+      # 70 % sans broncher. Ne jamais affaiblir cette étape.
+      # `[a-z0-9_]+` et pas `[a-z_]+` : les 7 tables `sport.f1_*` ont un chiffre.
+      - name: Vérifier — comptage table par table
+        run: |
+          grep -oE '^INSERT INTO "[a-z0-9_]+"\."[a-z0-9_]+"' /tmp/out/data.sql \
+            | sed -E 's/^INSERT INTO "([a-z0-9_]+)"\."([a-z0-9_]+)"/\1.\2/' \
+            | sort | uniq -c | awk '{print $2" "$1}' | sort > /tmp/dump-counts.txt
+          # Les tables vides n'émettent aucun INSERT : on les retire du référentiel.
+          # (Colonnes 1-2 seulement — la 3e, le drapeau p/r, sert à la vérification n°5.)
+          awk '$2 > 0 {print $1" "$2}' /tmp/db-counts.txt | sort > /tmp/db-nonempty.txt
+          if diff /tmp/db-nonempty.txt /tmp/dump-counts.txt > /tmp/diff.txt; then
+            echo "✅ $(wc -l < /tmp/dump-counts.txt) tables, chaque ligne de la base est dans le dump."
+          else
+            echo "::error::Le dump ne correspond PAS à la base (< base, > dump) :"
+            cat /tmp/diff.txt
+            exit 1
+          fi
+
+      # ── 4 · Le schéma versionné à cette date ───────────────────────────────
+      # Pas de `pg_dump --schema-only` : ses GRANT et ses CREATE SCHEMA cassent
+      # sur un projet Supabase neuf. Le baseline du repo est produit par la CLI
+      # Supabase, il a été RESTAURÉ avec succès, et le watchdog certifie qu'il
+      # correspond à la base. C'est lui qu'on embarque.
+      - name: Schéma versionné
+        run: |
+          cat $(ls supabase/migrations/*.sql | sort) > /tmp/out/schema.sql
+          ls -l /tmp/out/schema.sql
+
+      # ── 5 · Compresser, chiffrer, VÉRIFICATION n°2 (taille + gzip) ─────────
+      - name: Compresser et chiffrer
+        env:
+          PASSPHRASE: ${{ secrets.HEGON_BACKUP_PASSPHRASE }}
+        run: |
+          size=$(stat -c %s /tmp/out/data.sql)
+          if [ "$size" -lt "$MIN_DATA_BYTES" ]; then
+            echo "::error::data.sql fait $size octets, sous le plancher de $MIN_DATA_BYTES — dump partiel ?"
+            exit 1
+          fi
+          gzip -9 -k /tmp/out/data.sql /tmp/out/schema.sql
+          gzip -t /tmp/out/data.sql.gz /tmp/out/schema.sql.gz
+          # --passphrase-fd 0 : la passphrase ne passe JAMAIS en argument de
+          # commande (visible dans `ps`), seulement par l'entrée standard.
+          for f in data schema; do
+            printf '%s' "$PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+              --symmetric --cipher-algo AES256 --s2k-digest-algo SHA512 \
+              -o "/tmp/out/$f.sql.gz.gpg" "/tmp/out/$f.sql.gz"
+          done
+          ls -l /tmp/out/
+
+      # ── 6 · VÉRIFICATION n°3 — le round-trip ────────────────────────────────
+      # Ce qu'on va pousser est déchiffré, décompressé et recompté, avec la
+      # passphrase du secret. Si ça échoue ici, ça aurait échoué le jour de la
+      # panique. C'est la preuve qui compte.
+      - name: Vérifier — déchiffrer et recompter
+        env:
+          PASSPHRASE: ${{ secrets.HEGON_BACKUP_PASSPHRASE }}
+        run: |
+          # Motif STRICT (schéma + table entre guillemets) : un texte de journal
+          # qui commencerait une ligne par « INSERT INTO » ne compte pas.
+          expected=$(grep -cE '^INSERT INTO "[a-z0-9_]+"\."[a-z0-9_]+"' /tmp/out/data.sql)
+          got=$(printf '%s' "$PASSPHRASE" | gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 0 \
+                  --decrypt /tmp/out/data.sql.gz.gpg | gunzip | grep -cE '^INSERT INTO "[a-z0-9_]+"\."[a-z0-9_]+"')
+          if [ "$expected" != "$got" ]; then
+            echo "::error::Round-trip raté — $expected INSERT avant chiffrement, $got après déchiffrement."
+            exit 1
+          fi
+          echo "✅ Round-trip prouvé : $got INSERT retrouvés après déchiffrement + décompression."
+
+      # ── 7 · Pousser vers le dépôt privé ─────────────────────────────────────
+      - name: Pousser vers hegon-backups
+        env:
+          DEPLOY_KEY: ${{ secrets.HEGON_BACKUPS_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+          git clone --depth 1 "$BACKUPS_REPO" /tmp/backups
+
+          day=$(date -u +%F)
+          cd /tmp/backups
+
+          # VÉRIFICATION n°4 — jamais < 70 % de la sauvegarde précédente.
+          # Une base qui rétrécit brutalement, c'est une perte de données ou un
+          # dump tronqué ; dans les deux cas on ne veut PAS l'écraser en silence.
+          prev=$(ls -1 *.data.sql.gz.gpg 2>/dev/null | sort | tail -1 || true)
+          new_size=$(stat -c %s /tmp/out/data.sql.gz.gpg)
+          if [ -n "$prev" ]; then
+            prev_size=$(stat -c %s "$prev")
+            floor=$(( prev_size * 70 / 100 ))
+            if [ "$new_size" -lt "$floor" ]; then
+              echo "::error::La sauvegarde du jour ($new_size o) fait moins de 70 % de $prev ($prev_size o). Refusée."
+              exit 1
+            fi
+            echo "Précédente : $prev ($prev_size o) · aujourd'hui : $new_size o"
+          else
+            echo "Première sauvegarde du dépôt."
+          fi
+
+          cp /tmp/out/data.sql.gz.gpg   "$day.data.sql.gz.gpg"
+          cp /tmp/out/schema.sql.gz.gpg "$day.schema.sql.gz.gpg"
+          cp /tmp/db-counts.txt          "$day.counts.txt"
+          cp "$GITHUB_WORKSPACE/supabase/backup/RESTORE.md" RESTORE.md
+
+          rows=$(awk '{s+=$2} END {print s}' /tmp/dump-counts.txt)
+          tables=$(wc -l < /tmp/dump-counts.txt)
+          git config user.name  "hegon-backup"
+          git config user.email "backup@hegon.fr"
+          git add -A
+          git commit -m "backup $day — $tables tables, $rows rows, $(( new_size / 1024 )) KB" \
+            || { echo "::error::Rien à commiter — le fichier du jour existait déjà ?"; exit 1; }
+          git push
+          echo "✅ Poussé : $day.data.sql.gz.gpg ($(( new_size / 1024 )) Ko) + schéma + comptages + RESTORE.md"
+
+      # ── 8 · VÉRIFICATION n°5 — la BASE a-t-elle perdu des données ? ────────
+      # Les quatre vérifications précédentes prouvent que le dump reflète la
+      # base. Aucune ne dit si la base elle-même a été amputée : un journal vidé
+      # par erreur donne un dump fidèle… d'une base vidée. Et la taille ne le
+      # verrait pas (public.* ≈ 1,4 % du dump).
+      # On compare donc les comptages à ceux de la sauvegarde PRÉCÉDENTE, table
+      # par table, sur les tables PERSONNELLES seulement (drapeau `p`) : les
+      # tables de référence rétrécissent légitimement — `tennis_matches` est
+      # plafonnée à 3 matchs finis par joueur et oscille entre ~12 et ~16, une
+      # fin de tournoi ferait −25 % à chaque fois. Testé sur les comptages réels
+      # du dump du 09/09 : fin de tournoi ignorée, journal −67 % détecté.
+      # Une chute > 20 % ET > 10 lignes = alerte. APRÈS le push, volontairement :
+      # on veut la sauvegarde de ce qui reste ET le mail.
+      - name: Vérifier — chute de lignes depuis la dernière sauvegarde
+        run: |
+          cd /tmp/backups
+          prev=$(ls -1 *.counts.txt 2>/dev/null | sort | tail -2 | head -1 || true)
+          today=$(ls -1 *.counts.txt 2>/dev/null | sort | tail -1)
+          if [ -z "$prev" ] || [ "$prev" = "$today" ]; then
+            echo "Première sauvegarde avec comptages — rien à comparer."
+            exit 0
+          fi
+          # join → nom · prev_lignes · prev_flag · auj_lignes · auj_flag
+          join -j1 <(sort "$prev") <(sort "$today") \
+            | awk -v P="$prev" '
+                $5 == "p" && $2 > 10 && $4 < $2 * 0.8 {
+                  printf "::error::%s : %d lignes dans %s, %d aujourd hui (-%d %%)\n", $1, $2, P, $4, (100 - $4 * 100 / $2);
+                  bad = 1
+                }
+                END {
+                  if (bad) { print "La BASE a perdu des lignes PERSONNELLES depuis la derniere sauvegarde. Elle est sauvegardee telle quelle ; la precedente est intacte dans l historique git."; exit 1 }
+                  print "✅ Aucune table personnelle n a perdu plus de 20 % de ses lignes depuis " P "."
+                }'
+
+      # ── 9 · Le témoin EXTERNE — healthchecks.io ─────────────────────────────
+      # Tout ce qui précède ne prévient que si le job TOURNE. La règle des 60
+      # jours (GitHub coupe les `schedule` d'un dépôt public sans commit), un
+      # workflow désactivé par erreur, une panne d'Actions : aucun run, aucun
+      # échec, aucun mail. healthchecks.io attend un ping toutes les 7 jours
+      # (+1 jour de grâce) et alerte sur son ABSENCE — c'est un observateur
+      # qui ne dépend pas de ce qu'il observe. `?create=1` crée le check au
+      # premier ping ; `/fail` signale un run raté ; `if: always()` pour que le
+      # ping parte même si une étape a échoué.
+      - name: Ping healthchecks.io
+        if: always()
+        env:
+          PING_KEY: ${{ secrets.HEALTHCHECKS_PING_KEY }}
+          STATUS: ${{ job.status }}
+        run: |
+          [ -n "$PING_KEY" ] || exit 0   # déjà signalé en rouge à l'étape 1
+          url="https://hc-ping.com/$PING_KEY/hegon-backup"
+          [ "$STATUS" = "success" ] || url="$url/fail"
+          curl -fsS -m 10 --retry 5 -o /dev/null "$url?create=1&timeout=604800&grace=86400" \
+            && echo "✅ Ping envoyé ($STATUS)." \
+            || echo "::warning::Le ping healthchecks.io a échoué — le témoin externe alertera de lui-même."
