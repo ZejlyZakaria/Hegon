@@ -163,6 +163,14 @@ jobs:
           [ -n "$PING_KEY" ] || exit 0   # déjà signalé en rouge à l'étape 1
           url="https://hc-ping.com/$PING_KEY/hegon-watchdog"
           [ "$STATUS" = "success" ] || url="$url/fail"
-          curl -fsS -m 10 --retry 5 -o /dev/null "$url?create=1&timeout=21600&grace=3600" \
+          # grace=3 h, pas 1 h : le 2026-09-12 GitHub a sauté le créneau de 18:20 et livré
+          # celui de 14:20 à 15:34 (74 min de retard). Les `schedule` ne sont pas garantis à
+          # l'heure. Un run à l'heure suivi d'un run en retard dépasse 7 h ⇒ faux « down »
+          # avec 1 h de grâce. 6 h + 3 h = 9 h de silence toléré avant l'alerte.
+          # ⚠️ `timeout` et `grace` ne s'appliquent qu'à la CRÉATION du check (`create=1`).
+          # Le check `hegon-watchdog` existe déjà avec grace=1 h : la valeur ci-dessous ne
+          # le modifie PAS — il faut la changer à la main dans healthchecks.io (Grace Time).
+          # Sinon cette ligne est décorative — « afficher n'est pas vérifier », encore.
+          curl -fsS -m 10 --retry 5 -o /dev/null "$url?create=1&timeout=21600&grace=10800" \
             && echo "✅ Ping envoyé ($STATUS)." \
             || echo "::warning::Le ping healthchecks.io a échoué — le témoin externe alertera de lui-même."

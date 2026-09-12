@@ -83,6 +83,30 @@ where last.status_code is null or last.status_code >= 400 or last.timed_out
 
 union all
 
+-- ── B-bis · L'appel est parti, la réponse n'est jamais arrivée ─────────────
+-- Rendu possible par `call_log` (ajout owner, 2026-09-12). Ni l'ancienne ni la
+-- nouvelle section B ne voient ce cas : elles partent des RÉPONSES. Si le
+-- worker pg_net est mort ou si la file `net._http_request_queue` a perdu la
+-- requête, il n'y a AUCUNE réponse — donc rien à joindre, donc silence. Ici on
+-- part des APPELS : une ligne de `call_log` sans réponse en face.
+--   · > 10 min : `timeout_milliseconds` est à 5 min, on laisse le double avant
+--     de conclure — en dessous, l'appel est peut-être simplement en cours.
+--   · < 6 h : au-delà, `net._http_response` a pu être purgée (rétention ~6 h)
+--     et l'absence de réponse ne prouverait plus rien.
+select
+  'B-bis · REQUÊTE DISPARUE'                         as alerte,
+  l.fn                                               as objet,
+  'aucune réponse'                                   as detail,
+  'appel parti il y a ' || round(extract(epoch from (now() - l.called_at)) / 60)::text
+    || ' min, jamais répondu — worker pg_net ? file perdue ?' as message,
+  to_char(l.called_at, 'YYYY-MM-DD HH24:MI')         as quand
+from internal.call_log l
+left join net._http_response r on r.id = l.request_id
+where r.id is null
+  and l.called_at between now() - interval '6 hours' and now() - interval '10 minutes'
+
+union all
+
 -- ── C · La donnée n'a pas bougé alors qu'elle aurait dû ───────────────────
 -- Le contrôle par le RÉSULTAT, pas par le mécanisme : peu importe ce que le
 -- cron rapporte, la table qu'il alimente doit avoir bougé. C'est la seule
