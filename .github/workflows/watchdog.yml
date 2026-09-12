@@ -76,6 +76,14 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-17
+          # ⚠️ Le runner a DÉJÀ un cluster PG 16 : `/usr/bin/psql` est l'aiguilleur Debian
+          # (pg_wrapper) et route vers 16 même après l'installation du 17 — ce workflow a
+          # tourné en psql 16 sans le savoir (toléré contre un serveur 17, à un avertissement
+          # près). Le backup, lui, a été surpris exactement comme ce commentaire le prédisait.
+          # Même remède : le binaire 17 en tête du PATH, et on EXIGE la version.
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/17/bin/psql --version | grep -q ' 17\.' \
+            || { echo "::error::psql 17 introuvable après installation."; exit 1; }
 
       # ── 1 · Les crons et les fonctions edge ────────────────────────────────
       # Zéro ligne = tout va bien. Toute ligne est une alerte.
