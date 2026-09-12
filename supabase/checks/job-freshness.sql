@@ -91,10 +91,31 @@ select * from (
     select 'watching.trending_cache',  'watching-trending-daily',
            48,  (select max(refreshed_at) from watching.trending_cache)
     union all
-    -- AniList, toutes les 6 h.
-    select 'watching.anime_cours',     'watching-anime-cours-sync-6h',
-           12,  (select max(resolved_at) from watching.anime_cours)
-    union all
+    -- ⛔ `watching.anime_cours` a été RETIRÉ de cette section le 2026-09-12 — c'était
+    -- la PREMIÈRE alerte réelle du watchdog, et c'était une FAUSSE ALERTE (3 runs
+    -- rouges d'affilée, #8 #9 #10, sans aucun changement de code).
+    --
+    -- La cause est un défaut de PRINCIPE, pas de seuil : `watching-anime-cours-sync`
+    -- est une synchro idempotente avec une sortie anticipée « nothing stale » qui
+    -- N'ÉCRIT RIEN. Elle ne re-résout un anime EN COURS que toutes les 12 h, et un
+    -- anime TERMINÉ que toutes les SEMAINES (`FINISHED_STALE_MS = 7 j`). Quand
+    -- aucun des 75 n'est dû, `max(resolved_at)` reste figé — légitimement, jusqu'à
+    -- 7 jours. Un seuil de 12 h (2× la cadence du cron) était donc incompatible avec
+    -- le design de la fonction elle-même : garanti rouge dès que tous les animes
+    -- sont à jour, c'est-à-dire précisément quand tout va bien.
+    --
+    -- ⭐ LA RÈGLE QUE ÇA ÉTABLIT POUR TOUTE CETTE SECTION :
+    --    « le job a tourné » et « la donnée a changé » sont DEUX signaux différents.
+    --    La section C ne mesure que le second. Elle ne convient donc qu'aux jobs qui
+    --    ÉCRIVENT À CHAQUE PASSAGE — `series-sync` (estampille son lot à chaque run),
+    --    `trending`, `for_you` (caches réécrits par nature). Une synchro avec un
+    --    chemin « rien à faire » n'a PAS sa place ici : sa vie se mesure en A et B
+    --    (le cron s'est déclenché, la fonction a répondu 200) — vérifié silencieux
+    --    pendant les 3 runs rouges, donc le robot était vivant.
+    --
+    -- ⇒ Pour rendre ce job observable en C un jour : lui faire écrire un
+    --    « heartbeat » (dernier passage, écrit MÊME quand il n'y a rien à faire)
+    --    et lire cet horodatage-là, pas `resolved_at`. Demande une migration.
     -- Recommandations, tous les 5 jours.
     select 'watching.for_you_cache',   'watching-for-you-5d',
            240, (select max(computed_at) from watching.for_you_cache)
