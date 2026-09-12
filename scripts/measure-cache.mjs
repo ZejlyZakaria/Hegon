@@ -21,6 +21,9 @@ import { existsSync } from "fs";
 const args = process.argv.slice(2);
 const PATHNAME = args.find((a) => a.startsWith("/")) || "/perso/watching/movies";
 const RUNS = Number((args.find((a) => a.startsWith("--runs=")) || "--runs=5").split("=")[1]);
+// Combien d affiches TMDB dans le DOM pour compter « contenu réel » : 1 = la première vignette
+// (bandeau tendances suffit), 40 = la grille des films de l utilisateur est rendue.
+const MIN_POSTERS = Number((args.find((a) => a.startsWith("--min-posters=")) || "--min-posters=1").split("=")[1]);
 const BASE = process.env.SHOOT_BASE || "http://localhost:3000";
 const STATE = "scripts/.auth/storageState.json";
 
@@ -31,6 +34,7 @@ if (!existsSync(STATE)) {
 
 const isSupabase = (url) => /supabase\.co\/(rest|storage)\//.test(url);
 const median = (xs) => {
+  if (!xs.length) return null;
   const s = [...xs].sort((a, b) => a - b);
   const m = s.length >> 1;
   return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
@@ -75,6 +79,33 @@ async function once({ persist, seed }) {
     throw new Error("SESSION_EXPIRED");
   }
 
+  // ⭐ LA MÉTRIQUE QUI COMPTE : le premier CONTENU RÉEL à l'écran, depuis la navigation.
+  // Objection owner (2026-09-12) : « temps jusqu'à la dernière requête » vaut 0 par
+  // construction quand il n'y a plus de requête — une définition, pas un résultat.
+  // Ce que l'utilisateur voit, c'est le moment où le squelette laisse la place aux
+  // vraies affiches : le premier <img> TMDB dans le DOM (le squelette n'en a aucun ;
+  // la page chargée en a ~180). Horloge de la PAGE (`performance.now()`, origine =
+  // navigation), donc comparable entre les deux bras. On relève au passage le premier
+  // appel Supabase : c'est la fin de l'hydratation — le plancher que le cache ne peut
+  // pas franchir, puisqu'il n'est lu qu'après.
+  const paint = await page
+    .waitForFunction(
+      (min) => {
+        if (document.querySelectorAll('img[src*="image.tmdb.org"]').length < min) return null;
+        const sb = performance
+          .getEntriesByType("resource")
+          .filter((e) => /supabase\.co\/(rest|storage)\//.test(e.name));
+        return {
+          content: Math.round(performance.now()),
+          firstReq: sb.length ? Math.round(Math.min(...sb.map((e) => e.startTime))) : null,
+        };
+      },
+      MIN_POSTERS,
+      { timeout: 20000 },
+    )
+    .then((h) => h.jsonValue())
+    .catch(() => ({ content: null, firstReq: null }));
+
   // On attend que le réseau Supabase se taise 1,2 s d'affilée.
   let last = Date.now();
   const seen = () => calls.length;
@@ -90,6 +121,14 @@ async function once({ persist, seed }) {
   const settled = calls.length ? Math.max(...calls.map((c) => c.at)) - t0 : 0;
 
   // Le cache écrit par ce passage, pour semer le bras B.
+  // ⚠️ Le persister écrit 1 s après le DERNIER événement de cache — et les requêtes
+  // non-Supabase (/api/tmdb) finissent après que le réseau Supabase s'est tu. Sans
+  // cette attente, le premier essai lisait localStorage avant l'écriture : « rien
+  // écrit », et le bras B rejouait le bras A. Mesuré à 71 974 octets avec 4 s.
+  if (persist) {
+    await page.waitForLoadState("networkidle").catch(() => {});
+    await page.waitForTimeout(3000);
+  }
   const written = await page
     .evaluate(() => {
       try {
@@ -101,7 +140,7 @@ async function once({ persist, seed }) {
     .catch(() => null);
 
   await context.close();
-  return { requests: calls.length, settled, written };
+  return { requests: calls.length, settled, content: paint.content, firstReq: paint.firstReq, written };
 }
 
 async function arm(label, { persist, seed }) {
@@ -111,14 +150,18 @@ async function arm(label, { persist, seed }) {
     if (i > 0) runs.push(r); // le premier passage est jeté (échauffement)
     process.stdout.write(".");
   }
+  const num = (k) => median(runs.map((r) => r[k]).filter((v) => v !== null && v !== undefined));
   const out = {
     label,
-    requests: median(runs.map((r) => r.requests)),
-    settled: median(runs.map((r) => r.settled)),
+    content: num("content"),
+    firstReq: num("firstReq"),
+    requests: num("requests"),
+    settled: num("settled"),
   };
   console.log(
-    `\n  ${label.padEnd(34)} ${String(out.requests).padStart(3)} requêtes Supabase · ` +
-      `${String(out.settled).padStart(5)} ms jusqu'à la dernière`,
+    `\n  ${label.padEnd(30)} contenu à ${String(out.content ?? "?").padStart(5)} ms · ` +
+      `hydratation à ${String(out.firstReq ?? "—").padStart(5)} ms · ` +
+      `${String(out.requests).padStart(2)} req. Supabase · réseau fini à ${String(out.settled).padStart(5)} ms`,
   );
   return out;
 }
@@ -137,12 +180,12 @@ try {
   // Bras B — retour sur l'app, cache déjà présent.
   const B = await arm("B · avec persistance", { persist: true, seed: primed.written });
 
-  const dReq = A.requests - B.requests;
-  const dMs = A.settled - B.settled;
-  const pct = A.settled ? Math.round((dMs / A.settled) * 100) : 0;
+  const dContent = A.content - B.content;
+  const pct = A.content ? Math.round((dContent / A.content) * 100) : 0;
   console.log(
-    `\n  ⇒ ${dReq} requêtes en moins · ${dMs} ms en moins (${pct} %)` +
-      `${primed.written ? ` · ${Math.round(primed.written.length / 1024)} Ko sur le disque` : ""}\n`,
+    `\n  ⇒ contenu visible ${dContent} ms plus tôt (${pct} %) · ${A.requests - B.requests} requêtes en moins` +
+      `${primed.written ? ` · ${Math.round(primed.written.length / 1024)} Ko sur le disque` : ""}` +
+      `\n  ⇒ plancher = l'hydratation (~${B.firstReq ?? A.firstReq} ms) : le cache n'est lu qu'après, il ne le franchit pas\n`,
   );
 } catch (e) {
   if (e.message === "SESSION_EXPIRED") {
