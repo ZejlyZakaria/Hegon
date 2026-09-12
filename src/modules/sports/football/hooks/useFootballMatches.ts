@@ -10,7 +10,6 @@ export function useUpcomingMatches(teamExternalIds: string[]) {
     queryKey: FOOTBALL_KEYS.upcoming(teamExternalIds),
     queryFn: () => getUpcomingMatches(teamExternalIds),
     enabled: teamExternalIds.length > 0,
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -19,6 +18,5 @@ export function useRecentMatches(teamExternalIds: string[]) {
     queryKey: FOOTBALL_KEYS.recent(teamExternalIds),
     queryFn: () => getRecentMatches(teamExternalIds),
     enabled: teamExternalIds.length > 0,
-    staleTime: 1000 * 60 * 5,
   });
 }

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getDashboardData } from "../service";
+import { STALE } from "@/shared/lib/stale";
 
 export const DASHBOARD_KEYS = {
   all: ["dashboard"] as const,
@@ -10,7 +11,7 @@ export function useDashboardData() {
   return useQuery({
     queryKey: DASHBOARD_KEYS.data(),
     queryFn: () => getDashboardData(),
-    staleTime: 1000 * 60 * 2,
+    staleTime: STALE.TWO_MINUTES,
     // The dashboard is a "home" you return to after acting elsewhere (watching an
     // episode, completing a task…). Always revalidate on arrival so it's never
     // stale — the cached data still shows instantly, then updates (SWR).

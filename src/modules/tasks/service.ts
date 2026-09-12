@@ -744,6 +744,7 @@ export async function reorderStatuses(
 ): Promise<void> {
   const supabase = createClient();
   await Promise.all(
+    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — un UPDATE par statut réordonné (forme map non-async, invisible à la première version de la règle). Correction = 1 upsert en lot ou RPC. → audit Tasks, phase 3 axe 3.
     updates.map(({ id, position }) =>
       supabase.from("statuses").update({ position }).eq("id", id)
     )

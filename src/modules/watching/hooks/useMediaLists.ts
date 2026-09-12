@@ -22,6 +22,7 @@ import type { TmdbListResult } from "../types";
 import { WATCHING_KEYS } from "./query-keys";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
+import { STALE } from "@/shared/lib/stale";
 
 export function useMediaLists(userId: string) {
   return useQuery({
@@ -166,7 +167,7 @@ export function useSearchMediaForList(userId: string, query: string) {
     queryKey: [...WATCHING_KEYS.all, "search-for-list", userId, query],
     queryFn: () => searchMediaForList(userId, query),
     enabled: !!userId && query.trim().length >= 2,
-    staleTime: 30_000,
+    staleTime: STALE.HALF_MINUTE,
   });
 }
 
@@ -209,7 +210,7 @@ export function useSearchTmdbForList(query: string) {
     queryKey: [...WATCHING_KEYS.all, "tmdb-list-search", query],
     queryFn: () => searchTmdbForList(query),
     enabled: query.trim().length >= 2,
-    staleTime: 60_000,
+    staleTime: STALE.MINUTE,
   });
 }
 
@@ -219,7 +220,7 @@ export function useSearchCatalogue(query: string) {
     queryKey: [...WATCHING_KEYS.all, "catalogue-search", query],
     queryFn: () => searchCatalogue(query),
     enabled: query.trim().length >= 2,
-    staleTime: 60_000,
+    staleTime: STALE.MINUTE,
   });
 }
 

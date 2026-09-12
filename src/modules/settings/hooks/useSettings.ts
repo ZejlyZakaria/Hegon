@@ -3,6 +3,7 @@ import * as SettingsService from "../service";
 import { SETTINGS_KEYS } from "./query-keys";
 import { toast } from "@/shared/utils/toast";
 import type { Profile, UserSettings, UserSettingsPatch } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 // ── Profile ────────────────────────────────────────────────────────────────
 
@@ -10,7 +11,6 @@ export function useProfile() {
   return useQuery({
     queryKey: SETTINGS_KEYS.profile(),
     queryFn:  () => SettingsService.getProfile(),
-    staleTime: 1000 * 60 * 5, // profile rarely changes
   });
 }
 
@@ -20,7 +20,8 @@ export function useDemoStatus(): { isDemo: boolean; isReady: boolean } {
   const { data, isLoading } = useQuery({
     queryKey: [...SETTINGS_KEYS.all, "is-demo"],
     queryFn:  SettingsService.getIsDemo,
-    staleTime: 1000 * 60 * 30,
+    staleTime: STALE.HALF_HOUR,
+    gcTime: STALE.HALF_HOUR,
   });
   return { isDemo: data ?? false, isReady: !isLoading };
 }
@@ -55,7 +56,6 @@ export function useUserSettings() {
   return useQuery({
     queryKey: SETTINGS_KEYS.preferences(),
     queryFn:  () => SettingsService.getUserSettings(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -65,7 +65,7 @@ export function useDemoModules() {
   return useQuery({
     queryKey: [...SETTINGS_KEYS.all, "demo-modules"],
     queryFn:  SettingsService.getDemoVisibleModules,
-    staleTime: 1000 * 60,
+    staleTime: STALE.MINUTE,
     retry: false, // RPC may not exist before the migration is applied
   });
 }

@@ -4,13 +4,15 @@ import { TAG_KEYS, TASK_KEYS, PROJECT_KEYS } from "./query-keys";
 import { toast } from "@/shared/utils/toast";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
+import { STALE } from "@/shared/lib/stale";
 
 export function useProjectWorkspaceId(projectId: string | null) {
   return useQuery({
     queryKey: [...PROJECT_KEYS.all, "workspace-id", projectId ?? ""] as const,
     queryFn: () => TaskService.getProjectWorkspaceId(projectId!),
     enabled: !!projectId,
-    staleTime: 1000 * 60 * 30,
+    staleTime: STALE.HALF_HOUR,
+    gcTime: STALE.HALF_HOUR,
   });
 }
 
@@ -19,7 +21,7 @@ export function useTags(workspaceId: string | null) {
     queryKey: TAG_KEYS.byWorkspace(workspaceId ?? ""),
     queryFn: () => TaskService.getTags(workspaceId!),
     enabled: !!workspaceId,
-    staleTime: 1000 * 60 * 10,
+    staleTime: STALE.TEN_MINUTES,
   });
 }
 

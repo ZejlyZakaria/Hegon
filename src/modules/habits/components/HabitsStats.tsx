@@ -25,6 +25,7 @@ import type { HabitWithStatus, HeatmapDay } from "../types";
 import { AllHabitsHeatmap } from "./AllHabitsHeatmap";
 import { HabitsAchievements } from "./HabitsAchievements";
 import { StatsSkeleton } from "./HabitsSkeleton";
+import { STALE } from "@/shared/lib/stale";
 
 const ACCENT = "var(--color-accent-habits-vivid)";
 const FIRE = "var(--color-fire)";
@@ -303,14 +304,14 @@ export function HabitsStats() {
   const { data: yearData = [], isLoading: yearLoading } = useQuery<HeatmapDay[]>({
     queryKey: HABIT_KEYS.heatmap(yearStart, yearEnd),
     queryFn: () => HabitService.getHeatmapData(yearStart, yearEnd),
-    staleTime: 1000 * 60 * 10,
+    staleTime: STALE.TEN_MINUTES,
   });
 
   const { data: yearComps = [] } = useQuery({
     queryKey: HABIT_KEYS.completionsRange("year", yearStart, yearEnd),
     queryFn: () => HabitService.getCompletionsForHabits(habitIds, yearStart, yearEnd),
     enabled: habitIds.length > 0,
-    staleTime: 1000 * 60 * 10,
+    staleTime: STALE.TEN_MINUTES,
   });
 
   if (isLoading || yearLoading) return <StatsSkeleton />;

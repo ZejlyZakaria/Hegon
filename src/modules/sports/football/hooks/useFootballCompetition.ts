@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getStandings, getCompetitionMatches, getCompetitionById, getCompetitionWinners } from "../service";
 import { FOOTBALL_KEYS } from "./query-keys";
+import { STALE } from "@/shared/lib/stale";
 
 // The competition record (name, logo, code, brand colour) — Competition page header.
 export function useCompetition(id: string | null | undefined) {
@@ -8,7 +9,8 @@ export function useCompetition(id: string | null | undefined) {
     queryKey: FOOTBALL_KEYS.competition(id ?? ""),
     queryFn: () => getCompetitionById(id!),
     enabled: !!id,
-    staleTime: 1000 * 60 * 30,
+    staleTime: STALE.HALF_HOUR,
+    gcTime: STALE.HALF_HOUR,
   });
 }
 
@@ -18,7 +20,7 @@ export function useStandings(competitionId: string | null | undefined) {
     queryKey: FOOTBALL_KEYS.standings(competitionId ?? ""),
     queryFn: () => getStandings(competitionId!),
     enabled: !!competitionId,
-    staleTime: 1000 * 60 * 10,
+    staleTime: STALE.TEN_MINUTES,
   });
 }
 
@@ -28,7 +30,6 @@ export function useCompetitionMatches(competitionId: string | null | undefined) 
     queryKey: FOOTBALL_KEYS.competitionMatches(competitionId ?? ""),
     queryFn: () => getCompetitionMatches(competitionId!),
     enabled: !!competitionId,
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -38,6 +39,7 @@ export function useCompetitionWinners(competitionId: string | null | undefined) 
     queryKey: FOOTBALL_KEYS.winners(competitionId ?? ""),
     queryFn: () => getCompetitionWinners(competitionId!),
     enabled: !!competitionId,
-    staleTime: 1000 * 60 * 60,
+    staleTime: STALE.HOUR,
+    gcTime: STALE.HOUR,
   });
 }

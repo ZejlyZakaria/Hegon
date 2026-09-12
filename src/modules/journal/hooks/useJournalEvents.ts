@@ -10,7 +10,6 @@ export function useEventsForMonth(year: number, month: number) {
   return useQuery({
     queryKey: JOURNAL_KEYS.events(year, month),
     queryFn:  () => JournalService.getEventsForMonth(year, month),
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -18,7 +17,6 @@ export function useUpcomingEvents(limit = 5) {
   return useQuery({
     queryKey: JOURNAL_KEYS.upcomingEvents(),
     queryFn:  () => JournalService.getUpcomingEvents(limit),
-    staleTime: 1000 * 60 * 5,
   });
 }
 

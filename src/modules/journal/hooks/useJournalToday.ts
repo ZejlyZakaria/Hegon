@@ -10,7 +10,6 @@ export function useJournalToday() {
   return useQuery({
     queryKey: JOURNAL_KEYS.today(),
     queryFn:  () => JournalService.getTodayEntry(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 

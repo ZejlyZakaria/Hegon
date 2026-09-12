@@ -5,13 +5,14 @@ import * as TaskService from "../service";
 import { SUBTASK_KEYS, TASK_KEYS } from "./query-keys";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
+import { STALE } from "@/shared/lib/stale";
 
 export function useSubTasks(parentTaskId: string | null) {
   return useQuery({
     queryKey: SUBTASK_KEYS.byParent(parentTaskId ?? ""),
     queryFn: () => TaskService.getSubTasks(parentTaskId!),
     enabled: !!parentTaskId,
-    staleTime: 1000 * 30,
+    staleTime: STALE.HALF_MINUTE,
   });
 }
 

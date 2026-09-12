@@ -4,6 +4,7 @@ import { WORKSPACE_KEYS } from "./query-keys";
 import { toast } from "@/shared/utils/toast";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
+import { STALE } from "@/shared/lib/stale";
 
 // =====================================================
 // HOOK: useWorkspaces
@@ -14,7 +15,7 @@ export function useWorkspaces(userId?: string) {
     queryKey: WORKSPACE_KEYS.lists(),
     queryFn: () => TaskService.getWorkspaces(),
     enabled: userId !== undefined ? !!userId : true,
-    staleTime: 1000 * 60 * 10,
+    staleTime: STALE.TEN_MINUTES,
   });
 }
 

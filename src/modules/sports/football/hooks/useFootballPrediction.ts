@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFootballPrediction, upsertFootballPrediction, getUserPredictions } from "../service";
 import { FOOTBALL_KEYS } from "./query-keys";
+import { STALE } from "@/shared/lib/stale";
 
 export function useFootballPrediction(userId: string, externalId: number) {
   return useQuery({
@@ -16,7 +17,7 @@ export function useUserPredictions(userId: string | null) {
     queryKey: FOOTBALL_KEYS.userPredictions(),
     queryFn: () => getUserPredictions(userId!),
     enabled: !!userId,
-    staleTime: 1000 * 60,
+    staleTime: STALE.MINUTE,
   });
 }
 

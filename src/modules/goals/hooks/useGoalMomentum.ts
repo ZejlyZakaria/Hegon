@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as GoalService from "../service";
 import { GOAL_KEYS } from "./query-keys";
 import type { Goal } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 // The Momentum sparkline's data source depends on the goal type:
 //  • manual goals → deliberate progress snapshots (the snapshot trigger).
@@ -20,6 +21,6 @@ export function useGoalMomentum(goal: Goal | undefined) {
         ? GoalService.getGoalActivityMomentum(goal!)
         : GoalService.getGoalProgressHistory(goal!.id),
     enabled:  !!goal,
-    staleTime: 1000 * 60,
+    staleTime: STALE.MINUTE,
   });
 }

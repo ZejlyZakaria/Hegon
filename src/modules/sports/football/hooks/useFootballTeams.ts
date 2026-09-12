@@ -9,7 +9,6 @@ export function useFootballTeams(userId: string | null) {
     queryKey: FOOTBALL_KEYS.teams(),
     queryFn: () => getFootballTeams(userId!),
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -28,7 +27,6 @@ export function useTeamSearch(query: string) {
     queryKey: FOOTBALL_KEYS.teamSearch(query),
     queryFn: () => searchTeams(query),
     enabled: query.trim().length >= 2,
-    staleTime: 1000 * 60 * 5,
   });
 }
 

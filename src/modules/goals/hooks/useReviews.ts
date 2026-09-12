@@ -6,12 +6,12 @@ import { toast } from "@/shared/utils/toast";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import type { CreateReviewInput } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 export function useReviews() {
   return useQuery({
     queryKey: REVIEW_KEYS.list(),
     queryFn:  () => GoalService.getReviews(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -19,7 +19,6 @@ export function useLastReview() {
   return useQuery({
     queryKey: REVIEW_KEYS.last(),
     queryFn:  () => GoalService.getLastReview(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -29,7 +28,7 @@ export function useReviewDraft(enabled: boolean) {
     queryKey: REVIEW_KEYS.draft(),
     queryFn:  () => GoalService.getReviewDraft(),
     enabled,
-    staleTime: 0,
+    staleTime: STALE.NONE,
   });
 }
 

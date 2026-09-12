@@ -3,6 +3,7 @@ import { WATCHING_KEYS } from "./query-keys";
 import { getMediaItems } from "../service";
 import type { GetMediaOptions } from "../service";
 import type { WatchingMedia, MediaType } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 interface UseMediaItemsOptions extends GetMediaOptions {
   userId: string;
@@ -34,7 +35,7 @@ export function useMediaItems({ userId, type, initialData, ...options }: UseMedi
     //
     // Keep the 2-minute freshness (a status change elsewhere must land quickly) and let the answer
     // survive half an hour. The user sees the list instantly and the refetch happens underneath.
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE.TWO_MINUTES,
     gcTime: 30 * 60 * 1000,
   });
 }

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { searchItunesArtwork } from "../service";
+import { STALE } from "@/shared/lib/stale";
 
 // Resolves the square cover for a set of themes (title+artist) in one query, using
 // the exact same iTunes lookup + cache as the detail panel — so "My Themes" always
@@ -24,7 +25,7 @@ export function useThemeCovers(items: { title: string; artist: string }[]) {
       return Object.fromEntries(entries) as Record<string, string | null>;
     },
     enabled: unique.length > 0,
-    staleTime: 7 * 24 * 60 * 60 * 1000,
-    gcTime: 24 * 60 * 60 * 1000,
+    staleTime: STALE.WEEK,
+    gcTime: STALE.WEEK,
   });
 }

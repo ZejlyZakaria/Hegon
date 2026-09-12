@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPeopleCounts, getPersonBundle, getTitlesByPerson } from "../service";
 import { TMDB_KEYS, WATCHING_KEYS } from "./query-keys";
+import { STALE } from "@/shared/lib/stale";
 
 // Profile + full filmography (one TMDB call). Cached under the TMDB namespace so DB
 // mutations never refetch it.
@@ -10,8 +11,8 @@ export function usePersonBundle(personId: number) {
   return useQuery({
     queryKey: TMDB_KEYS.person(personId),
     queryFn: () => getPersonBundle(personId),
-    staleTime: 24 * 60 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
+    staleTime: STALE.DAY,
+    gcTime: STALE.DAY,
     enabled: !!personId,
   });
 }
@@ -32,7 +33,8 @@ export function usePeopleCounts(userId: string) {
   return useQuery({
     queryKey: WATCHING_KEYS.peopleCounts(userId),
     queryFn: () => getPeopleCounts(userId),
-    staleTime: 30 * 60 * 1000,
+    staleTime: STALE.HALF_HOUR,
+    gcTime: STALE.HALF_HOUR,
     enabled: !!userId,
   });
 }

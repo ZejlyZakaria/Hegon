@@ -62,7 +62,6 @@ export function WorkspaceInvitePanel({ workspace, currentUserId, open, onClose }
     queryKey: ["profile", workspace.user_id],
     queryFn: () => TaskService.getProfileById(workspace.user_id),
     enabled: open && !isOwnerSelf,
-    staleTime: 1000 * 60 * 5,
   });
 
   useRealtimeSync({

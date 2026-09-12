@@ -104,6 +104,7 @@ export async function getRecentRaces(limit: number = 3): Promise<any[]> {
   }
 
   const results = await Promise.all(
+    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — 2 requêtes par course (podium + meilleur tour). Correction = 2 requêtes .in() sur toutes les courses. → audit F1, phase 3 axe 3.
     races.map(async (race: { id: string; [key: string]: unknown }) => {
       const [podiumRes, fastestLapRes] = await Promise.all([
         supabase

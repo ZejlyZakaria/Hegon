@@ -11,6 +11,5 @@ export function useProjectAssignees(projectId: string | null) {
     queryKey: PROJECT_ASSIGNEE_KEYS.byProject(projectId ?? ""),
     queryFn: () => TaskService.getProjectAssignees(projectId!),
     enabled: !!projectId,
-    staleTime: 1000 * 60 * 5,
   });
 }

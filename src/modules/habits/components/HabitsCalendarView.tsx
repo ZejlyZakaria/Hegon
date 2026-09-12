@@ -54,7 +54,6 @@ export function HabitsCalendarView() {
     queryKey: HABIT_KEYS.completionsRange("week", weekStart, weekEnd),
     queryFn: () => HabitService.getCompletionsForHabits(habitIds, weekStart, weekEnd),
     enabled: habitIds.length > 0,
-    staleTime: 1000 * 60 * 5,
   });
 
   const doneSet = useMemo(

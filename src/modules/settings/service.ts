@@ -1,5 +1,6 @@
 import { downscaleImage } from "@/shared/utils/downscale-image";
 import { createClient } from "@/infrastructure/supabase/client";
+import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import { DEFAULT_USER_SETTINGS } from "./types";
 import type { Profile, UserSettings, UserSettingsPatch } from "./types";
 
@@ -7,11 +8,13 @@ import type { Profile, UserSettings, UserSettingsPatch } from "./types";
 // SETTINGS SERVICE (SUPABASE)
 // =====================================================
 
+// Session locale, pas `auth.getUser()` : ces deux fonctions sont montées sur CHAQUE page (profil,
+// is_demo) et leurs deux aller-retours Auth en série coûtaient ~290 ms avant la première vraie
+// requête — mesuré le 2026-09-13, contre-examen de la doctrine de cache. Règle R2.
 async function requireUserId(): Promise<string> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  return user.id;
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error("Not authenticated");
+  return userId;
 }
 
 // ── Profile ────────────────────────────────────────────────────────────────
@@ -47,12 +50,12 @@ export async function updateProfile(
 // Returns false on any error so the rest of the app is never coupled to it.
 export async function getIsDemo(): Promise<boolean> {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
+  const userId = await getCurrentUserId();
+  if (!userId) return false;
   const { data, error } = await supabase
     .from("profiles")
     .select("is_demo")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
   if (error) return false;
   return Boolean((data as { is_demo?: boolean } | null)?.is_demo);

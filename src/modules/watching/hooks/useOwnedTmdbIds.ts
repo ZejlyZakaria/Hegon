@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
 import { getOwnedTmdbIds, findOwnedMediaId, findOwnedMediaIds } from "../service";
 import type { MediaType } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 // The set of tmdb_ids the user already owns for a given type. Tiny, indexed query
 // (ids only) — runs in parallel with the detail page's other fetches, so it does
@@ -10,7 +11,7 @@ export function useOwnedTmdbIds(userId: string, type: MediaType, enabled = true)
   return useQuery({
     queryKey: WATCHING_KEYS.ownedIds(type),
     queryFn: () => getOwnedTmdbIds(userId, type),
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE.TWO_MINUTES,
     gcTime: 5 * 60 * 1000,
     enabled: enabled && !!userId,
   });
@@ -29,7 +30,7 @@ export function useOwnedMediaId(userId: string, tmdbId: number, enabled = true) 
   return useQuery({
     queryKey: [...WATCHING_KEYS.all, "owned-row", tmdbId],
     queryFn: () => findOwnedMediaId(userId, tmdbId),
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE.TWO_MINUTES,
     enabled: enabled && !!userId && tmdbId > 0,
   });
 }
@@ -51,7 +52,7 @@ export function useOwnedMediaIds(userId: string, tmdbIds: number[]) {
   return useQuery({
     queryKey: [...WATCHING_KEYS.all, "owned-rows", key],
     queryFn: () => findOwnedMediaIds(userId, tmdbIds),
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE.TWO_MINUTES,
     enabled: !!userId && tmdbIds.length > 0,
   });
 }

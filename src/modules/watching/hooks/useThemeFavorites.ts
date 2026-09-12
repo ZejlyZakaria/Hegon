@@ -19,7 +19,6 @@ export function useThemeFavorites(enabled = true) {
   return useQuery({
     queryKey: WATCHING_KEYS.themeFavorites(),
     queryFn: getThemeFavorites,
-    staleTime: 5 * 60 * 1000,
     enabled,
   });
 }

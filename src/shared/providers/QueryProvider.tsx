@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import type { AuthChangeEvent } from "@supabase/supabase-js";
 import { createClient } from "@/infrastructure/supabase/client";
+import { STALE } from "@/shared/lib/stale";
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -11,7 +12,15 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 60 * 1000,
+            // LE défaut de toute l'app — le SEUL site où STALE.DEFAULT a le droit d'apparaître :
+            // le sélecteur STALE_DEFAULT_IS_INHERITED (eslint.config.mjs) le refuse partout
+            // ailleurs, d'où le disable ci-dessous. Les hooks héritent.
+            // ⚠️ Sans cette ligne, TanStack retombe à 0 : tout refetch à chaque montage.
+            // eslint-disable-next-line no-restricted-syntax -- c'est la DÉFINITION du défaut, pas une redéclaration
+            staleTime: STALE.DEFAULT,
+            // ⚠️ gcTime = combien de temps une donnée SANS observateur reste en mémoire. Un palier
+            // au-dessus de 10 min ne vaut que si le hook déclare aussi un gcTime ≥ — sinon la
+            // donnée est ramassée avant d'être périmée et le palier est un mensonge (voir stale.ts).
             gcTime: 10 * 60 * 1000,
             refetchOnWindowFocus: false,
             refetchOnReconnect: true,

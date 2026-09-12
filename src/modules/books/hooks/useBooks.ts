@@ -25,7 +25,6 @@ export function useBooks(opts?: {
   return useQuery({
     queryKey: BOOK_KEYS.list(opts),
     queryFn:  () => BooksService.getBooks(opts),
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -33,7 +32,6 @@ export function useBook(id: string) {
   return useQuery({
     queryKey: BOOK_KEYS.detail(id),
     queryFn:  () => BooksService.getBook(id),
-    staleTime: 1000 * 60 * 5,
     enabled:  !!id,
   });
 }
@@ -42,7 +40,6 @@ export function useBookStats() {
   return useQuery({
     queryKey: BOOK_KEYS.stats(),
     queryFn:  () => BooksService.getBookStats(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -50,7 +47,6 @@ export function useBooksRightPanel() {
   return useQuery({
     queryKey: BOOK_KEYS.rightPanel(),
     queryFn:  () => BooksService.getRightPanelData(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -59,7 +55,6 @@ export function useReadingLog(year: number | null) {
   return useQuery({
     queryKey: BOOK_KEYS.readingLog(year),
     queryFn:  () => BooksService.getReadingLog(year),
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -68,7 +63,6 @@ export function useBookSettings() {
   return useQuery({
     queryKey: BOOK_KEYS.settings(),
     queryFn:  () => BooksService.getBookSettings(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 

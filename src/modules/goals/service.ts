@@ -175,6 +175,7 @@ export async function recalcWatchingGoals(): Promise<WatchingGoalDelta[]> {
 
   type GoalRow = { id: string; title: string; progress: number; metric_key: string | null; metric_target: number | null };
   return Promise.all(
+    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — une requête par objectif (mesuré : vague 4 de /movies). Correction = 1 requête agrégée. → audit Goals, phase 3 axe 3.
     (goals as GoalRow[]).map(async (g) => {
       const next = await recalculateProgress(g.id);
       // Auto-complete the moment the target is reached (manual control still available).
@@ -227,6 +228,7 @@ export async function getActiveWatchingGoals(): Promise<WatchingGoalSummary[]> {
   // Reconstructing it from the rounded progress % freezes between integer ticks on
   // large targets (e.g. each title is 0.2% of a 500-target).
   return Promise.all(
+    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — une requête par objectif (mesuré : vague 4 de /movies). Correction = 1 requête agrégée. → audit Goals, phase 3 axe 3.
     ((data ?? []) as Row[]).map(async ({ user_id, ...g }) => ({
       ...g,
       metric_current: await countWatchingMedia(supabase, user_id, g.metric_key, g.metric_period, g.metric_year),
@@ -416,6 +418,7 @@ export async function recalcBooksGoals(): Promise<WatchingGoalDelta[]> {
 
   type GoalRow = { id: string; title: string; progress: number; metric_key: string | null; metric_target: number | null };
   return Promise.all(
+    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — une requête par objectif (mesuré : vague 4 de /movies). Correction = 1 requête agrégée. → audit Goals, phase 3 axe 3.
     (goals as GoalRow[]).map(async (g) => {
       const next = await recalculateProgress(g.id);
       // Auto-complete the moment the target is reached (manual control still available).
@@ -464,6 +467,7 @@ export async function getActiveBooksGoals(): Promise<BooksGoalSummary[]> {
 
   type Row = Omit<BooksGoalSummary, "metric_current"> & { user_id: string };
   return Promise.all(
+    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — une requête par objectif (mesuré : vague 4 de /movies). Correction = 1 requête agrégée. → audit Goals, phase 3 axe 3.
     ((data ?? []) as Row[]).map(async ({ user_id, ...g }) => ({
       ...g,
       metric_current: await countReadBooks(supabase, user_id, g.metric_period, g.metric_year),
@@ -548,6 +552,7 @@ export async function recalcFootballGoals(): Promise<WatchingGoalDelta[]> {
 
   type GoalRow = { id: string; title: string; progress: number; metric_key: string | null; metric_target: number | null };
   return Promise.all(
+    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — une requête par objectif (mesuré : vague 4 de /movies). Correction = 1 requête agrégée. → audit Goals, phase 3 axe 3.
     (goals as GoalRow[]).map(async (g) => {
       const next = await recalculateProgress(g.id);
       if (g.progress < 100 && next >= 100) {

@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FOOTBALL_KEYS } from "./query-keys";
+import { STALE } from "@/shared/lib/stale";
 
 export interface TeamBackdrop {
   url: string;
@@ -22,7 +23,8 @@ export function useTeamArtwork(externalId: string, enabled: boolean) {
       if (!res.ok) throw new Error(`Artwork fetch failed: ${res.status}`);
       return res.json();
     },
-    staleTime: 24 * 60 * 60 * 1000,
+    staleTime: STALE.DAY,
+    gcTime: STALE.DAY,
     enabled: enabled && !!externalId,
   });
 }

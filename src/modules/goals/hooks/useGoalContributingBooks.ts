@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getGoalContributingBooks } from "../service";
 import { GOAL_KEYS } from "./query-keys";
 import type { Goal } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 // The read books filling a books-metric goal (count + recent covers).
 // Enabled only for books-metric goals. Returns the ContributingMedia shape so the
@@ -11,6 +12,6 @@ export function useGoalContributingBooks(goal: Goal | undefined) {
     queryKey: [...GOAL_KEYS.detail(goal?.id ?? ""), "contributing-books"],
     queryFn: () => getGoalContributingBooks(goal!),
     enabled: !!goal && goal.metric_module === "books",
-    staleTime: 60 * 1000,
+    staleTime: STALE.MINUTE,
   });
 }

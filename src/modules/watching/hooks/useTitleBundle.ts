@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TMDB_KEYS } from "./query-keys";
 import { getTitleBundle, type TitleBundle } from "../service";
 import type { MediaType } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 /**
  * THE SHARED FETCH THAT MAKES THE OTHER HOOKS FREE.
@@ -31,8 +32,8 @@ export function useTitleBundle<T>(
     // The longest-lived facts here (ids, certifications) never change; the shortest (providers)
     // shift slowly. One day covers all of them, and a stale bundle still renders instantly while
     // it refreshes underneath.
-    staleTime: 24 * 60 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
+    staleTime: STALE.DAY,
+    gcTime: STALE.DAY,
     enabled: enabled && !!tmdbId,
   });
 }

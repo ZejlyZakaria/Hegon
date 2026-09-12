@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { STALE } from "@/shared/lib/stale";
 
 export interface WeatherData {
   city: string;
@@ -69,7 +70,7 @@ export function useWeather() {
     },
     // Instant on load from the persisted snapshot, then revalidate (SWR), and
     // keep itself fresh on a timer + on focus — no manual reload ever needed.
-    staleTime: 10 * 60 * 1000,
+    staleTime: STALE.TEN_MINUTES,
     gcTime: 60 * 60 * 1000,
     refetchInterval: 12 * 60 * 1000,
     refetchOnWindowFocus: true,

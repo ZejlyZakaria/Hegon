@@ -17,6 +17,7 @@ import {
   type PausePeriod,
 } from "../utils";
 import type { Habit, HabitWithStatus, HabitCompletion, CompleteHabitInput } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 // Streaks scan the full completion history (sized by streakWindowDays), not a
 // rolling window — otherwise any run longer than the window is silently capped.
@@ -35,7 +36,6 @@ export function useHabitsToday() {
   const habitsQuery = useQuery({
     queryKey: HABIT_KEYS.lists(),
     queryFn:  () => HabitService.getHabits(),
-    staleTime: 1000 * 60 * 5,
   });
 
   const habits   = habitsQuery.data ?? [];
@@ -45,21 +45,20 @@ export function useHabitsToday() {
     queryKey: HABIT_KEYS.today(today),
     queryFn:  () => HabitService.getDayCompletions(today, habitIds),
     enabled:  habitIds.length > 0,
-    staleTime: 0,
+    staleTime: STALE.NONE,
   });
 
   const yesterdayQuery = useQuery({
     queryKey: HABIT_KEYS.today(yesterday),
     queryFn:  () => HabitService.getDayCompletions(yesterday, habitIds),
     enabled:  habitIds.length > 0,
-    staleTime: 1000 * 60 * 10,
+    staleTime: STALE.TEN_MINUTES,
   });
 
   const recentQuery = useQuery({
     queryKey: HABIT_KEYS.completionsRange('all', STREAK_FROM, today),
     queryFn:  () => HabitService.getCompletionsForHabits(habitIds, STREAK_FROM, today),
     enabled:  habitIds.length > 0,
-    staleTime: 1000 * 60 * 5,
   });
 
   // skips/pauses degrade gracefully before the migration is applied (retry: false)
@@ -67,7 +66,6 @@ export function useHabitsToday() {
     queryKey: HABIT_KEYS.skips(`all:${today}`),
     queryFn:  () => HabitService.getSkipsForHabits(habitIds, STREAK_FROM, today),
     enabled:  habitIds.length > 0,
-    staleTime: 1000 * 60 * 5,
     retry: false,
   });
 
@@ -75,7 +73,6 @@ export function useHabitsToday() {
     queryKey: HABIT_KEYS.pauses('all'),
     queryFn:  () => HabitService.getPausesForHabits(habitIds),
     enabled:  habitIds.length > 0,
-    staleTime: 1000 * 60 * 5,
     retry: false,
   });
 
@@ -83,7 +80,6 @@ export function useHabitsToday() {
     queryKey: HABIT_KEYS.freezes(`all:${today}`),
     queryFn:  () => HabitService.getFreezesForHabits(habitIds, STREAK_FROM, today),
     enabled:  habitIds.length > 0,
-    staleTime: 1000 * 60 * 5,
     retry: false,
   });
 

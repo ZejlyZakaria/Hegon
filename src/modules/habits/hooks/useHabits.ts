@@ -10,7 +10,6 @@ export function useHabits() {
   return useQuery({
     queryKey: HABIT_KEYS.lists(),
     queryFn:  () => HabitService.getHabits(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -94,7 +93,6 @@ export function useArchivedHabits() {
   return useQuery({
     queryKey: HABIT_KEYS.archived(),
     queryFn:  () => HabitService.getArchivedHabits(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 

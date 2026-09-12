@@ -4,13 +4,13 @@ import { WORKSPACE_KEYS } from "./query-keys";
 import { toast } from "@/shared/utils/toast";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
+import { STALE } from "@/shared/lib/stale";
 
 export function useWorkspaceMembers(workspaceId: string | null) {
   return useQuery({
     queryKey: WORKSPACE_KEYS.members(workspaceId ?? ""),
     queryFn: () => TaskService.getWorkspaceMembers(workspaceId!),
     enabled: !!workspaceId,
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -19,7 +19,7 @@ export function useWorkspaceInvitations(workspaceId: string | null) {
     queryKey: WORKSPACE_KEYS.invitations(workspaceId ?? ""),
     queryFn: () => TaskService.getWorkspaceInvitations(workspaceId!),
     enabled: !!workspaceId,
-    staleTime: 1000 * 30,
+    staleTime: STALE.HALF_MINUTE,
   });
 }
 

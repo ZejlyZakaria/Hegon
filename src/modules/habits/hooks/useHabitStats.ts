@@ -9,6 +9,7 @@ import {
   streakWindowDays,
 } from "../utils";
 import type { Habit, HabitStats, HeatmapDay } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 // All-time floor: streaks must scan the full history and "Total" must be a true
 // total, not a rolling 90-day count. See streakWindowDays().
@@ -34,7 +35,6 @@ export function useHabitStats(habit: Habit): {
   const { data: completions, isLoading } = useQuery({
     queryKey: HABIT_KEYS.completionsRange(habit.id, STATS_FROM, today),
     queryFn:  () => HabitService.getHabitCompletionsRange(habit.id, STATS_FROM, today),
-    staleTime: 1000 * 60 * 5,
   });
 
   if (!completions) return { stats: null, isLoading };
@@ -88,7 +88,7 @@ export function useHeatmapData(): {
   const { data, isLoading } = useQuery({
     queryKey: HABIT_KEYS.heatmap(from, to),
     queryFn:  () => HabitService.getHeatmapData(from, to),
-    staleTime: 1000 * 60 * 10,
+    staleTime: STALE.TEN_MINUTES,
   });
 
   return { data: data ?? [], isLoading };

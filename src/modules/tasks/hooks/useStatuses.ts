@@ -5,13 +5,14 @@ import { toast } from "@/shared/utils/toast";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import type { StatusType } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 export function useStatuses(projectId: string | null) {
   return useQuery({
     queryKey: STATUS_KEYS.byProject(projectId || ""),
     queryFn: () => TaskService.getStatuses(projectId!),
     enabled: !!projectId,
-    staleTime: 1000 * 60 * 10,
+    staleTime: STALE.TEN_MINUTES,
   });
 }
 

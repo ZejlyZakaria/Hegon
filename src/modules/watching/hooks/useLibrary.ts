@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
 import { getLibraryMedia } from "../service";
 import type { WatchingMedia } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 // Live Library query. Seeded with the server-fetched list (initialData) and keyed
 // under WATCHING_KEYS, so every watching mutation's invalidation (WATCHING_KEYS.all)
@@ -12,6 +13,6 @@ export function useLibrary(userId: string, initialData?: WatchingMedia[]) {
     queryKey: WATCHING_KEYS.library(userId),
     queryFn: () => getLibraryMedia(userId),
     initialData,
-    staleTime: 30 * 1000,
+    staleTime: STALE.HALF_MINUTE,
   });
 }

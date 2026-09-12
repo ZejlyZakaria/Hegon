@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { TMDB_KEYS } from "./query-keys";
 import { getOmdbData } from "../service";
+import { STALE } from "@/shared/lib/stale";
 
 export interface EpisodeHeatmap {
   // IMDb's own structure — episode count per season (index 0 = season 1). Using
@@ -42,8 +43,8 @@ export function useEpisodeRatings(imdbId: string | null | undefined, enabled = t
       });
       return { seasonEpisodes, ratings };
     },
-    staleTime: 24 * 60 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
+    staleTime: STALE.DAY,
+    gcTime: STALE.DAY,
     enabled: enabled && !!imdbId,
   });
 }

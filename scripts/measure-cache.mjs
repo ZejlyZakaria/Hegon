@@ -8,12 +8,26 @@
 //   - la persistance est un DRAPEAU lu dans localStorage → A et B tournent dans
 //     la même exécution, à la suite, sans redémarrage ni recompilation ;
 //   - N passages par bras, le premier jeté (échauffement du serveur et du CDN) ;
-//   - on mesure ce qui est réellement en jeu : les requêtes Supabase d'un
-//     chargement à froid, et le temps jusqu'à la dernière d'entre elles.
+//   - on mesure CE QUE L'UTILISATEUR VOIT : le premier contenu réel à l'écran
+//     depuis la navigation (horloge de la page), le moment de l'hydratation, le
+//     nombre de requêtes Supabase et la fin du réseau.
+//
+// RÉSULTAT DU 2026-09-12 (/perso/watching/movies, grille ≥ 40 affiches, médiane sur 5)
+//   A · actuel        : grille à 1 200 ms · hydratation ~820 ms · 15 requêtes en 4 vagues
+//   B · persistance   : grille à   874 ms · 1 requête · 70 Ko sur le disque
+//   ⇒ −326 ms (27 %). Le plancher est l'hydratation ; squelette visible ≈ 870 ms (FCP 336 → grille 1 207), dont ~380 après l'hydratation.
+//   Conclusion (doctrine R4) : possible, chiffré, NON prioritaire — retiré du code.
+//
+// ⚠️ LE BRAS B N'A PLUS D'EFFET TEL QUEL : le persister expérimental a été retiré de
+// QueryProvider. Pour remesurer B, le remettre (~50 lignes, recette dans
+// hq/rules/system-design.md R4 : dehydrate/hydrate, hydrater dans l'initialiseur de
+// useState, persister sur getQueryCache().subscribe, drapeau localStorage
+// `hegon_persist_experiment`). Le bras A, lui, mesure n'importe quelle page tel quel —
+// c'est l'instrument de l'axe 3 (cascades) pour les audits de phase 3.
 //
 // USAGE
 //   npm run build && npm start          (dans un autre terminal)
-//   node scripts/measure-cache.mjs [/chemin] [--runs=5]
+//   node scripts/measure-cache.mjs [/chemin] [--runs=5] [--min-posters=40]
 
 import { chromium } from "playwright";
 import { existsSync } from "fs";

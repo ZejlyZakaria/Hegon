@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
 import { getMediaItemById } from "../service";
+import { STALE } from "@/shared/lib/stale";
 
 /**
  * Your row, in full — the only query the detail page is built on.
@@ -24,7 +25,7 @@ export function useMediaItem(id: string) {
     // Same reasoning as the sections: a fiche you opened ten minutes ago should reopen instantly
     // and refresh underneath, not skeleton because the cache forgot it. (Freshness is unchanged —
     // every mutation invalidates this key by id, so an edit still lands immediately.)
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE.TWO_MINUTES,
     gcTime: 30 * 60 * 1000,
   });
 }

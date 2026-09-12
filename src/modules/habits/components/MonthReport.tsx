@@ -19,6 +19,7 @@ import { resolveIcon } from "@/shared/constants/icons";
 import { cn } from "@/shared/utils/utils";
 import { isExpectedOnDate, heatmapColor } from "../utils";
 import type { HeatmapDay } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 const ACCENT = "var(--color-accent-habits-vivid)";
 const FIRE = "var(--color-fire)";
@@ -69,14 +70,13 @@ export function MonthReport({ month }: Props) {
     queryKey: HABIT_KEYS.completionsRange("report", monthStart, monthEnd),
     queryFn: () => HabitService.getCompletionsForHabits(habitIds, monthStart, monthEnd),
     enabled: valid && habitIds.length > 0,
-    staleTime: 1000 * 60 * 5,
   });
 
   const { data: prevData = [] } = useQuery<HeatmapDay[]>({
     queryKey: HABIT_KEYS.heatmap(prevStart, prevEnd),
     queryFn: () => HabitService.getHeatmapData(prevStart, prevEnd),
     enabled: valid,
-    staleTime: 1000 * 60 * 10,
+    staleTime: STALE.TEN_MINUTES,
   });
 
   if (!valid) {

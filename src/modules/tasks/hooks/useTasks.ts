@@ -10,6 +10,7 @@ import { toast } from "@/shared/utils/toast";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { markOptimistic, clearOptimistic } from "./optimistic-tracker";
+import { STALE } from "@/shared/lib/stale";
 
 // =====================================================
 // HELPER: recalcGoalIfAuto
@@ -41,7 +42,7 @@ export function useTasks(projectId: string | null) {
     queryFn: () => TaskService.getTasks(projectId!),
     enabled: !!projectId,
     // Real-time WS is the primary freshness mechanism; staleTime is the safety net if WS drops (perf.md §2.2)
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: STALE.TEN_MINUTES, // 10 minutes
   });
 }
 

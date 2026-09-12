@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFollowedCompetitions, getAllCompetitions, followCompetition, unfollowCompetition } from "../service";
 import { FOOTBALL_KEYS } from "./query-keys";
+import { STALE } from "@/shared/lib/stale";
 
 // The competitions the user follows (the 2nd axis). Its own query.
 export function useFollowedCompetitions(userId: string | null) {
@@ -8,7 +9,6 @@ export function useFollowedCompetitions(userId: string | null) {
     queryKey: FOOTBALL_KEYS.followedCompetitions(),
     queryFn: () => getFollowedCompetitions(userId!),
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -17,7 +17,8 @@ export function useAllCompetitions() {
   return useQuery({
     queryKey: FOOTBALL_KEYS.allCompetitions(),
     queryFn: getAllCompetitions,
-    staleTime: 1000 * 60 * 30,
+    staleTime: STALE.HALF_HOUR,
+    gcTime: STALE.HALF_HOUR,
   });
 }
 

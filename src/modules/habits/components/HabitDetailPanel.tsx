@@ -305,7 +305,6 @@ function PanelBody({
   const { data: comps = [] } = useQuery({
     queryKey: HABIT_KEYS.completionsRange(habit.id, from90, today),
     queryFn: () => HabitService.getHabitCompletionsRange(habit.id, from90, today),
-    staleTime: 1000 * 60 * 5,
   });
   // React Compiler memoizes these; manual useMemo conflicts with the `today` dep.
   const completedDates = comps.map((c) => c.completed_date);

@@ -7,6 +7,5 @@ export function useGoal(id: string) {
     queryKey: GOAL_KEYS.detail(id),
     queryFn:  () => GoalService.getGoal(id),
     enabled:  !!id,
-    staleTime: 1000 * 60 * 5,
   });
 }

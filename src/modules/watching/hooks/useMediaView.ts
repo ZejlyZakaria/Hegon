@@ -6,6 +6,7 @@ import { useAnimeCours } from "./useAnimeCours";
 import { WATCHING_KEYS } from "./query-keys";
 import { getAnimeCoursMany } from "../service";
 import { buildMediaView, type MediaView, type MediaViewSource } from "../lib/media-view";
+import { STALE } from "@/shared/lib/stale";
 
 /**
  * The lens, wired.
@@ -53,7 +54,7 @@ export function useMediaViews(items: ViewItem[] | undefined): Map<string, MediaV
     queryKey: [...WATCHING_KEYS.all, "anime-cours-map", animeIds],
     queryFn: () => getAnimeCoursMany(animeIds),
     enabled: animeIds.length > 0,
-    staleTime: 60 * 60 * 1000,   // world facts, not yours
+    staleTime: STALE.HOUR,   // world facts, not yours
     gcTime: 2 * 60 * 60 * 1000,
   });
 

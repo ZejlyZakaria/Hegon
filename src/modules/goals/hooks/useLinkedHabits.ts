@@ -8,13 +8,14 @@ import {
 import { toast } from "@/shared/utils/toast";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
+import { STALE } from "@/shared/lib/stale";
 
 export function useLinkedHabits(goalId: string) {
   return useQuery({
     queryKey: LINKED_HABIT_KEYS.byGoal(goalId),
     queryFn:  () => GoalService.getLinkedHabits(goalId),
     enabled:  !!goalId,
-    staleTime: 0,
+    staleTime: STALE.NONE,
   });
 }
 
@@ -60,7 +61,7 @@ export function useAvailableHabitsForGoal() {
   return useQuery({
     queryKey: AVAILABLE_HABIT_KEYS.all,
     queryFn:  () => GoalService.getAvailableHabitsForGoal(),
-    staleTime: 0,
+    staleTime: STALE.NONE,
   });
 }
 
@@ -68,6 +69,6 @@ export function useAvailableTasksForGoal() {
   return useQuery({
     queryKey: AVAILABLE_TASK_KEYS.all,
     queryFn:  () => GoalService.getAvailableTasksForGoal(),
-    staleTime: 0,
+    staleTime: STALE.NONE,
   });
 }

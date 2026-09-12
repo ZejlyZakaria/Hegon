@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TMDB_KEYS } from "./query-keys";
 import { getMediaDetails } from "../service";
 import type { MediaType } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 export interface CastMember {
   id: number;
@@ -81,8 +82,8 @@ export function useMediaCredits(tmdbId: number, type: MediaType, enabled = true)
       const details = await getMediaDetails(tmdbId, tmdbType);
       return mapCredits(details, type);
     },
-    staleTime: 24 * 60 * 60 * 1000, // credits don't change
-    gcTime: 60 * 60 * 1000,
+    staleTime: STALE.DAY, // credits don't change
+    gcTime: STALE.DAY,
     enabled: enabled && !!tmdbId,
   });
 }

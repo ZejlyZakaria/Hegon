@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { BOOK_KEYS } from "./query-keys";
 import type { BookSearchResult } from "../types";
+import { STALE } from "@/shared/lib/stale";
 
 async function searchGoogleBooks(query: string): Promise<BookSearchResult[]> {
   const res = await fetch(`/api/books/search?q=${encodeURIComponent(query)}`);
@@ -16,7 +17,7 @@ export function useBookSearch(query: string) {
     queryKey: BOOK_KEYS.search(debouncedQuery),
     queryFn:  () => searchGoogleBooks(debouncedQuery),
     enabled:  debouncedQuery.length >= 3,
-    staleTime: 1000 * 60 * 10,
+    staleTime: STALE.TEN_MINUTES,
     retry: false,
   });
 }

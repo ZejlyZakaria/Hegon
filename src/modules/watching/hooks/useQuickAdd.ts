@@ -14,8 +14,7 @@ import {
 } from "../service";
 import { buildMediaView } from "../lib/media-view";
 import type { ListType, TmdbListResult } from "../types";
-
-const DAY = 24 * 60 * 60 * 1000;
+import { STALE } from "@/shared/lib/stale";
 
 // The far end of what has AIRED, in storage coordinates — the honest "mark as watched" position for
 // a series. Same rule the discover page uses; a running show lands caught-up, a finished one watched.
@@ -57,12 +56,14 @@ export function useQuickAdd() {
         queryClient.fetchQuery({
           queryKey: TMDB_KEYS.bundle(type, result.id),
           queryFn: () => getTitleBundle(result.id, tmdbType),
-          staleTime: DAY,
+          staleTime: STALE.DAY,
+          gcTime: STALE.DAY,
         }),
         queryClient.fetchQuery({
           queryKey: TMDB_KEYS.credits(type, result.id),
           queryFn: async () => mapCredits(await getMediaDetails(result.id, tmdbType), type),
-          staleTime: DAY,
+          staleTime: STALE.DAY,
+          gcTime: STALE.DAY,
         }),
         type === "anime" ? getAnimeCours(result.id) : Promise.resolve(null),
       ]);

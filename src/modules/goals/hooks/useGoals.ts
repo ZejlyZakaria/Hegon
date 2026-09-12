@@ -10,7 +10,6 @@ export function useGoals() {
   return useQuery({
     queryKey: GOAL_KEYS.lists(),
     queryFn:  () => GoalService.getGoals(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 

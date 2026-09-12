@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { TMDB_KEYS } from "./query-keys";
 import { getSeasonEpisodes } from "../service";
+import { STALE } from "@/shared/lib/stale";
 
 export interface EpisodeInfo {
   number: number;
@@ -31,7 +32,7 @@ export function useSeasonEpisodes(tmdbId: number, season: number, enabled = true
     // 30 min, not 24 h: a freshly-aired episode often lacks its still on TMDB at first fetch, and a
     // day-long staleTime pinned that null for the whole session. A short window lets a later visit
     // pick up the real still once TMDB has it. The 1 h server Data Cache still shields TMDB's quota.
-    staleTime: 30 * 60 * 1000,
+    staleTime: STALE.HALF_HOUR,
     gcTime: 60 * 60 * 1000,
     enabled: enabled && !!tmdbId && season > 0,
   });

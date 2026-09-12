@@ -15,6 +15,5 @@ export function useWatchingStatsData(userId: string) {
       return { items, cours, rewatches };
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
   });
 }

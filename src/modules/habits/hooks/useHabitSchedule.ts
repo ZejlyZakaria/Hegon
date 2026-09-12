@@ -12,7 +12,6 @@ export function useHabitSkips(habitId: string | null) {
     queryKey: HABIT_KEYS.skips(habitId ?? "none"),
     queryFn: () => HabitService.getHabitSkips(habitId as string),
     enabled: !!habitId,
-    staleTime: 1000 * 60 * 5,
     retry: false,
   });
 }
@@ -22,7 +21,6 @@ export function useHabitPauses(habitId: string | null) {
     queryKey: HABIT_KEYS.pauses(habitId ?? "none"),
     queryFn: () => HabitService.getHabitPauses(habitId as string),
     enabled: !!habitId,
-    staleTime: 1000 * 60 * 5,
     retry: false,
   });
 }
@@ -35,7 +33,6 @@ export function useHabitFreezes(habitId: string | null) {
     queryKey: HABIT_KEYS.freezes(habitId ?? "none"),
     queryFn: () => HabitService.getHabitFreezes(habitId as string),
     enabled: !!habitId,
-    staleTime: 1000 * 60 * 5,
     retry: false,
   });
 }
@@ -44,7 +41,6 @@ export function useMonthlyFreezeCount() {
   return useQuery({
     queryKey: HABIT_KEYS.freezes("month"),
     queryFn: () => HabitService.getMonthlyFreezeCount(),
-    staleTime: 1000 * 60 * 5,
     retry: false,
   });
 }

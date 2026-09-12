@@ -4,6 +4,7 @@ import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
 import { getMediaItemById } from "../service";
+import { STALE } from "@/shared/lib/stale";
 
 /**
  * FETCH THE FICHE WHILE THE POINTER IS STILL ON ITS WAY.
@@ -37,7 +38,7 @@ export function usePrefetchMedia() {
         queryFn: () => getMediaItemById(id),
         // Matches useMediaItem: a fiche opened minutes ago is still good, and prefetch must never
         // be the thing that decides data is stale.
-        staleTime: 2 * 60 * 1000,
+        staleTime: STALE.TWO_MINUTES,
       });
     },
     [queryClient],

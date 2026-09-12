@@ -5,13 +5,14 @@ import { TASK_KEYS } from "@/modules/tasks/hooks/query-keys";
 import { toast } from "@/shared/utils/toast";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
+import { STALE } from "@/shared/lib/stale";
 
 export function useLinkedTasks(goalId: string) {
   return useQuery({
     queryKey: LINKED_TASK_KEYS.byGoal(goalId),
     queryFn:  () => GoalService.getLinkedTasks(goalId),
     enabled:  !!goalId,
-    staleTime: 1000 * 60 * 2,
+    staleTime: STALE.TWO_MINUTES,
   });
 }
 

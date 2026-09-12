@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getScorers } from "../service";
 import { FOOTBALL_KEYS } from "./query-keys";
+import { STALE } from "@/shared/lib/stale";
 
 // Top scorers of a competition (Competition page). Cached 1h client-side — scorers move slowly and
 // the page is opened infrequently, so no DB table is needed.
@@ -9,6 +10,7 @@ export function useScorers(code: string | null | undefined) {
     queryKey: FOOTBALL_KEYS.scorers(code ?? ""),
     queryFn: () => getScorers(code!),
     enabled: !!code,
-    staleTime: 1000 * 60 * 60,
+    staleTime: STALE.HOUR,
+    gcTime: STALE.HOUR,
   });
 }

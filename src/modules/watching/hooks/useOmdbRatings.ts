@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { TMDB_KEYS } from "./query-keys";
 import { getOmdbData } from "../service";
+import { STALE } from "@/shared/lib/stale";
 
 export interface OmdbInfo {
   imdb: string | null;            // "7.6"
@@ -41,8 +42,8 @@ export function useOmdbRatings(imdbId: string | null | undefined, enabled = true
   return useQuery({
     queryKey: TMDB_KEYS.omdb(imdbId ?? ""),
     queryFn: async () => mapOmdb(await getOmdbData(imdbId!)),
-    staleTime: 24 * 60 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
+    staleTime: STALE.DAY,
+    gcTime: STALE.DAY,
     enabled: enabled && !!imdbId,
   });
 }

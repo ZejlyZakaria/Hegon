@@ -7,6 +7,7 @@ import * as TaskService from "../service";
 import { ACTIVITY_KEYS } from "./query-keys";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
+import { STALE } from "@/shared/lib/stale";
 
 export function useTaskActivities(taskId: string | null) {
   const queryClient = useQueryClient();
@@ -39,7 +40,7 @@ export function useTaskActivities(taskId: string | null) {
     queryKey: ACTIVITY_KEYS.byTask(taskId ?? ""),
     queryFn: () => TaskService.getTaskActivities(taskId!),
     enabled: !!taskId,
-    staleTime: 1000 * 30,
+    staleTime: STALE.HALF_MINUTE,
   });
 }
 

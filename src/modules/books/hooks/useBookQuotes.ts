@@ -14,7 +14,6 @@ export function useBookQuotes(bookId: string) {
   return useQuery({
     queryKey: BOOK_KEYS.quotes(bookId),
     queryFn:  () => BooksService.getBookQuotes(bookId),
-    staleTime: 1000 * 60 * 5,
     enabled:  !!bookId,
   });
 }
@@ -24,7 +23,6 @@ export function useAllQuotes() {
   return useQuery({
     queryKey: BOOK_KEYS.allQuotes(),
     queryFn:  () => BooksService.getAllQuotes(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 

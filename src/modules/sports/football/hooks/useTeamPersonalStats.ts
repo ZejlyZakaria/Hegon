@@ -9,6 +9,5 @@ export function useTeamPersonalStats(userId: string | null, teamExternalId: stri
     queryKey: FOOTBALL_KEYS.teamStats(teamExternalId ?? ""),
     queryFn: () => getTeamPersonalStats(userId!, teamExternalId!),
     enabled: !!userId && !!teamExternalId,
-    staleTime: 1000 * 60 * 5,
   });
 }

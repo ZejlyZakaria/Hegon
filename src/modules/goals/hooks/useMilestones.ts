@@ -11,7 +11,6 @@ export function useMilestones(goalId: string) {
     queryKey: MILESTONE_KEYS.byGoal(goalId),
     queryFn:  () => GoalService.getMilestones(goalId),
     enabled:  !!goalId,
-    staleTime: 1000 * 60 * 5,
   });
 }
 

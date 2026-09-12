@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import * as JournalService from "../service";
 import { JOURNAL_KEYS } from "./query-keys";
+import { STALE } from "@/shared/lib/stale";
 
 export function useJournalCalendar(year: number, month: number) {
   return useQuery({
     queryKey: JOURNAL_KEYS.calendar(year, month),
     queryFn:  () => JournalService.getCalendarData(year, month),
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -14,7 +14,6 @@ export function useJournalStreak() {
   return useQuery({
     queryKey: JOURNAL_KEYS.streak(),
     queryFn:  () => JournalService.getStreak(),
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -25,7 +24,7 @@ export function useTodayContext() {
   return useQuery({
     queryKey: JOURNAL_KEYS.todayContext(),
     queryFn:  () => JournalService.getTodayContext(),
-    staleTime: 0,
+    staleTime: STALE.NONE,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
@@ -36,6 +35,7 @@ export function useOnThisDay() {
   return useQuery({
     queryKey: JOURNAL_KEYS.onThisDay(),
     queryFn:  () => JournalService.getOnThisDay(),
-    staleTime: 1000 * 60 * 30,
+    staleTime: STALE.HALF_HOUR,
+    gcTime: STALE.HALF_HOUR,
   });
 }

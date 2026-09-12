@@ -1268,6 +1268,7 @@ export async function searchAnimeThemes(title: string, year?: number | null): Pr
   // placeholder then swaps to the real art. Deduped + cached, so this is near-free
   // after the first lookup of each song.
   await Promise.all(
+    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — un appel iTunes PAR MORCEAU (API externe, quota). Correction = lot ou cache. → audit Watching, phase 3 axe 3.
     groups.flatMap((g) => g.tracks).map(async (t) => {
       t.cover = await searchItunesArtwork(t.title, t.artist);
     }),

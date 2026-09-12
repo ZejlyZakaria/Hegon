@@ -41,7 +41,6 @@ export function useRatingStanding(
     queryKey: WATCHING_KEYS.ratingsByType(userId ?? "", type),
     queryFn: () => getRatingsForType(userId!, type),
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
   });
 
   if (!rating || ratings.length < MIN_SAMPLE) return null;

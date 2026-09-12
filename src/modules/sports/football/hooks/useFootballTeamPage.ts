@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getTeamByExternalId, getTeamMatches, getTeamHonours, getTeamStanding } from "../service";
 import { FOOTBALL_KEYS } from "./query-keys";
+import { STALE } from "@/shared/lib/stale";
 
 // The team record (meta: founded/venue/country/colours) — Team page header.
 export function useTeam(externalId: string | null | undefined) {
@@ -8,7 +9,8 @@ export function useTeam(externalId: string | null | undefined) {
     queryKey: FOOTBALL_KEYS.teamFull(externalId ?? ""),
     queryFn: () => getTeamByExternalId(externalId!),
     enabled: !!externalId,
-    staleTime: 1000 * 60 * 30,
+    staleTime: STALE.HALF_HOUR,
+    gcTime: STALE.HALF_HOUR,
   });
 }
 
@@ -18,7 +20,6 @@ export function useTeamMatches(externalId: string | null | undefined) {
     queryKey: FOOTBALL_KEYS.teamMatches(externalId ?? ""),
     queryFn: () => getTeamMatches(externalId!),
     enabled: !!externalId,
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -28,7 +29,8 @@ export function useTeamHonours(externalId: string | null | undefined) {
     queryKey: FOOTBALL_KEYS.teamHonours(externalId ?? ""),
     queryFn: () => getTeamHonours(externalId!),
     enabled: !!externalId,
-    staleTime: 1000 * 60 * 60,
+    staleTime: STALE.HOUR,
+    gcTime: STALE.HOUR,
   });
 }
 
@@ -38,6 +40,6 @@ export function useTeamStanding(externalId: string | null | undefined) {
     queryKey: FOOTBALL_KEYS.teamStanding(externalId ?? ""),
     queryFn: () => getTeamStanding(externalId!),
     enabled: !!externalId,
-    staleTime: 1000 * 60 * 10,
+    staleTime: STALE.TEN_MINUTES,
   });
 }
