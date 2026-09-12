@@ -48,22 +48,38 @@ where d.start_time > now() - interval '6 hours'
 
 union all
 
--- ── B · La fonction edge a répondu autre chose que 2xx ─────────────────────
+-- ── B · La DERNIÈRE réponse d'une fonction edge est une erreur ─────────────
 -- ⭐ C'EST LA SECTION QUI AURAIT VU LES 40 HEURES. Le cron était `succeeded`
 -- pendant que la fonction renvoyait une erreur — l'écart exact entre « le SQL
 -- est parti » et « le travail a été fait ».
+--
+-- Réécrite le 2026-09-12 après la première vraie alerte (500 Gateway Timeout
+-- de football_sync_standings, cron de 12:00), qui a révélé deux défauts :
+--   1. `net._http_response` ne garde pas l'URL → « fonction non identifiée ».
+--      Corrigé par `internal.call_log`, écrit par `call_edge` à chaque appel
+--      (migration 20260912000000).
+--   2. Toute réponse non-2xx des 6 dernières heures alertait, même si la
+--      fonction avait réussi depuis → un timeout passager par semaine et le
+--      garde crie au loup. On ne regarde plus que la DERNIÈRE réponse de
+--      chaque fonction : l'état courant, pas l'historique.
+-- Nuance assumée : pour un cron à 6 h, un échec isolé alerte quand même une
+-- fois (c'est sa seule réponse dans la fenêtre). C'est voulu — un 500 sur les
+-- classements mérite d'être vu une fois, pas six.
 select
   'B · FONCTION EDGE EN ERREUR'                      as alerte,
-  coalesce(
-    substring(r.content from '"function"\s*:\s*"([^"]+)"'),
-    '(fonction non identifiée)'
-  )                                                  as objet,
-  coalesce(r.status_code::text, 'pas de réponse')    as detail,
-  coalesce(left(r.error_msg, 120), left(r.content, 120), '') as message,
-  to_char(r.created, 'YYYY-MM-DD HH24:MI')           as quand
-from net._http_response r
-where r.created > now() - interval '6 hours'
-  and (r.status_code is null or r.status_code >= 400 or r.timed_out)
+  last.fn                                            as objet,
+  coalesce(last.status_code::text, 'pas de réponse') as detail,
+  coalesce(left(last.error_msg, 120), left(last.content, 120), '') as message,
+  to_char(last.created, 'YYYY-MM-DD HH24:MI')        as quand
+from (
+  select distinct on (l.fn)
+         l.fn, r.status_code, r.error_msg, r.content, r.created, r.timed_out
+  from internal.call_log l
+  join net._http_response r on r.id = l.request_id
+  where l.called_at > now() - interval '6 hours'
+  order by l.fn, r.created desc
+) last
+where last.status_code is null or last.status_code >= 400 or last.timed_out
 
 union all
 

@@ -133,12 +133,20 @@ begin
     timeout_milliseconds := 300000
   ) into req_id;
 
+  -- Journal : `net._http_response` ne garde pas l'URL, on garde le nom ici.
+  insert into internal.call_log (request_id, fn) values (req_id, fn);
+
+  -- Auto-nettoyage, 7 jours.
+  delete from internal.call_log where called_at < now() - interval '7 days';
+
   return req_id;
 end;
 $_$;
 ```
 
-> C'est le corps exact de `schema.sql` (cherche `call_edge`), seules l'URL et la clé changent. Vérifie ensuite qu'un cron aboutit vraiment : `select * from net._http_response order by
+> C'est le corps exact de la migration `20260912000000_call_log.sql` (aussi dans `schema.sql`, cherche
+> `call_edge`), seules l'URL et la clé changent. ⚠️ Garde bien les deux lignes `call_log` : sans elles,
+> le watchdog ne peut plus nommer une fonction en erreur. Vérifie ensuite qu'un cron aboutit vraiment : `select * from net._http_response order by
 > created desc limit 5;` doit montrer des `status_code` à 200 dans les heures qui suivent.
 
 ---
