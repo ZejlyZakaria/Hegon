@@ -279,10 +279,6 @@ Deno.serve(async () => {
         last_synced_at: new Date().toISOString(),   // this is what rotates the batch
       };
 
-      const { error: worldErr } = await supabase
-        .from("media_items").update(world).in("id", group.map((r) => r.id));
-      if (worldErr) { failed++; log.push(`✗ ${title}: ${worldErr.message}`); continue; }
-
       const airedTotal = total(season_aired);
       if (
         baseline.status !== status ||
@@ -293,46 +289,52 @@ Deno.serve(async () => {
       }
 
       // ── YOUR FACTS — per row, because your position is yours and the demo's is the demo's. ────
-      const pos = lastAired(season_aired);
-
+      //
+      // ⚠️ COMPUTED FIRST, WRITTEN WITH THE WORLD — one UPDATE per row, never two (contre-examen du
+      // 13/09). The world facts used to go out in one batch statement BEFORE this loop, and the
+      // posture fix in a second statement per row. If the second failed (a killed isolate, a 504
+      // the single retry did not catch), the new `season_aired` was already on the row: the very
+      // comparison below — new aired > the row's snapshot — could never be true again, and the
+      // show stayed "watched" with episodes you had not seen, for good. Now a row's snapshot is
+      // consumed only in the same statement that acts on it; a failure leaves it intact and the
+      // next run simply tries again.
+      const fixes = new Map<string, Record<string, unknown>>();
       for (const m of group) {
         const fix: Record<string, unknown> = {};
 
-        // A row marked `watched` on a show that is NOT over. Never a user error: "watched" was the
-        // only word the app knew. It means "I'm caught up" — so let it say that instead.
-        if (m.watched && !isFinished(status) && airedTotal > 0 && pos) {
-          Object.assign(fix, {
-            watched: false,
-            in_progress: true,
-            paused: false,
-            dropped: false,
-            current_season: m.current_season ?? pos.season,
-            current_episode: m.current_episode ?? pos.episode,
-            caught_up_at: m.caught_up_at ?? m.watched_at ?? new Date().toISOString(),
-          });
-          log.push(`⚠ ${title}: watched → caught-up`);
-        }
-        // A finished show that GREW — a revival, a late special season.
+        // A row marked `watched` on a show that has MORE EPISODES than the row's own snapshot knew —
+        // a show still going, or a finished one that came back. That comparison, and ONLY that, is
+        // proof you have something left to watch.
         //
-        // ⚠️ THIS CAN ONLY BE DETECTED AGAINST A PREVIOUS SNAPSHOT. The naive test ("more has aired
-        // than you've seen") destroys the library: a watched show that was never given a position
-        // reports zero seen, so Breaking Bad, Lost and Suits all look like they've grown and get
-        // un-watched. Growth is a COMPARISON, not a deduction. No baseline → no claim.
-        else if (
-          m.watched && isFinished(status) &&
-          m.season_aired != null && airedTotal > total(m.season_aired)
-        ) {
+        // ⚠️ GROWTH IS A COMPARISON AGAINST A PREVIOUS SNAPSHOT, NEVER A DEDUCTION. Two ways this
+        // rule has destroyed the library before:
+        //   · the naive test ("more has aired than you've seen") un-watched Breaking Bad, Lost and
+        //     Suits — a watched show with no position reports zero seen. No baseline → no claim.
+        //   · a SEPARATE branch fired on the status LABEL alone ("watched, and the show is not
+        //     over" → caught-up). TMDB is edited by volunteers; Haikyu!! flipped Ended → Returning
+        //     Series → Ended between two runs and the row was un-watched with nothing new to watch
+        //     (2026-09-12). A label proves nothing about what aired. That branch is gone: the one
+        //     rule below serves both cases, and it needs the numbers.
+        //
+        // The status this job writes to the app is a world fact; `watched` is the user's claim.
+        // Rewriting the claim is the one thing this cron does that the app's single writer
+        // (lib/watch-status.ts) does not control — so it must do it for a reason it can prove.
+        if (m.watched && m.season_aired != null && airedTotal > total(m.season_aired)) {
+          // Where "watched" placed you: the end of what HAD aired when you said it. Not the new
+          // last episode (you would look caught up on what you haven't seen), not S1 E0 (you
+          // would look like you never started).
+          const seen = lastAired(m.season_aired);
           Object.assign(fix, {
             watched: false,
             // A revival does not un-drop a show. If you walked away from it, you walked away from
             // it — the world coming back with more episodes is not you changing your mind. The
             // stance you chose survives; only the false claim of completion dies.
             in_progress: !m.paused && !m.dropped,
-            current_season: m.current_season ?? 1,
-            current_episode: m.current_episode ?? 0,
+            current_season: m.current_season ?? seen?.season ?? 1,
+            current_episode: m.current_episode ?? seen?.episode ?? 0,
             caught_up_at: m.caught_up_at ?? m.watched_at ?? new Date().toISOString(),
           });
-          log.push(`⚠ ${title}: finished show grew (${total(m.season_aired)} → ${airedTotal} aired)`);
+          log.push(`⚠ ${title}: ${isFinished(status) ? "finished show grew" : "more aired since watched"} (${total(m.season_aired)} → ${airedTotal} aired)`);
         }
 
         /**
@@ -348,10 +350,21 @@ Deno.serve(async () => {
           log.push(`⚠ ${title}: position S${m.current_season}E${m.current_episode} claims more than aired (${airedHere})`);
         }
 
-        if (Object.keys(fix).length === 0) continue;
+        if (Object.keys(fix).length > 0) fixes.set(m.id, fix);
+      }
+
+      // ── THE WRITE — the world's facts for every row, plus its own posture fix where there is one.
+      //    Rows without a fix still share ONE statement (two copies of a show never disagree about
+      //    what has aired); a row with a fix gets world + fix together, atomically.
+      const plainIds = group.map((r) => r.id).filter((id) => !fixes.has(id));
+      if (plainIds.length > 0) {
+        const { error: worldErr } = await supabase.from("media_items").update(world).in("id", plainIds);
+        if (worldErr) { failed++; log.push(`✗ ${title}: ${worldErr.message}`); }
+      }
+      for (const [id, fix] of fixes) {
+        const { error: fixErr } = await supabase.from("media_items").update({ ...world, ...fix }).eq("id", id);
+        if (fixErr) { failed++; log.push(`✗ ${title}: ${fixErr.message}`); continue; }
         repaired++;
-        const { error: fixErr } = await supabase.from("media_items").update(fix).eq("id", m.id);
-        if (fixErr) { failed++; log.push(`✗ ${title}: ${fixErr.message}`); }
       }
     }
 
