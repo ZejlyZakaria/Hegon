@@ -4,7 +4,10 @@
 > Ce fichier est copié dans `hegon-backups` à chaque sauvegarde par `.github/workflows/backup.yml`.
 
 **Il te faut :**
-- `gpg` et `gzip` — Git Bash sur Windows les a.
+- `gpg` et `gzip` — **Git Bash** sur Windows les a (menu Démarrer → « Git Bash »). ⚠️ **Pas PowerShell** :
+  `gpg` n’y est pas sur le PATH (« Le terme gpg n’est pas reconnu »). Dans Git Bash les chemins
+  s’écrivent `/c/Users/…` avec des barres obliques, et on colle avec Shift+Insert, pas Ctrl+V.
+  (Vécu le 2026-09-13 au premier test à froid — le réflexe PowerShell reviendra.)
 - **`psql` version 17.6 ou plus** — ⚠️ Git Bash ne l'a PAS, il s'installe à part (installeur PostgreSQL
   ou `winget install PostgreSQL.PostgreSQL.17`). Et pas n'importe quelle version : depuis la 17.6,
   `pg_dump` écrit une commande `\restrict` en tête de fichier que les `psql` plus anciens ne
