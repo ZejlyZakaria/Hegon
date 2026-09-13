@@ -20,6 +20,7 @@
 // pass; this function builds its own privileged client from HEGON_SECRET_KEY. (CLAUDE.md §6bis.)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
 serve(async () => {
   try {
@@ -38,7 +39,7 @@ serve(async () => {
       Prefer: "resolution=merge-duplicates,return=minimal",
     }
     const sbGet = async (path: string) => {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: readHeaders })
+      const r = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/${path}`, { headers: readHeaders })
       return r.ok ? await r.json() : []
     }
 
@@ -75,7 +76,7 @@ serve(async () => {
 
     const upsert = async (rows: any[]) => {
       if (!rows.length) return
-      await fetch(`${SUPABASE_URL}/rest/v1/football_matches?on_conflict=external_match_id`, {
+      await fetchWithRetry(`${SUPABASE_URL}/rest/v1/football_matches?on_conflict=external_match_id`, {
         method: "POST", headers: writeHeaders, body: JSON.stringify(rows),
       })
     }

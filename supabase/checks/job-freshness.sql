@@ -48,38 +48,29 @@ where d.start_time > now() - interval '6 hours'
 
 union all
 
--- ── B · La DERNIÈRE réponse d'une fonction edge est une erreur ─────────────
+-- ── B · Une fonction edge a échoué DEUX FOIS de suite ──────────────────────
 -- ⭐ C'EST LA SECTION QUI AURAIT VU LES 40 HEURES. Le cron était `succeeded`
 -- pendant que la fonction renvoyait une erreur — l'écart exact entre « le SQL
 -- est parti » et « le travail a été fait ».
 --
--- Réécrite le 2026-09-12 après la première vraie alerte (500 Gateway Timeout
--- de football_sync_standings, cron de 12:00), qui a révélé deux défauts :
---   1. `net._http_response` ne garde pas l'URL → « fonction non identifiée ».
---      Corrigé par `internal.call_log`, écrit par `call_edge` à chaque appel
---      (migration 20260912000000).
---   2. Toute réponse non-2xx des 6 dernières heures alertait, même si la
---      fonction avait réussi depuis → un timeout passager par semaine et le
---      garde crie au loup. On ne regarde plus que la DERNIÈRE réponse de
---      chaque fonction : l'état courant, pas l'historique.
--- Nuance assumée : pour un cron à 6 h, un échec isolé alerte quand même une
--- fois (c'est sa seule réponse dans la fenêtre). C'est voulu — un 500 sur les
--- classements mérite d'être vu une fois, pas six.
+-- Trois versions en trois jours, chacune corrigée par une vraie alerte :
+--   12/09 : toute réponse non-2xx des 6 h alertait → « fonction non identifiée »
+--           (`net._http_response` n'a pas l'URL) → `internal.call_log`.
+--   12/09 : ne regarder que la DERNIÈRE réponse de chaque fonction.
+--   13/09 : n'alerter qu'au 2e ÉCHEC CONSÉCUTIF. Un cron à 6 h qui rate une
+--           fois, c'est 12 h de données au pire, pas une alerte — et un 504
+--           passager par semaine aurait fait crier le garde au loup.
+-- La mémoire entre deux passages est `internal.job_health`, mise à jour par
+-- job-health.sql juste avant ce fichier. Le 1er échec y est imprimé en
+-- information ; ici, seuls les échecs répétés.
 select
-  'B · FONCTION EDGE EN ERREUR'                      as alerte,
-  last.fn                                            as objet,
-  coalesce(last.status_code::text, 'pas de réponse') as detail,
-  coalesce(left(last.error_msg, 120), left(last.content, 120), '') as message,
-  to_char(last.created, 'YYYY-MM-DD HH24:MI')        as quand
-from (
-  select distinct on (l.fn)
-         l.fn, r.status_code, r.error_msg, r.content, r.created, r.timed_out
-  from internal.call_log l
-  join net._http_response r on r.id = l.request_id
-  where l.called_at > now() - interval '6 hours'
-  order by l.fn, r.created desc
-) last
-where last.status_code is null or last.status_code >= 400 or last.timed_out
+  'B · FONCTION EDGE EN ERREUR (' || h.consecutive_failures || '× de suite)' as alerte,
+  h.fn                                               as objet,
+  h.last_detail                                      as detail,
+  'dernier succès inconnu · voir call_log'           as message,
+  to_char(h.last_at, 'YYYY-MM-DD HH24:MI')          as quand
+from internal.job_health h
+where h.last_status = 'error' and h.consecutive_failures >= 2
 
 union all
 

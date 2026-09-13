@@ -87,3 +87,7 @@ next-env.d.ts
 
 # Personal — CV + LinkedIn, liés à HEGON mais hors base de connaissance
 /personal/
+
+# Artefact de `deno check` (typecheck local des edge functions, Deno installé le 2026-09-13).
+# Le déploiement Supabase ne le lit pas ; il se régénère à chaque check.
+/deno.lock

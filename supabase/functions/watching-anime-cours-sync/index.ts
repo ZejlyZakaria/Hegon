@@ -18,6 +18,7 @@
 //
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
 const FRIBB = "https://raw.githubusercontent.com/Fribb/anime-lists/master/anime-list-full.json";
 const ANILIST = "https://graphql.anilist.co";
@@ -84,7 +85,7 @@ Deno.serve(async () => {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("HEGON_SECRET_KEY")!,
-    { db: { schema: "watching" } },
+    { db: { schema: "watching" }, global: { fetch: fetchWithRetry } },
   );
 
   try {
@@ -157,7 +158,7 @@ Deno.serve(async () => {
         media = await anilistByIds(ids);
       } catch (e) {
         if (e instanceof RateLimited) { rateLimited = true; log.push("· AniList rate-limited — stopping, the cron will resume"); break; }
-        failed++; log.push(`✗ ${info.title}: ${String(e)}`);
+        failed++; log.push(`✗ ${info.title}: ${errMsg(e)}`);
         continue;
       }
       await sleep(700);   // AniList is polite, not infinite
@@ -184,7 +185,7 @@ Deno.serve(async () => {
       { headers: { "Content-Type": "application/json" } },
     );
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), {
+    return new Response(JSON.stringify({ error: errMsg(e) }), {
       status: 500, headers: { "Content-Type": "application/json" },
     });
   }

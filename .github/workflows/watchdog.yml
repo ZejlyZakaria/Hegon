@@ -85,6 +85,18 @@ jobs:
           /usr/lib/postgresql/17/bin/psql --version | grep -q ' 17\.' \
             || { echo "::error::psql 17 introuvable après installation."; exit 1; }
 
+      # ── 0 · La mémoire du watchdog : internal.job_health ───────────────────
+      # Met à jour, pour chaque fonction appelée dans les 6 h, son nombre d'échecs
+      # CONSÉCUTIFS (13/09 — un cron à 6 h qui rate une fois n'est pas une alerte).
+      # Imprime les premiers échecs en INFORMATION : cette étape ne fait jamais
+      # échouer le job. Les échecs répétés, c'est l'étape suivante (section B).
+      - name: Mémoire des échecs (job_health)
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          DB_URL: ${{ secrets.HEGON_DB_URL }}
+        run: |
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/checks/job-health.sql
+
       # ── 1 · Les crons et les fonctions edge ────────────────────────────────
       # Zéro ligne = tout va bien. Toute ligne est une alerte.
       - name: Crons et fonctions edge

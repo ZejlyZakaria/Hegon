@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
 Deno.serve(async () => {
   try {
@@ -6,6 +7,7 @@ Deno.serve(async () => {
     const supabaseServiceKey = Deno.env.get("HEGON_SECRET_KEY")!
     const supabaseClient     = createClient(supabaseUrl, supabaseServiceKey, {
       db: { schema: "sport" },
+      global: { fetch: fetchWithRetry },
     })
 
     console.log("Starting F1 driver standings sync...")

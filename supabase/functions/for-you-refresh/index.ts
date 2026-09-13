@@ -21,6 +21,7 @@
 //
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
 type MediaType = "film" | "serie" | "anime";
 
@@ -229,6 +230,7 @@ Deno.serve(async () => {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("HEGON_SECRET_KEY")!,
+    { global: { fetch: fetchWithRetry } },
   );
 
   // Users with at least one favorite (single-user today, but kept generic).
@@ -243,7 +245,7 @@ Deno.serve(async () => {
       try {
         if (await refreshUserType(supabase, tmdbKey, userId, type)) refreshed++;
       } catch (e) {
-        console.error("for-you refresh failed", userId, type, String(e));
+        console.error("for-you refresh failed", userId, type, errMsg(e));
       }
     }
   }

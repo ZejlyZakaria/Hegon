@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
 // The 13 competitions our football-data key can access (big-5 leagues + CL, plus Eredivisie,
 // Primeira, Championship, Brazil Série A, Copa Libertadores, and the two national-team tournaments
@@ -47,7 +48,7 @@ serve(async () => {
     for (const comp of competitions) {
       console.log(`Inserting: ${comp.name} (${comp.code})`)
 
-      const res = await fetch(
+      const res = await fetchWithRetry(
         `${SUPABASE_URL}/rest/v1/football_competitions?on_conflict=api_external_id`,
         {
           method: "POST",

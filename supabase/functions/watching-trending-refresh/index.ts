@@ -4,6 +4,7 @@
 // what getWatchingHeroData used to fetch live, so the client output is identical.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
 const TMDB = "https://api.themoviedb.org/3";
 const KEY = Deno.env.get("TMDB_API_KEY")!;
@@ -40,6 +41,7 @@ Deno.serve(async () => {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("HEGON_SECRET_KEY")!,
+    { global: { fetch: fetchWithRetry } },
   );
 
   try {
@@ -66,7 +68,7 @@ Deno.serve(async () => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), {
+    return new Response(JSON.stringify({ error: errMsg(e) }), {
       status: 500, headers: { "Content-Type": "application/json" },
     });
   }

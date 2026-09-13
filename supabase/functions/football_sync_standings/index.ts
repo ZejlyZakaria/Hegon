@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
 serve(async () => {
   try {
@@ -24,7 +25,7 @@ serve(async () => {
     }
 
     // 1. Récupérer les compétitions
-    const competitionsRes = await fetch(
+    const competitionsRes = await fetchWithRetry(
       `${SUPABASE_URL}/rest/v1/football_competitions?select=id,api_external_id`,
       { headers: readHeaders }
     )
@@ -35,7 +36,7 @@ serve(async () => {
 
     // 2. Batch-fetch toutes les équipes une seule fois → Map<api_external_id, uuid>
     //    Élimine N appels DB séquentiels dans la boucle de classement
-    const teamsRes = await fetch(
+    const teamsRes = await fetchWithRetry(
       `${SUPABASE_URL}/rest/v1/football_teams?select=id,api_external_id`,
       { headers: readHeaders }
     )
@@ -91,7 +92,7 @@ serve(async () => {
         .filter(Boolean)
 
       if (rows.length) {
-        const res = await fetch(
+        const res = await fetchWithRetry(
           `${SUPABASE_URL}/rest/v1/football_standings?on_conflict=competition_id,team_id`,
           { method: "POST", headers: writeHeaders, body: JSON.stringify(rows) }
         )

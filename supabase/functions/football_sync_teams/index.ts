@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
 serve(async () => {
   try {
@@ -25,7 +26,7 @@ serve(async () => {
     }
 
     // 1. Récupérer toutes les compétitions
-    const competitionsRes = await fetch(
+    const competitionsRes = await fetchWithRetry(
       `${SUPABASE_URL}/rest/v1/football_competitions?select=id,api_external_id`,
       { headers: readHeaders }
     )
@@ -55,7 +56,7 @@ serve(async () => {
 
       for (const team of teams) {
         // Upsert équipe — return=representation renvoie la ligne avec l'UUID, pas besoin de re-fetch
-        const teamRes = await fetch(
+        const teamRes = await fetchWithRetry(
           `${SUPABASE_URL}/rest/v1/football_teams?on_conflict=api_external_id`,
           {
             method: "POST",
@@ -92,7 +93,7 @@ serve(async () => {
         }
 
         // Upsert relation team <-> competition
-        const joinRes = await fetch(
+        const joinRes = await fetchWithRetry(
           `${SUPABASE_URL}/rest/v1/football_team_competitions?on_conflict=team_id,competition_id`,
           {
             method: "POST",

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.45/deno-dom-wasm.ts";
+import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
 // ─── Configuration ─────────────────────────────────────────────────────────
 const CONFIG = {
@@ -600,6 +601,7 @@ Deno.serve(async () => {
 
     const supabase = createClient(supabaseUrl, supabaseKey, {
       db: { schema: 'sport' },
+      global: { fetch: fetchWithRetry },
     });
 
     const nonFavoritesCleaned = await cleanupNonFavoriteMatches(supabase);

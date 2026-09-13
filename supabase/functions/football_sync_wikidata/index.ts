@@ -13,6 +13,7 @@
 // internal.call_edge('football_sync_wikidata'). (CLAUDE.md §6bis.)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
 const WD_ENDPOINT = "https://query.wikidata.org/sparql"
 // Wikidata asks for a descriptive User-Agent identifying the app + a contact.
@@ -33,7 +34,7 @@ serve(async () => {
     }
 
     // Competitions that have a curated Wikidata id.
-    const compsRes = await fetch(
+    const compsRes = await fetchWithRetry(
       `${SUPABASE_URL}/rest/v1/football_competitions?select=id,code,wikidata_id&wikidata_id=not.is.null`,
       { headers: readHeaders },
     )
@@ -90,7 +91,7 @@ serve(async () => {
       }))
 
       if (rows.length) {
-        const up = await fetch(
+        const up = await fetchWithRetry(
           `${SUPABASE_URL}/rest/v1/football_competition_winners?on_conflict=competition_id,season_wikidata_id`,
           { method: "POST", headers: writeHeaders, body: JSON.stringify(rows) },
         )

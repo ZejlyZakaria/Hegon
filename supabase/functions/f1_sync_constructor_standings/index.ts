@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
 const JOLPICA_API_BASE = "https://api.jolpi.ca"
 
@@ -8,6 +9,7 @@ Deno.serve(async () => {
     const supabaseServiceKey = Deno.env.get("HEGON_SECRET_KEY")!
     const supabaseClient     = createClient(supabaseUrl, supabaseServiceKey, {
       db: { schema: "sport" },
+      global: { fetch: fetchWithRetry },
     })
 
     console.log("Fetching F1 2026 constructor standings from Jolpica API...")
