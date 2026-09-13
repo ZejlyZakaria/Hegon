@@ -199,8 +199,6 @@ export const insertMediaSchema = insertMediaFields.superRefine((v, ctx) => {
   refuseCoursOnFilm(v, ctx);
 });
 
-export type InsertMediaInput = z.infer<typeof insertMediaSchema>;
-
 /**
  * The COLUMNS to write. Two of the input's keys are not columns and must never reach the database:
  * `id` addresses the row, and `type` only tells the mutation which carousels to invalidate.

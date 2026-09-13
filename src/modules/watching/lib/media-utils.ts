@@ -41,29 +41,6 @@ export const WATCHING_CONFIGS: Record<MediaType, WatchingConfig> = {
 };
 
 // =====================================================
-// GENRE COLORS
-// =====================================================
-
-export const genreColors: Record<string, string> = {
-  "Sci-Fi": "bg-cyan-500/15 text-cyan-400",
-  Thriller: "bg-amber-500/15 text-amber-400",
-  Noir: "bg-zinc-500/15 text-zinc-300",
-  Fantasy: "bg-emerald-500/15 text-emerald-400",
-  Adventure: "bg-lime-500/15 text-lime-400",
-  Mecha: "bg-red-500/15 text-red-400",
-  Action: "bg-orange-500/15 text-orange-400",
-  Drama: "bg-blue-500/15 text-blue-400",
-  Psychological: "bg-indigo-500/15 text-indigo-400",
-  War: "bg-stone-500/15 text-stone-300",
-  "Slice of Life": "bg-pink-500/15 text-pink-400",
-  Romance: "bg-rose-500/15 text-rose-400",
-  Horror: "bg-red-500/15 text-red-400",
-  Mystery: "bg-violet-500/15 text-violet-400",
-  Crime: "bg-amber-500/15 text-amber-400",
-  "Dark Fantasy": "bg-indigo-500/15 text-indigo-400",
-};
-
-// =====================================================
 // TMDB GENRE MAPPING
 // =====================================================
 
@@ -107,13 +84,3 @@ export function mapTmdbGenres(genreIds: number[]): string[] {
 // WATCH STATUS HELPERS
 // =====================================================
 
-export function getWatchProgress(currentEpisode?: number, totalEpisodes?: number): number {
-  if (!currentEpisode || !totalEpisodes) return 0;
-  return Math.round((currentEpisode / totalEpisodes) * 100);
-}
-
-export function formatRuntime(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
-}

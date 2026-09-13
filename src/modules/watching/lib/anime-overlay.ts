@@ -51,7 +51,11 @@ export function tmdbFromFlat(seasonEpisodes: number[] | null | undefined, flat: 
     if (remaining <= n) return { season: i + 1, episode: remaining };
     remaining -= n;
   }
-  return { season: eps.length, episode: remaining };
+  // Past everything announced: keep counting INSIDE the last season, like `flatToCour` does. The
+  // loop has already subtracted that season, so add it back — without this, flat 31 on [10, 12, 8]
+  // came out as S3 E1, the same answer as flat 23, and the mapping stopped being monotonic
+  // (found by the first direct test of this module, 2026-09-13).
+  return { season: eps.length, episode: remaining + (eps[eps.length - 1] ?? 0) };
 }
 
 /** Which cour a flat episode sits in, and the episode number WITHIN that cour. `flat = 0` = not started. */

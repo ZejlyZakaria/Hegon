@@ -12,6 +12,6 @@ export function useAnimeCours(tmdbId: number, enabled = true) {
     queryFn: () => getAnimeCours(tmdbId),
     enabled: enabled && !!tmdbId,
     staleTime: STALE.HOUR, // 1h — world facts, not yours
-    gcTime: 2 * 60 * 60 * 1000,
+    gcTime: STALE.HOUR,
   });
 }

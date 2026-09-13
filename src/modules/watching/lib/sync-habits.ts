@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { reportError } from "@/shared/utils/report-error";
 import {
   autoTickHabitsFromActivity,
   type ActivityTick,
@@ -19,7 +20,8 @@ function daysAgo(n: number): string {
 
 // Cross-module bridge: after a watch change, auto-tick habits linked to Watching
 // and refresh the Habits UI. Best-effort — the watch already succeeded, so any
-// failure here is swallowed. Shows a subtle toast for habits ticked this week.
+// failure here never fails the watch — but it is REPORTED (R8): a habit that stops auto-ticking is
+// a streak lost in silence. Shows a subtle toast for habits ticked this week.
 export async function syncWatchingHabits(queryClient: QueryClient): Promise<ActivityTick[]> {
   let ticked: ActivityTick[] = [];
   try {
@@ -28,8 +30,8 @@ export async function syncWatchingHabits(queryClient: QueryClient): Promise<Acti
       "watching",
       activity.map((a) => ({ type: a.type, date: a.watched_at.slice(0, 10) })),
     );
-  } catch {
-    /* non-fatal */
+  } catch (e) {
+    reportError(e, { bridge: "watching→habits" });
   }
 
   if (ticked.length > 0) {

@@ -54,8 +54,8 @@ export function useMediaViews(items: ViewItem[] | undefined): Map<string, MediaV
     queryKey: [...WATCHING_KEYS.all, "anime-cours-map", animeIds],
     queryFn: () => getAnimeCoursMany(animeIds),
     enabled: animeIds.length > 0,
-    staleTime: STALE.HOUR,   // world facts, not yours
-    gcTime: 2 * 60 * 60 * 1000,
+    staleTime: STALE.HOUR,   // world facts, not yours — filled by the 6-hourly cron
+    gcTime: STALE.HOUR,
   });
 
   // The whole rail waits on ONE query, so "unknown" is a single fact: the batch has not landed.

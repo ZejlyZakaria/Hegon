@@ -3,6 +3,9 @@
 import { downscaleImage } from "@/shared/utils/downscale-image";
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
+import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
+import { reportError } from "@/shared/utils/report-error";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch } from "./types";
 import { deriveWatchStatus } from "./lib/watch-status";
 import { airedFromTmdb } from "./lib/series-state";
@@ -25,13 +28,13 @@ export interface GetMediaOptions {
 // Upload a hand-picked poster to Supabase Storage — custom art that overrides TMDB's.
 export async function uploadCustomPoster(file: File): Promise<string | null> {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  const userId = await getCurrentUserId();
+  if (!userId) return null;
   // Shrink first, THEN name the file: downscaleImage may hand back a .webp, and a path that
   // still says .jpg would describe bytes that aren't there.
   const upload = await downscaleImage(file);
   const ext = upload.name.split(".").pop() ?? "jpg";
-  const filePath = `${user.id}/posters/${crypto.randomUUID()}.${ext}`;
+  const filePath = `${userId}/posters/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from("posters").upload(filePath, upload);
   if (error) return null;
   const { data: urlData } = supabase.storage.from("posters").getPublicUrl(filePath);
@@ -125,8 +128,18 @@ export async function getMediaItems(
 export const LIBRARY_COLUMNS =
   "id, type, title, original_title, poster_url, favorite, year, user_rating, watched_at, updated_at, tags, watched, in_progress, dropped, drop_reason, paused, current_season, current_episode, status, season_episodes, season_aired, season_years, caught_up_at";
 
-export async function getLibraryMedia(userId: string): Promise<WatchingMedia[]> {
-  const supabase = createClient();
+/**
+ * The ONE library read, for both callers. `/library` is the module's single server-rendered page
+ * (measured worth ~440 ms on a first visit — decisions.md 2026-07-21) and it used to carry its own
+ * copy of this query inline, sharing only the column list. Two implementations of one read is the
+ * disease this module has already had three times; the decision named the cure: inject the client.
+ * The server page passes its cookie-bound client, the hook passes nothing and gets the browser one.
+ */
+export async function getLibraryMedia(
+  userId: string,
+  client: Pick<SupabaseClient, "schema"> = createClient(),
+): Promise<WatchingMedia[]> {
+  const supabase = client;
   const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
@@ -249,14 +262,14 @@ export async function getRecentWatchedActivity(
   since: string, // 'YYYY-MM-DD'
 ): Promise<{ type: string; watched_at: string }[]> {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
 
   const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
     .select("type, watched_at")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("watched", true)
     .neq("is_reference", true)
     .gte("watched_at", since);
@@ -356,19 +369,6 @@ export async function getMediaItemById(id: string): Promise<WatchingMedia | null
 // =====================================================
 // MEDIA LISTS (Supabase)
 // =====================================================
-
-export async function getMediaLists(userId: string): Promise<MediaList[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .schema("watching")
-    .from("media_lists")
-    .select("*")
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as MediaList[];
-}
 
 export async function getListsForMedia(mediaItemId: string): Promise<MediaList[]> {
   const supabase = createClient();
@@ -839,13 +839,19 @@ export async function addTmdbItemToList(
   // New title OR a reference stub → enrich from the full TMDB detail (like the Add
   // modal): runtime, per-season episodes/posters/air-dates, status, genres. Without
   // this a list-added media stayed a stub (wrong hours/seasons/history once watched).
-  // Best-effort: on failure we still create/link from the search-result fields.
+  // Best-effort: on failure we still create/link from the search-result fields — but the failure
+  // is REPORTED (R8): a stub left behind by a 429 or a network blip is exactly the "wrong hours,
+  // wrong seasons once watched" row this enrichment exists to prevent, and it used to vanish in
+  // silence (contre-examen du 13/09).
   const isFilm = type === "film";
   let details: any = null;
   try {
     const dres = await fetch(`/api/tmdb?endpoint=${isFilm ? "movie" : "tv"}/${tmdbItem.id}&language=en-US`);
     if (dres.ok) details = await dres.json();
-  } catch { /* best-effort — fall back to search-result data */ }
+    else reportError(new Error(`TMDB enrich ${dres.status}`), { tmdbId: tmdbItem.id, type, at: "addTmdbItemToList" });
+  } catch (e) {
+    reportError(e, { tmdbId: tmdbItem.id, type, at: "addTmdbItemToList" });
+  }
 
   type SeasonLite = { season_number: number; episode_count?: number; poster_path?: string | null; air_date?: string | null };
   const realSeasons: SeasonLite[] = !isFilm && Array.isArray(details?.seasons)
@@ -1353,14 +1359,14 @@ export async function getThemeFavorites(): Promise<ThemeFavorite[]> {
 
 export async function addThemeFavorite(track: ThemeFavoriteInput): Promise<void> {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error("Not authenticated");
   const orgId = await getCurrentOrgId();
   const { error } = await supabase
     .schema("watching").from("theme_favorites")
     .upsert({
       org_id: orgId,
-      user_id: user.id,
+      user_id: userId,
       track_key: themeTrackKey(track),
       anime_name: track.animeName,
       label: track.label,
@@ -1399,12 +1405,12 @@ export async function getRewatches(mediaItemId: string): Promise<Rewatch[]> {
 
 export async function addRewatch(mediaItemId: string, watchedOn: string): Promise<void> {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error("Not authenticated");
   const orgId = await getCurrentOrgId();
   const { error } = await supabase
     .schema("watching").from("rewatches")
-    .insert({ org_id: orgId, user_id: user.id, media_item_id: mediaItemId, watched_on: watchedOn });
+    .insert({ org_id: orgId, user_id: userId, media_item_id: mediaItemId, watched_on: watchedOn });
   if (error) throw error;
 }
 

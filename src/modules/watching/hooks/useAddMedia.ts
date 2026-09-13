@@ -6,7 +6,7 @@ import {
   insertMediaItem,
   updateMediaItem,
 } from "../service";
-import { createClient } from "@/infrastructure/supabase/client";
+import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import { syncWatchingGoals } from "../lib/sync-goals";
 import { syncWatchingHabits } from "../lib/sync-habits";
 import { toast } from "@/shared/utils/toast";
@@ -61,9 +61,7 @@ export function useAddMedia() {
   return useMutation({
     mutationFn: async (input: AddMediaInput) => {
       if (isDemo) throw new DemoReadOnlyError();
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
+      const userId = await getCurrentUserId();
       if (!userId) throw new Error("Not authenticated");
 
       const {

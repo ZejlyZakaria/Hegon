@@ -21,6 +21,7 @@ import DeleteConfirmModal from "../modals/DeleteConfirmModal";
 import { CaptureSheet } from "./CaptureSheet";
 import { DROP_REASONS } from "../../lib/drop-reasons";
 import type { WatchingMedia } from "../../types";
+import type { MediaView } from "../../lib/media-view";
 
 // ── MenuItem ──────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,8 @@ const MENU_W = 208; // w-52 — the portaled dropdown's width, used to keep it o
 
 interface MediaActionMenuProps {
   item: WatchingMedia;
+  /** The rail's batched lens for this item — so the menu builds none of its own (one query per card, otherwise). */
+  view?: MediaView | null;
   triggerClassName?: string;
   onView?: () => void;
   onDelete?: (id: string) => Promise<void>;
@@ -63,6 +66,7 @@ interface MediaActionMenuProps {
 
 export function MediaActionMenu({
   item,
+  view,
   triggerClassName,
   onView,
   onDelete,
@@ -79,7 +83,7 @@ export function MediaActionMenu({
   // "Mark as finished" on a series that is still airing and wrote `watched: true` over a blank
   // position, manufacturing the exact rows a migration had just spent a day repairing. It is on
   // every poster in the app, so it was the widest door of the lot.
-  const actions = useWatchActions(item);
+  const actions = useWatchActions(item, view);
 
   // An action that asserts something ALREADY TRUE is not an action, it's noise. The menu was
   // offering to put your position at the last aired episode on a title whose position is already

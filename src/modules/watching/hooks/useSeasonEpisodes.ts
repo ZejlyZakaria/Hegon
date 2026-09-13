@@ -33,7 +33,7 @@ export function useSeasonEpisodes(tmdbId: number, season: number, enabled = true
     // day-long staleTime pinned that null for the whole session. A short window lets a later visit
     // pick up the real still once TMDB has it. The 1 h server Data Cache still shields TMDB's quota.
     staleTime: STALE.HALF_HOUR,
-    gcTime: 60 * 60 * 1000,
+    gcTime: STALE.HOUR,
     enabled: enabled && !!tmdbId && season > 0,
   });
 }

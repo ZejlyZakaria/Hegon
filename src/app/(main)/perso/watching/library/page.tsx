@@ -1,8 +1,7 @@
 // app/perso/watching/library/page.tsx
 import { createServerClient } from "@/infrastructure/supabase/server";
 import LibraryClient from "@/modules/watching/components/library/LibraryClient";
-import { LIBRARY_COLUMNS } from "@/modules/watching/service";
-import type { WatchingMedia } from "@/modules/watching/types";
+import { getLibraryMedia } from "@/modules/watching/service";
 
 export default async function LibraryPage() {
   const supabase = await createServerClient();
@@ -15,20 +14,14 @@ export default async function LibraryPage() {
     return <div className="p-8 text-zinc-500">Sign in to access your library.</div>;
   }
 
-  // The very column set getLibraryMedia uses — the live query that re-seeds this — imported rather
-  // than retyped, so the two can no longer drift apart. Everything engaged with: seen, seeing,
-  // paused, or dropped (reference stubs are excluded since their flags are all false).
-  const { data } = await supabase
-    .schema("watching")
-    .from("media_items")
-    .select(LIBRARY_COLUMNS)
-    .eq("user_id", userId)
-    .or("watched.eq.true,in_progress.eq.true,dropped.eq.true,paused.eq.true")
-    .order("updated_at", { ascending: false });
+  // THE SAME READ the client hook re-runs — not a copy of it. This page used to inline the query
+  // and share only the column list with `getLibraryMedia`; the service now takes the client, so
+  // the server and the browser run one implementation (decisions.md 2026-07-21, audit 2026-09-13).
+  const initialItems = await getLibraryMedia(userId, supabase);
 
   return (
     <div className="p-6">
-      <LibraryClient initialItems={(data ?? []) as unknown as WatchingMedia[]} userId={userId} />
+      <LibraryClient initialItems={initialItems} userId={userId} />
     </div>
   );
 }

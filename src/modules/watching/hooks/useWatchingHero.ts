@@ -8,8 +8,10 @@ export function useWatchingHero(type: MediaType) {
   return useQuery({
     queryKey: TMDB_KEYS.hero(type),
     queryFn: () => getWatchingHeroData(type),
-    staleTime: STALE.HALF_HOUR,         // 30min — cheap DB read; the list only changes on the daily cron
-    gcTime: 1000 * 60 * 60 * 24,
-    refetchOnWindowFocus: false,
+    // ROBOT DATA — `trending_cache` is filled once a day (`watching-trending-daily`, 05:15). The
+    // tier follows the cron: a day. A tab left open across the refresh shows yesterday's rail
+    // until it is reopened, which is the tolerance a "trending" signal has by nature.
+    staleTime: STALE.DAY,
+    gcTime: STALE.DAY,
   });
 }

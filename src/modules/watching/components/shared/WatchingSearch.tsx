@@ -215,8 +215,12 @@ export function WatchingSearch() {
       {/* ── Desktop: the field lives in the header ── */}
       {/* The width is declared ONCE, here: the field and the results panel below it are the same
           object seen open or closed, so they read as one column. They used to carry their own
-          widths (w-52 and w-80) and the panel hung wider than the field that opened it. */}
-      <div ref={boxRef} onKeyDown={onKeyDown} className="relative hidden w-80 sm:block">
+          widths (w-52 and w-80) and the panel hung wider than the field that opened it.
+          Inline from `md` (768) only, and narrower until `lg`: the tab bar goes full-width at `sm`
+          (640), and six tabs plus ANY inline field overflow there — "Stats" was cut to "Sta" on an
+          iPad in portrait, and gone at 640 (audit 2026-09-13, axis 8 + contre-examen). Below `md`
+          the search is the icon + full-screen sheet, like on a phone. */}
+      <div ref={boxRef} onKeyDown={onKeyDown} className="relative hidden w-56 md:block lg:w-80">
         <SearchInput
           size="sm"
           containerClassName="w-full"
@@ -238,13 +242,13 @@ export function WatchingSearch() {
         type="button"
         onClick={() => setSheetOpen(true)}
         aria-label="Search titles & people"
-        className="flex h-8 w-8 items-center justify-center rounded-control text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary sm:hidden"
+        className="flex h-8 w-8 items-center justify-center rounded-control text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary md:hidden"
       >
         <Search size={16} />
       </button>
 
       {sheetOpen && (
-        <div className="fixed inset-0 z-100 flex flex-col bg-surface-0 sm:hidden">
+        <div className="fixed inset-0 z-100 flex flex-col bg-surface-0 md:hidden">
           <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2.5">
             <SearchInput
               size="sm"

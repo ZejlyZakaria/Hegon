@@ -218,7 +218,7 @@ function MovieCard({
                   </span>
                   )}
                   <span onClick={(e) => e.stopPropagation()}>
-                    <NextEpisodeButton item={item} />
+                    <NextEpisodeButton item={item} view={view} />
                   </span>
                 </div>
                 {overallProgress(item) > 0 && (
@@ -276,7 +276,7 @@ function MovieCard({
           </span>
         )}
         <span className="opacity-100 transition-opacity duration-150 ease-out can-hover:opacity-0 can-hover:group-hover:opacity-100">
-          <MediaActionMenu item={item} onView={onView} onDelete={onDelete} />
+          <MediaActionMenu item={item} view={view} onView={onView} onDelete={onDelete} />
         </span>
       </div>
     </div>

@@ -179,18 +179,6 @@ export function caughtUpOn(m: SeriesFacts): "episode" | "season" {
   return aired < announced ? "episode" : "season";
 }
 
-/** The last season that has aired anything — "+1" and the season stepper may never exceed it. */
-export function lastAiredSeason(m: SeriesFacts): number {
-  const aired = m.season_aired ?? [];
-  for (let s = aired.length; s >= 1; s--) if ((aired[s - 1] ?? 0) > 0) return s;
-  return 1;
-}
-
-/** Episodes AIRED in a given season — the ceiling for the episode stepper. */
-export function airedInSeason(m: SeriesFacts, season: number): number {
-  return (m.season_aired ?? [])[season - 1] ?? 0;
-}
-
 /**
  * The years/ratings you may CLAIM, given where you stand.
  *

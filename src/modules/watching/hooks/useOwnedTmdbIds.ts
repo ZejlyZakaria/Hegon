@@ -12,7 +12,6 @@ export function useOwnedTmdbIds(userId: string, type: MediaType, enabled = true)
     queryKey: WATCHING_KEYS.ownedIds(type),
     queryFn: () => getOwnedTmdbIds(userId, type),
     staleTime: STALE.TWO_MINUTES,
-    gcTime: 5 * 60 * 1000,
     enabled: enabled && !!userId,
   });
 }

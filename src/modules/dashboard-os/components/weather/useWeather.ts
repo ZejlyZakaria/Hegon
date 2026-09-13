@@ -71,7 +71,7 @@ export function useWeather() {
     // Instant on load from the persisted snapshot, then revalidate (SWR), and
     // keep itself fresh on a timer + on focus — no manual reload ever needed.
     staleTime: STALE.TEN_MINUTES,
-    gcTime: 60 * 60 * 1000,
+    gcTime: STALE.HOUR,
     refetchInterval: 12 * 60 * 1000,
     refetchOnWindowFocus: true,
     initialData: cached?.data,

@@ -26,6 +26,7 @@ export function useMediaItem(id: string) {
     // and refresh underneath, not skeleton because the cache forgot it. (Freshness is unchanged —
     // every mutation invalidates this key by id, so an edit still lands immediately.)
     staleTime: STALE.TWO_MINUTES,
-    gcTime: 30 * 60 * 1000,
+    gcTime: STALE.HALF_HOUR,
+    refetchOnWindowFocus: true, // multi-device, see useMediaItems
   });
 }

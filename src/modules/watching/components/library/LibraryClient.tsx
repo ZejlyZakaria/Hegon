@@ -18,12 +18,18 @@ import { SearchInput } from "@/shared/components/ui/search-input";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
+import {
+  queryLibrary,
+  type LibraryTypeFilter,
+  type LibraryStatusFilter,
+  type LibrarySortKey,
+} from "@/modules/watching/lib/library-view";
 
 const ITEMS_PER_PAGE = 40;
 
-type MediaType = "all" | "film" | "serie" | "anime";
-type StatusKey = "all" | "watching" | "paused" | "completed" | "dropped";
-type SortKey   = "added" | "rating" | "title" | "year" | "favorite";
+type MediaType = LibraryTypeFilter;
+type StatusKey = LibraryStatusFilter;
+type SortKey   = LibrarySortKey;
 
 const MEDIA_TYPES: { value: MediaType; label: string }[] = [
   { value: "all",   label: "All" },
@@ -89,57 +95,13 @@ export default function LibraryClient({ initialItems, userId }: Props) {
     setLibraryFilter({ type: mediaType, status, sort: sortBy, page: currentPage });
   }, [mediaType, status, sortBy, currentPage, setLibraryFilter]);
 
-  const { paginatedItems, totalPages } = useMemo(() => {
-    let result = [...allItems];
+  // The whole pipeline is `queryLibrary` (lib/library-view.ts) — pure, tested. This component only
+  // holds the knobs and hands them over.
+  const { items: paginatedItems, totalPages } = useMemo(
+    () => queryLibrary(allItems, { type: mediaType, status, sort: sortBy, search: debouncedSearch, page: currentPage, pageSize: ITEMS_PER_PAGE }),
+    [allItems, mediaType, status, sortBy, debouncedSearch, currentPage],
+  );
 
-    if (mediaType !== "all") {
-      result = result.filter(item => item.type === mediaType);
-    }
-
-    if (status !== "all") {
-      result = result.filter(item =>
-        status === "watching"  ? item.in_progress
-        : status === "paused"    ? item.paused
-        : status === "completed" ? item.watched
-        : status === "dropped"   ? item.dropped
-        : true,
-      );
-    }
-
-    if (sortBy === "favorite") {
-      result = result.filter(item => item.favorite === true);
-    }
-
-    if (debouncedSearch.trim()) {
-      // TITLE only — not genres. Searching `tags` too meant "fantas" matched every Fantasy-tagged
-      // title (GoT, HotD, most anime): ~80 "impossible" results for a three-word query. A title box
-      // must search titles; genre belongs to a filter, not to free text where a substring of
-      // "Fantasy" silently floods the grid.
-      const q = debouncedSearch.toLowerCase();
-      result = result.filter(item =>
-        item.title.toLowerCase().includes(q) ||
-        item.original_title?.toLowerCase().includes(q)
-      );
-    }
-
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case "rating": return (b.user_rating || 0) - (a.user_rating || 0);
-        case "title":  return a.title.localeCompare(b.title);
-        case "year":   return (b.year || 0) - (a.year || 0);
-        // In-progress / dropped items have no watched_at → fall back to updated_at.
-        default:       return new Date(b.watched_at || b.updated_at || 0).getTime() - new Date(a.watched_at || a.updated_at || 0).getTime();
-      }
-    });
-
-    const totalCount = result.length;
-    const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
-    const safePage   = Math.min(currentPage, totalPages);
-    const start      = (safePage - 1) * ITEMS_PER_PAGE;
-    const paginated  = result.slice(start, start + ITEMS_PER_PAGE);
-
-    return { paginatedItems: paginated, totalPages, totalCount };
-  }, [allItems, mediaType, status, sortBy, debouncedSearch, currentPage]);
 
   const handleDelete = useCallback(async (itemId: string) => {
     try {

@@ -21,7 +21,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             // ⚠️ gcTime = combien de temps une donnée SANS observateur reste en mémoire. Un palier
             // au-dessus de 10 min ne vaut que si le hook déclare aussi un gcTime ≥ — sinon la
             // donnée est ramassée avant d'être périmée et le palier est un mensonge (voir stale.ts).
-            gcTime: 10 * 60 * 1000,
+            gcTime: STALE.TEN_MINUTES,
             refetchOnWindowFocus: false,
             refetchOnReconnect: true,
             // Never retry client errors — a 429 (TMDB rate-limit) or 404 only burns

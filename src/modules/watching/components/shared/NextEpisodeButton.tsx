@@ -10,6 +10,7 @@ import { useWatchActions } from "../../hooks/useWatchActions";
 import { nextStep, caughtUpOn } from "../../lib/series-state";
 import { formatPosition } from "../../lib/progress";
 import type { WatchingMedia } from "../../types";
+import type { MediaView } from "../../lib/media-view";
 
 /**
  * "+1" — one tap, one episode. And it CANNOT lie.
@@ -29,9 +30,10 @@ import type { WatchingMedia } from "../../types";
  * deliberate: if we don't know what exists in the world, we do not let you claim you saw it.
  * Run `node scripts/sync-series.mjs --apply`.
  */
-export function NextEpisodeButton({ item }: { item: WatchingMedia }) {
+export function NextEpisodeButton({ item, view }: { item: WatchingMedia; view?: MediaView | null }) {
   const router = useRouter();
-  const actions = useWatchActions(item);
+  // The rail's batched lens, when it has one — the button must not build a second one per card.
+  const actions = useWatchActions(item, view);
 
   const step = nextStep(item);
   if (!step) return null;

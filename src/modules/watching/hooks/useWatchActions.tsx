@@ -1,9 +1,12 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateMedia } from "./useUpdateMedia";
 import { useMediaView } from "./useMediaView";
-import { useWatchingGoals } from "./useWatchingGoals";
+import type { MediaView } from "../lib/media-view";
+import { watchingGoalsQuery } from "./useWatchingGoals";
 import { goalWouldCount } from "../lib/goal-contribution";
+import type { getActiveWatchingGoals } from "@/modules/goals/service";
 import { GoalRippleToast } from "../components/detail/GoalRippleToast";
 import {
   canComplete,
@@ -20,6 +23,7 @@ import {
 } from "../lib/watch-status";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { toast } from "@/shared/utils/toast";
+import { reportError } from "@/shared/utils/report-error";
 
 /**
  * The extra columns are OPTIONAL on purpose. A surface that carries them (the detail page, and any
@@ -55,9 +59,9 @@ type Target =
  * Each action returns the patch it wrote (or null), so a caller holding local UI state — the detail
  * page's steppers — can follow the move without re-deriving it.
  */
-export function useWatchActions(media: Target) {
+export function useWatchActions(media: Target, presetView?: MediaView | null) {
   const updateMedia = useUpdateMedia();
-  const { data: watchingGoals = [] } = useWatchingGoals();
+  const queryClient = useQueryClient();
 
   /**
    * THE LENS, BUILT ONCE, HERE — so every surface inherits it.
@@ -66,18 +70,34 @@ export function useWatchActions(media: Target) {
    * which column) is the one thing that differs between a lumped anime's flat storage and the cours
    * it actually displays. Building the view at the single writer means a card, a list row or a
    * surface not yet written cannot forget it: it never had to remember in the first place.
+   *
+   * A rail that has ALREADY built its views in one batch (`useMediaViews`) hands the item's view in
+   * as `presetView`, and this hook fetches nothing. Without that, every poster's "…" menu built its
+   * own lens — one `anime_cours` query per card, 44 on /animes, duplicating the four batched ones
+   * that had already painted the rail (measured 2026-09-13, audit axis 3).
    */
-  const view = useMediaView(media);
+  const ownView = useMediaView(presetView === undefined ? media : null);
+  const view = presetView === undefined ? ownView : presetView;
 
   /**
    * The Goals ripple — the felt moment, the count animating up — follows THE FACT, not the button.
    * `watched` became true; it does not matter which surface said so. That is why "I watched through
    * season 4" of a four-season show, which completes it, ripples exactly like the Finish button:
    * the same thing happened.
+   *
+   * The goals are read HERE, at the write, not subscribed at mount: this hook sits on every poster
+   * card, and a subscription meant every grid page fetched the goals — and one count per goal —
+   * before anyone had touched anything.
+   *
+   * ⚠️ READ IN PARALLEL, NEVER IN THE WAY (contre-examen du 13/09 — the first version awaited the
+   * goals BEFORE the mutation, inside its try: a Goals-side 5xx blocked "mark as watched" with the
+   * wrong toast, and the click waited on goals + one count per goal). The read STARTS before the
+   * write — so it sees `metric_current` before `syncWatchingGoals` (fired in `onSuccess`) bumps it
+   * — but nothing awaits it until the write is done, and a failure degrades to the plain toast.
    */
-  const rippleWatched = () => {
+  const rippleWatched = (goals: Awaited<ReturnType<typeof getActiveWatchingGoals>>) => {
     if (!media) return;
-    const matched = watchingGoals.filter((g) => goalWouldCount(g, media.type));
+    const matched = goals.filter((g) => goalWouldCount(g, media.type));
     if (matched.length === 0) {
       toast("Marked as watched.");
       return;
@@ -92,11 +112,19 @@ export function useWatchActions(media: Target) {
 
   const write = async (patch: StatusPatch | null, message: string): Promise<StatusPatch | null> => {
     if (!media || !patch) return null;
+    // The goals a completion would count towards — started now, only on that path, served from the
+    // cache when a goals surface already holds them fresh. Its failure is its own (reported, R8),
+    // never the write's: the write below does not wait for it and does not see its errors.
+    type Goals = Awaited<ReturnType<typeof getActiveWatchingGoals>>;
+    const goalsP: Promise<Goals> =
+      patch.watched === true
+        ? queryClient.fetchQuery(watchingGoalsQuery()).catch((e: unknown) => { reportError(e, { at: "useWatchActions.goals" }); return [] as Goals; })
+        : Promise.resolve([] as Goals);
     try {
       // `type` never reaches the database — it scopes the invalidations, so pausing an anime
       // stops refetching the film carousels.
       await updateMedia.mutateAsync({ id: media.id, type: media.type, ...patch });
-      if (patch.watched === true) rippleWatched();
+      if (patch.watched === true) rippleWatched(await goalsP);
       else if (message) toast(message);
       return patch;
     } catch (err) {

@@ -14,5 +14,6 @@ export function useLibrary(userId: string, initialData?: WatchingMedia[]) {
     queryFn: () => getLibraryMedia(userId),
     initialData,
     staleTime: STALE.HALF_MINUTE,
+    refetchOnWindowFocus: true, // multi-device, see useMediaItems
   });
 }

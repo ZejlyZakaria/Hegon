@@ -42,6 +42,8 @@ import {
   useAddTmdbItemToList,
 } from "../../hooks/useMediaLists";
 import { useWatchActions } from "../../hooks/useWatchActions";
+import { useMediaViews } from "../../hooks/useMediaView";
+import type { MediaView } from "../../lib/media-view";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { ListGlyph, LIST_ICON_KEYS } from "./list-glyph";
 import type { MediaListWithThumbnails } from "../../service";
@@ -380,13 +382,14 @@ function MoreMenu({ onDelete }: { onDelete: () => void }) {
 
 // ── Status Dropdown ───────────────────────────────────────────────────────────
 
-function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
+function StatusDropdown({ item, lens }: { item: MediaListItemWithMedia; lens?: MediaView | null }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   // The third copy of "mark as watched" — same rules as the detail page and the poster menus now,
   // because there is only one copy left. It too was writing `watched: true` with no position on
-  // shows that are still airing.
-  const actions = useWatchActions(item.media);
+  // shows that are still airing. `lens` is the list's batched view for this row — without it every
+  // row built its own (one `anime_cours` query per anime in the list).
+  const actions = useWatchActions(item.media, lens);
 
   const status = STATUS_CONFIG[item.media.watch_status ?? "plan_to_watch"] ?? STATUS_CONFIG.plan_to_watch;
   const isSeries = item.media.type === "serie" || item.media.type === "anime";
@@ -480,9 +483,10 @@ function StatusDropdown({ item }: { item: MediaListItemWithMedia }) {
 // ── Table Row ─────────────────────────────────────────────────────────────────
 
 function TableRow({
-  item, idx, isRanked, listId, onOpen, onRemove,
+  item, idx, isRanked, listId, onOpen, onRemove, lens,
 }: {
   item: MediaListItemWithMedia;
+  lens?: MediaView | null;
   idx: number;
   isRanked: boolean;
   listId: string;
@@ -558,7 +562,7 @@ function TableRow({
 
         {/* Status */}
         <div className="hidden w-28 shrink-0 sm:block">
-          <StatusDropdown item={item} />
+          <StatusDropdown item={item} lens={lens} />
         </div>
 
         {/* Date added */}
@@ -628,8 +632,9 @@ function TableRow({
 
 // ── Grid Item ─────────────────────────────────────────────────────────────────
 
-function GridItem({ item, rank, onOpen, onRemove, listId }: {
+function GridItem({ item, rank, onOpen, onRemove, listId, lens }: {
   item: MediaListItemWithMedia;
+  lens?: MediaView | null;
   rank: number | null;
   onOpen: () => void;
   onRemove: () => void;
@@ -674,7 +679,7 @@ function GridItem({ item, rank, onOpen, onRemove, listId }: {
         </div>
         <p className="mt-1.5 line-clamp-1 text-xs font-medium text-text-secondary">{displayTitle(item.media)}</p>
         <div className="mt-0.5" onClick={(e) => e.stopPropagation()}>
-          <StatusDropdown item={item} />
+          <StatusDropdown item={item} lens={lens} />
         </div>
       </div>
 
@@ -780,6 +785,10 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
     : filteredByTab;
 
   const items       = sortItems(filteredItems, sort);
+  // ONE batched lens for the whole list (keyed on the raw rows, so filtering and sorting never
+  // refetch: the query key is the sorted anime ids) — each row's status dropdown writes through it
+  // instead of building its own.
+  const lenses     = useMediaViews(rawItems.map((i) => i.media));
   const existingIds     = rawItems.map((i) => i.media.id);
   const existingTmdbIds = new Set(rawItems.filter((i) => (i.media.tmdb_id ?? 0) > 0).map((i) => i.media.tmdb_id));
 
@@ -1080,6 +1089,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
               <TableRow
                 key={item.list_item_id}
                 item={item}
+                lens={lenses.get(item.media.id)}
                 idx={idx}
                 isRanked={list.is_ranked}
                 listId={list.id}
@@ -1096,6 +1106,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
               <GridItem
                 key={item.list_item_id}
                 item={item}
+                lens={lenses.get(item.media.id)}
                 rank={list.is_ranked ? idx + 1 : null}
                 listId={list.id}
                 onOpen={() => router.push(`/perso/watching/${item.media.id}`)}

@@ -8,9 +8,11 @@ export function useForYouRecommendations(userId: string, type: MediaType) {
   return useQuery({
     queryKey: TMDB_KEYS.forYou(type),
     queryFn: () => getForYouRecommendations(userId, type),
-    staleTime: STALE.HALF_HOUR,       // 30min — cheap DB read; the list only changes on the 5-day cron
-    gcTime: 1000 * 60 * 60 * 24,
-    refetchOnWindowFocus: false,
+    // ROBOT DATA — the row is rewritten by the `watching-for-you-5d` cron, nothing else. The tier
+    // used to be 30 min "because it is cheap", i.e. 240 refetches of a value that changes once
+    // every five days. A day is the longest tier under the cadence; a manual refresh invalidates.
+    staleTime: STALE.DAY,
+    gcTime: STALE.DAY,
     enabled: !!userId,
   });
 }

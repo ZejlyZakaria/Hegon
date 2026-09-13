@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getMediaLists,
   getListsForMedia,
   getListItems,
   getListsWithThumbnails,
@@ -19,18 +18,10 @@ import {
   addTmdbItemToList,
 } from "../service";
 import type { TmdbListResult } from "../types";
-import { WATCHING_KEYS } from "./query-keys";
+import { WATCHING_KEYS, TMDB_KEYS } from "./query-keys";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { STALE } from "@/shared/lib/stale";
-
-export function useMediaLists(userId: string) {
-  return useQuery({
-    queryKey: WATCHING_KEYS.lists(userId),
-    queryFn: () => getMediaLists(userId),
-    enabled: !!userId,
-  });
-}
 
 export function useListsForMedia(mediaItemId: string) {
   return useQuery({
@@ -207,7 +198,9 @@ export function useRemoveItemFromList(listId: string) {
 
 export function useSearchTmdbForList(query: string) {
   return useQuery({
-    queryKey: [...WATCHING_KEYS.all, "tmdb-list-search", query],
+    // TMDB, not yours: under TMDB_KEYS so a write (which invalidates WATCHING_KEYS.all with
+    // refetchType "all") does not replay the search — the same drift `useTmdbDetails` once had.
+    queryKey: [...TMDB_KEYS.all, "list-search", query],
     queryFn: () => searchTmdbForList(query),
     enabled: query.trim().length >= 2,
     staleTime: STALE.MINUTE,
@@ -217,7 +210,7 @@ export function useSearchTmdbForList(query: string) {
 /** The Watching header search: titles + people from one /search/multi call, in relevance order. */
 export function useSearchCatalogue(query: string) {
   return useQuery({
-    queryKey: [...WATCHING_KEYS.all, "catalogue-search", query],
+    queryKey: [...TMDB_KEYS.all, "catalogue-search", query],
     queryFn: () => searchCatalogue(query),
     enabled: query.trim().length >= 2,
     staleTime: STALE.MINUTE,

@@ -151,36 +151,6 @@ export interface WatchingConfig {
   accentColor: string;
 }
 
-export interface TMDBMovie {
-  id: number;
-  title: string;
-  original_title: string;
-  overview: string;
-  poster_path: string | null;
-  backdrop_path: string | null;
-  release_date: string;
-  vote_average: number;
-  vote_count: number;
-  genre_ids: number[];
-  runtime?: number;
-}
-
-export interface TMDBTVShow {
-  id: number;
-  name: string;
-  original_name: string;
-  overview: string;
-  poster_path: string | null;
-  backdrop_path: string | null;
-  first_air_date: string;
-  vote_average: number;
-  vote_count: number;
-  genre_ids: number[];
-  number_of_seasons?: number;
-  number_of_episodes?: number;
-  episode_run_time?: number[];
-}
-
 export interface TmdbListResult {
   id: number;
   media_type: "movie" | "tv";
@@ -211,28 +181,6 @@ export interface TmdbPersonResult {
 export type CatalogueResult =
   | { kind: "title"; title: TmdbListResult }
   | { kind: "person"; person: TmdbPersonResult };
-
-export interface TMDBMediaDetails {
-  id: number;
-  title?: string;
-  name?: string;
-  overview: string;
-  poster_path: string | null;
-  backdrop_path: string | null;
-  release_date?: string;
-  first_air_date?: string;
-  vote_average: number;
-  runtime?: number;
-  episode_run_time?: number[];
-  number_of_seasons?: number;
-  number_of_episodes?: number;
-  genres: { id: number; name: string }[];
-  credits?: {
-    crew: { id: number; job: string; name: string; profile_path?: string }[];
-  };
-  production_companies?: { name: string }[];
-  status?: string;
-}
 
 // ── Theme favorites ("My Themes") ──
 export interface ThemeFavorite {

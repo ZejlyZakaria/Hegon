@@ -24,10 +24,13 @@ import nextTs from "eslint-config-next/typescript";
  * on repart à 126 valeurs dans six mois — un mécanisme, pas un état.
  */
 const STALE_TIME_IS_A_TIER = {
+  // `gcTime` aussi (élargi le 2026-09-13, audit Watching) : la première version ne regardait que
+  // `staleTime`, et 10 `gcTime` bruts avaient traversé la migration — dont `2 * 60 * 60 * 1000`
+  // à côté d'un `staleTime: STALE.HOUR`. Les deux propriétés disent une durée ; les deux sont un palier.
   selector:
-    "Property[key.name='staleTime']:not([value.type='MemberExpression'][value.object.name='STALE'])",
+    "Property[key.name=/^(staleTime|gcTime)$/]:not([value.type='MemberExpression'][value.object.name='STALE'])",
   message:
-    "staleTime prend un palier de `STALE` (src/shared/lib/stale.ts), jamais un nombre. Doctrine de cache, règle R4.",
+    "staleTime et gcTime prennent un palier de `STALE` (src/shared/lib/stale.ts), jamais un nombre. Doctrine de cache, règle R4.",
 };
 
 /**

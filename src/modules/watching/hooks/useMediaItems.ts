@@ -36,6 +36,11 @@ export function useMediaItems({ userId, type, initialData, ...options }: UseMedi
     // Keep the 2-minute freshness (a status change elsewhere must land quickly) and let the answer
     // survive half an hour. The user sees the list instantly and the refetch happens underneath.
     staleTime: STALE.TWO_MINUTES,
-    gcTime: 30 * 60 * 1000,
+    gcTime: STALE.HALF_HOUR,
+    // MULTI-DEVICE — the per-module arbitrage doctrine R4 leaves to phase 3, and for Watching the
+    // answer is yes for STATUSES: a film marked watched on the phone must show on the PC tab you
+    // come back to. Global default is off; a stale, mounted section refetches when the tab regains
+    // focus (only the mounted observers — the sections on screen — not every cached query).
+    refetchOnWindowFocus: true,
   });
 }

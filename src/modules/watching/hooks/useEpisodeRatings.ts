@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery } from "@tanstack/react-query";
+import { reportError } from "@/shared/utils/report-error";
 import { TMDB_KEYS } from "./query-keys";
 import { getOmdbData } from "../service";
 import { STALE } from "@/shared/lib/stale";
@@ -25,7 +26,10 @@ export function useEpisodeRatings(imdbId: string | null | undefined, enabled = t
 
       const seasons = Array.from({ length: totalSeasons }, (_, i) => i + 1);
       const results = await Promise.all(
-        seasons.map((s) => getOmdbData(imdbId!, s).catch(() => null)),
+        // One season failing leaves a hole in the heatmap rather than killing it — but the hole is
+        // reported (R8), not swallowed. OMDb has no batch endpoint: one call per season is the API's
+        // shape, behind a modal, only when opened.
+        seasons.map((s) => getOmdbData(imdbId!, s).catch((e) => { reportError(e, { imdbId, season: s }); return null; })),
       );
 
       const seasonEpisodes: number[] = [];
