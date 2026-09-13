@@ -59,3 +59,23 @@ select
 from internal.job_health
 where last_status = 'error' and consecutive_failures = 1
 order by last_at desc;
+
+-- ── Information : durée réelle de la dernière exécution de chaque fonction ──
+-- Réserve owner (13/09) sur le décalage des crons : `football-standings-6h` part à
+-- :00 et `watching-series-sync-4h` à :05 — standings doit donc FINIR en moins de
+-- 5 min, sinon les deux se chevauchent quand même à 00:00 et 12:00. On imprime la
+-- durée (appel → réponse) pour le savoir dès le premier passage. Pas une alerte.
+select
+  'ℹ️  durée du dernier appel'                       as info,
+  l.fn                                               as objet,
+  to_char(r.created - l.called_at, 'MI:SS')          as duree_min_sec,
+  to_char(l.called_at, 'YYYY-MM-DD HH24:MI')         as lance_a
+from internal.call_log l
+join net._http_response r on r.id = l.request_id
+where l.called_at > now() - interval '6 hours'
+  and l.request_id in (
+    select distinct on (fn) request_id from internal.call_log
+    where called_at > now() - interval '6 hours'
+    order by fn, called_at desc
+  )
+order by r.created - l.called_at desc;
