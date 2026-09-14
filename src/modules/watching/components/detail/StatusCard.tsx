@@ -26,6 +26,7 @@ import type { MediaView } from "../../lib/media-view";
 import { canComplete, deriveWatchStatus } from "../../lib/watch-status";
 import { WatchDatePicker } from "../shared/WatchDatePicker";
 import { WhereToWatch } from "../shared/WhereToWatch";
+import { PRIORITY } from "../shared/Marks";
 import { partsFromISO, type WatchDateParts } from "../../lib/watched-date";
 import type { WatchingMedia, WatchStatus } from "../../types";
 import type { WatchProviderInfo } from "../../hooks/useWatchProviders";
@@ -94,6 +95,61 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="shrink-0 text-label text-white/45">{label}</span>
       <span className="min-w-0 text-right text-label font-medium text-white">{value}</span>
     </div>
+  );
+}
+
+/**
+ * WANT-TO-WATCH PRIORITY — the coloured bookmark's value, finally editable. The dots speak the
+ * language the add modal taught (red / amber / grey), and "None" takes the bookmark off the card.
+ */
+const LEVELS: { value: "high" | "medium" | "low"; label: string }[] = [
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+];
+function PriorityPicker({ value, onChange }: { value: "high" | "medium" | "low" | null; onChange: (level: "high" | "medium" | "low" | null) => void }) {
+  const current = LEVELS.find((l) => l.value === value) ?? null;
+  // Controlled so a pick CLOSES the menu — a choice is a full stop, not a state to dismiss.
+  const [open, setOpen] = useState(false);
+  const pick = (level: "high" | "medium" | "low" | null) => { setOpen(false); onChange(level); };
+  return (
+    <Row
+      label="Priority"
+      value={
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button type="button" className="group inline-flex items-center gap-1.5 text-label font-medium text-white transition-colors hover:text-white/90">
+              {current && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: PRIORITY[current.value] }} />}
+              {current?.label ?? <span className="text-white/60">None</span>}
+              <Pencil size={10} className="text-white/40 transition-colors group-hover:text-white/70" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-44 overflow-hidden rounded-card border-border-default bg-surface-3 p-1 shadow-md">
+            {LEVELS.map((l) => (
+              <button
+                key={l.value}
+                type="button"
+                onClick={() => pick(l.value)}
+                className={cn("flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-xs transition-colors hover:bg-surface-2", value === l.value ? "text-text-primary" : "text-text-secondary hover:text-text-primary")}
+              >
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: PRIORITY[l.value] }} />
+                {l.label}
+                {value === l.value && <Check size={12} className="ml-auto text-text-tertiary" />}
+              </button>
+            ))}
+            <div className="my-1 h-px bg-border-default" />
+            <button
+              type="button"
+              onClick={() => pick(null)}
+              className="flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-xs text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            >
+              <span className="h-2 w-2 rounded-full border border-text-tertiary/60" />
+              None
+            </button>
+          </PopoverContent>
+        </Popover>
+      }
+    />
   );
 }
 
@@ -313,6 +369,7 @@ interface Props {
    */
   onSeasonYearChange: (year: number) => void;
   onWatchedDateChange: (parts: WatchDateParts) => void;   // film → precise watched_at
+  onPriorityChange: (level: "high" | "medium" | "low" | null) => void;   // want_to_watch → urgency
   onDelete: () => void;                      // opens the shared delete-confirm modal
   isUpdating?: boolean;
   /**
@@ -328,7 +385,7 @@ interface Props {
 export function StatusCard({
   media, isSeries, providers, currentSeason, currentEpisode, onUpdateProgress, view,
   favorite, onFavoriteToggle, onMarkWatched, onMarkCaughtUp, onStartWatching, onPause, onDrop,
-  onResume, onAddNote, onSeasonYearChange, onWatchedDateChange, onDelete, isUpdating,
+  onResume, onAddNote, onSeasonYearChange, onWatchedDateChange, onPriorityChange, onDelete, isUpdating,
 }: Props) {
   const status: CardStatus = CARD_STATUS[deriveWatchStatus(media)];
 
@@ -794,6 +851,16 @@ export function StatusCard({
               )}
               {/* You've seen it all — so the record of having seen it AGAIN belongs here too. */}
               {caughtUp && rewatchRows}
+            </div>
+          )}
+
+          {/* THE ONE FACT OF A WATCHLIST ENTRY — how much you want it. `priority_level` was written
+              once, at add time (discover even hard-coded "medium"), and readable nowhere but the
+              card's bookmark: a value you could see and never change. Same pen as every other
+              editable fact on this card. */}
+          {status === "want_to_watch" && !media.is_reference && (
+            <div className="mt-2.5">
+              <PriorityPicker value={media.priority_level ?? null} onChange={onPriorityChange} />
             </div>
           )}
 

@@ -6,7 +6,7 @@ import { tmdbImage, tmdbImageFor } from "../../lib/tmdb-image";
 import { ArrowLeft, Images, Loader2, Play } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Badge } from "@/shared/components/ui/badge";
-import { RankMark } from "../shared/Marks";
+import { TopTenRibbon } from "../shared/Marks";
 import type { WatchingMedia } from "../../types";
 import { displayTitle } from "../../utils";
 import { useImdbId } from "../../hooks/useImdbId";
@@ -44,10 +44,9 @@ function useHeroScores(media: WatchingMedia): HeroScore[] {
  * place belongs to YOU, so it sits above the title rather than among them — an eyebrow, the way a
  * headline is introduced, not another chip in the metadata row.
  *
- * It reuses `RankMark` exactly as the carousel does: the same rank has to look the same everywhere,
- * or the badge becomes something you have to re-learn per screen. That also settles a colour the
- * module had two answers for — the rail says teal, the add modal says amber. The grammar decides:
- * colour names the SOURCE, gold is the world's and teal is yours, and a Top 10 is entirely yours.
+ * It reuses `TopTenRibbon` exactly as the carousel does: the same rank has to look the same
+ * everywhere, or the badge becomes something you have to re-learn per screen. The ribbon is the
+ * module's solid accent — a Top 10 is entirely yours, and the accent is "you".
  *
  * Nothing at all when the title is unranked. There is no empty state for a verdict you have not
  * given: an "unranked" line would spend the most prominent row in the page saying nothing.
@@ -57,7 +56,7 @@ function RankEyebrow({ media }: { media: WatchingMedia }) {
   const noun = media.type === "film" ? "films" : media.type === "serie" ? "series" : "animes";
   return (
     <div className="mb-1.5 flex items-center gap-2">
-      <RankMark rank={media.priority} />
+      <TopTenRibbon rank={media.priority} size="lg" />
       <span className="text-caption uppercase tracking-wide text-white/45">of your {noun}</span>
     </div>
   );

@@ -281,6 +281,17 @@ export default function MediaDetailPage() {
     }
   };
 
+  // The watchlist urgency — the one fact of a want-to-watch entry, now editable where you read it.
+  const handlePriorityChange = async (level: "high" | "medium" | "low" | null) => {
+    if (!media) return;
+    try {
+      await updateMedia.mutateAsync({ id: media.id, type: media.type, priority_level: level });
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
+      toast.error("Failed to update.");
+    }
+  };
+
   // A FILM's date is a real timestamp. The shared picker (month + day) feeds buildWatchedAt, the
   // same construction the add flow uses, so a corrected date sorts precisely in Recently Watched.
   const handleWatchedDateChange = async (parts: WatchDateParts) => {
@@ -388,6 +399,7 @@ export default function MediaDetailPage() {
       onAddNote={() => setForceTakeOpen(true)}
       onSeasonYearChange={handleSeasonYearChange}
       onWatchedDateChange={handleWatchedDateChange}
+      onPriorityChange={handlePriorityChange}
       onDelete={() => setDeleteOpen(true)}
       isUpdating={actions.isPending}
     />

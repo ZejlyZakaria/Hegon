@@ -6,7 +6,7 @@ import Image from "next/image";
 import { tmdbImageFor } from "../../lib/tmdb-image";
 import { MoreVertical, Trash2, ExternalLink } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
-import { LoveMark, ScoreMark, OVERLAY_CIRCLE, OVERLAY_CLUSTER } from "@/modules/watching/components/shared/Marks";
+import { LoveMark, ScoreMark, TopTenRibbon, OVERLAY_CIRCLE, OVERLAY_CLUSTER } from "@/modules/watching/components/shared/Marks";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { displayTitle } from "@/modules/watching/utils";
 import { posterStatus, PosterStatusBadge } from "@/modules/watching/components/shared/StatusBadge";
@@ -91,13 +91,22 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
             apart. Same parent, same inset, same 24px height → aligned by construction, at
             rest and in motion. (The menu portals its dropdown, so `overflow-hidden` here
             can't clip it.) */}
-        {item.favorite && (
+        {/* LEFT = IDENTITY. "TOP 10" is membership — the useful fact when you sweep a grid (the
+            rank itself lives in the Top 10 rail and on the fiche, where it is read, not scanned).
+            The ribbon hangs from the top edge like the priority bookmark, and it REPLACES the
+            heart: a title in your Top 10 is a favourite by definition, and saying it twice on one
+            poster is noise (owner, 2026-09-14). */}
+        {item.priority != null && item.priority <= 10 ? (
+          <div className="absolute left-2 top-0 z-10">
+            <TopTenRibbon />
+          </div>
+        ) : item.favorite ? (
           <div className={cn(OVERLAY_CLUSTER, "left-2")}>
             <span className={OVERLAY_CIRCLE}>
               <LoveMark size={12} />
             </span>
           </div>
-        )}
+        ) : null}
 
         <div
           className={cn(OVERLAY_CLUSTER, "right-2 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100")}

@@ -142,6 +142,10 @@ export function PriorityMark({ level, size = 17 }: { level: "high" | "medium" | 
   );
 }
 
+/**
+ * A LIST's rank (a ranked custom list — "my best 2024"), NOT a Top 10: a teal bar and a number in the
+ * left cluster. The Top 10 has its own object, the ribbon below; a list position is a smaller claim.
+ */
 export function RankMark({ rank, className }: { rank: number; className?: string }) {
   return (
     <span className={cn("flex h-6 items-center gap-1.5", className)}>
@@ -155,6 +159,53 @@ export function RankMark({ rank, className }: { rank: number; className?: string
       >
         {String(rank).padStart(2, "0")}
       </span>
+    </span>
+  );
+}
+
+/**
+ * THE TOP 10 RIBBON — one object, three readings.
+ *
+ * A ribbon that HANGS from the top edge of the artwork, the way Netflix marks its Top 10: a
+ * pentagon (a flag with a pointed tail), the module's own solid accent, white ink. With a `rank`
+ * it prints the number — that is what the Top 10 rails and the fiche say, where the rank is the
+ * fact. Without one it prints "TOP / 10" — membership, which is what a grid you sweep needs.
+ *
+ * Because it hangs from an edge it is the one mark that sits OUTSIDE the overlay clusters (the
+ * priority bookmark is its sibling): flush to the top, 8 px from the left so it clears the corner
+ * curve. Owner-specified 2026-09-14, replacing `RankMark` (a teal bar + a number).
+ */
+const RIBBON = {
+  sm: { w: 26, h: 34, top: 7, num: 13 },
+  md: { w: 32, h: 42, top: 8, num: 16 },
+  lg: { w: 44, h: 58, top: 11, num: 23 },
+} as const;
+export function TopTenRibbon({ rank, size = "sm", className }: { rank?: number; size?: keyof typeof RIBBON; className?: string }) {
+  const r = RIBBON[size];
+  return (
+    <span
+      aria-label={rank ? `Ranked #${rank} in your Top 10` : "In your Top 10"}
+      className={cn("flex flex-col items-center justify-start text-white select-none", className)}
+      style={{
+        width: r.w,
+        height: r.h,
+        backgroundColor: "var(--color-accent-watching)",
+        // The tail: a flag's pointed hem. ~18 % of the height, centred.
+        clipPath: "polygon(0 0, 100% 0, 100% 82%, 50% 100%, 0 82%)",
+        filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.6))",
+        paddingTop: rank ? r.top * 0.9 : r.top * 0.55,
+      }}
+    >
+      {rank ? (
+        <span className="font-black leading-none tabular-nums tracking-tight" style={{ fontSize: r.num }}>
+          {String(rank).padStart(2, "0")}
+        </span>
+      ) : (
+        <>
+          <span className="font-black leading-none tracking-wide" style={{ fontSize: r.top }}>TOP</span>
+          <span className="font-black leading-none tabular-nums tracking-tight" style={{ fontSize: r.num, marginTop: 1 }}>10</span>
+        </>
+      )}
     </span>
   );
 }

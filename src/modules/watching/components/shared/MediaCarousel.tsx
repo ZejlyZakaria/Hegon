@@ -13,7 +13,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
-import { LoveMark, PriorityMark, RankMark, ScoreMark, CaughtUpBadge, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
+import { LoveMark, PriorityMark, TopTenRibbon, ScoreMark, CaughtUpBadge, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
 
 // Priority: the order of the rail carries the ranking, and `PriorityMark` flags only its top.
@@ -34,6 +34,8 @@ type MediaCarouselProps = {
   subtitle?: string;
   items: WatchingMedia[];
   onAddClick?: () => void;
+  /** The rail is a window on a bigger list — this opens the whole of it. */
+  onSeeAll?: () => void;
   onDelete?: (itemId: string) => Promise<void>;
   showEpisodeBadge?: boolean;
   showRankBadge?: boolean;
@@ -140,13 +142,19 @@ function MovieCard({
             <PriorityMark level={item.priority_level} />
           </div>
         )}
+        {/* The Top 10 ribbon hangs from the same edge, for the same reason — with the RANK, since
+            this rail IS the ranking. */}
+        {showRankBadge && item.priority && (
+          <div className="absolute left-2 top-0 z-10">
+            <TopTenRibbon rank={item.priority} size="md" />
+          </div>
+        )}
 
         {/* THE OVERLAY GRAMMAR — two clusters, and nothing else may sit on the artwork:
             left = IDENTITY (what this title is: rank, priority), right = ACTIONS (favorite,
             menu). Same inset, same 24px item height, same gap → they align by construction
             instead of by three separate `top-2` / `top-3` guesses. */}
         <div className={cn(OVERLAY_CLUSTER, "left-2")}>
-          {showRankBadge && item.priority && <RankMark rank={item.priority} />}
           {/* Priority is "how badly do I want to watch this" — meaningless for a film that isn't out
               yet. In the Waiting for rail (showCountdown) the countdown is the only mark that belongs. */}
           {/* WHEN you watched it — a factual timestamp, not a verdict, so it's neutral white, not
@@ -290,6 +298,7 @@ export function MediaCarousel({
   subtitle,
   items,
   onAddClick,
+  onSeeAll,
   onDelete,
   showEpisodeBadge = false,
   showRankBadge = false,
@@ -429,6 +438,11 @@ export function MediaCarousel({
               canPrev={canGoPrev}
               canNext={canGoNext}
             />
+            {onSeeAll && (
+              <Button variant="quiet" size="sm" onClick={onSeeAll}>
+                See all
+              </Button>
+            )}
             {canAdd && (
               <Button variant="accent" size="sm" style={WATCHING_ACCENT} onClick={onAddClick}>
                 <Plus />
