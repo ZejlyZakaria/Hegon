@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { TMDB_KEYS } from "@/modules/watching/hooks/query-keys";
 import Image from "next/image";
 import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
 import { X } from "lucide-react";
@@ -10,35 +12,36 @@ import { Button } from "@/shared/components/ui/button";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { Hint } from "@/shared/components/ui/tooltip";
-import { useForYouRecommendations } from "@/modules/watching/hooks/useForYouRecommendations";
+import { useDismissForYou, useForYouDismissals, useForYouRecommendations } from "@/modules/watching/hooks/useForYouRecommendations";
+import { dismissForYou } from "@/modules/watching/service";
+import { toast } from "@/shared/utils/toast";
 import { useOwnedTmdbIds } from "@/modules/watching/hooks/useOwnedTmdbIds";
 import { useWatching } from "@/modules/watching/components/WatchingClient";
 import { ForYouSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { cn } from "@/shared/utils/utils";
-import type { WatchingConfig } from "@/modules/watching/types";
+import type { MediaType, WatchingConfig } from "@/modules/watching/types";
 import type { ForYouItem } from "@/modules/watching/service";
 
 const TMDB_W500 = "https://image.tmdb.org/t/p/w500";
 
-function getDismissedKey(type: string) {
-  return `hegon_dismissed_foryou_${type}`;
-}
-
-function getDismissed(type: string): Set<number> {
+/**
+ * Dismissals used to live HERE, in localStorage — which is why For You "always showed the same":
+ * the refresh robot never heard the "no". They are rows now (`for_you_dismissals`). This is the
+ * one-time hand-over: whatever this browser had already refused is pushed to the base on the first
+ * visit, then the key is dropped. Nothing the user said is lost in the move.
+ */
+const LEGACY_KEY = (type: string) => `hegon_dismissed_foryou_${type}`;
+async function migrateLegacyDismissals(userId: string, type: MediaType) {
+  let ids: number[] = [];
   try {
-    const raw = localStorage.getItem(getDismissedKey(type));
-    return new Set(raw ? JSON.parse(raw) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function addDismissed(type: string, id: number) {
+    const raw = localStorage.getItem(LEGACY_KEY(type));
+    if (!raw) return;
+    ids = JSON.parse(raw);
+  } catch { return; }
   try {
-    const set = getDismissed(type);
-    set.add(id);
-    localStorage.setItem(getDismissedKey(type), JSON.stringify([...set]));
-  } catch { /* ignore */ }
+    await dismissForYou(userId, type, ids.filter((n) => Number.isFinite(n)));
+    localStorage.removeItem(LEGACY_KEY(type));
+  } catch { /* next visit will retry — the key stays until the base has it */ }
 }
 
 // ─── card ─────────────────────────────────────────────────────────────────────
@@ -139,7 +142,15 @@ export default function ForYouSectionClient({
 }) {
   const { data: rawItems = [], isLoading } = useForYouRecommendations(userId, config.type);
   const { data: ownedIds = [] } = useOwnedTmdbIds(userId, config.type);
-  const [dismissed, setDismissed] = useState<Set<number>>(() => getDismissed(config.type));
+  const { data: dismissedIds = [], isLoading: dismissedLoading } = useForYouDismissals(userId, config.type);
+  const dismiss = useDismissForYou(userId, config.type);
+  const dismissed = new Set(dismissedIds);
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!userId) return;
+    void migrateLegacyDismissals(userId, config.type).then(() =>
+      queryClient.invalidateQueries({ queryKey: TMDB_KEYS.forYouDismissed(config.type) }));
+  }, [userId, config.type, queryClient]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(5);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -173,11 +184,14 @@ export default function ForYouSectionClient({
   }, []);
 
   const handleDismiss = useCallback((id: number) => {
-    addDismissed(config.type, id);
-    setDismissed((prev) => new Set([...prev, id]));
-  }, [config.type]);
+    dismiss.mutate({ tmdbId: id }, {
+      onSuccess: () => toast("Hidden from For You.", { action: { label: "Undo", onClick: () => dismiss.mutate({ tmdbId: id, undo: true }) } }),
+    });
+  }, [dismiss]);
 
-  if (isLoading) return <ForYouSkeleton />;
+  // The list and the "no"s arrive together — painting the list first would flash a card you have
+  // already refused, then pull it away.
+  if (isLoading || dismissedLoading) return <ForYouSkeleton />;
   if (items.length === 0) return null;
 
   const totalElements = items.length;

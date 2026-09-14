@@ -24,9 +24,16 @@ export const WATCHING_KEYS = {
   recentlyWatched: (type: MediaType) => 
     [...WATCHING_KEYS.all, type, 'recently-watched'] as const,
   
-  // Want to watch
-  wantToWatch: (type: MediaType) => 
+  // Want to watch — the rail (released, capped). The keys below EXTEND it so one invalidation of
+  // the prefix refreshes the rail, its count, the full panel and the Waiting for slice together.
+  wantToWatch: (type: MediaType) =>
     [...WATCHING_KEYS.all, type, 'want-to-watch'] as const,
+  wantToWatchCount: (type: MediaType) =>
+    [...WATCHING_KEYS.wantToWatch(type), 'count'] as const,
+  watchlistAll: (type: MediaType) =>
+    [...WATCHING_KEYS.wantToWatch(type), 'all'] as const,
+  waitingFor: () =>
+    [...WATCHING_KEYS.wantToWatch('film'), 'awaiting'] as const,
   
   // Top rated
   topRated: (type: MediaType) =>
@@ -116,6 +123,8 @@ export const TMDB_KEYS = {
     ['tmdb', 'season-episodes', tmdbId, season] as const,
   episodeRatings: (imdbId: string, seasonCount: number) =>
     ['omdb', 'episodes', imdbId, seasonCount] as const,
+  forYouDismissed: (type: MediaType) =>
+    [...WATCHING_KEYS.all, type, 'for-you-dismissed'] as const,
   forYou: (type: MediaType) =>
     ['tmdb', 'for-you', type] as const,
   person: (personId: number) =>

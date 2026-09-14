@@ -20,9 +20,40 @@ export interface GetMediaOptions {
   inProgress?: boolean;
   recentlyWatched?: boolean;
   wantToWatch?: boolean;
+  /**
+   * The two halves of a film watchlist, split IN THE QUERY. They used to be one 50-row fetch
+   * split client-side by `isAwaitingRelease` — with 74 films on the list, 24 were never loaded
+   * anywhere. Films only: a series' "not out yet" is a different model (announced seasons).
+   *   · released — out (date past, or a legacy row whose TMDB status says "released")
+   *   · awaiting — not out (date ahead, or a legacy row whose status isn't "released")
+   * Same predicate as `isAwaitingRelease` in utils.ts, spelled for Postgres.
+   */
+  released?: boolean;
+  awaiting?: boolean;
   topRated?: boolean;
   watched?: boolean;
   limit?: number;
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+const RELEASED = () => `release_date.lte.${today()},and(release_date.is.null,status.eq.released)`;
+const AWAITING = () => `release_date.gt.${today()},and(release_date.is.null,status.neq.released)`;
+
+/** How many rows a section would return without its limit — the honest subtitle of a capped rail. */
+export async function countMediaItems(userId: string, type: MediaType, options: GetMediaOptions = {}): Promise<number> {
+  const supabase = createClient();
+  let query = supabase
+    .schema("watching")
+    .from("media_items")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("type", type);
+  if (options.wantToWatch) query = query.eq("want_to_watch", true);
+  if (type === "film" && options.released) query = query.or(RELEASED());
+  if (type === "film" && options.awaiting) query = query.or(AWAITING());
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
 }
 
 // Upload a hand-picked poster to Supabase Storage — custom art that overrides TMDB's.
@@ -85,6 +116,8 @@ export async function getMediaItems(
   // now it delivers it.)
   if (options.recentlyWatched) query = query.eq("watched", true);
   if (options.wantToWatch) query = query.eq("want_to_watch", true);
+  if (type === "film" && options.released) query = query.or(RELEASED());
+  if (type === "film" && options.awaiting) query = query.or(AWAITING());
   if (options.watched) query = query.eq("watched", true);
 
   if (options.topRated) {
@@ -92,6 +125,9 @@ export async function getMediaItems(
       .eq("favorite", true)
       .not("priority", "is", null)
       .order("priority", { ascending: true });
+  } else if (options.awaiting) {
+    // Soonest release first; a legacy row with no stored date sinks to the end.
+    query = query.order("release_date", { ascending: true, nullsFirst: false });
   } else if (options.recentlyWatched) {
     // By actual watch date, not updated_at (which moves on any rating/favorite edit). Undated
     // watched rows (legacy) sort last rather than hijacking the top.
@@ -509,6 +545,42 @@ export interface ForYouItem {
   overview: string;
   genre_ids: number[];
   is_new?: boolean;   // newly surfaced in the latest 5-day rotation
+}
+
+/**
+ * THE NEGATIVE SIGNAL. What you dismissed from For You — written to the base so the refresh robot
+ * stops re-picking it and every device agrees. It lived in localStorage before: the system had no
+ * memory of a "no".
+ */
+export async function getForYouDismissals(userId: string, type: MediaType): Promise<number[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("for_you_dismissals")
+    .select("tmdb_id")
+    .eq("user_id", userId)
+    .eq("type", type);
+  if (error) throw error;
+  // The table is not in the generated types yet (created 2026-09-14); the row shape is the pk.
+  return ((data ?? []) as { tmdb_id: number }[]).map((d) => d.tmdb_id);
+}
+
+export async function dismissForYou(userId: string, type: MediaType, tmdbIds: number[]): Promise<void> {
+  if (tmdbIds.length === 0) return;
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { error } = await supabase
+    .schema("watching").from("for_you_dismissals")
+    .upsert(tmdbIds.map((tmdb_id) => ({ user_id: userId, org_id: orgId, type, tmdb_id })), { onConflict: "user_id,type,tmdb_id" });
+  if (error) throw error;
+}
+
+export async function undismissForYou(userId: string, type: MediaType, tmdbId: number): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("watching").from("for_you_dismissals")
+    .delete()
+    .match({ user_id: userId, type, tmdb_id: tmdbId });
+  if (error) throw error;
 }
 
 export async function getForYouRecommendations(

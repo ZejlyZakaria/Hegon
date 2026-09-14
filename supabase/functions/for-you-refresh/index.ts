@@ -11,8 +11,13 @@
 //   5. selects the final ~20 with MMR (Maximal Marginal Relevance): each pick is
 //      penalised for genre-overlap with those already chosen, so the list stays
 //      tailored but ONE cluster (e.g. superhero) can't flood it,
-//   6. flags newcomers vs the previous rotation (is_new) and upserts the row.
+//   6. flags newcomers against EVERYTHING this user was ever shown here (`seen_ids`) and
+//      upserts the row. Titles the user DISMISSED (`for_you_dismissals`) are never candidates.
 // The app just reads that table → For You is always instant.
+//
+// 2026-09-14: the two signals above are the fix for "always the same, and NEW lies". Before,
+// dismiss lived in localStorage (this function never knew) and `is_new` compared against the
+// previous rotation only, so a title back after three rotations wore NEW again.
 //
 // Env (function secrets): TMDB_API_KEY, HEGON_SECRET_KEY. SUPABASE_URL is auto-injected.
 //   HEGON_SECRET_KEY replaces the auto-injected SUPABASE_SERVICE_ROLE_KEY, whose value IS the legacy
@@ -33,6 +38,7 @@ const SEED_WANT = 5;             // want-to-watch seeds (lower weight)
 const WANT_WEIGHT = 0.4;         // want seed weight (below any favorite's 0.5–1.0)
 const PER_SEED_KEEP = 5;         // recs kept per seed (wider pool → better MMR)
 const STORE_COUNT = 20;          // how many to persist (carousel shows 10)
+const SEEN_CAP = 500;            // ids remembered per user/type for is_new (newest kept)
 const WINDOW_DAYS = 5;           // rotation window
 const MIN_VOTE_AVERAGE = 7.0;
 const MMR_LAMBDA = 0.5;          // diversity strength (0 = pure relevance, 1 = pure variety)
@@ -96,7 +102,7 @@ async function refreshUserType(
 
   const tbl = () => supabase.schema("watching").from("media_items");
 
-  const [watchedRes, favRes, wantRes, ownedRes, prevRes] = await Promise.all([
+  const [watchedRes, favRes, wantRes, ownedRes, prevRes, dismissedRes] = await Promise.all([
     tbl().select("id", { count: "exact", head: true })
       .eq("user_id", userId).eq("type", type).eq("watched", true),
     tbl().select("tmdb_id, user_rating")
@@ -107,7 +113,9 @@ async function refreshUserType(
       .order("created_at", { ascending: false }),
     tbl().select("tmdb_id").eq("user_id", userId).eq("type", type),
     supabase.schema("watching").from("for_you_cache")
-      .select("items").eq("user_id", userId).eq("type", type).maybeSingle(),
+      .select("items, seen_ids").eq("user_id", userId).eq("type", type).maybeSingle(),
+    supabase.schema("watching").from("for_you_dismissals")
+      .select("tmdb_id").eq("user_id", userId).eq("type", type),
   ]);
 
   const watchedCount = watchedRes.count ?? 0;
@@ -119,9 +127,16 @@ async function refreshUserType(
   const favSeedIds = pickWindow(favorites.map((f) => f.tmdb_id), SEED_FAVORITES, windowIndex);
   const wantSeedIds = pickWindow((wantRes.data ?? []).map((w: any) => w.tmdb_id), SEED_WANT, windowIndex);
 
-  const owned = new Set((ownedRes.data ?? []).map((o: any) => o.tmdb_id));
-  const prevIds = new Set(((prevRes.data?.items ?? []) as any[]).map((i) => i.id));
-  const hadPrev = prevIds.size > 0;
+  // A dismissed title is treated exactly like one you own: never a candidate again.
+  const owned = new Set([
+    ...(ownedRes.data ?? []).map((o: any) => o.tmdb_id),
+    ...(dismissedRes.data ?? []).map((d: any) => d.tmdb_id),
+  ]);
+  const prevIds = ((prevRes.data?.items ?? []) as any[]).map((i) => i.id as number);
+  // Everything ever shown: the stored history, plus the list being replaced (rows written before
+  // `seen_ids` existed have an empty history and a live list — the list IS what was seen).
+  const seen = new Set<number>([...((prevRes.data?.seen_ids ?? []) as number[]), ...prevIds]);
+  const hadPrev = seen.size > 0;
 
   // A favorite you rated 9.5 should pull harder than one rated 8 → seed weight is
   // the favorite's own rating (clamped 0.5–1.0). want-to-watch sit below at 0.4.
@@ -210,13 +225,17 @@ async function refreshUserType(
     year: (item.release_date ?? item.first_air_date ?? "").slice(0, 4),
     overview: item.overview ?? "",
     genre_ids: item.genre_ids ?? [],
-    is_new: hadPrev && !prevIds.has(item.id),
+    is_new: hadPrev && !seen.has(item.id),
   }));
+
+  // Remember what was shown — newest last, oldest dropped past the cap.
+  const seenIds = [...seen, ...ranked.map((r) => r.id).filter((id) => !seen.has(id))].slice(-SEEN_CAP);
 
   const { error } = await supabase.schema("watching").from("for_you_cache").upsert({
     user_id: userId,
     type,
     items: ranked,
+    seen_ids: seenIds,
     computed_at: new Date().toISOString(),
   });
   if (error) throw error;
