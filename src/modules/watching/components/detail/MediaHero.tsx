@@ -56,7 +56,7 @@ function RankEyebrow({ media }: { media: WatchingMedia }) {
   const noun = media.type === "film" ? "films" : media.type === "serie" ? "series" : "animes";
   return (
     <div className="mb-1.5 flex items-center gap-2">
-      <TopTenRibbon rank={media.priority} size="lg" />
+      <TopTenRibbon rank={media.priority} size="hero" />
       <span className="text-caption uppercase tracking-wide text-white/45">of your {noun}</span>
     </div>
   );

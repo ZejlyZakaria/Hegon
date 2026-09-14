@@ -130,6 +130,10 @@ function MovieCard({
           loading={eagerLoad ? "eager" : "lazy"}
           priority={eagerLoad}
           onLoad={() => setImgLoaded(true)}
+          // ALREADY THERE → NO FADE. `onLoad` fires for a cached image too, and a fade from 0 replayed on
+          // every return to the page (Back, a tab switch). The ref runs in the commit, before paint: a
+          // picture the browser already holds is shown at full opacity from its first frame.
+          ref={(el) => { if (el?.complete && el.naturalWidth > 0) setImgLoaded(true); }}
         />
         <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
 
@@ -146,7 +150,7 @@ function MovieCard({
             this rail IS the ranking. */}
         {showRankBadge && item.priority && (
           <div className="absolute left-2 top-0 z-10">
-            <TopTenRibbon rank={item.priority} size="md" />
+            <TopTenRibbon rank={item.priority} size="carousel" />
           </div>
         )}
 

@@ -175,12 +175,19 @@ export function RankMark({ rank, className }: { rank: number; className?: string
  * priority bookmark is its sibling): flush to the top, 8 px from the left so it clears the corner
  * curve. Owner-specified 2026-09-14, replacing `RankMark` (a teal bar + a number).
  */
+/**
+ * Three sizes, one per surface — owner-tuned 2026-09-15:
+ *   · library (grid tile)  → "TOP / 10", the reference size
+ *   · carousel (rail card) → the rank, smaller than the tile's
+ *   · hero (the fiche)     → the rank, a step up from the rail, never the poster's scale
+ * Ink is semibold, not black: at 7-13 px a heavier weight fills the counters and reads as a smear.
+ */
 const RIBBON = {
-  sm: { w: 26, h: 34, top: 7, num: 13 },
-  md: { w: 32, h: 42, top: 8, num: 16 },
-  lg: { w: 44, h: 58, top: 11, num: 23 },
+  library:  { w: 26, h: 34, cap: 7,  num: 13 },
+  carousel: { w: 22, h: 30, cap: 6,  num: 12 },
+  hero:     { w: 30, h: 40, cap: 8,  num: 15 },
 } as const;
-export function TopTenRibbon({ rank, size = "sm", className }: { rank?: number; size?: keyof typeof RIBBON; className?: string }) {
+export function TopTenRibbon({ rank, size = "library", className }: { rank?: number; size?: keyof typeof RIBBON; className?: string }) {
   const r = RIBBON[size];
   return (
     <span
@@ -189,21 +196,25 @@ export function TopTenRibbon({ rank, size = "sm", className }: { rank?: number; 
       style={{
         width: r.w,
         height: r.h,
-        backgroundColor: "var(--color-accent-watching)",
-        // The tail: a flag's pointed hem. ~18 % of the height, centred.
-        clipPath: "polygon(0 0, 100% 0, 100% 82%, 50% 100%, 0 82%)",
+        // The VIVID accent — the tabs' and the ratings' teal — not the solid surface teal: a mark
+        // on artwork has to carry its own light.
+        backgroundColor: "var(--color-accent-watching-vivid)",
+        // A folded hem: the bottom edge runs diagonally, lower on the left — the shape of the
+        // reference, a flag whose corner has been turned, not a pennant.
+        clipPath: "polygon(0 0, 100% 0, 100% 78%, 0 100%)",
+        borderTopRightRadius: 3,
         filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.6))",
-        paddingTop: rank ? r.top * 0.9 : r.top * 0.55,
+        paddingTop: rank ? Math.round(r.h * 0.22) : Math.round(r.h * 0.14),
       }}
     >
       {rank ? (
-        <span className="font-black leading-none tabular-nums tracking-tight" style={{ fontSize: r.num }}>
+        <span className="font-semibold leading-none tabular-nums" style={{ fontSize: r.num }}>
           {String(rank).padStart(2, "0")}
         </span>
       ) : (
         <>
-          <span className="font-black leading-none tracking-wide" style={{ fontSize: r.top }}>TOP</span>
-          <span className="font-black leading-none tabular-nums tracking-tight" style={{ fontSize: r.num, marginTop: 1 }}>10</span>
+          <span className="font-semibold leading-none tracking-wide" style={{ fontSize: r.cap }}>TOP</span>
+          <span className="font-semibold leading-none tabular-nums" style={{ fontSize: r.num, marginTop: 1 }}>10</span>
         </>
       )}
     </span>
