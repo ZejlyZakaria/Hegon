@@ -66,8 +66,10 @@ export function useUpdateMedia() {
       const leaves = (flag: "in_progress" | "want_to_watch", keyFor: (t: "film" | "serie" | "anime") => readonly unknown[]) => {
         if ((updates as Record<string, unknown>)[flag] !== false) return;
         for (const t of ["film", "serie", "anime"] as const) {
+          // PREFIX match: the watchlist is several queries under one key now (the rail, the full
+          // panel, the Waiting for slice) — an exact set would patch one and leave the others stale.
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          queryClient.setQueryData(keyFor(t), (old: any) =>
+          queryClient.setQueriesData({ queryKey: keyFor(t) }, (old: any) =>
             Array.isArray(old) ? old.filter((i: { id: string }) => i.id !== id) : old);
         }
       };

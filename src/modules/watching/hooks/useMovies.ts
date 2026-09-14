@@ -6,6 +6,8 @@ interface UseMoviesOptions {
   inProgress?: boolean;
   recentlyWatched?: boolean;
   wantToWatch?: boolean;
+  released?: boolean;
+  awaiting?: boolean;
   topRated?: boolean;
   limit?: number;
   initialData?: WatchingMedia[];

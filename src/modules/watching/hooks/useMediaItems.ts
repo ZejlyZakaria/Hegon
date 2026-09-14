@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
-import { getMediaItems } from "../service";
+import { countMediaItems, getMediaItems } from "../service";
 import type { GetMediaOptions } from "../service";
 import type { WatchingMedia, MediaType } from "../types";
 import { STALE } from "@/shared/lib/stale";
@@ -9,11 +9,15 @@ interface UseMediaItemsOptions extends GetMediaOptions {
   userId: string;
   type: MediaType;
   initialData?: WatchingMedia[];
+  /** Off = the query does not run (a panel's list before the panel is opened). */
+  enabled?: boolean;
 }
 
 function resolveQueryKey(type: MediaType, options: GetMediaOptions) {
   if (options.inProgress) return WATCHING_KEYS.inProgress(type);
   if (options.recentlyWatched) return WATCHING_KEYS.recentlyWatched(type);
+  if (options.wantToWatch && options.awaiting) return WATCHING_KEYS.waitingFor();
+  if (options.wantToWatch && !options.limit) return WATCHING_KEYS.watchlistAll(type);
   if (options.wantToWatch) return WATCHING_KEYS.wantToWatch(type);
   if (options.topRated) return WATCHING_KEYS.topRated(type);
   if (options.watched) return WATCHING_KEYS.byStatus(type, "completed");
@@ -22,9 +26,10 @@ function resolveQueryKey(type: MediaType, options: GetMediaOptions) {
   return WATCHING_KEYS.animes();
 }
 
-export function useMediaItems({ userId, type, initialData, ...options }: UseMediaItemsOptions) {
+export function useMediaItems({ userId, type, initialData, enabled = true, ...options }: UseMediaItemsOptions) {
   return useQuery({
     ...(initialData && { initialData }),
+    enabled,
     queryKey: resolveQueryKey(type, options),
     queryFn: () => getMediaItems(userId, type, options),
     // STALE AND FORGOTTEN ARE NOT THE SAME WORD — and confusing them is what put a skeleton on a
@@ -42,5 +47,19 @@ export function useMediaItems({ userId, type, initialData, ...options }: UseMedi
     // come back to. Global default is off; a stale, mounted section refetches when the tab regains
     // focus (only the mounted observers — the sections on screen — not every cached query).
     refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * The size of a section behind a capped rail — asked only when the rail is FULL (fewer rows than
+ * the cap means the rail already is the whole answer). One HEAD request, no rows.
+ */
+export function useMediaCount({ userId, type, enabled = true, ...options }: UseMediaItemsOptions) {
+  return useQuery({
+    queryKey: WATCHING_KEYS.wantToWatchCount(type),
+    queryFn: () => countMediaItems(userId, type, options),
+    staleTime: STALE.TWO_MINUTES,
+    gcTime: STALE.HALF_HOUR,
+    enabled,
   });
 }

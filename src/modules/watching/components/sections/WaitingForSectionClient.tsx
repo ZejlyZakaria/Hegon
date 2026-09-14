@@ -20,27 +20,24 @@ interface Props {
  * It's not a list you fill and it has no move-on-release trigger: it's a DERIVED slice of your
  * watchlist (`isAwaitingRelease`). A film sits here because its release date is in the future; the
  * day it comes out it crosses the line and rejoins plain "Want to Watch" on its own — the same
- * "state is a calculation, not a stored flag" rule as Last Watched. It reads the SAME cached
- * `wantToWatch` query the watchlist rail uses (no extra fetch); the two just split it.
+ * "state is a calculation, not a stored flag" rule as Last Watched. Its OWN query (`awaiting`,
+ * sorted by release date in the database): it used to share the rail's 50-row fetch and split it
+ * client-side, which is how 24 of 74 films were never loaded anywhere.
  *
  * Films only — a series' "not aired yet" is a different model (announced seasons). Hidden entirely
  * when nothing is waiting.
  */
 export default function WaitingForSectionClient({ userId, config }: Props) {
-  const { data: items = [], isLoading } = useMovies({ userId, wantToWatch: true, limit: 50 });
+  const { data: items = [], isLoading } = useMovies({ userId, wantToWatch: true, awaiting: true, limit: 50 });
   const deleteMediaMutation = useDeleteMedia();
 
   if (config.type !== "film") return null;
   if (isLoading) return <CarouselSkeleton />;
 
-  const waiting = items
-    .filter(isAwaitingRelease)
-    // Soonest release first; a legacy row with no stored date (awaiting via status) sinks to the end.
-    .sort((a, b) => {
-      if (!a.release_date) return 1;
-      if (!b.release_date) return -1;
-      return a.release_date.localeCompare(b.release_date);
-    });
+  // The query already answers "awaiting" and orders by release date; the predicate is kept as a
+  // belt for a row that sits on the line at midnight (the database and the browser disagree on
+  // "today" for one hour a day).
+  const waiting = items.filter(isAwaitingRelease);
 
   // Nothing coming? Don't show an empty rail — the section only exists when there's anticipation.
   if (waiting.length === 0) return null;
