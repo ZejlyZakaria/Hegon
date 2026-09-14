@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import { useImageReveal } from "@/modules/watching/hooks/useImageReveal";
 import { useRouter } from "next/navigation";
 import { usePrefetchMedia } from "../../hooks/usePrefetchMedia";
 import Image from "next/image";
@@ -80,7 +81,7 @@ function MovieCard({
   eagerLoad?: boolean;
   orientation?: "poster" | "backdrop";
 }) {
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const { loaded: imgLoaded, instant: imgInstant, onLoad: onImgLoad, attach: attachImg } = useImageReveal();
   const isPoster = orientation === "poster";
   const caughtUp = !!showCaughtUp && isAwaitingNextSeason(item);
   // Compact on the narrow poster (mobile): "2w" instead of "2 weeks ago", which crowds the tile.
@@ -124,16 +125,14 @@ function MovieCard({
           // pixel. A `fill` image can fall a sub-pixel short of the rounded edge, letting the
           // `bg-zinc-800` behind it show as a 1px hairline ("le trait") at the bottom. Overscanning
           // leaves no gap for it; the overflow-hidden clips the excess so nothing shows.
-          className="object-cover scale-[1.02] transition-opacity duration-200"
+          className={cn("object-cover scale-[1.02]", !imgInstant && "transition-opacity duration-200")}
+          // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
           style={{ opacity: imgLoaded ? 1 : 0 }}
           sizes={isPoster ? "(max-width: 1024px) 45vw, 180px" : "(max-width: 1024px) 45vw, 380px"}
           loading={eagerLoad ? "eager" : "lazy"}
           priority={eagerLoad}
-          onLoad={() => setImgLoaded(true)}
-          // ALREADY THERE → NO FADE. `onLoad` fires for a cached image too, and a fade from 0 replayed on
-          // every return to the page (Back, a tab switch). The ref runs in the commit, before paint: a
-          // picture the browser already holds is shown at full opacity from its first frame.
-          ref={(el) => { if (el?.complete && el.naturalWidth > 0) setImgLoaded(true); }}
+          onLoad={onImgLoad}
+          ref={attachImg}
         />
         <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
 

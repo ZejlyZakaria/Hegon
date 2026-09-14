@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
+import { useImageReveal } from "@/modules/watching/hooks/useImageReveal";
 import { useQueryClient } from "@tanstack/react-query";
 import { TMDB_KEYS } from "@/modules/watching/hooks/query-keys";
 import Image from "next/image";
@@ -59,7 +60,7 @@ function ForYouCard({
   priority?: boolean;
   orientation?: "poster" | "backdrop";
 }) {
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const { loaded: imgLoaded, instant: imgInstant, onLoad: onImgLoad, attach: attachImg } = useImageReveal();
   const isPoster = orientation === "poster";
   const imgSrc = isPoster
     ? (item.poster_path ? `${TMDB_W500}${item.poster_path}` : item.backdrop_path ? `${TMDB_W500}${item.backdrop_path}` : null)
@@ -80,12 +81,14 @@ function ForYouCard({
             src={(isPoster ? tmdbImageFor(imgSrc, 170) : tmdbImageFor(imgSrc, 360)) || imgSrc}
             alt={item.title}
             fill
-            className="object-cover transition-opacity duration-200"
+            className={cn("object-cover", !imgInstant && "transition-opacity duration-200")}
+            // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
             style={{ opacity: imgLoaded ? 1 : 0 }}
             sizes={isPoster ? "(max-width: 1024px) 45vw, 180px" : "(max-width: 1024px) 45vw, 380px"}
             loading={priority ? "eager" : "lazy"}
             priority={priority}
-            onLoad={() => setImgLoaded(true)}
+            onLoad={onImgLoad}
+            ref={attachImg}
           />
         )}
         <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />

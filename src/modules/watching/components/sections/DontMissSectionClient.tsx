@@ -2,6 +2,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { cn } from "@/shared/utils/utils";
+import { useImageReveal } from "@/modules/watching/hooks/useImageReveal";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,7 +45,7 @@ function DontMissCard({
   /** Defined when you own it AND the internal id has resolved — opens your fiche directly. */
   onOpenDetail?: () => void;
 }) {
-  const [posterLoaded, setPosterLoaded] = useState(false);
+  const { loaded: imgLoaded, instant: imgInstant, onLoad: onImgLoad, attach: attachImg } = useImageReveal();
   const posterUrl = item.poster_path ? `${TMDB_W500}${item.poster_path}` : null;
   const title  = item.title || item.name;
   const year   = (item.release_date || item.first_air_date)?.slice(0, 4);
@@ -88,7 +90,7 @@ function DontMissCard({
       {/* ── portrait poster — left-anchored, natural 2:3 dimensions. Pulses while
             the image streams (data is instant from the DB cache, posters aren't). ── */}
       <div
-        className={`absolute left-0 top-0 bottom-0 bg-surface-2 ${posterLoaded ? "" : "animate-pulse"}`}
+        className={`absolute left-0 top-0 bottom-0 bg-surface-2 ${imgLoaded ? "" : "animate-pulse"}`}
         style={{ aspectRatio: "2/3" }}
       >
         {/* Only the FIRST card leads the page — it is the one above the fold, and the only one that
@@ -99,12 +101,14 @@ function DontMissCard({
             src={tmdbImageFor(posterUrl, 220) || posterUrl}
             alt={title}
             fill
-            className="object-cover transition-opacity duration-200"
-            style={{ opacity: posterLoaded ? 1 : 0 }}
+            className={cn("object-cover", !imgInstant && "transition-opacity duration-200")}
+            // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
+            style={{ opacity: imgLoaded ? 1 : 0 }}
             sizes="(max-width: 1024px) 45vw, 240px"
             loading={isFirst ? "eager" : "lazy"}
             priority={isFirst}
-            onLoad={() => setPosterLoaded(true)}
+            onLoad={onImgLoad}
+            ref={attachImg}
           />
         )}
       </div>
