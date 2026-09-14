@@ -1034,11 +1034,11 @@ export async function addEpisodeHighlight(payload: {
   episode: number;
   title: string | null;
   still_path: string | null;
-  note?: string | null;
+  air_date: string | null;
+  overview: string | null;
 }): Promise<EpisodeHighlight> {
   const supabase = createClient();
-  // Upsert: an episode may already have a row from a rating — flip highlighted true,
-  // preserving its rating (not in the payload → unchanged on conflict).
+  // Upsert on the natural key — a star pressed twice in a race is one row, not an error.
   const { data, error } = await supabase
     .schema("watching")
     .from("episode_highlights")
@@ -1049,61 +1049,17 @@ export async function addEpisodeHighlight(payload: {
   return data as EpisodeHighlight;
 }
 
-// Unmark a best episode. Keep the row if it still carries a rating, else remove it.
+// Unmark a best episode. A row IS a best episode now (the per-episode rating that once kept an
+// un-starred row alive is gone), so unmarking is deleting.
 export async function removeEpisodeHighlight(id: string): Promise<void> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .schema("watching")
-    .from("episode_highlights")
-    .update({ highlighted: false })
-    .eq("id", id)
-    .select("id, rating")
-    .maybeSingle();
-  if (error) throw error;
-  if (data && (data as { rating: number | null }).rating == null) {
-    await supabase.schema("watching").from("episode_highlights").delete().eq("id", id);
-  }
-}
-
-// Set a per-episode rating (0-10). Upsert: a fresh row is rating-only (highlighted
-// defaults false); on an existing row, keeps its highlighted flag unchanged.
-export async function setEpisodeRating(payload: {
-  media_item_id: string;
-  user_id: string;
-  org_id: string;
-  season: number;
-  episode: number;
-  rating: number;
-  title: string | null;
-  still_path: string | null;
-}): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .schema("watching")
-    .from("episode_highlights")
-    .upsert(payload, { onConflict: "user_id,media_item_id,season,episode" });
+  const { error } = await supabase.schema("watching").from("episode_highlights").delete().eq("id", id);
   if (error) throw error;
 }
 
-// Clear a per-episode rating. Keep the row if it's still a highlight, else remove it.
-export async function clearEpisodeRating(mediaItemId: string, season: number, episode: number): Promise<void> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .schema("watching")
-    .from("episode_highlights")
-    .update({ rating: null })
-    .match({ media_item_id: mediaItemId, season, episode })
-    .select("id, highlighted")
-    .maybeSingle();
-  if (error) throw error;
-  if (data && !(data as { highlighted: boolean }).highlighted) {
-    await supabase.schema("watching").from("episode_highlights").delete().eq("id", (data as { id: string }).id);
-  }
-}
-
-// TMDB — single episode details (title + still)
+// TMDB — single episode details (title, still, air date, synopsis)
 export async function getTmdbEpisode(tmdbId: number, season: number, episode: number) {
-  return tmdbFetch<{ name: string; still_path: string | null; episode_number: number; season_number: number }>(
+  return tmdbFetch<{ name: string; still_path: string | null; air_date: string | null; overview: string | null; episode_number: number; season_number: number }>(
     `tv/${tmdbId}/season/${season}/episode/${episode}`
   );
 }

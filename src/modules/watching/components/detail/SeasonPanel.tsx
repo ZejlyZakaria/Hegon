@@ -183,7 +183,8 @@ export function SeasonPanel({
   const rhythm = nextToAir ? cadence(airedEps) : null;
 
   /* ── Marks ─────────────────────────────────────────────────────────────────────────────── */
-  const { data: marks = [] } = useEpisodeHighlights(media.id);
+  // Read-only (a title you don't own, on discover) → nothing to read: no marks query at all.
+  const { data: marks = [] } = useEpisodeHighlights(readOnly ? "" : media.id);
   const addHighlight = useAddEpisodeHighlight(media.id);
   const removeHighlight = useRemoveEpisodeHighlight(media.id);
   const highlightMap = useMemo(
@@ -201,7 +202,10 @@ export function SeasonPanel({
     }
     try {
       if (existingId) await removeHighlight.mutateAsync(existingId);
-      else await addHighlight.mutateAsync({ tmdbId: media.tmdb_id!, userId: media.user_id, orgId: media.org_id, season: first.season, episode: e.number });
+      else await addHighlight.mutateAsync({
+        tmdbId: media.tmdb_id!, userId: media.user_id, orgId: media.org_id, season: first.season, episode: e.number,
+        meta: { title: e.name, still_path: e.still_path, air_date: e.air_date, overview: e.overview || null },
+      });
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error(err instanceof Error ? err.message : "Failed to update.");

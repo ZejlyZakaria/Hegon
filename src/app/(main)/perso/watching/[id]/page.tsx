@@ -450,7 +450,7 @@ export default function MediaDetailPage() {
           {/* Curation on the page, navigation in the panel: your best episodes across every
               season stay here; the season-by-season catalogue opens from a card above. */}
           {isSeries && media.tmdb_id && (
-            <Episodes media={media} currentSeason={shown.season} readOnly={isUnwatched} cours={view?.cours ?? undefined} mode="best" />
+            <Episodes media={media} readOnly={isUnwatched} cours={view?.cours ?? undefined} />
           )}
 
           {/* A title whose cast we stored renders instantly and never shifts. One we have to ask

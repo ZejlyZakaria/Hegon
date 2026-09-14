@@ -99,9 +99,10 @@ export interface EpisodeHighlight {
   episode: number;
   title: string | null;
   still_path: string | null;
-  note: string | null;
-  rating: number | null;    // per-episode user rating 0-10 (null = unrated)
-  highlighted: boolean;     // "best episode" flag (distinct from rating)
+  /** A photo of the moment you starred it — so the rail can READ the episode without TMDB. */
+  air_date: string | null;
+  overview: string | null;
+  highlighted: boolean;     // "best episode" — the only meaning a row has now (per-episode rating and note dropped 2026-09-14)
   created_at: string;
 }
 

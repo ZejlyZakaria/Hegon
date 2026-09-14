@@ -7,9 +7,15 @@ import {
   getEpisodeHighlights,
   getTmdbEpisode,
   removeEpisodeHighlight,
-  setEpisodeRating,
-  clearEpisodeRating,
 } from "../service";
+
+/** What a star records about the episode — a photo of the moment, so the rail never asks TMDB. */
+export interface EpisodeMeta {
+  title: string | null;
+  still_path: string | null;
+  air_date: string | null;
+  overview: string | null;
+}
 
 const KEYS = {
   byMedia: (mediaItemId: string) => ["watching", "episode-highlights", mediaItemId] as const,
@@ -33,23 +39,31 @@ export function useAddEpisodeHighlight(mediaItemId: string) {
       orgId,
       season,
       episode,
+      meta,
     }: {
       tmdbId: number;
       userId: string;
       orgId: string;
       season: number;
       episode: number;
+      /** The caller already holds the episode (the season panel does) → no TMDB round trip. */
+      meta?: EpisodeMeta;
     }) => {
       if (isDemo) throw new DemoReadOnlyError();
-      let ep: { name: string; still_path: string | null };
-      try {
-        ep = await getTmdbEpisode(tmdbId, season, episode);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "";
-        if (msg.includes("404")) {
-          throw new Error("Episode not found on TMDB. Check the season and episode numbers.");
+      let ep: EpisodeMeta;
+      if (meta) {
+        ep = meta;
+      } else {
+        try {
+          const e = await getTmdbEpisode(tmdbId, season, episode);
+          ep = { title: e.name ?? null, still_path: e.still_path ?? null, air_date: e.air_date ?? null, overview: e.overview ?? null };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "";
+          if (msg.includes("404")) {
+            throw new Error("Episode not found on TMDB. Check the season and episode numbers.");
+          }
+          throw new Error("TMDB unavailable. Try again.");
         }
-        throw new Error("TMDB unavailable. Try again.");
       }
       return addEpisodeHighlight({
         media_item_id: mediaItemId,
@@ -57,50 +71,13 @@ export function useAddEpisodeHighlight(mediaItemId: string) {
         org_id: orgId,
         season,
         episode,
-        title: ep.name ?? null,
-        still_path: ep.still_path ?? null,
+        ...ep,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.byMedia(mediaItemId) });
     },
     onError: handledDemoError,
-  });
-}
-
-export function useSetEpisodeRating(mediaItemId: string) {
-  const queryClient = useQueryClient();
-  const isDemo = useIsDemo();
-  return useMutation({
-    mutationFn: ({ userId, orgId, season, episode, rating, title, still_path }: {
-      userId: string;
-      orgId: string;
-      season: number;
-      episode: number;
-      rating: number | null;
-      title: string | null;
-      still_path: string | null;
-    }) => {
-      if (isDemo) throw new DemoReadOnlyError();
-      if (rating == null) return clearEpisodeRating(mediaItemId, season, episode);
-      return setEpisodeRating({
-        media_item_id: mediaItemId,
-        user_id: userId,
-        org_id: orgId,
-        season,
-        episode,
-        rating,
-        title,
-        still_path,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: KEYS.byMedia(mediaItemId) });
-    },
-    onError: (error) => {
-      if (handledDemoError(error)) return;
-      toast.error("Failed to save rating.");
-    },
   });
 }
 

@@ -39,9 +39,9 @@ import { MediaHero } from "@/modules/watching/components/detail/MediaHero";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { CastCrew, CastCrewSkeleton } from "@/modules/watching/components/detail/CastCrew";
 import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis";
-import { Episodes } from "@/modules/watching/components/detail/Episodes";
+import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
+import { SeasonPanel } from "@/modules/watching/components/detail/SeasonPanel";
 import { useAnimeCours } from "@/modules/watching/hooks/useAnimeCours";
-import { shouldOverlay } from "@/modules/watching/lib/anime-overlay";
 import { AnimeThemes } from "@/modules/watching/components/detail/AnimeThemes";
 import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal";
 import { DetailSkeleton, DiscoverSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
@@ -83,6 +83,11 @@ export default function DiscoverDetailPage() {
   const setPageLabel = useWatchingUIStore((s) => s.setPageLabel);
 
   const [trailerOpen, setTrailerOpen] = useState(false);
+  // The season panel, read-only — the same door as on the owned fiche. Two states on purpose:
+  // closing only flips the flag, so the panel keeps its content through the slide-out.
+  const [panelSeason, setPanelSeason] = useState(1);
+  const [seasonOpen, setSeasonOpen] = useState(false);
+  const openSeason = (s: number) => { setPanelSeason(s); setSeasonOpen(true); };
 
   // ── Already yours? Then this page is the wrong one: the real fiche has your history, your
   //    rating and every action. Send you there instead of showing a stranger's copy.
@@ -128,7 +133,7 @@ export default function DiscoverDetailPage() {
    * a second opinion here is how this module got sick in the first place.
    */
   const { data: coursRow, isLoading: coursLoading } = useAnimeCours(id, mediaType === "anime");
-  const cours = media && shouldOverlay(media, coursRow) ? coursRow.cours : undefined;
+  // (The cours themselves are read through `addView` below — the lens carries them.)
 
   /**
    * ADDING, WITHOUT THE MODAL.
@@ -158,7 +163,7 @@ export default function DiscoverDetailPage() {
           season_episodes: media?.season_episodes ?? null,
           // eslint-disable-next-line no-restricted-syntax -- same: the lens is being built here, it cannot consume its own output.
           season_aired: media?.season_aired ?? null,
-          season_posters: null,
+          season_posters: media?.season_posters ?? null,
           season_end_dates: null,
           current_season: undefined,
           current_episode: undefined,
@@ -170,7 +175,7 @@ export default function DiscoverDetailPage() {
         coursRow,
       ),
     // eslint-disable-next-line no-restricted-syntax -- dependency list of the lens itself; see above.
-    [mediaType, media?.status, media?.season_episodes, media?.season_aired, coursRow],
+    [mediaType, media?.status, media?.season_episodes, media?.season_aired, media?.season_posters, coursRow],
   );
 
   /**
@@ -361,8 +366,29 @@ export default function DiscoverDetailPage() {
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
         {/* ── LEFT — the work itself ── */}
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
-          {isSeries && (
-            <Episodes media={media} currentSeason={1} readOnly cours={cours} />
+          {/* THE SEASONS — the same object as on the owned fiche, read-only: posters and dates on
+              the strip, the catalogue in the panel. It used to be a different browser here (an
+              episode rail with season chips), so a title you don't own was navigated differently
+              from one you do — the double navigation the panel exists to remove. */}
+          {isSeries && addView.seasons.length > 0 && (
+            <SeasonHistoryStrip
+              seasonEpisodes={addView.seasons.map((s) => s.episodes)}
+              seasonAired={addView.seasons.map((s) => s.aired)}
+              currentEpisode={0}
+              seasonPosters={addView.seasons.map((s) => s.poster)}
+              seasonAirDates={addView.overlaid ? undefined : media.season_air_dates}
+              seasonEndDates={addView.seasons.map((s) => s.endDate)}
+              seasonYears={null}
+              seasonRatings={null}
+              showPoster={media.poster_url}
+              releaseYear={media.year ?? null}
+              currentSeason={1}
+              inProgress={false}
+              incomplete
+              unwatched
+              onYearChange={() => {}}
+              onOpenSeason={openSeason}
+            />
           )}
 
           {/* Hold the rail's height while the faces are in flight, so More Like This doesn't get
@@ -396,6 +422,21 @@ export default function DiscoverDetailPage() {
         youtubeKey={trailer?.key}
         title={media.title}
       />
+
+      {isSeries && addView.seasons.length > 0 && (
+        <SeasonPanel
+          open={seasonOpen}
+          onClose={() => setSeasonOpen(false)}
+          media={media}
+          view={addView}
+          season={Math.min(panelSeason, addView.seasons.length)}
+          position={{ season: 1, episode: 0 }}
+          readOnly
+          onYearChange={() => {}}
+          onRatingChange={() => {}}
+          onSetPosition={() => {}}
+        />
+      )}
 
     </div>
   );
