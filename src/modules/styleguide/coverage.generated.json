@@ -335,7 +335,7 @@
       }
     },
     "watching": {
-      "files": 145,
+      "files": 147,
       "uses": [
         "badge",
         "button",

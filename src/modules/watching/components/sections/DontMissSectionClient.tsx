@@ -356,7 +356,11 @@ export default function DontMissSectionClient({ config }: { config: WatchingConf
       {/* Desktop with a mouse: hover-expand accordion. Shown only when ≥lg AND the pointer can
           hover — never on a touch tablet, however wide, where it would be a dead accordion. */}
       <div className="hidden py-1.5 lg:can-hover:block">
-        <div className={`flex gap-4 ${ROW_VARS}`} onMouseLeave={() => setActiveIndex(0)}>
+        {/* NO RESET ON LEAVE. The row is exactly as tall as its cards, so grazing a pixel above or
+            below it used to snap Trending back open — 500 ms of animation nobody asked for, which
+            read as 'the mouse bugged'. The last card you opened stays open until you open another
+            (owner, 2026-09-15); Trending is only the card you land on. */}
+        <div className={`flex gap-4 ${ROW_VARS}`}>
           {items.map((item, i) => (
             <DontMissCard
               key={`${item.id}-${i}`}

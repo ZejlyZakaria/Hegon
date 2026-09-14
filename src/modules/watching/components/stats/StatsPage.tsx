@@ -14,7 +14,9 @@ import { StatsSkeleton } from "../shared/WatchingSkeletons";
 import type { StatsRawItem } from "../../service";
 import { displayTitle } from "../../utils";
 import { WrappedModal } from "./WrappedModal";
-import { computeStats, computeAchievements } from "./computeStats";
+import { computeStats } from "./computeStats";
+import { computeWatchingAchievements, type WatchingAchievement } from "./achievements";
+import { AchievementPanel } from "./AchievementPanel";
 import { HoursBreakdownPanel, type SliceKey } from "./HoursBreakdownPanel";
 import { MediaRow } from "../shared/MediaRow";
 import { AchievementGrid } from "@/shared/components/achievements/AchievementGrid";
@@ -491,11 +493,21 @@ export function StatsPage() {
   );
   // Achievements are ALL-TIME, so the Marathoner tier reads the same total hours the donut shows on
   // "All time" — computed here with year=null rather than the page's selected year.
-  const allTimeHours = useMemo(
-    () => computeStats(data?.items ?? [], data?.rewatches ?? [], null, data?.cours).hours.total,
+  const allTime = useMemo(
+    () => computeStats(data?.items ?? [], data?.rewatches ?? [], null, data?.cours),
     [data],
   );
-  const achievements = useMemo(() => computeAchievements(data?.items ?? [], allTimeHours), [data, allTimeHours]);
+  // The "why" panel: which badge is open. The badge object is kept across the close animation.
+  const [openAchievement, setOpenAchievement] = useState<WatchingAchievement | null>(null);
+  const [achievementOpen, setAchievementOpen] = useState(false);
+  const achievements = useMemo(
+    () => computeWatchingAchievements(
+      data?.items ?? [],
+      allTime.hours.total,
+      [...allTime.breakdown.film, ...allTime.breakdown.serie, ...allTime.breakdown.anime],
+    ),
+    [data, allTime],
+  );
 
   if (!userId || isLoading) return <StatsSkeleton />;
 
@@ -680,7 +692,12 @@ export function StatsPage() {
       </div>
 
       {/* Achievements — all-time, shared UI identical across every HEGON module */}
-      <AchievementGrid achievements={achievements} accent={TEAL} />
+      <AchievementGrid
+        achievements={achievements}
+        accent={TEAL}
+        onSelect={(a) => { setOpenAchievement(a as WatchingAchievement); setAchievementOpen(true); }}
+      />
+      <AchievementPanel a={openAchievement} open={achievementOpen} onClose={() => setAchievementOpen(false)} />
 
     </div>
   );

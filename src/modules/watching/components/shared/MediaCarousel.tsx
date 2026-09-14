@@ -286,7 +286,10 @@ function MovieCard({
             <LoveMark size={12} />
           </span>
         )}
-        <span className="opacity-100 transition-opacity duration-150 ease-out can-hover:opacity-0 can-hover:group-hover:opacity-100">
+        {/* ONE CLOCK. The card scales over 300 ms; the menu used to appear over 150 — two curves on
+            one gesture, and the mark visibly 'arrived' before the card had settled. Same duration,
+            same easing: the menu is part of the card, it moves with it. */}
+        <span className="opacity-100 transition-opacity duration-300 ease-out can-hover:opacity-0 can-hover:group-hover:opacity-100">
           <MediaActionMenu item={item} view={view} onView={onView} onDelete={onDelete} />
         </span>
       </div>

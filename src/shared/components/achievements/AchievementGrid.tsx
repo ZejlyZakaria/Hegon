@@ -23,7 +23,7 @@ import {
 import { cn } from "@/shared/utils/utils";
 import type { Achievement, AchievementIcon } from "./types";
 
-const ICONS: Record<AchievementIcon, LucideIcon> = {
+export const ACHIEVEMENT_ICONS: Record<AchievementIcon, LucideIcon> = {
   flame: Flame,
   medal: Medal,
   trophy: Trophy,
@@ -47,9 +47,14 @@ interface Props {
   accent: string;
   title?: string;
   className?: string;
+  /**
+   * Makes each badge a door. Optional and inert by default — Books and Habits render the same
+   * static wall they always did; Watching opens a "why" panel (its rules can explain themselves).
+   */
+  onSelect?: (a: Achievement) => void;
 }
 
-export function AchievementGrid({ achievements, accent, title = "Achievements", className }: Props) {
+export function AchievementGrid({ achievements, accent, title = "Achievements", className, onSelect }: Props) {
   const unlocked = achievements.filter((a) => a.unlocked).length;
 
   return (
@@ -66,7 +71,7 @@ export function AchievementGrid({ achievements, accent, title = "Achievements", 
           ~175px, so the ladder stops at four there and the tiles keep room to breathe. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {achievements.map((a) => (
-          <AchievementBadge key={a.key} a={a} accent={accent} />
+          <AchievementBadge key={a.key} a={a} accent={accent} onSelect={onSelect} />
         ))}
       </div>
     </div>
@@ -75,15 +80,21 @@ export function AchievementGrid({ achievements, accent, title = "Achievements", 
 
 // One badge — locked (muted, with a progress bar) or unlocked (its colour lit). Depth comes from the
 // SURFACE and a whisper of corner tint, never a coloured glow (HEGON: emphasis is material, not light).
-function AchievementBadge({ a, accent }: { a: Achievement; accent: string }) {
-  const Icon = ICONS[a.icon];
+function AchievementBadge({ a, accent, onSelect }: { a: Achievement; accent: string; onSelect?: (a: Achievement) => void }) {
+  const Icon = ACHIEVEMENT_ICONS[a.icon];
   const c = a.color ?? accent;
+  // A button when it opens something, a div when it doesn't — the same box either way. Depth on
+  // hover comes from the SURFACE (a step up), never from a glow.
+  const Tag = onSelect ? "button" : "div";
 
   return (
-    <div
+    <Tag
+      type={onSelect ? "button" : undefined}
+      onClick={onSelect ? () => onSelect(a) : undefined}
       className={cn(
-        "relative flex h-full flex-col overflow-hidden rounded-card border bg-surface-1 p-3.5",
+        "relative flex h-full w-full flex-col overflow-hidden rounded-card border bg-surface-1 p-3.5 text-left",
         a.unlocked ? "border-transparent" : "border-border-subtle",
+        onSelect && "cursor-pointer transition-colors hover:bg-surface-2",
       )}
       style={a.unlocked ? { boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${c} 45%, transparent)` } : undefined}
     >
@@ -136,6 +147,6 @@ function AchievementBadge({ a, accent }: { a: Achievement; accent: string }) {
           <p className="mt-1 text-[10px] tabular-nums text-text-tertiary">{a.progressLabel}</p>
         </div>
       )}
-    </div>
+    </Tag>
   );
 }
