@@ -163,7 +163,7 @@ jobs:
       # Un watchdog qui ne tourne plus ne prévient personne : règle des 60 jours
       # (GitHub coupe les `schedule` d'un dépôt public sans commit), workflow
       # désactivé par erreur, panne d'Actions. healthchecks.io attend un ping
-      # toutes les 6 h (+1 h de grâce) et alerte sur son ABSENCE. `if: always()`
+      # et alerte sur son ABSENCE. `if: always()`
       # pour que le ping parte même quand le watchdog a trouvé une alerte —
       # dans ce cas `/fail`, et healthchecks relaie aussi.
       - name: Ping healthchecks.io
@@ -179,10 +179,13 @@ jobs:
           # celui de 14:20 à 15:34 (74 min de retard). Les `schedule` ne sont pas garantis à
           # l'heure. Un run à l'heure suivi d'un run en retard dépasse 7 h ⇒ faux « down »
           # avec 1 h de grâce. 6 h + 3 h = 9 h de silence toléré avant l'alerte.
-          # ⚠️ `timeout` et `grace` ne s'appliquent qu'à la CRÉATION du check (`create=1`).
-          # Le check `hegon-watchdog` existe déjà avec grace=1 h : la valeur ci-dessous ne
-          # le modifie PAS — il faut la changer à la main dans healthchecks.io (Grace Time).
-          # Sinon cette ligne est décorative — « afficher n'est pas vérifier », encore.
-          curl -fsS -m 10 --retry 5 -o /dev/null "$url?create=1&timeout=21600&grace=10800" \
+          # ⚠️ RÉGLAGE MANUEL OBLIGATOIRE, UNE FOIS — healthchecks.io → check
+          # `hegon-watchdog` → Period = 6 HOURS, Grace = 3 HOURS.
+          # Doc healthchecks : « It is currently not possible to specify a custom period,
+          # grace time, or other parameters through the ping URL. » Un check auto-créé naît
+          # avec Period 1 jour / Grace 1 h ; `timeout=…&grace=…` dans l'URL était décoratif
+          # (retiré le 2026-09-14, après le faux « down » du check backup). Avec la période
+          # par défaut (1 jour) un watchdog mort ne serait signalé qu'après 25 h au lieu de 9.
+          curl -fsS -m 10 --retry 5 -o /dev/null "$url?create=1" \
             && echo "✅ Ping envoyé ($STATUS)." \
             || echo "::warning::Le ping healthchecks.io a échoué — le témoin externe alertera de lui-même."

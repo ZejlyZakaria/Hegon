@@ -31,6 +31,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Cliquet R10 : une migration versionnée sans mise à jour de la référence du schéma
+      # (`supabase/checks/expected-objects.json`, champ `_migrations_through`) = rouge ici,
+      # avant que le watchdog ne crie DÉRIVE pour une dérive qui n'en est pas une (vécu 14/09).
+      - name: Schema reference follows migrations
+        run: node scripts/check-schema-reference.mjs
       - name: Typecheck
         run: npx tsc --noEmit
 

@@ -336,11 +336,21 @@ jobs:
       # Tout ce qui précède ne prévient que si le job TOURNE. La règle des 60
       # jours (GitHub coupe les `schedule` d'un dépôt public sans commit), un
       # workflow désactivé par erreur, une panne d'Actions : aucun run, aucun
-      # échec, aucun mail. healthchecks.io attend un ping toutes les 7 jours
-      # (+1 jour de grâce) et alerte sur son ABSENCE — c'est un observateur
-      # qui ne dépend pas de ce qu'il observe. `?create=1` crée le check au
-      # premier ping ; `/fail` signale un run raté ; `if: always()` pour que le
-      # ping parte même si une étape a échoué.
+      # échec, aucun mail. healthchecks.io attend un ping et alerte sur son
+      # ABSENCE — c'est un observateur qui ne dépend pas de ce qu'il observe.
+      # `?create=1` crée le check au premier ping ; `/fail` signale un run raté ;
+      # `if: always()` pour que le ping parte même si une étape a échoué.
+      #
+      # ⚠️ RÉGLAGE MANUEL OBLIGATOIRE, UNE FOIS — healthchecks.io → check
+      # `hegon-backup` → Period = 1 WEEK, Grace = 1 DAY.
+      # La doc est sans ambiguïté : « It is currently not possible to specify a
+      # custom period, grace time, or other parameters through the ping URL. »
+      # Un check auto-créé naît avec Period 1 jour / Grace 1 h. La première
+      # version de ce fichier passait `timeout=604800&grace=86400` dans l'URL :
+      # décoratif — et le lundi 2026-09-14 à 11:31 le check est passé « down »
+      # 25 h après le ping du dimanche, pour un job HEBDOMADAIRE en parfaite
+      # santé. Faux positif garanti chaque semaine tant que la période n'est
+      # pas réglée à la main. « Afficher n'est pas vérifier », version n°6.
       - name: Ping healthchecks.io
         if: always()
         env:
@@ -350,6 +360,6 @@ jobs:
           [ -n "$PING_KEY" ] || exit 0   # déjà signalé en rouge à l'étape 1
           url="https://hc-ping.com/$PING_KEY/hegon-backup"
           [ "$STATUS" = "success" ] || url="$url/fail"
-          curl -fsS -m 10 --retry 5 -o /dev/null "$url?create=1&timeout=604800&grace=86400" \
+          curl -fsS -m 10 --retry 5 -o /dev/null "$url?create=1" \
             && echo "✅ Ping envoyé ($STATUS)." \
             || echo "::warning::Le ping healthchecks.io a échoué — le témoin externe alertera de lui-même."

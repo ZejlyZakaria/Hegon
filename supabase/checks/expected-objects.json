@@ -25,12 +25,21 @@
     "Repères connus (relevés le 2026-09-06 pendant le test de restauration, et",
     "confirmés par le baseline pour tables/policies/fonctions) : 68 / 206 / 35 / ~250 / 15.",
     "L'écart sur les index (138 `create index` dans le baseline) vient des index",
-    "implicites de clés primaires et de contraintes unique — voir schema-drift.sql."
+    "implicites de clés primaires et de contraintes unique — voir schema-drift.sql.",
+    "",
+    "✅ MIS À JOUR le 2026-09-14 — deux migrations versionnées de Watching v4 :",
+    "20260914000000 (episode_highlights : +air_date +overview −rating −note) et",
+    "20260914000100 (watching.for_you_dismissals : 5 colonnes, PK, 4 policies ; for_you_cache",
+    "+seen_ids). Réconcilié au chiffre près : tables +1, colonnes +2−2+5+1 = +6, policies +4,",
+    "index +1 (la PK). Le watchdog du 14/09 06:20 avait crié DÉRIVE sur 4 lignes : le schéma était",
+    "juste, c'est cette référence qui avait pris du retard. D'où `_migrations_through` et",
+    "scripts/check-schema-reference.mjs en CI : une migration plus récente que ce champ = rouge."
   ],
-  "tables": 68,
-  "colonnes": 684,
-  "policies": 206,
+  "_migrations_through": "20260914000100",
+  "tables": 69,
+  "colonnes": 690,
+  "policies": 210,
   "fonctions": 35,
-  "index": 250,
+  "index": 251,
   "crons": 15
 }
