@@ -30,6 +30,7 @@ import { CaptureSheet } from "@/modules/watching/components/shared/CaptureSheet"
 import { DROP_REASONS } from "@/modules/watching/lib/drop-reasons";
 import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
 import { Episodes } from "@/modules/watching/components/detail/Episodes";
+import { SeasonPanel } from "@/modules/watching/components/detail/SeasonPanel";
 import { useMediaView } from "@/modules/watching/hooks/useMediaView";
 import { yearsPatch, type StatusPatch } from "@/modules/watching/lib/watch-status";
 import type { WatchingMedia } from "@/modules/watching/types";
@@ -114,6 +115,12 @@ export default function MediaDetailPage() {
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [imagesOpen, setImagesOpen] = useState(false);
   const [dropSheetOpen, setDropSheetOpen] = useState(false);
+  // THE SEASON PANEL — one panel for every season card. The season and the open flag are two
+  // states on purpose: closing only flips the flag, so the panel keeps its content through the
+  // slide-out instead of blanking the moment you click away.
+  const [panelSeason, setPanelSeason] = useState(1);
+  const [seasonOpen, setSeasonOpen] = useState(false);
+  const openSeason = (s: number) => { setPanelSeason(s); setSeasonOpen(true); };
 
   // "More Like This" — drop titles already in the library (like For You), then
   // keep 6. Over-fetched upstream so this still yields 6 addable recommendations.
@@ -257,11 +264,17 @@ export default function MediaDetailPage() {
     }
   };
 
-  const handleRatingsChange = async (next: Record<string, number>) => {
+  // One season, one year — the panel's edit. Same column choice as the strip's "Set all year",
+  // made by the lens; `yearsPatch` moves `watched_at` along with it exactly as before.
+  const handleSeasonYear = async (season: number, year: number) => {
+    if (!view) return;
+    await handleYearsChange({ ...(view.yearMap ?? {}), [String(season)]: year });
+  };
+
+  const handleSeasonRating = async (season: number, value: number | null) => {
     if (!media || !view) return;
     try {
-      const key = view.overlaid ? "cour_ratings" : "season_ratings";
-      await updateMedia.mutateAsync({ id: media.id, [key]: next });
+      await updateMedia.mutateAsync({ id: media.id, ...view.writeRating(season, value) });
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
@@ -407,7 +420,11 @@ export default function MediaDetailPage() {
           {/* Left = you & the work: verdict → memory → progress → catalogue (people, recos) */}
           <MyTake media={media} forceNoteOpen={forceTakeOpen} />
 
-          {isSeries && (view?.seasons.length ?? 0) > 1 && (media.in_progress || media.watched || media.paused || media.dropped) && (
+          {/* THE SEASONS — every series gets the strip, one season or twenty, started or not. It
+              used to be "Watch History" and hid itself on a title you hadn't engaged with, which
+              left an unwatched series with no door to its episodes once the catalogue moved into
+              the season panel. The strip is the object; the history is laid over it when it exists. */}
+          {isSeries && view && view.seasons.length > 0 && (
             <SeasonHistoryStrip
               seasonEpisodes={view?.seasons.map((s) => s.episodes) ?? []}
               seasonAired={view?.seasons.map((s) => s.aired)}
@@ -416,21 +433,24 @@ export default function MediaDetailPage() {
               seasonAirDates={view?.overlaid ? undefined : media.season_air_dates}
               seasonEndDates={view?.seasons.map((s) => s.endDate)}
               seasonYears={view?.yearMap}
-              seasonRatings={view?.ratingMap}
+              // ONE SEASON, ONE VERDICT: a single-season title's rating is the one you gave it in
+              // My Take — the card shows that, and the panel offers no second control.
+              seasonRatings={view && view.seasons.length === 1 ? (media.user_rating ? { "1": media.user_rating } : null) : view?.ratingMap}
               showPoster={media.poster_url}
               releaseYear={media.year ?? null}
               currentSeason={shown.season}
               inProgress={media.in_progress}
               incomplete={!media.watched}
+              unwatched={isUnwatched}
               onYearChange={handleYearsChange}
-              onRatingChange={handleRatingsChange}
-              onSetPosition={handleSetPosition}
+              onOpenSeason={openSeason}
             />
           )}
 
-          {/* want_to_watch: read-only (catalogue scope — no rating/best-ep on unwatched episodes) */}
+          {/* Curation on the page, navigation in the panel: your best episodes across every
+              season stay here; the season-by-season catalogue opens from a card above. */}
           {isSeries && media.tmdb_id && (
-            <Episodes media={media} currentSeason={shown.season} readOnly={isUnwatched} cours={view?.cours ?? undefined} />
+            <Episodes media={media} currentSeason={shown.season} readOnly={isUnwatched} cours={view?.cours ?? undefined} mode="best" />
           )}
 
           {/* A title whose cast we stored renders instantly and never shifts. One we have to ask
@@ -497,6 +517,21 @@ export default function MediaDetailPage() {
           <ImageGallery media={media} />
         </div>
       </SlidingPanel>
+
+      {isSeries && view && (
+        <SeasonPanel
+          open={seasonOpen}
+          onClose={() => setSeasonOpen(false)}
+          media={media}
+          view={view}
+          season={Math.min(panelSeason, Math.max(1, view.seasons.length))}
+          position={shown}
+          readOnly={isUnwatched}
+          onYearChange={handleSeasonYear}
+          onRatingChange={handleSeasonRating}
+          onSetPosition={handleSetPosition}
+        />
+      )}
 
       <CaptureSheet
         open={dropSheetOpen}

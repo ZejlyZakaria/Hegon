@@ -7,6 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { cn } from "@/shared/utils/utils";
 import { isEpisodeActionable } from "../../lib/series-state";
+import { flatToCour } from "../../lib/anime-overlay";
 import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
@@ -114,6 +115,9 @@ function airLabel(d: string): { lead: string; sub: string | null } {
 }
 const MAX_HIGHLIGHTS = 20;
 const TMDB_STILL = "https://image.tmdb.org/t/p/w300";
+// What the CARD shows. A rail card is 264 px wide — 528 physical on a retina screen — so the
+// `w300` the hook builds is visibly soft. The stored path is size-free; the size is the surface's.
+const TMDB_STILL_CARD = "https://image.tmdb.org/t/p/w500";
 // Heatmap is hidden until we ingest complete IMDb ratings (OMDb data is patchy —
 // e.g. GoT S5E3 has no rating there). Flip to re-enable once that lands.
 const HEATMAP_ENABLED = false;
@@ -330,7 +334,16 @@ function StillCard({
   );
 }
 
-export function Episodes({ media, currentSeason, readOnly = false, cours }: { media: WatchingMedia; currentSeason?: number; readOnly?: boolean; cours?: AnimeCour[] }) {
+/**
+ * TWO SURFACES, ONE COMPONENT.
+ *   · "browse" — the catalogue: every season, every episode, All/Highlights. The discover page,
+ *     where there is no row to open a season panel from.
+ *   · "best"   — the fiche: YOUR best episodes across every season, and nothing else. The
+ *     catalogue lives in the season panel now (open a card on the Seasons strip), so this rail
+ *     never asks TMDB for a season on mount — the fiche got a request lighter.
+ */
+export function Episodes({ media, currentSeason, readOnly = false, cours, mode = "browse" }: { media: WatchingMedia; currentSeason?: number; readOnly?: boolean; cours?: AnimeCour[]; mode?: "browse" | "best" }) {
+  const bestOnly = mode === "best";
   // Anime v2: seasons are AniList cours. TMDB has one flat season, so we always FETCH season 1 and
   // slice it by the selected cour's flat episode range. Marks stay in TMDB coordinates (season 1 +
   // the flat episode number); only the displayed episode number is per-cour.
@@ -341,7 +354,7 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
   // to build a lens from.
   // eslint-disable-next-line no-restricted-syntax -- no-overlay branch, where TMDB seasons are the display seasons.
   const seasonCount = overlayOn ? cours!.length : (media.season_episodes?.length ?? media.seasons ?? 1);
-  const [view, setView] = useState<View>("all");
+  const [view, setView] = useState<View>(bestOnly ? "highlights" : "all");
   const [season, setSeason] = useState(
     currentSeason && currentSeason <= seasonCount ? currentSeason : 1,
   );
@@ -443,6 +456,11 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
   };
 
   if (!media.tmdb_id || seasonCount < 1) return null;
+  // Nothing to curate on a title you have not watched.
+  if (bestOnly && readOnly) return null;
+  // No best episodes yet → no section. An empty rail with a hint is chrome around nothing; the
+  // star lives in the season panel, and the rail appears the first time you use it.
+  if (bestOnly && highlightRows.length === 0) return null;
 
   const scroll = (dir: number) => scrollRef.current?.scrollBy({ left: dir * 560, behavior: "smooth" });
   // Keep the header's scroll arrows STABLE while a season loads. Mid-fetch `episodes` is [], which
@@ -456,11 +474,11 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
   return (
     <section>
       <SectionHeader
-        title="Episodes"
+        title={bestOnly ? "Best Episodes" : "Episodes"}
         actions={
           <>
             {/* No All/Highlights toggle when read-only — there are no highlights on an unwatched title */}
-            {!readOnly && (
+            {!readOnly && !bestOnly && (
               <SegmentedControl<View>
                 size="sm"
                 value={view}
@@ -535,7 +553,7 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
               return (
               <StillCard
                 key={ep.number}
-                still={ep.still_url}
+                still={ep.still_path ? `${TMDB_STILL_CARD}${ep.still_path}` : null}
                 // The full coordinate, IMDb-style, plus WHEN it aired — the eyebrow used to say only
                 // "Episode 4", which tells you nothing you can act on. `season` is display space (a
                 // cour number under the overlay) and `dispNum` is per-cour, so this reads "S2.E5" on
@@ -580,8 +598,12 @@ export function Episodes({ media, currentSeason, readOnly = false, cours }: { me
             {highlightRows.map((h) => (
               <StillCard
                 key={h.id}
-                still={h.still_path ? `${TMDB_STILL}${h.still_path}` : null}
-                line1={`S${h.season}.E${h.episode}`}
+                still={h.still_path ? `${TMDB_STILL_CARD}${h.still_path}` : null}
+                // A mark is stored in TMDB coordinates — under the overlay that is season 1 and a
+                // FLAT episode number, which is not what anyone says out loud ("S1.E48" for the
+                // first episode of JJK's third cour). The lens for this rail is the cours it was
+                // handed: TMDB's single flat season → the cour and the number within it.
+                line1={overlayOn ? (({ season, episode }) => `S${season}.E${episode}`)(flatToCour(h.episode, cours!)) : `S${h.season}.E${h.episode}`}
                 line2={h.title ?? `Episode ${h.episode}`}
                 highlighted
                 rating={ratingMap.get(`${h.season}-${h.episode}`) ?? null}

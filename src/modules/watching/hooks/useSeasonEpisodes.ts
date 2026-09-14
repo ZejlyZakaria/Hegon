@@ -8,6 +8,8 @@ export interface EpisodeInfo {
   number: number;
   name: string;
   still_url: string | null;
+  /** The bare TMDB path — a surface that needs another size (the season panel: w500) builds its own url. */
+  still_path: string | null;
   rating: number | null; // TMDB vote_average
   overview: string;
   air_date: string | null;
@@ -18,6 +20,7 @@ function mapEpisodes(data: any): EpisodeInfo[] {
     number: e.episode_number,
     name: e.name || `Episode ${e.episode_number}`,
     still_url: e.still_path ? `https://image.tmdb.org/t/p/w300${e.still_path}` : null,
+    still_path: e.still_path ?? null,
     rating: e.vote_average && e.vote_average > 0 ? e.vote_average : null,
     overview: e.overview ?? "",
     air_date: e.air_date ?? null,
