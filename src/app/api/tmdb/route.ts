@@ -84,8 +84,24 @@ export async function GET(request: NextRequest) {
 
   const url = `${TMDB_BASE}/${endpoint}?${params.toString()}`;
 
+  /**
+   * A SEASON IS LIVE DATA — DO NOT SERVE IT FROM A SNAPSHOT.
+   *
+   * The Data Cache is stale-while-revalidate: an expired entry is served ONE more time while it
+   * regenerates in the background. Fine for a film's details. Wrong for `season/N`: TMDB fills a
+   * season over days AFTER it airs (stills, synopses, even titles arrive late), so a snapshot taken
+   * before release is a list of "Episode 1 · 3 Sept" placeholders — and that is exactly what the
+   * season panel showed on its first open after a release (The Gentlemen S2, Bleach S2 on
+   * 2026-09-14), with the real data only on the refresh. Same cache, same fault in production.
+   *
+   * So the season endpoint skips the server cache entirely. The client still holds it for 30
+   * minutes (useSeasonEpisodes), which is what shields the TMDB quota; the server no longer holds a
+   * photo it cannot know is stale.
+   */
+  const live = /\/season\/\d+$/.test(endpoint);
+
   try {
-    const res = await fetch(url, { next: { revalidate: 3600 } });
+    const res = await fetch(url, live ? { cache: "no-store" } : { next: { revalidate: 3600 } });
     if (!res.ok) {
       return NextResponse.json({ error: `TMDB error: ${res.status}` }, { status: res.status });
     }
@@ -101,7 +117,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(data);
+    // Says which branch answered — readable in DevTools, in prod too, so "is this a snapshot?"
+    // has an answer that isn't a guess.
+    return NextResponse.json(data, { headers: { "x-tmdb-cache": live ? "no-store" : "revalidate-3600" } });
   } catch {
     return NextResponse.json({ error: "Failed to fetch TMDB" }, { status: 500 });
   }
