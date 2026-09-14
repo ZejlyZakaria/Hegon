@@ -24,50 +24,6 @@ import type { WatchingMedia, AnimeCour, EpisodeHighlight } from "../../types";
  * (decisions.md 2026-09-14): a card has ONE affordance, the star, and it toggles.
  */
 
-/**
- * THE WHOLE CARD, NOT JUST ITS PICTURE.
- *
- * A skeleton that reserves the still and nothing else, while a real card is still PLUS number,
- * title and a two-line overview, stands short and grows the moment the episodes land — shoving
- * whatever sits below down the page, under the reader's eye. A placeholder that is not the size
- * of what it replaces does not prevent the jump; it schedules it.
- *
- * Exported so the full-page skeletons (`DetailSkeleton`, `DiscoverSkeleton`) hold this exact
- * shape too. Mirrors StillCard's own markup below (mt-2, the three lines) so the two cannot drift.
- */
-export function EpisodeCardsSkeleton({ n = 5 }: { n?: number }) {
-  // `py-2` reserves room for the hover scale on the VERTICAL axis; the negative margin cancels the
-  // edge padding so the row still bleeds where it did, and a card growing ~4px sideways is not
-  // clipped by its own `overflow-x-auto`.
-  return (
-    <div className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5">
-      {Array.from({ length: n }).map((_, i) => (
-        <div key={i} className="w-66 shrink-0">
-          <div className="aspect-video w-full animate-pulse rounded-card bg-surface-2" />
-          {/* Each <p> keeps the REAL typography class, so the block takes its height from the same
-              line-heights as the text it replaces. A line of 11px text only INKS about a third of
-              its line box, so the bar is shorter than its line and centred in it. The title's bar
-              is 10px, the quiet caption and overview 8px — hierarchy rides the same property as
-              real ink. Two overview bars, the second half-width, because the real one is clamped
-              to two lines and a paragraph's last line stops early. */}
-          <div className="mt-2">
-            <p className="mb-0.5 text-micro font-medium">
-              <span className="inline-block h-2 w-16 animate-pulse rounded-full bg-surface-2 align-middle" />
-            </p>
-            <p className="text-xs font-semibold">
-              <span className="inline-block h-2.5 w-2/3 animate-pulse rounded-full bg-surface-2 align-middle" />
-            </p>
-            <p className="mt-1 text-micro leading-relaxed">
-              <span className="inline-block h-2 w-full animate-pulse rounded-full bg-surface-2 align-middle" />
-              <span className="inline-block h-2 w-1/2 animate-pulse rounded-full bg-surface-2 align-middle" />
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 const GOLD = "var(--color-gold)";
 // A rail card is 264 px wide — 528 physical on a retina screen; `w300` was visibly soft.
 const TMDB_STILL = "https://image.tmdb.org/t/p/w500";

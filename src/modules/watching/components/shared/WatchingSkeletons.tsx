@@ -5,16 +5,16 @@
 // list rows — stay local to that component on purpose: they're layout-coupled,
 // not reusable skeletons.)
 //
-// Cast & Crew and Episodes are NOT redrawn here. Both already have a correct, measured
-// skeleton living next to the real component that mounts once the row resolves
-// (`CastCrewSkeleton`, `EpisodeCardsSkeleton`). A second, hand-guessed version here was the
-// actual bug: it drew a rectangle-grid poster placeholder for Cast (circles, in a scrolling
-// rail — not a grid) and a bare image tile for Episodes (missing the number/title/overview
-// block under it). The page didn't just resize when the real ones mounted, it changed shape —
-// which is the "something appears, then something else" fault, not a sizing rounding error.
+// Cast & Crew is NOT redrawn here: it already has a correct, measured skeleton living next to
+// the real component that mounts once the row resolves (`CastCrewSkeleton`). A second,
+// hand-guessed version here was the actual bug: it drew a rectangle-grid poster placeholder for
+// Cast (circles, in a scrolling rail — not a grid). The page didn't just resize when the real one
+// mounted, it changed shape — the "something appears, then something else" fault, not a sizing
+// rounding error. (Episodes used to have the same arrangement; since 2026-09-14 the episode
+// catalogue lives in the season panel and the page rail — Best Episodes — is data-dependent, so
+// it is not drawn at all: see `DetailSkeleton`.)
 import { CastCrewSkeleton } from "../detail/CastCrew";
 import { ROW_VARS } from "../../lib/dont-miss-layout";
-import { EpisodeCardsSkeleton } from "../detail/Episodes";
 
 function Pulse({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-control bg-surface-2 ${className}`} />;
@@ -321,7 +321,7 @@ function HeroSkeleton() {
 }
 
 /**
- * Watch History's shape, measured off the real `SeasonHistoryStrip`: a horizontal rail that
+ * Seasons' shape (it was "Watch History"), measured off the real `SeasonHistoryStrip`: a horizontal rail that
  * NEVER wraps, at any breakpoint — `w-(--rail-peek) shrink-0 sm:w-(--poster-lg)`, same container
  * classes as the real strip. Its "S1" / year label lives baked INTO the artwork (a bottom mask),
  * not printed below it, so — unlike a poster grid tile — there is no caption row to reserve.
@@ -331,7 +331,7 @@ function HeroSkeleton() {
  * page shows one row of ~2.4 cards trailing off the right edge — a different shape, not just a
  * placeholder waiting to be resized.
  */
-function WatchHistorySkeleton({ w, n }: { w: string; n: number }) {
+function SeasonsSkeleton({ w, n }: { w: string; n: number }) {
   return (
     <div>
       <div className={`mb-3 h-4 animate-pulse rounded bg-surface-2 ${w}`} />
@@ -351,7 +351,7 @@ function WatchHistorySkeleton({ w, n }: { w: string; n: number }) {
  * More Like This's shape, measured off the real component: a poster rail that SCROLLS on mobile
  * (`w-(--rail-peek)`, one row) and becomes a CSS grid from `sm:` up (`sm:grid-cols-4 lg:grid-cols-6`)
  * — container and item classes copied verbatim from `MoreLikeThis.tsx` so the two cannot drift.
- * Unlike Watch History, the title + year print BELOW the artwork here, so each tile reserves that
+ * Unlike Seasons, the title + year print BELOW the artwork here, so each tile reserves that
  * two-line caption too (measured: without it the block stood ~55px short per row).
  */
 function MoreLikeThisSkeleton({ w, n }: { w: string; n: number }) {
@@ -367,25 +367,6 @@ function MoreLikeThisSkeleton({ w, n }: { w: string; n: number }) {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-/**
- * Episodes' shape: a heading, then the real `EpisodeCardsSkeleton` (still + number + title +
- * two-line overview) — the SAME cards `Episodes.tsx` shows for its own `isLoading` state, so the
- * page never swaps a bare image tile for a fuller card the instant that component mounts.
- *
- * ⚠️ Known gap, not silently absorbed: the real section also shows a row of season chips (S1 S2
- * S3…) between the heading and the cards, and this can't reserve that row — season COUNT isn't
- * known until the title itself loads. That costs a small (~30-50px), one-time settle once the row
- * lands; the alternative (guessing a season count) would be wrong at least as often as it's right.
- */
-function EpisodesSectionSkeleton({ n = 4 }: { n?: number }) {
-  return (
-    <div>
-      <div className="mb-3 h-4 w-24 animate-pulse rounded bg-surface-2" />
-      <EpisodeCardsSkeleton n={n} />
     </div>
   );
 }
@@ -483,12 +464,10 @@ function MyTakeSkeleton() {
  * is the exact fault we are removing), the type-specific rails are simply ABSENT until we know. They
  * then appear BELOW what you are already reading, which shifts nothing above them.
  *
- * ⚠️ Known, accepted gap: on a SERIES this still means two whole rails (Watch History, Episodes)
- * insert themselves between My Take and Cast & Crew the moment the row resolves — a real shift,
- * not a rounding error. Defaulting to "it's a series" instead was considered and rejected: Watch
- * History alone needs multiple seasons AND an in-progress/watched/paused/dropped status to show at
- * all, so guessing it would be wrong for plenty of real series too (any freshly-added or single-
- * season one). In practice this mostly hits a cold/direct load — `usePrefetchMedia` warms the row
+ * ⚠️ Known, accepted gap: on a SERIES this still means the Seasons rail inserts itself between My
+ * Take and Cast & Crew the moment the row resolves — a real shift, not a rounding error. Defaulting
+ * to "it's a series" instead was considered and rejected: a wrong guess on a film costs the same
+ * shift in the other direction. In practice this mostly hits a cold/direct load — `usePrefetchMedia` warms the row
  * on hover before the click lands, so most navigations never sit on this skeleton long enough to
  * notice. Fixing it for real means knowing the type before the row does (e.g. carrying it from
  * wherever the click came from) — a data-flow change, not a drawing one, and out of this pass.
@@ -504,9 +483,11 @@ export function DetailSkeleton({ isSeries }: { isSeries?: boolean } = {}) {
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
           <MyTakeSkeleton />
 
-          {/* Only a series has a Watch History and an Episodes rail. */}
-          {isSeries && <WatchHistorySkeleton w="w-32" n={6} />}
-          {isSeries && <EpisodesSectionSkeleton />}
+          {/* Only a series has a Seasons rail — and EVERY series has one now (one season, never
+              watched: still a strip). Best Episodes is NOT drawn: it exists only when you have
+              starred something, which the skeleton cannot know, and a rail promised to half the
+              series would be a re-layout wearing a placeholder's clothes for the other half. */}
+          {isSeries && <SeasonsSkeleton w="w-20" n={6} />}
           <CastCrewSkeleton />
           <MoreLikeThisSkeleton w="w-36" n={6} />
         </div>
@@ -518,7 +499,7 @@ export function DetailSkeleton({ isSeries }: { isSeries?: boolean } = {}) {
               it unconditionally here (found by screenshotting an owned FILM, not a series) meant a
               whole extra panel appeared for every film's skeleton and then had to vanish the moment
               the row confirmed it was a film — inventing a shift the real page never has. Same
-              `isSeries &&` gate as Watch History/Episodes on the left, same reason. */}
+              `isSeries &&` gate as Seasons on the left, same reason. */}
           {isSeries && <DetailRowsSkeleton titleW="w-24" rows={6} />}
           <DetailRowsSkeleton titleW="w-16" rows={7} withBadge withAwards />
           <div>
@@ -539,7 +520,7 @@ export function DetailSkeleton({ isSeries }: { isSeries?: boolean } = {}) {
  * no history, no status card. Reusing `DetailSkeleton` here promised four panels that never arrive.
  *
  * ⚠️ THE ORDER FLIPS WITH THE TYPE, and that is the whole reason this takes a parameter: a series
- * leads with its Episodes rail (16:9 stills), a film leads with Cast & Crew (round faces). Drawing
+ * leads with its Seasons rail (2:3 posters), a film leads with Cast & Crew (round faces). Drawing
  * one and delivering the other is a re-layout wearing a placeholder's clothes.
  *
  * Unlike the owned fiche, the type is KNOWN here — it is in the route (`/discover/[type]/[tmdbId]`),
@@ -547,7 +528,7 @@ export function DetailSkeleton({ isSeries }: { isSeries?: boolean } = {}) {
  */
 export function DiscoverSkeleton({ isSeries, isAnime = false }: { isSeries: boolean; isAnime?: boolean }) {
   const cast = <CastCrewSkeleton />;
-  const episodes = <EpisodesSectionSkeleton />;
+  const seasons = <SeasonsSkeleton w="w-20" n={6} />;
 
   return (
     <div className="min-h-screen bg-surface-0">
@@ -555,7 +536,7 @@ export function DiscoverSkeleton({ isSeries, isAnime = false }: { isSeries: bool
 
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
-          {isSeries ? episodes : cast}
+          {isSeries ? seasons : cast}
           {isSeries ? cast : null}
           <MoreLikeThisSkeleton w="w-36" n={6} />
         </div>
