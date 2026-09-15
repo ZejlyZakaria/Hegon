@@ -92,48 +92,69 @@ serve(async (req) => {
 });
 
 /**
- * Fill `poster_path` + `work_year` from TMDB for every (work_type, work_tmdb_id) still missing
- * one, a few at a time, until the time budget is spent. One TMDB call per WORK (not per row):
- * a film nominated in six categories is fetched once and patched everywhere.
+ * Fill from TMDB what Wikidata cannot give: `poster_path` + `work_year` for every work, and
+ * `person_profile_path` for every credited person — a few at a time, until the time budget is
+ * spent. One TMDB call per WORK / per PERSON (not per row): a film nominated in six categories is
+ * fetched once and patched everywhere.
  */
 async function enrichPosters(url: string, readHeaders: Record<string, string>, writeHeaders: Record<string, string>, startedAt: number) {
   const TMDB_KEY = Deno.env.get("TMDB_API_KEY");
   if (!TMDB_KEY) return { skipped: "no TMDB_API_KEY" };
+
   // ⚠️ PostgREST caps a response at 1 000 rows whatever `limit` says — the first version asked for
   // 3 000, got 1 000 lines (~300 works, one line per credit), reported "remaining 0" against that
   // window, and left 11 000 rows without a poster. Page with Range until a short page.
-  const byWork = new Map<string, { work_type: "film" | "serie"; work_tmdb_id: number }>();
-  for (let from = 0; ; from += 1000) {
-    const res = await fetchWithRetry(`${url}/rest/v1/awards?select=work_type,work_tmdb_id&poster_path=is.null&order=year.desc`, { headers: { ...readHeaders, Range: `${from}-${from + 999}` } });
-    if (!res.ok && res.status !== 416) return { error: `missing-posters fetch failed: ${res.status}` };
-    const rows: { work_type: "film" | "serie"; work_tmdb_id: number }[] = res.ok ? await res.json() : [];
-    for (const r of rows) byWork.set(`${r.work_type}:${r.work_tmdb_id}`, r);
-    if (rows.length < 1000) break;
-  }
-  const works = [...byWork.values()];
-  let done = 0, gone = 0;
-  const CONCURRENCY = 6;
-  let i = 0;
-  const worker = async () => {
-    while (i < works.length && Date.now() - startedAt < ENRICH_BUDGET_MS) {
-      const w = works[i++];
-      const path = w.work_type === "film" ? `movie/${w.work_tmdb_id}` : `tv/${w.work_tmdb_id}`;
-      const r = await fetch(`${TMDB}/${path}?api_key=${TMDB_KEY}`);
-      // A TMDB id Wikidata holds can be dead (merged, deleted): a 404 is stamped "" so we stop
-      // asking. Anything else (429, 5xx) is NOT a verdict — leave it null for the next run.
-      if (!r.ok && r.status !== 404) continue;
-      const d = r.ok ? await r.json() : null;
-      const poster = d?.poster_path ?? "";
-      const date = d?.release_date ?? d?.first_air_date ?? null;
-      const year = date ? Number(String(date).slice(0, 4)) || null : null;
-      if (!d) gone++;
-      const up = await fetchWithRetry(
-        `${url}/rest/v1/awards?work_type=eq.${w.work_type}&work_tmdb_id=eq.${w.work_tmdb_id}`,
-        { method: "PATCH", headers: { ...writeHeaders, Prefer: "return=minimal" }, body: JSON.stringify({ poster_path: poster, work_year: year }) },
-      );
-      if (up.ok) done++;
+  const listMissing = async <T extends Record<string, unknown>>(query: string, keyOf: (r: T) => string): Promise<T[]> => {
+    const by = new Map<string, T>();
+    for (let from = 0; ; from += 1000) {
+      const res = await fetchWithRetry(`${url}/rest/v1/awards?${query}`, { headers: { ...readHeaders, Range: `${from}-${from + 999}` } });
+      if (!res.ok && res.status !== 416) throw new Error(`missing list failed: ${res.status}`);
+      const rows: T[] = res.ok ? await res.json() : [];
+      for (const r of rows) by.set(keyOf(r), r);
+      if (rows.length < 1000) break;
     }
+    return [...by.values()];
   };
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-  return { works: works.length, done, gone, remaining: works.length - done };
+
+  // A TMDB id Wikidata holds can be dead (merged, deleted): a 404 is stamped "" so we stop asking.
+  // Anything else (429, 5xx) is NOT a verdict — the row stays null for the next run.
+  const tmdb = async (path: string): Promise<Record<string, unknown> | null | undefined> => {
+    const r = await fetch(`${TMDB}/${path}?api_key=${TMDB_KEY}`);
+    if (r.ok) return await r.json();
+    return r.status === 404 ? null : undefined;
+  };
+  const patch = (filter: string, body: Record<string, unknown>) =>
+    fetchWithRetry(`${url}/rest/v1/awards?${filter}`, { method: "PATCH", headers: { ...writeHeaders, Prefer: "return=minimal" }, body: JSON.stringify(body) });
+  const inBudget = () => Date.now() - startedAt < ENRICH_BUDGET_MS;
+  const runAll = async (n: number, job: () => Promise<boolean>) => {
+    let done = 0;
+    await Promise.all(Array.from({ length: 6 }, async () => { while (n-- > 0 && inBudget()) { if (await job()) done++; } }));
+    return done;
+  };
+
+  type Work = { work_type: "film" | "serie"; work_tmdb_id: number };
+  const works = await listMissing<Work>("select=work_type,work_tmdb_id&poster_path=is.null&order=year.desc", (r) => `${r.work_type}:${r.work_tmdb_id}`);
+  let wi = 0, gone = 0;
+  const worksDone = await runAll(works.length, async () => {
+    const w = works[wi++];
+    const d = await tmdb(w.work_type === "film" ? `movie/${w.work_tmdb_id}` : `tv/${w.work_tmdb_id}`);
+    if (d === undefined) return false;
+    if (d === null) gone++;
+    const date = (d?.release_date ?? d?.first_air_date ?? null) as string | null;
+    const up = await patch(`work_type=eq.${w.work_type}&work_tmdb_id=eq.${w.work_tmdb_id}`, { poster_path: d?.poster_path ?? "", work_year: date ? Number(String(date).slice(0, 4)) || null : null });
+    return up.ok;
+  });
+
+  type Person = { person_tmdb_id: number };
+  const people = await listMissing<Person>("select=person_tmdb_id&person_tmdb_id=not.is.null&person_profile_path=is.null&order=year.desc", (r) => String(r.person_tmdb_id));
+  let pi = 0;
+  const peopleDone = await runAll(people.length, async () => {
+    const p = people[pi++];
+    const d = await tmdb(`person/${p.person_tmdb_id}`);
+    if (d === undefined) return false;
+    const up = await patch(`person_tmdb_id=eq.${p.person_tmdb_id}`, { person_profile_path: d?.profile_path ?? "" });
+    return up.ok;
+  });
+
+  return { works: works.length, worksDone, gone, people: people.length, peopleDone, remaining: works.length - worksDone + people.length - peopleDone };
 }

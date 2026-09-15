@@ -62,7 +62,10 @@ SELECT ?x ?xLabel ?xFilm ?xTv ?xPerson ?work ?workLabel ?wFilm ?wTv ?year ?won ?
   BIND(YEAR(?t) AS ?year)
   ${yearFilter}
   OPTIONAL { ?x wdt:P577 ?pub . FILTER(!BOUND(?year)) }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+  # "mul" = Wikidata's "same in every language" label — since 2024 many NAMES (Christopher Nolan,
+  # Denzel Washington) live ONLY there, with no "en" label at all. Without it they come back as
+  # raw QIDs. Measured 2026-09-15: 51 people, 12 works.
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,mul". }
 }`;
 }
 
@@ -162,13 +165,13 @@ export async function fillLabels(rows: AwardRow[], fetchImpl: typeof fetch = fet
   const ids = [...missing];
   for (let i = 0; i < ids.length; i += 50) {
     const batch = ids.slice(i, i + 50);
-    const url = `${WD_API}?action=wbgetentities&format=json&props=labels&languages=en&ids=${batch.join("|")}`;
+    const url = `${WD_API}?action=wbgetentities&format=json&props=labels&languages=en|mul&ids=${batch.join("|")}`;
     const r = await fetchImpl(url, { headers: { "User-Agent": WD_UA } });
     if (!r.ok) continue;
     const json = await r.json();
     for (const [id, e] of Object.entries<any>(json.entities ?? {})) {
-      // English first; an item with no English label (a foreign series) still beats a raw QID.
-      const l = e?.labels?.en?.value ?? (Object.values<any>(e?.labels ?? {})[0]?.value as string | undefined);
+      // English, then "mul" (a name), then anything — a foreign title still beats a raw QID.
+      const l = e?.labels?.en?.value ?? e?.labels?.mul?.value ?? (Object.values<any>(e?.labels ?? {})[0]?.value as string | undefined);
       if (l) labels.set(id, l);
     }
   }

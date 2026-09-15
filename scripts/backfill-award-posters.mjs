@@ -1,4 +1,5 @@
-// One-off backfill: give every watching.awards work its `poster_path` + `work_year` from TMDB —
+// One-off backfill: give every watching.awards work its `poster_path` + `work_year`, and every
+// credited person their `person_profile_path`, from TMDB —
 // the same pass the `watching-awards-sync` robot runs monthly, without its time budget. Runs after
 // the Wikidata backfill (`call_edge('watching-awards-sync', {ceremony, since})`).
 //
@@ -56,4 +57,36 @@ const worker = async () => {
   }
 };
 await Promise.all(Array.from({ length: 8 }, worker));
-console.log(`done ${done} · dead ids ${gone} · failed ${failed} · ${Math.round((Date.now() - t0) / 1000)} s`);
+console.log(`works: done ${done} · dead ids ${gone} · failed ${failed} · ${Math.round((Date.now() - t0) / 1000)} s`);
+
+// ── People: one TMDB call per person, patched on every row that credits them ──
+const people = new Set();
+for (let from = 0; ; from += 1000) {
+  const { data, error } = await sb.from("awards").select("person_tmdb_id").not("person_tmdb_id", "is", null).is("person_profile_path", null).range(from, from + 999);
+  if (error) throw error;
+  for (const r of data) people.add(r.person_tmdb_id);
+  if (data.length < 1000) break;
+}
+const plist = [...people];
+console.log(`${plist.length} people without a portrait`);
+let pdone = 0, pfailed = 0, pi = 0;
+const t1 = Date.now();
+const pworker = async () => {
+  while (pi < plist.length) {
+    const id = plist[pi++];
+    let r;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      r = await fetch(`https://api.themoviedb.org/3/person/${id}?api_key=${TMDB_API_KEY}`);
+      if (r.status !== 429) break;
+      await new Promise((res) => setTimeout(res, 1500));
+    }
+    if (!r.ok && r.status !== 404) { pfailed++; continue; }
+    const d = r.ok ? await r.json() : null;
+    const { error } = await sb.from("awards").update({ person_profile_path: d?.profile_path ?? "" }).eq("person_tmdb_id", id);
+    if (error) { pfailed++; continue; }
+    pdone++;
+    if (pdone % 500 === 0) console.log(`  ${pdone}/${plist.length} · ${Math.round((Date.now() - t1) / 1000)} s`);
+  }
+};
+await Promise.all(Array.from({ length: 8 }, pworker));
+console.log(`people: done ${pdone} · failed ${pfailed} · ${Math.round((Date.now() - t1) / 1000)} s`);

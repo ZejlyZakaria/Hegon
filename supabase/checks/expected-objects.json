@@ -35,11 +35,13 @@
     "juste, c'est cette référence qui avait pris du retard. D'où `_migrations_through` et",
     "scripts/check-schema-reference.mjs en CI : une migration plus récente que ce champ = rouge.",
     "",
-    "✅ MIS À JOUR le 2026-09-15 — migration 20260915000000 (le Musée) : watching.award_categories (7 colonnes, PK) + watching.awards (16 colonnes, PK, unique awards_natural_key, 2 index) ; 2 policies de lecture ; 2 crons mensuels (oscars / emmys). tables +2, colonnes +23, policies +2, index +5, crons +2."
+    "✅ MIS À JOUR le 2026-09-15 — migration 20260915000000 (le Musée) : watching.award_categories (7 colonnes, PK) + watching.awards (16 colonnes, PK, unique awards_natural_key, 2 index) ; 2 policies de lecture ; 2 crons mensuels (oscars / emmys). tables +2, colonnes +23, policies +2, index +5, crons +2.",
+    "",
+    "✅ MIS À JOUR le 2026-09-15 (bis) — migration 20260915000100 : awards.person_profile_path + award_categories.portrait. colonnes +2."
   ],
-  "_migrations_through": "20260915000000",
+  "_migrations_through": "20260915000100",
   "tables": 71,
-  "colonnes": 713,
+  "colonnes": 715,
   "policies": 212,
   "fonctions": 35,
   "index": 256,

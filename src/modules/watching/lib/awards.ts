@@ -26,7 +26,7 @@ export function foldEntries(rows: AwardRow[]): AwardEntry[] {
     }
     e.won = e.won || r.won;
     if (r.person_name && !e.people.some((p) => p.name === r.person_name)) {
-      e.people.push({ tmdb_id: r.person_tmdb_id, name: r.person_name });
+      e.people.push({ tmdb_id: r.person_tmdb_id, name: r.person_name, profile_path: r.person_profile_path });
     }
   }
   return [...out.values()];

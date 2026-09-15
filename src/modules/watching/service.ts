@@ -1829,13 +1829,13 @@ export async function getWatchingHeroData(
 // ═══════════════════════════════════════════════════════════════════════════
 
 const AWARD_COLUMNS =
-  "id, ceremony, category, year, year_inferred, won, work_qid, work_tmdb_id, work_type, work_title, poster_path, work_year, person_qid, person_tmdb_id, person_name";
+  "id, ceremony, category, year, year_inferred, won, work_qid, work_tmdb_id, work_type, work_title, poster_path, work_year, person_qid, person_tmdb_id, person_name, person_profile_path";
 
 export async function getAwardCategories(): Promise<AwardCategory[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("watching").from("award_categories")
-    .select("key, ceremony, label, subject, rank, since")
+    .select("key, ceremony, label, subject, rank, since, portrait")
     .order("ceremony").order("rank");
   if (error) throw error;
   return (data ?? []) as AwardCategory[];

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus } from "lucide-react";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
@@ -9,10 +10,9 @@ import { cn } from "@/shared/utils/utils";
 import { AwardRibbon, ScoreMark, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
 import { useAwardCategories, useAwardCategoryRows, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
 import { foldEntries, indexOwned, isSeen, ownedFor } from "@/modules/watching/lib/awards";
-import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
 import { displayTitle } from "@/modules/watching/utils";
 import type { AwardEntry, WatchingMedia } from "@/modules/watching/types";
-import { posterUrl } from "./AwardsClient";
+import { entryImage } from "./AwardsClient";
 
 /**
  * ONE CATEGORY, EVERY YEAR — `/perso/watching/awards/[category]`. The grid of `ListDetail`, because
@@ -86,7 +86,7 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
       ) : (
         <div className="grid grid-cols-3 gap-3 p-4 sm:grid-cols-4 sm:p-6 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
           {entries.map((e) => (
-            <CanonTile key={e.key} entry={e} owned={ownedFor(owned, e)} showPeople={category?.subject === "person"} />
+            <CanonTile key={e.key} entry={e} owned={ownedFor(owned, e)} showPeople={category?.subject === "person"} portrait={!!category?.portrait} />
           ))}
         </div>
       )}
@@ -97,15 +97,23 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
 /**
  * A title of the canon. Finished = full colour + your rating; not finished = dimmed + a "+".
  * Winner = the gold year ribbon; a nominee wears nothing (the year sits in its meta line).
+ *
+ * PORTRAIT categories (owner, 2026-09-15): the prize is the person's, so the tile shows their
+ * face and their name, and the film moves to the meta line. The STATE stays the film's — seen or
+ * not, your rating — because the film is what the library knows; a dimmed face reads "you haven't
+ * seen this performance", which is exactly true. Two doors: the portrait opens the person, the
+ * film line opens the film.
  */
-function CanonTile({ entry, owned, showPeople }: { entry: AwardEntry; owned: WatchingMedia | null; showPeople: boolean }) {
+function CanonTile({ entry, owned, showPeople, portrait }: { entry: AwardEntry; owned: WatchingMedia | null; showPeople: boolean; portrait: boolean }) {
   const router = useRouter();
   const seen = isSeen(owned);
-  const src = owned?.poster_url
-    ? tmdbImageFor(owned.poster_url, 200) || owned.poster_url
-    : tmdbImageFor(posterUrl(entry.poster_path), 200);
+  // The first credited person who HAS a photo — the same pick entryImage makes.
+  const person = portrait ? entry.people.find((p) => p.profile_path) ?? entry.people[0] ?? null : null;
+  const hasFace = !!person?.profile_path;
+  const src = entryImage(entry, owned, portrait, 200);
   const discover = `/perso/watching/discover/${entry.work_type === "film" ? "film" : "serie"}/${entry.work_tmdb_id}`;
-  const open = () => router.push(owned ? `/perso/watching/${owned.id}` : discover);
+  const filmHref = owned ? `/perso/watching/${owned.id}` : discover;
+  const open = () => router.push(hasFace && person?.tmdb_id ? `/perso/watching/person/${person.tmdb_id}` : filmHref);
 
   return (
     <div className="group relative">
@@ -115,7 +123,7 @@ function CanonTile({ entry, owned, showPeople }: { entry: AwardEntry; owned: Wat
           !seen && "opacity-60 transition-opacity group-hover:opacity-90",
         )}>
           {src ? (
-            <Image src={src} alt={entry.work_title} fill loading="lazy" className="object-cover" sizes="(max-width: 768px) 33vw, 200px" />
+            <Image src={src} alt={hasFace ? person!.name : entry.work_title} fill loading="lazy" className="object-cover object-top" sizes="(max-width: 768px) 33vw, 200px" />
           ) : (
             <div className="flex h-full w-full items-center justify-center p-2 text-center text-micro text-text-tertiary">{entry.work_title}</div>
           )}
@@ -125,16 +133,35 @@ function CanonTile({ entry, owned, showPeople }: { entry: AwardEntry; owned: Wat
             </div>
           )}
         </div>
-        <p className="mt-1.5 line-clamp-1 text-xs font-medium text-text-secondary">{owned ? displayTitle(owned) : entry.work_title}</p>
-        <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-          {seen && owned?.user_rating != null && owned.user_rating > 0 && <ScoreMark value={owned.user_rating} source="mine" className="shrink-0" />}
-          <span className="truncate text-micro text-text-tertiary">
-            {[
-              !entry.won ? `Nominee ${entry.year}` : entry.work_year ?? null,
-              showPeople && entry.people.length ? entry.people.map((p) => p.name).join(", ") : null,
-            ].filter(Boolean).join(" · ")}
-          </span>
-        </div>
+        {hasFace ? (
+          <>
+            <p className="mt-1.5 line-clamp-1 text-xs font-medium text-text-secondary">{person!.name}</p>
+            <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+              {seen && owned?.user_rating != null && owned.user_rating > 0 && <ScoreMark value={owned.user_rating} source="mine" className="shrink-0" />}
+              {/* The film is its own door — a real link, so it opens the fiche and not the person. */}
+              <Link
+                href={filmHref}
+                onClick={(ev) => ev.stopPropagation()}
+                className="truncate text-micro text-text-tertiary transition-colors hover:text-text-primary"
+              >
+                {owned ? displayTitle(owned) : entry.work_title}{!entry.won ? ` · Nominee ${entry.year}` : entry.work_year ? ` · ${entry.work_year}` : ""}
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mt-1.5 line-clamp-1 text-xs font-medium text-text-secondary">{owned ? displayTitle(owned) : entry.work_title}</p>
+            <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+              {seen && owned?.user_rating != null && owned.user_rating > 0 && <ScoreMark value={owned.user_rating} source="mine" className="shrink-0" />}
+              <span className="truncate text-micro text-text-tertiary">
+                {[
+                  !entry.won ? `Nominee ${entry.year}` : entry.work_year ?? null,
+                  showPeople && entry.people.length ? entry.people.map((p) => p.name).join(", ") : null,
+                ].filter(Boolean).join(" · ")}
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Not yours yet → the door to add it. Always visible on touch, revealed on hover with a mouse. */}

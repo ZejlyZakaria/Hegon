@@ -31,6 +31,18 @@ const CEREMONIES: { value: AwardCeremony; label: string }[] = [
 
 export const posterUrl = (path: string | null) => (path ? `https://image.tmdb.org/t/p/w500${path}` : null);
 
+/**
+ * The image a canon entry shows. A portrait category (Best Actor) shows the PERSON — the prize is
+ * theirs — and falls back to the poster when TMDB has no photo of them; every other category shows
+ * the work, preferring the library's own poster (a custom upload, the owner's pick) when owned.
+ */
+export function entryImage(e: AwardEntry, o: WatchingMedia | null, portrait: boolean, cssPx: number): string | null {
+  const face = portrait ? e.people.find((p) => p.profile_path)?.profile_path ?? null : null;
+  if (face) return tmdbImageFor(posterUrl(face), cssPx);
+  if (o?.poster_url) return tmdbImageFor(o.poster_url, cssPx) || o.poster_url;
+  return tmdbImageFor(posterUrl(e.poster_path), cssPx);
+}
+
 export function AwardsClient({ userId }: { userId: string }) {
   const [ceremony, setCeremony] = useState<AwardCeremony>("oscars");
   const categoriesQ = useAwardCategories();
@@ -134,11 +146,11 @@ function CategoryCard({ category, entries, owned }: { category: AwardCategory; e
         ) : (
           mosaic.map((e) => {
             const o = ownedFor(owned, e);
-            const src = o?.poster_url ? tmdbImageFor(o.poster_url, 120) : posterUrl(e.poster_path) ? tmdbImageFor(posterUrl(e.poster_path), 120) : null;
+            const src = entryImage(e, o, category.portrait, 120);
             return (
               <div key={e.key} className={cn("relative flex-1 overflow-hidden", !isSeen(o) && "opacity-50")}>
                 {src ? (
-                  <Image src={src} alt={e.work_title} fill loading="lazy" className="object-cover" sizes="120px" />
+                  <Image src={src} alt={e.work_title} fill loading="lazy" className="object-cover object-top" sizes="120px" />
                 ) : (
                   <div className="h-full w-full bg-zinc-900" />
                 )}

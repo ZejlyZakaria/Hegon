@@ -254,6 +254,8 @@ export interface AwardCategory {
   rank: number;
   /** First ceremony year, for "12 / 96". */
   since: number | null;
+  /** Single-laureate categories (acting, directing) show the PERSON's portrait, not the poster. */
+  portrait: boolean;
 }
 
 /** One row of the canon: a title in a category in a year, won or nominated, one line per credit. */
@@ -274,6 +276,8 @@ export interface AwardRow {
   person_qid: string;
   person_tmdb_id: number | null;
   person_name: string | null;
+  /** TMDB profile path; "" when TMDB has none; null when not enriched yet. */
+  person_profile_path: string | null;
 }
 
 /** The rows of one (year, work) folded into one entry — what every surface actually shows. */
@@ -288,5 +292,5 @@ export interface AwardEntry {
   work_title: string;
   poster_path: string | null;
   work_year: number | null;
-  people: { tmdb_id: number | null; name: string }[];
+  people: { tmdb_id: number | null; name: string; profile_path: string | null }[];
 }
