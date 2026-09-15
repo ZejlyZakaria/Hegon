@@ -47,12 +47,14 @@ type MediaCarouselProps = {
   /** Last Watched only — flag a caught-up title (up to date, not finished) with a teal badge. */
   showCaughtUp?: boolean;
   /**
-   * The Museum's rail: a mark that hangs from the top edge (the gold year ribbon) INSTEAD of the
-   * priority / Top 10 ribbons, and a line under the title (the category) INSTEAD of the genres.
-   * Render props rather than two more `show*` flags: the card does not know what an award is.
+   * The Museum's rail: a mark on the artwork (the gold year tag, which positions itself) INSTEAD
+   * of the priority / Top 10 ribbons, and a line under the title (the category) INSTEAD of the
+   * genres. Render props rather than two more `show*` flags: the card does not know what an award is.
    */
   mark?: (item: WatchingMedia) => React.ReactNode;
   meta?: (item: WatchingMedia) => React.ReactNode;
+  /** Extra controls in the header, BEFORE the arrows (the Museum's Oscars | Emmys switch). */
+  actions?: React.ReactNode;
 };
 
 
@@ -152,7 +154,7 @@ function MovieCard({
             reading as a bookmark at all. Flush to the top, then — but not to the left: the card is
             `rounded-card` (12px), and at 0 the glyph would sit half on the curve. */}
         {mark ? (
-          <div className="absolute left-2 top-0 z-10">{mark(item)}</div>
+          mark(item)
         ) : item.want_to_watch && item.priority_level && !showCountdown && (
           <div className="absolute left-2 top-0 z-10">
             <PriorityMark level={item.priority_level} />
@@ -279,7 +281,9 @@ function MovieCard({
                 <span className="truncate">{tag}</span>
               </Badge>
             ))}
-            <span className="shrink-0 text-xs text-text-tertiary">{item.year}</span>
+            {/* A custom meta line owns the row: on the trophy shelf the release year sat next to a
+                ceremony-year tag (2025 under a "2026" ribbon) and read as a contradiction. */}
+            {!meta && <span className="shrink-0 text-xs text-text-tertiary">{item.year}</span>}
 
             {/* YOUR rating → teal star. It used to be gold, which is the WORLD's colour —
                 the same mark meant two different things depending on the screen. */}
@@ -326,6 +330,7 @@ export function MediaCarousel({
   showCaughtUp = false,
   mark,
   meta,
+  actions,
 }: MediaCarouselProps) {
   const router = useRouter();
   const prefetch = usePrefetchMedia();
@@ -452,6 +457,7 @@ export function MediaCarousel({
         subtitle={subtitle}
         actions={
           <>
+            {actions}
             <CarouselNav
               className="hidden lg:flex"
               onPrev={() => scroll("prev")}

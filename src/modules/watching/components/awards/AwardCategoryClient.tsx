@@ -4,12 +4,12 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Bookmark, Eye, EyeOff, LayoutGrid, Plus } from "lucide-react";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { cn } from "@/shared/utils/utils";
 import { AwardRibbon, ScoreMark, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
 import { useAwardCategories, useAwardCategoryRows, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
-import { foldEntries, indexOwned, isSeen, ownedFor } from "@/modules/watching/lib/awards";
+import { canonStatus, foldEntries, indexOwned, isSeen, ownedFor, type CanonBucket } from "@/modules/watching/lib/awards";
 import { displayTitle } from "@/modules/watching/utils";
 import type { AwardEntry, WatchingMedia } from "@/modules/watching/types";
 import { entryImage } from "./AwardsClient";
@@ -26,10 +26,18 @@ const SCOPES: { value: Scope; label: string }[] = [
   { value: "winners", label: "Winners" },
   { value: "all", label: "Winners & nominees" },
 ];
+type Bucket = "all" | CanonBucket;
+const BUCKETS: { value: Bucket; label: string; icon: React.ReactNode }[] = [
+  { value: "all", label: "All", icon: <LayoutGrid size={13} /> },
+  { value: "watched", label: "Watched", icon: <Eye size={13} /> },
+  { value: "want", label: "Want to Watch", icon: <Bookmark size={13} /> },
+  { value: "unwatched", label: "Unwatched", icon: <EyeOff size={13} /> },
+];
 
 export function AwardCategoryClient({ userId, categoryKey }: { userId: string; categoryKey: string }) {
   const router = useRouter();
   const [scope, setScope] = useState<Scope>("winners");
+  const [bucket, setBucket] = useState<Bucket>("all");
   const categoriesQ = useAwardCategories();
   const category = categoriesQ.data?.find((c) => c.key === categoryKey) ?? null;
   const rowsQ = useAwardCategoryRows(category?.ceremony ?? "oscars", category ? category.key : "");
@@ -38,8 +46,9 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
   const owned = useMemo(() => indexOwned(ownedQ.data ?? []), [ownedQ.data]);
   const entries = useMemo(() => {
     const all = foldEntries(rowsQ.data ?? []).sort((a, b) => b.year - a.year || Number(b.won) - Number(a.won));
-    return scope === "winners" ? all.filter((e) => e.won) : all;
-  }, [rowsQ.data, scope]);
+    const inScope = scope === "winners" ? all.filter((e) => e.won) : all;
+    return bucket === "all" ? inScope : inScope.filter((e) => canonStatus(ownedFor(owned, e)).bucket === bucket);
+  }, [rowsQ.data, scope, bucket, owned]);
   const winners = useMemo(() => foldEntries(rowsQ.data ?? []).filter((e) => e.won), [rowsQ.data]);
   const seen = winners.filter((e) => isSeen(ownedFor(owned, e))).length;
 
@@ -51,7 +60,8 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
       <div className="flex items-center gap-2 border-b border-border-subtle bg-zinc-950 px-4 py-3 sm:px-6">
         <button
           type="button"
-          onClick={() => router.push("/perso/watching/awards")}
+          // Back to the ceremony you came from — the Awards page reads it from the URL.
+          onClick={() => router.push(`/perso/watching/awards?c=${category?.ceremony ?? "oscars"}`)}
           className="flex shrink-0 items-center gap-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary"
         >
           <ArrowLeft size={14} />
@@ -59,6 +69,8 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
           <span className="sm:hidden">Back</span>
         </button>
         <div className="flex-1" />
+        {/* Two axes: what the canon says (winners / nominees) and what your library says. */}
+        <SegmentedControl items={BUCKETS} value={bucket} onChange={setBucket} size="sm" responsiveLabels />
         <SegmentedControl items={SCOPES} value={scope} onChange={setScope} size="sm" />
       </div>
 
@@ -83,6 +95,11 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
             </div>
           ))}
         </div>
+      ) : entries.length === 0 ? (
+        // Wikidata is thin on the Emmys — and a category can also miss a sync run. Say so.
+        <p className="px-4 py-8 text-xs text-text-tertiary sm:px-6">
+          Nothing here yet — Wikidata has no {scope === "winners" ? "winners" : "entries"} for this category, or the last sync missed it.
+        </p>
       ) : (
         <div className="grid grid-cols-3 gap-3 p-4 sm:grid-cols-4 sm:p-6 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
           {entries.map((e) => (
@@ -95,8 +112,11 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
 }
 
 /**
- * A title of the canon. Finished = full colour + your rating; not finished = dimmed + a "+".
- * Winner = the gold year ribbon; a nominee wears nothing (the year sits in its meta line).
+ * A title of the canon. Every poster in full colour — the mask is on the TAG, not the artwork
+ * (owner, 2026-09-15): a winner wears the year tag, gold when you have seen it, dark grey when
+ * not; a nominee wears nothing (the year sits in its meta line). Under the poster: the title,
+ * then the library's word for it (Watched / Want to Watch / Unwatched…) in the list detail's
+ * dot-and-label, and your rating when you have one. Not yours yet → a "+".
  *
  * PORTRAIT categories (owner, 2026-09-15): the prize is the person's, so the tile shows their
  * face and their name, and the film moves to the meta line. The STATE stays the film's — seen or
@@ -107,6 +127,7 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
 function CanonTile({ entry, owned, showPeople, portrait }: { entry: AwardEntry; owned: WatchingMedia | null; showPeople: boolean; portrait: boolean }) {
   const router = useRouter();
   const seen = isSeen(owned);
+  const status = canonStatus(owned);
   // The first credited person who HAS a photo — the same pick entryImage makes.
   const person = portrait ? entry.people.find((p) => p.profile_path) ?? entry.people[0] ?? null : null;
   const hasFace = !!person?.profile_path;
@@ -120,48 +141,55 @@ function CanonTile({ entry, owned, showPeople, portrait }: { entry: AwardEntry; 
       <div className="relative cursor-pointer" onClick={open}>
         <div className={cn(
           "relative aspect-2/3 overflow-hidden rounded-tile bg-zinc-800 transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]",
-          !seen && "opacity-60 transition-opacity group-hover:opacity-90",
         )}>
           {src ? (
-            <Image src={src} alt={hasFace ? person!.name : entry.work_title} fill loading="lazy" className="object-cover object-top" sizes="(max-width: 768px) 33vw, 200px" />
+            <Image
+              src={src}
+              alt={hasFace ? person!.name : entry.work_title}
+              fill
+              loading="lazy"
+              // The filter sits on the IMAGE, not the tile: the gold tag above it stays gold.
+              className="object-cover object-top"
+              sizes="(max-width: 768px) 33vw, 200px"
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center p-2 text-center text-micro text-text-tertiary">{entry.work_title}</div>
           )}
-          {entry.won && (
-            <div className="absolute left-2 top-0 z-10">
-              <AwardRibbon year={entry.year} size="tile" />
-            </div>
-          )}
+          {entry.won && <AwardRibbon year={entry.year} tone={seen ? "won" : "dim"} size="tile" />}
         </div>
         {hasFace ? (
           <>
             <p className="mt-1.5 line-clamp-1 text-xs font-medium text-text-secondary">{person!.name}</p>
-            <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-              {seen && owned?.user_rating != null && owned.user_rating > 0 && <ScoreMark value={owned.user_rating} source="mine" className="shrink-0" />}
-              {/* The film is its own door — a real link, so it opens the fiche and not the person. */}
-              <Link
-                href={filmHref}
-                onClick={(ev) => ev.stopPropagation()}
-                className="truncate text-micro text-text-tertiary transition-colors hover:text-text-primary"
-              >
-                {owned ? displayTitle(owned) : entry.work_title}{!entry.won ? ` · Nominee ${entry.year}` : entry.work_year ? ` · ${entry.work_year}` : ""}
-              </Link>
-            </div>
+            {/* The film is its own door — a real link, so it opens the fiche and not the person. */}
+            <Link
+              href={filmHref}
+              onClick={(ev) => ev.stopPropagation()}
+              className="mt-0.5 block truncate text-micro text-text-tertiary transition-colors hover:text-text-primary"
+            >
+              {owned ? displayTitle(owned) : entry.work_title}{!entry.won ? ` · Nominee ${entry.year}` : entry.work_year ? ` · ${entry.work_year}` : ""}
+            </Link>
           </>
         ) : (
           <>
             <p className="mt-1.5 line-clamp-1 text-xs font-medium text-text-secondary">{owned ? displayTitle(owned) : entry.work_title}</p>
-            <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-              {seen && owned?.user_rating != null && owned.user_rating > 0 && <ScoreMark value={owned.user_rating} source="mine" className="shrink-0" />}
-              <span className="truncate text-micro text-text-tertiary">
+            {(!entry.won || (showPeople && entry.people.length > 0)) && (
+              <p className="mt-0.5 truncate text-micro text-text-tertiary">
                 {[
-                  !entry.won ? `Nominee ${entry.year}` : entry.work_year ?? null,
+                  !entry.won ? `Nominee ${entry.year}` : null,
                   showPeople && entry.people.length ? entry.people.map((p) => p.name).join(", ") : null,
                 ].filter(Boolean).join(" · ")}
-              </span>
-            </div>
+              </p>
+            )}
           </>
         )}
+        {/* The library's word for it — the list detail's dot and label, verbatim. */}
+        {/* A fixed row height: with a rating the row grew by a pixel or two and the grid's rows
+            no longer lined up across tiles. */}
+        <div className="mt-1 flex h-4 min-w-0 items-center gap-1.5">
+          <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", status.dotClass)} />
+          <span className={cn("truncate text-micro leading-none", status.textClass)}>{status.label}</span>
+          {seen && owned?.user_rating != null && owned.user_rating > 0 && <ScoreMark value={owned.user_rating} source="mine" className="ml-auto shrink-0" />}
+        </div>
       </div>
 
       {/* Not yours yet → the door to add it. Always visible on touch, revealed on hover with a mouse. */}

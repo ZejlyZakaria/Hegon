@@ -246,30 +246,37 @@ export function TopTenRibbon({ rank, size = "library", className }: { rank?: num
 }
 
 /**
- * THE AWARD RIBBON — the Top 10's sibling in GOLD, the world's colour: a prize is the world's
- * verdict on a title. It carries the CEREMONY YEAR ("2024"), four digits at a size that fits the
- * hem — the Museum reads by year, and a ribbon that only said "winner" on a shelf of winners
- * would say nothing (decisions.md 2026-09-15). Same hem, same shadow, same edge (`left-2 top-0`).
- *   · card = the rail card and the category grid tile · tile = the library-size poster grid.
+ * THE AWARD TAG — a WON award, carrying the CEREMONY YEAR (the Museum reads by year). Horizontal,
+ * hanging from the LEFT edge, the Top 10's folded hem turned on its side. Two tones, and the tone
+ * is the one thing on the poster that says whether YOU have seen it (owner, 2026-09-15): metallic
+ * gold when seen, dark grey when not — same shape, same place, so the eye compares colour only.
+ * Both are tokens in globals.css (`--color-award`, `--color-award-dim`): reskin in one place.
+ * Not amber: amber is already the watchlist's medium priority.
+ *
+ * Positions itself, CENTRED ON THE OVERLAY CLUSTER ROW (top-2, h-6) so it lines up with the heart
+ * and the "…" menu opposite by construction; a parent only needs to be `relative`.
+ *   · card = the rail card and the category-card mosaic · tile = the poster grid.
  */
-const AWARD_RIBBON = {
-  card: { w: 26, h: 30, num: 8.5 },
-  tile: { w: 28, h: 34, num: 9.5 },
+const AWARD_TAG = {
+  card: { h: 18, num: 9.5, padX: 6 },
+  tile: { h: 18, num: 10, padX: 7 },
 } as const;
-export function AwardRibbon({ year, size = "card", className }: { year: number; size?: keyof typeof AWARD_RIBBON; className?: string }) {
-  const r = AWARD_RIBBON[size];
+const CLUSTER_TOP = 8, CLUSTER_H = 24;
+export function AwardRibbon({ year, tone = "won", size = "card", className }: { year: number; tone?: "won" | "dim"; size?: keyof typeof AWARD_TAG; className?: string }) {
+  const r = AWARD_TAG[size];
   return (
     <span
-      aria-label={`Won in ${year}`}
-      className={cn("flex items-start justify-center text-white select-none", className)}
+      aria-label={tone === "won" ? `Won in ${year} — seen` : `Won in ${year} — not seen yet`}
+      className={cn("absolute left-0 z-10 flex items-center select-none", tone === "won" ? "text-white" : "text-white/80", className)}
       style={{
-        width: r.w,
+        top: CLUSTER_TOP + (CLUSTER_H - r.h) / 2,
         height: r.h,
-        backgroundColor: GOLD,
-        clipPath: "polygon(0 0, 100% 0, 100% 78%, 0 100%)",
-        borderTopRightRadius: 3,
+        paddingLeft: r.padX,
+        paddingRight: r.padX + 4,
+        backgroundColor: tone === "won" ? "var(--color-award)" : "var(--color-award-dim)",
+        // The hem: the right edge runs diagonally, further out at the top.
+        clipPath: "polygon(0 0, 100% 0, calc(100% - 5px) 100%, 0 100%)",
         filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.6))",
-        paddingTop: Math.round(r.h * 0.2),
       }}
     >
       <span className="font-semibold leading-none tabular-nums tracking-tight" style={{ fontSize: r.num }}>{year}</span>

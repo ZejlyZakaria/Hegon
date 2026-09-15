@@ -1,3 +1,4 @@
+import { seriesState } from "./series-state";
 import type { AwardCategory, AwardEntry, AwardRow, WatchingMedia } from "../types";
 
 /**
@@ -48,8 +49,13 @@ export function indexOwned(owned: WatchingMedia[]): Map<string, WatchingMedia> {
 export const ownedFor = (owned: Map<string, WatchingMedia>, e: Pick<AwardEntry, "work_type" | "work_tmdb_id">) =>
   owned.get(workKey(e.work_type, e.work_tmdb_id)) ?? null;
 
-/** "Watched" for the museum = finished. In progress or on the watchlist does not count yet. */
-export const isSeen = (o: WatchingMedia | null) => !!o && o.watched;
+/**
+ * "Seen" for the museum = you have seen everything there is: finished, or CAUGHT UP on a show that
+ * is still running (Widow's Bay, S1 complete, S2 not aired — you have seen the performance that
+ * won). On the watchlist, in progress behind the air date, dropped: not yet.
+ */
+export const isSeen = (o: WatchingMedia | null) =>
+  !!o && (o.watched || (o.type !== "film" && o.in_progress && seriesState(o) === "caught-up"));
 
 /**
  * The trophy shelf: your finished titles that WON something, one card per title, wearing its most
@@ -89,4 +95,23 @@ export function coverage(entries: AwardEntry[], owned: Map<string, WatchingMedia
   const winners = entries.filter((e) => e.category === category && e.won);
   const seen = winners.filter((e) => isSeen(ownedFor(owned, e))).length;
   return { seen, total: winners.length };
+}
+
+/**
+ * What the library says about a canon title, in the LIST DETAIL's words (its non-poster view:
+ * a dot and a label) — the same object read on two pages must be described the same way.
+ * The filter buckets are coarser than the labels: "In Progress" and "Dropped" file under
+ * Unwatched (you have not finished it), the label still tells the exact truth on the tile.
+ */
+export type CanonBucket = "watched" | "want" | "unwatched";
+export interface CanonStatus { bucket: CanonBucket; label: string; dotClass: string; textClass: string }
+
+export function canonStatus(o: WatchingMedia | null): CanonStatus {
+  if (o?.watched) return { bucket: "watched", label: "Watched", dotClass: "bg-emerald-400", textClass: "text-emerald-400" };
+  if (isSeen(o)) return { bucket: "watched", label: "Caught up", dotClass: "bg-emerald-400", textClass: "text-emerald-400" };
+  if (o?.want_to_watch) return { bucket: "want", label: "Want to Watch", dotClass: "bg-zinc-500", textClass: "text-zinc-400" };
+  if (o?.in_progress) return { bucket: "unwatched", label: "In Progress", dotClass: "bg-accent-watching-vivid", textClass: "text-accent-watching-vivid" };
+  if (o?.dropped) return { bucket: "unwatched", label: "Dropped", dotClass: "bg-red-500", textClass: "text-red-400" };
+  if (o?.paused) return { bucket: "unwatched", label: "Paused", dotClass: "bg-amber-400", textClass: "text-amber-400" };
+  return { bucket: "unwatched", label: "Unwatched", dotClass: "bg-zinc-600", textClass: "text-zinc-500" };
 }

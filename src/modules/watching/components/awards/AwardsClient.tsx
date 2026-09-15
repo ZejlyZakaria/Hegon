@@ -3,25 +3,29 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Trophy } from "lucide-react";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { SectionHeader } from "@/shared/components/ui/section-header";
-import { cn } from "@/shared/utils/utils";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
 import { AwardRibbon } from "@/modules/watching/components/shared/Marks";
 import { CarouselSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { useAwardCategories, useAwardWinners, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
-import { buildShelf, coverage, foldEntries, indexOwned, isSeen, ownedFor } from "@/modules/watching/lib/awards";
+import { buildShelf, coverage, foldEntries, indexOwned, ownedFor } from "@/modules/watching/lib/awards";
+import { TrophyShelfPanel } from "./TrophyShelfPanel";
 import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
 import type { AwardCategory, AwardCeremony, AwardEntry, WatchingMedia } from "@/modules/watching/types";
 
 /**
  * THE MUSEUM — `/perso/watching/awards`. Your collection meets the canon.
  *
- * Header → your trophy shelf → the canon, category by category (decisions.md 2026-09-15).
- * Two colours do all the talking: GOLD is the world's verdict (the year ribbon on a winner),
- * TEAL is yours (your rating). A title you have finished is in full colour; one you haven't is
- * dimmed. No hero, no statuette, no counters row: the cards already say "12 / 96".
+ * Your trophy shelf → the canon, category by category (decisions.md 2026-09-15; the page header
+ * went on the owner's second pass — the shelf IS the opening). Two colours do all the talking:
+ * GOLD is the world's verdict (the year tag on a winner), TEAL is yours (your rating). No hero,
+ * no statuette, no counters row: the cards already say "12 / 96".
+ *
+ * The ceremony lives in the URL (`?c=emmys`) so the browser's Back from a category page lands on
+ * the ceremony you left, not on the default.
  */
 
 const CEREMONIES: { value: AwardCeremony; label: string }[] = [
@@ -44,7 +48,11 @@ export function entryImage(e: AwardEntry, o: WatchingMedia | null, portrait: boo
 }
 
 export function AwardsClient({ userId }: { userId: string }) {
-  const [ceremony, setCeremony] = useState<AwardCeremony>("oscars");
+  const router = useRouter();
+  const params = useSearchParams();
+  const ceremony: AwardCeremony = params.get("c") === "emmys" ? "emmys" : "oscars";
+  const setCeremony = (c: AwardCeremony) => router.replace(`/perso/watching/awards?c=${c}`, { scroll: false });
+  const [shelfOpen, setShelfOpen] = useState(false);
   const categoriesQ = useAwardCategories();
   const winnersQ = useAwardWinners(ceremony);
   const ownedQ = useOwnedTitles(userId);
@@ -62,24 +70,16 @@ export function AwardsClient({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-8 p-4 md:p-6">
-      {/* ── Header ── */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-caption uppercase text-text-tertiary">Museum</p>
-          <h1 className="mt-1 text-xl font-bold text-text-primary">Awards</h1>
-          <p className="mt-1 text-xs text-text-tertiary">Your collection meets the canon.</p>
-        </div>
-        <SegmentedControl items={CEREMONIES} value={ceremony} onChange={setCeremony} size="sm" />
-      </div>
-
-      {/* ── Your trophy shelf ── */}
+      {/* ── Your trophy shelf — the opening; the ceremony switch sits in its header ── */}
       {loading ? (
         <CarouselSkeleton />
       ) : shelf.length > 0 ? (
         <MediaCarousel
           title="Your trophy shelf"
-          subtitle={`${shelf.length} award-winning ${shelf.length === 1 ? "title" : "titles"} you've finished`}
+          subtitle={`${shelf.length} award-winning ${shelf.length === 1 ? "title" : "titles"} you've seen`}
           items={shelf.map((s) => s.owned)}
+          actions={<SegmentedControl items={CEREMONIES} value={ceremony} onChange={setCeremony} size="sm" />}
+          onSeeAll={() => setShelfOpen(true)}
           mark={(item) => {
             const s = shelfById.get(item.id);
             return s ? <AwardRibbon year={s.entry.year} size="card" /> : null;
@@ -97,7 +97,11 @@ export function AwardsClient({ userId }: { userId: string }) {
         />
       ) : (
         <section>
-          <SectionHeader title="Your trophy shelf" subtitle="Award-winning titles you've finished" />
+          <SectionHeader
+            title="Your trophy shelf"
+            subtitle="Award-winning titles you've seen"
+            actions={<SegmentedControl items={CEREMONIES} value={ceremony} onChange={setCeremony} size="sm" />}
+          />
           <div className="flex items-center gap-3 rounded-card border border-border-subtle bg-surface-1 px-4 py-5">
             <Trophy size={16} className="shrink-0 text-text-tertiary" />
             <p className="text-xs text-text-secondary">Nothing on the shelf yet — finish a winner below and it takes its place here.</p>
@@ -118,6 +122,8 @@ export function AwardsClient({ userId }: { userId: string }) {
           </div>
         )}
       </section>
+
+      <TrophyShelfPanel open={shelfOpen} onClose={() => setShelfOpen(false)} shelf={shelf} ceremony={ceremony} />
     </div>
   );
 }
@@ -125,7 +131,8 @@ export function AwardsClient({ userId }: { userId: string }) {
 /**
  * A category is a LIST the world wrote — so it wears the Lists card (owner, 2026-09-15): same
  * mosaic, same footer, same click. What differs is what the facts differ on: the three most
- * recent winners as the mosaic (yours lit, the rest dimmed), and coverage instead of a count.
+ * recent winners as the mosaic — in full colour, the mask is the category page's job (owner) —
+ * and coverage instead of a count.
  */
 function CategoryCard({ category, entries, owned }: { category: AwardCategory; entries: AwardEntry[]; owned: Map<string, WatchingMedia> }) {
   const winners = entries.filter((e) => e.category === category.key && e.won).sort((a, b) => b.year - a.year);
@@ -148,7 +155,7 @@ function CategoryCard({ category, entries, owned }: { category: AwardCategory; e
             const o = ownedFor(owned, e);
             const src = entryImage(e, o, category.portrait, 120);
             return (
-              <div key={e.key} className={cn("relative flex-1 overflow-hidden", !isSeen(o) && "opacity-50")}>
+              <div key={e.key} className="relative flex-1 overflow-hidden">
                 {src ? (
                   <Image src={src} alt={e.work_title} fill loading="lazy" className="object-cover object-top" sizes="120px" />
                 ) : (

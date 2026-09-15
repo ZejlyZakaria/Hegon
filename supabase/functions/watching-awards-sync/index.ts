@@ -59,7 +59,13 @@ serve(async (req) => {
       for (const cat of cats) {
         const t0 = Date.now();
         try {
-          const rows: AwardRow[] = await fetchCategory(cat, since, fetchWithRetry);
+          // Wikidata times out per query, transiently: one category failing must not stay empty
+          // until next month (Outstanding Comedy Series did, on the first backfill). Retry once.
+          const rows: AwardRow[] = await fetchCategory(cat, since, fetchWithRetry).catch(async (e) => {
+            console.warn(`awards-sync ${cat.key}: ${errMsg(e)} — retrying once`);
+            await new Promise((res) => setTimeout(res, 3000));
+            return fetchCategory(cat, since, fetchWithRetry);
+          });
           for (let i = 0; i < rows.length; i += BATCH) {
             const up = await fetchWithRetry(
               `${SUPABASE_URL}/rest/v1/awards?on_conflict=ceremony,category,year,work_qid,person_qid`,

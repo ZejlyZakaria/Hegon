@@ -60,6 +60,8 @@
   --color-fire: var(--color-fire);
   --color-ice: var(--color-ice);
   --color-gold: var(--color-gold);
+  --color-award: var(--color-award);
+  --color-award-dim: var(--color-award-dim);
 
   /* ── Sidebar ────────────────────────────────────────────────────────── */
   --color-sidebar-bg: var(--color-sidebar-bg);
@@ -247,6 +249,11 @@
   --color-fire: #fb923c;  /* flame / streak */
   --color-ice:  #38bdf8;  /* freeze / cold */
   --color-gold: #fbbf24;  /* trophy / achievement */
+  /* The Museum's award tag — a WON award. Metallic, not amber: amber (#fbbf24) is already the
+     watchlist's "medium" priority, and the year on a winner must not read as a bookmark.
+     Change these two lines to reskin every tag (owner, 2026-09-15). */
+  --color-award: #c9a24a;      /* won, and you have seen it */
+  --color-award-dim: #52525b;  /* won, not seen yet — dark grey, same shape */
 
   --radius-sm: 4px;
   --radius-md: 6px;
