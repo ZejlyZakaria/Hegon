@@ -41,9 +41,11 @@
     "",
     "✅ 2026-09-15 (ter) — migration 20260915000200 : deux lignes de plus dans award_categories (données, aucun objet). Chiffres inchangés.",
     "",
-    "✅ 2026-09-15 (quater) — migration 20260915000300 : awards.source + awards.match, award_categories.emmy_slug ; work_tmdb_id nullable. colonnes +3."
+    "✅ 2026-09-15 (quater) — migration 20260915000300 : awards.source + awards.match, award_categories.emmy_slug ; work_tmdb_id nullable. colonnes +3.",
+    "",
+    "✅ 2026-09-16 — migration 20260916000000 : source 'manual' (contrainte élargie + 1 ligne). Chiffres inchangés."
   ],
-  "_migrations_through": "20260915000300",
+  "_migrations_through": "20260916000000",
   "tables": 71,
   "colonnes": 718,
   "policies": 212,

@@ -139,9 +139,13 @@ export function normalize(bindings: Binding[], cat: AwardCategory, since: number
   // no date while the person-side one does, and "release + 1" then invented a second Brutalist
   // (2026) next to the real one (2025). Measured on Best Actor, 2026-09-15.
   const statedWorks = new Set([...rows.values()].filter((r) => !r.year_inferred).map((r) => r.work_qid));
+  // In a PERSON category the person-side statement is the truth; a bare film-side row of the same
+  // work — whatever its year — is the same fact carried worse (The Divorcee said "1929", Norma
+  // Shearer says 1930). In a work category there is no person row to defer to.
+  const personWorks = new Set([...rows.values()].filter((r) => r.person_qid !== "").map((r) => r.work_qid));
   return [...rows.values()].filter((r) =>
-    // Drop the bare work rows shadowed by a person row of the same (year, work).
     (r.person_qid !== "" || !personRowsFor.has(`${r.year}|${r.work_qid}`)) &&
+    (r.person_qid !== "" || cat.subject !== "person" || !personWorks.has(r.work_qid)) &&
     (!r.year_inferred || !statedWorks.has(r.work_qid)));
 }
 

@@ -262,7 +262,7 @@ const AWARD_TAG = {
   tile: { h: 18, num: 10, padX: 7 },
 } as const;
 const CLUSTER_TOP = 8, CLUSTER_H = 24;
-export function AwardRibbon({ year, tone = "won", size = "card", className }: { year: number; tone?: "won" | "dim"; size?: keyof typeof AWARD_TAG; className?: string }) {
+export function AwardRibbon({ year, tone = "won", size = "card", className }: { year: number | string; tone?: "won" | "dim"; size?: keyof typeof AWARD_TAG; className?: string }) {
   const r = AWARD_TAG[size];
   return (
     <span
