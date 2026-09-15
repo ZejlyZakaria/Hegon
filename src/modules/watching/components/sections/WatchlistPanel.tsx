@@ -138,7 +138,7 @@ export function WatchlistPanel({
                         {[it.year, it.tags?.slice(0, 2).join(", ")].filter(Boolean).join(" · ")}
                       </span>
                     }
-                    right={it.priority_level ? <PriorityMark level={it.priority_level} size={15} /> : undefined}
+                    right={it.priority_level ? <PriorityMark level={it.priority_level} size="row" className="mr-1.5" /> : undefined}
                   />
                 </li>
               ))}

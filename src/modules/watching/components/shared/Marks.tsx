@@ -1,4 +1,4 @@
-import { Bookmark, CheckCheck, Heart, Star } from "lucide-react";
+import { CheckCheck, Heart, Star } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Badge } from "@/shared/components/ui/badge";
 
@@ -131,13 +131,37 @@ export const PRIORITY: Record<"high" | "medium" | "low", string> = {
   low: "var(--color-zinc-500)",
 };
 
-export function PriorityMark({ level, size = 17 }: { level: "high" | "medium" | "low"; size?: number }) {
-  const color = PRIORITY[level];
+/**
+ * THE PRIORITY IS A RIBBON TOO — the Top 10's sibling, owner-decided 2026-09-15. A ribbon hanging
+ * from the top edge IS a bookmark; the lucide bookmark said the same thing in another shape. Same
+ * hem, same shadow, the colour carries the level. Narrower than the Top 10 (14×22 against 22×30)
+ * because it carries no text: an empty ribbon at the Top 10's size shouts as loud without saying
+ * anything, and a priority is a note to yourself, a Top 10 is a rank. The two never meet on one
+ * poster — a want-to-watch is not eligible for the Top 10.
+ *
+ * Two sizes, owner-tuned 2026-09-15: `card` hangs from the rail artwork (`left-2 top-0`, the
+ * ribbon's slot); `row` stands in the watchlist panel's right column, a step smaller — the row
+ * poster is 40 px wide, and a ribbon that fit it would be a coloured dot with the shape gone, so
+ * it sits beside the row instead, at the row's scale.
+ */
+const PRIORITY_RIBBON = {
+  card: { w: 14, h: 22 },
+  row:  { w: 10, h: 16 },
+} as const;
+export function PriorityMark({ level, size = "card", className }: { level: "high" | "medium" | "low"; size?: keyof typeof PRIORITY_RIBBON; className?: string }) {
+  const r = PRIORITY_RIBBON[size];
   return (
-    <Bookmark
-      size={size}
+    <span
       aria-label={`${level} priority`}
-      style={{ color, fill: color, filter: "drop-shadow(0 1px 4px rgba(0,0,0,0.8))" }}
+      className={cn("block select-none", className)}
+      style={{
+        width: r.w,
+        height: r.h,
+        backgroundColor: PRIORITY[level],
+        clipPath: "polygon(0 0, 100% 0, 100% 78%, 0 100%)",
+        borderTopRightRadius: 3,
+        filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.6))",
+      }}
     />
   );
 }
