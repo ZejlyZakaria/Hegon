@@ -39,11 +39,13 @@
     "",
     "✅ MIS À JOUR le 2026-09-15 (bis) — migration 20260915000100 : awards.person_profile_path + award_categories.portrait. colonnes +2.",
     "",
-    "✅ 2026-09-15 (ter) — migration 20260915000200 : deux lignes de plus dans award_categories (données, aucun objet). Chiffres inchangés."
+    "✅ 2026-09-15 (ter) — migration 20260915000200 : deux lignes de plus dans award_categories (données, aucun objet). Chiffres inchangés.",
+    "",
+    "✅ 2026-09-15 (quater) — migration 20260915000300 : awards.source + awards.match, award_categories.emmy_slug ; work_tmdb_id nullable. colonnes +3."
   ],
-  "_migrations_through": "20260915000200",
+  "_migrations_through": "20260915000300",
   "tables": 71,
-  "colonnes": 715,
+  "colonnes": 718,
   "policies": 212,
   "fonctions": 35,
   "index": 256,

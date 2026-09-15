@@ -9,6 +9,8 @@
 //   · by hand, `{ "ceremony": "oscars", "since": 1929 }` → the full backfill of one ceremony.
 //     One ceremony per invocation: ~20 SPARQL queries of 1–8 s each stay well inside the
 //     function's wall-clock budget; both at once would not.
+//   · `{ "ceremony": "emmys" }` → NOT Wikidata: emmys.com (JSON-LD), the current ceremony year
+//     (`since` = that year); the 1949→today backfill is `scripts/backfill-award-emmys.ts`.
 //   · `{ "enrich": true }` → only the TMDB pass (poster + release year for works still missing
 //     one), time-boxed; run it a few times after a backfill, the monthly cron finishes the tail.
 // Payload: { ceremony?: "oscars" | "emmys", since?: number, categories?: string[], enrich?: boolean }.
@@ -19,6 +21,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 import { fetchCategory, type AwardCategory, type AwardRow } from "./wikidata.ts";
+import { fetchEmmyYear, makeResolver, type EmmyCategory } from "./emmys.ts";
 
 const BATCH = 500;
 // The enrichment stops itself before the function's wall-clock budget does.
@@ -47,7 +50,31 @@ serve(async (req) => {
     const report: Record<string, { rows: number; wins: number; ms: number } | { error: string }> = {};
     let total = 0;
 
-    if (!payload.enrich) {
+    if (!payload.enrich && payload.ceremony === "emmys") {
+      // ── The Emmys: emmys.com, one ceremony year per run (the cron's year = the current one) ──
+      const year = Number.isFinite(payload.since) ? Number(payload.since) : new Date().getFullYear();
+      const catRes = await fetchWithRetry(`${SUPABASE_URL}/rest/v1/award_categories?select=key,subject,emmy_slug&ceremony=eq.emmys&emmy_slug=not.is.null&order=rank`, { headers: readHeaders });
+      if (!catRes.ok) throw new Error(`award_categories fetch failed: ${await catRes.text()}`);
+      const cats: EmmyCategory[] = await catRes.json();
+      const TMDB_KEY = Deno.env.get("TMDB_API_KEY");
+      if (!TMDB_KEY) throw new Error("no TMDB_API_KEY");
+      const t0 = Date.now();
+      try {
+        const rows = await fetchEmmyYear(year, cats, makeResolver(TMDB_KEY, fetchWithRetry), fetchWithRetry);
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const up = await fetchWithRetry(
+            `${SUPABASE_URL}/rest/v1/awards?on_conflict=ceremony,category,year,work_qid,person_qid`,
+            { method: "POST", headers: writeHeaders, body: JSON.stringify(rows.slice(i, i + BATCH).map((r) => ({ ...r, synced_at: new Date().toISOString() }))) },
+          );
+          if (!up.ok) throw new Error(`upsert failed: ${up.status} ${await up.text()}`);
+        }
+        total += rows.length;
+        report[`emmys-${year}`] = { rows: rows.length, wins: rows.filter((r) => r.won).length, ms: Date.now() - t0 };
+      } catch (e) {
+        report[`emmys-${year}`] = { error: errMsg(e) };
+        console.error(`awards-sync emmys ${year}: ${errMsg(e)}`);
+      }
+    } else if (!payload.enrich) {
       // The whitelist, from the database.
       let catUrl = `${SUPABASE_URL}/rest/v1/award_categories?select=key,ceremony,subject,qids&order=rank`;
       if (payload.ceremony) catUrl += `&ceremony=eq.${payload.ceremony}`;
@@ -139,7 +166,7 @@ async function enrichPosters(url: string, readHeaders: Record<string, string>, w
   };
 
   type Work = { work_type: "film" | "serie"; work_tmdb_id: number };
-  const works = await listMissing<Work>("select=work_type,work_tmdb_id&poster_path=is.null&order=year.desc", (r) => `${r.work_type}:${r.work_tmdb_id}`);
+  const works = await listMissing<Work>("select=work_type,work_tmdb_id&poster_path=is.null&work_tmdb_id=not.is.null&order=year.desc", (r) => `${r.work_type}:${r.work_tmdb_id}`);
   let wi = 0, gone = 0;
   const worksDone = await runAll(works.length, async () => {
     const w = works[wi++];

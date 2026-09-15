@@ -23,7 +23,7 @@ const sb = createClient(URL_, KEY, { db: { schema: "watching" }, auth: { persist
 // Every row still missing a poster, paged past PostgREST's 1 000-row cap.
 const works = new Map();
 for (let from = 0; ; from += 1000) {
-  const { data, error } = await sb.from("awards").select("work_type, work_tmdb_id").is("poster_path", null).range(from, from + 999);
+  const { data, error } = await sb.from("awards").select("work_type, work_tmdb_id").is("poster_path", null).not("work_tmdb_id", "is", null).range(from, from + 999);
   if (error) throw error;
   for (const r of data) works.set(`${r.work_type}:${r.work_tmdb_id}`, r);
   if (data.length < 1000) break;

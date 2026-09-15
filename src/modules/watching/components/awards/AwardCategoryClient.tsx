@@ -132,13 +132,17 @@ function CanonTile({ entry, owned, showPeople, portrait }: { entry: AwardEntry; 
   const person = portrait ? entry.people.find((p) => p.profile_path) ?? entry.people[0] ?? null : null;
   const hasFace = !!person?.profile_path;
   const src = entryImage(entry, owned, portrait, 200);
-  const discover = `/perso/watching/discover/${entry.work_type === "film" ? "film" : "serie"}/${entry.work_tmdb_id}`;
+  // No TMDB id (an emmys.com title nobody could resolve): the tile is a fact without a door.
+  const discover = entry.work_tmdb_id ? `/perso/watching/discover/${entry.work_type === "film" ? "film" : "serie"}/${entry.work_tmdb_id}` : null;
   const filmHref = owned ? `/perso/watching/${owned.id}` : discover;
-  const open = () => router.push(hasFace && person?.tmdb_id ? `/perso/watching/person/${person.tmdb_id}` : filmHref);
+  const open = () => {
+    if (hasFace && person?.tmdb_id) router.push(`/perso/watching/person/${person.tmdb_id}`);
+    else if (filmHref) router.push(filmHref);
+  };
 
   return (
     <div className="group relative">
-      <div className="relative cursor-pointer" onClick={open}>
+      <div className={cn("relative", (filmHref || (hasFace && person?.tmdb_id)) && "cursor-pointer")} onClick={open}>
         <div className={cn(
           "relative aspect-2/3 overflow-hidden rounded-tile bg-zinc-800 transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]",
         )}>
@@ -161,13 +165,17 @@ function CanonTile({ entry, owned, showPeople, portrait }: { entry: AwardEntry; 
           <>
             <p className="mt-1.5 line-clamp-1 text-xs font-medium text-text-secondary">{person!.name}</p>
             {/* The film is its own door — a real link, so it opens the fiche and not the person. */}
-            <Link
-              href={filmHref}
-              onClick={(ev) => ev.stopPropagation()}
-              className="mt-0.5 block truncate text-micro text-text-tertiary transition-colors hover:text-text-primary"
-            >
-              {owned ? displayTitle(owned) : entry.work_title}{!entry.won ? ` · Nominee ${entry.year}` : entry.work_year ? ` · ${entry.work_year}` : ""}
-            </Link>
+            {filmHref ? (
+              <Link
+                href={filmHref}
+                onClick={(ev) => ev.stopPropagation()}
+                className="mt-0.5 block truncate text-micro text-text-tertiary transition-colors hover:text-text-primary"
+              >
+                {owned ? displayTitle(owned) : entry.work_title}{!entry.won ? ` · Nominee ${entry.year}` : entry.work_year ? ` · ${entry.work_year}` : ""}
+              </Link>
+            ) : (
+              <p className="mt-0.5 truncate text-micro text-text-tertiary">{entry.work_title}{!entry.won ? ` · Nominee ${entry.year}` : ""}</p>
+            )}
           </>
         ) : (
           <>
@@ -193,7 +201,7 @@ function CanonTile({ entry, owned, showPeople, portrait }: { entry: AwardEntry; 
       </div>
 
       {/* Not yours yet → the door to add it. Always visible on touch, revealed on hover with a mouse. */}
-      {!owned && (
+      {!owned && discover && (
         <div className={cn(OVERLAY_CLUSTER, "right-2 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100")}>
           <button
             type="button"

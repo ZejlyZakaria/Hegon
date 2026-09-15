@@ -138,7 +138,16 @@ function CategoryCard({ category, entries, owned }: { category: AwardCategory; e
   const winners = entries.filter((e) => e.category === category.key && e.won).sort((a, b) => b.year - a.year);
   const { seen, total } = coverage(entries, owned, category.key);
   const pct = total > 0 ? Math.round((seen / total) * 100) : 0;
-  const mosaic = winners.slice(0, 3);
+  // Three DIFFERENT faces or posters: a show that wins five years running (Modern Family, The
+  // Pitt) would otherwise fill the whole mosaic with itself.
+  const mosaic: AwardEntry[] = [];
+  const shown = new Set<string>();
+  for (const e of winners) {
+    const k = category.portrait ? (e.people.find((p) => p.profile_path)?.name ?? e.key) : `${e.work_type}:${e.work_tmdb_id ?? e.work_title}`;
+    if (shown.has(k)) continue;
+    shown.add(k); mosaic.push(e);
+    if (mosaic.length === 3) break;
+  }
 
   return (
     <Link

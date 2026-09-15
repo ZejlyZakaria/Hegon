@@ -267,7 +267,8 @@ export interface AwardRow {
   year_inferred: boolean;
   won: boolean;
   work_qid: string;
-  work_tmdb_id: number;
+  /** Null for an emmys.com row whose title could not be resolved to TMDB — kept, counted, unlinked. */
+  work_tmdb_id: number | null;
   work_type: "film" | "serie";
   work_title: string;
   /** TMDB poster path ("/abc.jpg"); "" when TMDB has none; null when not enriched yet. */
@@ -287,7 +288,7 @@ export interface AwardEntry {
   category: string;
   year: number;
   won: boolean;
-  work_tmdb_id: number;
+  work_tmdb_id: number | null;
   work_type: "film" | "serie";
   work_title: string;
   poster_path: string | null;

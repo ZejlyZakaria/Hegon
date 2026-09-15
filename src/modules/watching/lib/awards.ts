@@ -10,12 +10,13 @@ import type { AwardCategory, AwardEntry, AwardRow, WatchingMedia } from "../type
  * owns that title — by TMDB id, the only join there is.
  */
 
-export const workKey = (type: "film" | "serie", tmdbId: number) => `${type}:${tmdbId}`;
+export const workKey = (type: "film" | "serie", tmdbId: number | null) => `${type}:${tmdbId ?? "?"}`;
 
 export function foldEntries(rows: AwardRow[]): AwardEntry[] {
   const out = new Map<string, AwardEntry>();
   for (const r of rows) {
-    const key = `${r.ceremony}|${r.category}|${r.year}|${workKey(r.work_type, r.work_tmdb_id)}`;
+    // An unresolved title (no TMDB id) folds on its own row key instead, so two of them never merge.
+    const key = `${r.ceremony}|${r.category}|${r.year}|${r.work_tmdb_id ? workKey(r.work_type, r.work_tmdb_id) : r.work_qid}`;
     let e = out.get(key);
     if (!e) {
       e = {
@@ -47,7 +48,7 @@ export function indexOwned(owned: WatchingMedia[]): Map<string, WatchingMedia> {
 }
 
 export const ownedFor = (owned: Map<string, WatchingMedia>, e: Pick<AwardEntry, "work_type" | "work_tmdb_id">) =>
-  owned.get(workKey(e.work_type, e.work_tmdb_id)) ?? null;
+  e.work_tmdb_id ? owned.get(workKey(e.work_type, e.work_tmdb_id)) ?? null : null;
 
 /**
  * "Seen" for the museum = you have seen everything there is: finished, or CAUGHT UP on a show that
