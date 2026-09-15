@@ -505,6 +505,7 @@ export function StatsPage() {
       data?.items ?? [],
       allTime.hours.total,
       [...allTime.breakdown.film, ...allTime.breakdown.serie, ...allTime.breakdown.anime],
+      allTime.breakdown.rewatches,
     ),
     [data, allTime],
   );

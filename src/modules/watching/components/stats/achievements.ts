@@ -1,6 +1,6 @@
 import type { Achievement } from "@/shared/components/achievements/types";
 import type { StatsRawItem } from "../../service";
-import type { HoursEntry } from "./computeStats";
+import type { HoursEntry, RewatchEntry } from "./computeStats";
 
 /**
  * THE TWELVE, AS RULES — a SHAPE with PARAMETERS, not twelve hand-written counters.
@@ -40,6 +40,8 @@ export interface DetailGroup {
 }
 
 export interface AchievementDetail {
+  /** Which of the five shapes produced this — the panel lays each one out differently. */
+  shape: Rule["shape"];
   value: number;
   goal: number;
   unit: string;
@@ -100,7 +102,7 @@ const byDateDesc = (a: StatsRawItem, b: StatsRawItem) => (b.watched_at ?? "").lo
  * Evaluate one rule — the number AND its working. `hours` is the all-time itemised breakdown the
  * Hours donut sums (the same pass, so Marathoner can never disagree with it).
  */
-export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[], totalHours: number): WatchingAchievement {
+export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[], totalHours: number, rewatches: RewatchEntry[] = []): WatchingAchievement {
   const completed = items.filter((i) => i.watched);
   let value = 0;
   let groups: DetailGroup[] = [];
@@ -132,7 +134,12 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
         }
       }
       value = buckets.size;
-      groups = [...buckets.values()].sort((a, b) => a.label.localeCompare(b.label));
+      // A decade or a month is read most recent first, like the person timeline; a genre A→Z.
+      const chronological = [...buckets.keys()].every((k) => /^\d/.test(k));
+      groups = [...buckets.entries()]
+        .sort(([ka, a], [kb, b]) => (chronological ? kb.localeCompare(ka) : a.label.localeCompare(b.label)))
+        .map(([, g]) => g);
+      for (const g of groups) g.items.sort(byDateDesc);
       // The goal-th DIFFERENT value to appear, in the order you finished things.
       const firsts = [...buckets.values()].map((g) => g.first).filter((d): d is string => !!d).sort();
       unlockedAt = value >= rule.goal && firsts.length >= rule.goal ? firsts[rule.goal - 1] : null;
@@ -149,10 +156,10 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
           buckets.set(b.key, g);
         }
       }
-      groups = [...buckets.values()].sort((a, b) => b.value - a.value).slice(0, 5);
+      groups = [...buckets.values()].sort((a, b) => b.value - a.value).slice(0, 10);
       value = groups[0]?.value ?? 0;
+      for (const g of groups) g.items.sort(byDateDesc);
       if (groups[0]) {
-        groups[0].items.sort(byDateDesc);
         const dated = [...groups[0].items].filter((i) => i.watched_at).sort(byDateAsc);
         unlockedAt = value >= rule.goal && dated.length >= rule.goal ? dated[rule.goal - 1].watched_at : null;
       }
@@ -165,7 +172,7 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
       unit = rule.unit;
       const ranked = completed.map((i) => ({ i, v: rule.of(i) })).filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
       value = ranked[0]?.v ?? 0;
-      groups = ranked.slice(0, 5).map(({ i, v }) => ({ label: i.title, items: [i], value: v }));
+      groups = ranked.slice(0, 10).map(({ i, v }) => ({ label: i.title, items: [i], value: v }));
       unlockedAt = value >= rule.goal ? (ranked[0]?.i.watched_at ?? null) : null;
       formula = ranked[0]
         ? `Your longest finished show is ${ranked[0].i.title}, ${value} ${rule.unit} — ${rule.description.toLowerCase()}.`
@@ -177,13 +184,19 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
       // THE DONUT'S NUMBER, not a second sum — rewatches included, exactly what "Hours watched"
       // says on All time. The entries below only show where it came from.
       value = Math.round(totalHours);
-      const top = [...hours].sort((a, b) => b.minutes - a.minutes).slice(0, 8);
+      const top = [...hours].sort((a, b) => b.minutes - a.minutes).slice(0, 10);
       groups = top.map((h) => ({ label: h.item.title, items: [h.item], value: Math.round(h.minutes / 60) }));
-      // Cumulative, in the order you finished things: the title that pushed the total over the bar.
+      // Cumulative, in the order you watched things — first viewings AND rewatches, since the total
+      // counts both: the sitting that pushed it over the bar. (Without the rewatches the bar can be
+      // crossed with no date to show for it.)
+      const sittings = [
+        ...hours.filter((h) => h.item.watched_at).map((h) => ({ on: h.item.watched_at!, minutes: h.minutes })),
+        ...rewatches.map((r) => ({ on: r.watchedOn, minutes: r.minutes })),
+      ].sort((a, b) => a.on.localeCompare(b.on));
       let acc = 0;
-      for (const h of [...hours].filter((h) => h.item.watched_at).sort((a, b) => byDateAsc(a.item, b.item))) {
-        acc += h.minutes;
-        if (acc / 60 >= rule.goal) { unlockedAt = h.item.watched_at; break; }
+      for (const s of sittings) {
+        acc += s.minutes;
+        if (acc / 60 >= rule.goal) { unlockedAt = s.on; break; }
       }
       formula = `${value.toLocaleString("en-GB")} hours across everything you finished, rewatches included — ${rule.description.toLowerCase()}.`;
       break;
@@ -200,7 +213,7 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
     unlocked,
     progress: rule.goal <= 0 ? 1 : Math.min(1, value / rule.goal),
     progressLabel: unlocked ? "Unlocked" : `${value.toLocaleString("en-GB")} / ${rule.goal.toLocaleString("en-GB")}`,
-    detail: { value, goal: rule.goal, unit, formula, groups, unlockedAt, remaining: Math.max(0, rule.goal - value), candidates },
+    detail: { shape: rule.shape, value, goal: rule.goal, unit, formula, groups, unlockedAt, remaining: Math.max(0, rule.goal - value), candidates },
   };
 }
 
@@ -208,6 +221,6 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
  * `totalHours` and `hours` come from ONE all-time `computeStats` pass — the same figure the Hours
  * donut shows, so Marathoner can never disagree with it.
  */
-export function computeWatchingAchievements(items: StatsRawItem[], totalHours: number, hours: HoursEntry[]): WatchingAchievement[] {
-  return RULES.map((r) => evaluate(r, items, hours, totalHours));
+export function computeWatchingAchievements(items: StatsRawItem[], totalHours: number, hours: HoursEntry[], rewatches: RewatchEntry[] = []): WatchingAchievement[] {
+  return RULES.map((r) => evaluate(r, items, hours, totalHours, rewatches));
 }
