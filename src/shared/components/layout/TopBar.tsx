@@ -31,6 +31,7 @@ const SECTION_BREADCRUMBS: Array<[string, string[]]> = [
   ["/perso/watching/animes",   ["Watching", "Animes"]],
   ["/perso/watching/library",  ["Watching", "Library"]],
   ["/perso/watching/lists",    ["Watching", "Lists"]],
+  ["/perso/watching/awards",   ["Watching", "Awards"]],
   ["/perso/watching/stats",    ["Watching", "Stats"]],
   ["/pro/tasks",              ["Pro", "Tasks"]],
   ["/pro/jobhunt",            ["Pro", "Job Hunt"]],

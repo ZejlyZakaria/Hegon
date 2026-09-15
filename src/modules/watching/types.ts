@@ -241,3 +241,52 @@ export interface ThemeFavoriteInput {
   cover: string | null;
   animePoster: string | null;
 }
+
+// ── The Museum — awards (Oscars ↔ Emmys), reference data from watching.awards ──
+export type AwardCeremony = "oscars" | "emmys";
+
+export interface AwardCategory {
+  key: string;
+  ceremony: AwardCeremony;
+  label: string;
+  /** 'work' = the prize goes to the title (Best Picture); 'person' = to someone FOR a title. */
+  subject: "work" | "person";
+  rank: number;
+  /** First ceremony year, for "12 / 96". */
+  since: number | null;
+}
+
+/** One row of the canon: a title in a category in a year, won or nominated, one line per credit. */
+export interface AwardRow {
+  id: number;
+  ceremony: AwardCeremony;
+  category: string;
+  year: number;
+  year_inferred: boolean;
+  won: boolean;
+  work_qid: string;
+  work_tmdb_id: number;
+  work_type: "film" | "serie";
+  work_title: string;
+  /** TMDB poster path ("/abc.jpg"); "" when TMDB has none; null when not enriched yet. */
+  poster_path: string | null;
+  work_year: number | null;
+  person_qid: string;
+  person_tmdb_id: number | null;
+  person_name: string | null;
+}
+
+/** The rows of one (year, work) folded into one entry — what every surface actually shows. */
+export interface AwardEntry {
+  key: string;
+  ceremony: AwardCeremony;
+  category: string;
+  year: number;
+  won: boolean;
+  work_tmdb_id: number;
+  work_type: "film" | "serie";
+  work_title: string;
+  poster_path: string | null;
+  work_year: number | null;
+  people: { tmdb_id: number | null; name: string }[];
+}

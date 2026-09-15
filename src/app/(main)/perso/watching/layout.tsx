@@ -17,6 +17,7 @@ const TABS = [
 const MORE_TABS = [
   { label: "Library",  href: "/perso/watching/library" },
   { label: "Lists",    href: "/perso/watching/lists" },
+  { label: "Awards",   href: "/perso/watching/awards" },
   { label: "Stats",    href: "/perso/watching/stats" },
 ];
 

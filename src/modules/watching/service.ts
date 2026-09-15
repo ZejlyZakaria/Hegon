@@ -6,7 +6,7 @@ import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import { reportError } from "@/shared/utils/report-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch } from "./types";
+import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardRow } from "./types";
 import { deriveWatchStatus } from "./lib/watch-status";
 import { airedFromTmdb } from "./lib/series-state";
 import { runtimeFromTmdb } from "./lib/tmdb-runtime";
@@ -1821,4 +1821,109 @@ export async function getWatchingHeroData(
   if (error) throw error;
   const items = (data?.items ?? {}) as { trending?: any; recommendations?: any[] };
   return { trending: items.trending ?? null, recommendations: items.recommendations ?? [] };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THE MUSEUM — awards. Reference data written by the `watching-awards-sync` robot
+// (Wikidata → watching.awards), read here, joined to the library by TMDB id.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const AWARD_COLUMNS =
+  "id, ceremony, category, year, year_inferred, won, work_qid, work_tmdb_id, work_type, work_title, poster_path, work_year, person_qid, person_tmdb_id, person_name";
+
+export async function getAwardCategories(): Promise<AwardCategory[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("award_categories")
+    .select("key, ceremony, label, subject, rank, since")
+    .order("ceremony").order("rank");
+  if (error) throw error;
+  return (data ?? []) as AwardCategory[];
+}
+
+/**
+ * PostgREST caps a response at 1 000 rows; a ceremony's winners alone are ~2 000 lines (one per
+ * credit). Page through by range until a short page comes back — the caller never sees it.
+ */
+async function fetchAllAwardRows(build: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>): Promise<AwardRow[]> {
+  const PAGE = 1000;
+  const out: AwardRow[] = [];
+  // eslint-disable-next-line no-restricted-syntax -- pas un N+1 : c'est la PAGINATION d'une seule requête (PostgREST plafonne à 1 000 lignes), 2-3 pages au plus, jamais une par élément.
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as AwardRow[];
+    out.push(...rows);
+    if (rows.length < PAGE) break;
+  }
+  return out;
+}
+
+/** Winners of one ceremony, every category, every year — the Awards page's canon. */
+export async function getAwardWinners(ceremony: AwardCeremony): Promise<AwardRow[]> {
+  const supabase = createClient();
+  return fetchAllAwardRows((from, to) =>
+    supabase.schema("watching").from("awards").select(AWARD_COLUMNS)
+      .eq("ceremony", ceremony).eq("won", true)
+      .order("year", { ascending: false }).order("id").range(from, to),
+  );
+}
+
+/** Everything in one category — winners AND nominees — for the category page. */
+export async function getAwardCategoryRows(ceremony: AwardCeremony, category: string): Promise<AwardRow[]> {
+  const supabase = createClient();
+  return fetchAllAwardRows((from, to) =>
+    supabase.schema("watching").from("awards").select(AWARD_COLUMNS)
+      .eq("ceremony", ceremony).eq("category", category)
+      .order("year", { ascending: false }).order("won", { ascending: false }).order("id").range(from, to),
+  );
+}
+
+/** One ceremony year, every category — the ceremony page. */
+export async function getAwardYearRows(ceremony: AwardCeremony, year: number): Promise<AwardRow[]> {
+  const supabase = createClient();
+  return fetchAllAwardRows((from, to) =>
+    supabase.schema("watching").from("awards").select(AWARD_COLUMNS)
+      .eq("ceremony", ceremony).eq("year", year)
+      .order("won", { ascending: false }).order("id").range(from, to),
+  );
+}
+
+/** A title's accolades (the fiche) — by TMDB id and type, across both ceremonies. */
+export async function getAwardsForWork(type: "film" | "serie", tmdbId: number): Promise<AwardRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("awards").select(AWARD_COLUMNS)
+    .eq("work_type", type).eq("work_tmdb_id", tmdbId)
+    .order("year", { ascending: false }).order("won", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as AwardRow[];
+}
+
+/** A person's awards timeline (the person page). */
+export async function getAwardsForPerson(personTmdbId: number): Promise<AwardRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("awards").select(AWARD_COLUMNS)
+    .eq("person_tmdb_id", personTmdbId)
+    .order("year", { ascending: false }).order("won", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as AwardRow[];
+}
+
+/**
+ * The whole library, every status, with the TMDB id the canon joins on. ~400 rows, one query —
+ * cheaper than asking per poster, and it is what lets an award-winning title you own light up
+ * with YOUR rating. The library columns, so the trophy shelf can be a plain MediaCarousel.
+ */
+export async function getOwnedTitles(userId: string): Promise<WatchingMedia[]> {
+  if (!userId) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("media_items")
+    .select(`${LIBRARY_COLUMNS}, tmdb_id, want_to_watch, backdrop_url`)
+    .eq("user_id", userId)
+    .not("is_reference", "is", true);
+  if (error) throw error;
+  return (data as unknown as WatchingMedia[]) ?? [];
 }

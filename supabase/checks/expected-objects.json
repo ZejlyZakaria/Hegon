@@ -33,13 +33,15 @@
     "+seen_ids). Réconcilié au chiffre près : tables +1, colonnes +2−2+5+1 = +6, policies +4,",
     "index +1 (la PK). Le watchdog du 14/09 06:20 avait crié DÉRIVE sur 4 lignes : le schéma était",
     "juste, c'est cette référence qui avait pris du retard. D'où `_migrations_through` et",
-    "scripts/check-schema-reference.mjs en CI : une migration plus récente que ce champ = rouge."
+    "scripts/check-schema-reference.mjs en CI : une migration plus récente que ce champ = rouge.",
+    "",
+    "✅ MIS À JOUR le 2026-09-15 — migration 20260915000000 (le Musée) : watching.award_categories (7 colonnes, PK) + watching.awards (16 colonnes, PK, unique awards_natural_key, 2 index) ; 2 policies de lecture ; 2 crons mensuels (oscars / emmys). tables +2, colonnes +23, policies +2, index +5, crons +2."
   ],
-  "_migrations_through": "20260914000100",
-  "tables": 69,
-  "colonnes": 690,
-  "policies": 210,
+  "_migrations_through": "20260915000000",
+  "tables": 71,
+  "colonnes": 713,
+  "policies": 212,
   "fonctions": 35,
-  "index": 251,
-  "crons": 15
+  "index": 256,
+  "crons": 17
 }

@@ -134,3 +134,19 @@ export const TMDB_KEYS = {
   images: (type: MediaType, tmdbId: number) =>
     ['tmdb', 'images', type, tmdbId] as const,
 } as const;
+
+/**
+ * THE MUSEUM — reference data (watching.awards), not your library: outside WATCHING_KEYS so an
+ * add never refetches the canon. The one per-user key (`owned`) sits INSIDE WATCHING_KEYS.all
+ * for the opposite reason: adding a title must light it up on the Awards page.
+ */
+export const AWARD_KEYS = {
+  all: ['awards'] as const,
+  categories: () => [...AWARD_KEYS.all, 'categories'] as const,
+  winners: (ceremony: string) => [...AWARD_KEYS.all, 'winners', ceremony] as const,
+  category: (ceremony: string, key: string) => [...AWARD_KEYS.all, 'category', ceremony, key] as const,
+  year: (ceremony: string, year: number) => [...AWARD_KEYS.all, 'year', ceremony, year] as const,
+  work: (type: string, tmdbId: number) => [...AWARD_KEYS.all, 'work', type, tmdbId] as const,
+  person: (tmdbId: number) => [...AWARD_KEYS.all, 'person', tmdbId] as const,
+  owned: () => [...WATCHING_KEYS.all, 'owned-titles'] as const,
+} as const;

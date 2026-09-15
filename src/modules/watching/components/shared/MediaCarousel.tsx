@@ -46,6 +46,13 @@ type MediaCarouselProps = {
   showCountdown?: boolean;
   /** Last Watched only — flag a caught-up title (up to date, not finished) with a teal badge. */
   showCaughtUp?: boolean;
+  /**
+   * The Museum's rail: a mark that hangs from the top edge (the gold year ribbon) INSTEAD of the
+   * priority / Top 10 ribbons, and a line under the title (the category) INSTEAD of the genres.
+   * Render props rather than two more `show*` flags: the card does not know what an award is.
+   */
+  mark?: (item: WatchingMedia) => React.ReactNode;
+  meta?: (item: WatchingMedia) => React.ReactNode;
 };
 
 
@@ -64,6 +71,8 @@ function MovieCard({
   showCaughtUp,
   eagerLoad,
   orientation = "backdrop",
+  mark,
+  meta,
 }: {
   item: WatchingMedia;
   /** The lens. Without it a lumped anime prints its FLAT episode ("S01 E59") on the tile while its
@@ -80,6 +89,8 @@ function MovieCard({
   showCaughtUp?: boolean;
   eagerLoad?: boolean;
   orientation?: "poster" | "backdrop";
+  mark?: (item: WatchingMedia) => React.ReactNode;
+  meta?: (item: WatchingMedia) => React.ReactNode;
 }) {
   const { loaded: imgLoaded, instant: imgInstant, onLoad: onImgLoad, attach: attachImg } = useImageReveal();
   const isPoster = orientation === "poster";
@@ -140,14 +151,16 @@ function MovieCard({
             hangs from an edge. Held at the cluster's inset it floated in the corner and stopped
             reading as a bookmark at all. Flush to the top, then — but not to the left: the card is
             `rounded-card` (12px), and at 0 the glyph would sit half on the curve. */}
-        {item.want_to_watch && item.priority_level && !showCountdown && (
+        {mark ? (
+          <div className="absolute left-2 top-0 z-10">{mark(item)}</div>
+        ) : item.want_to_watch && item.priority_level && !showCountdown && (
           <div className="absolute left-2 top-0 z-10">
             <PriorityMark level={item.priority_level} />
           </div>
         )}
         {/* The Top 10 ribbon hangs from the same edge, for the same reason — with the RANK, since
             this rail IS the ranking. */}
-        {showRankBadge && item.priority && (
+        {!mark && showRankBadge && item.priority && (
           <div className="absolute left-2 top-0 z-10">
             <TopTenRibbon rank={item.priority} size="carousel" />
           </div>
@@ -261,7 +274,7 @@ function MovieCard({
                 being handed the hero's 0.8 white, not because the variant is wrong. A genre is
                 metadata; it must sit under the title that names the thing. This card's title is
                 `text-sm`, so the pill is quieter than the hero's and matches Don't Miss. */}
-            {!isPoster && item.tags?.slice(0, 2).map((tag) => (
+            {meta ? meta(item) : !isPoster && item.tags?.slice(0, 2).map((tag) => (
               <Badge key={tag} variant="overlay" size="sm" color="rgba(255,255,255,0.45)" className="min-w-0 max-w-24 shrink">
                 <span className="truncate">{tag}</span>
               </Badge>
@@ -311,6 +324,8 @@ export function MediaCarousel({
   showWatchedAgo = false,
   showCountdown = false,
   showCaughtUp = false,
+  mark,
+  meta,
 }: MediaCarouselProps) {
   const router = useRouter();
   const prefetch = usePrefetchMedia();
@@ -488,6 +503,8 @@ export function MediaCarousel({
               showWatchedAgo={showWatchedAgo}
               showCountdown={showCountdown}
               showCaughtUp={showCaughtUp}
+              mark={mark}
+              meta={meta}
               /**
                * Lazy, even here. A page carries SEVEN of these rails, and each one claiming its
                * first five images as `eager` meant ~35 forced fetches for the one rail actually on
@@ -538,6 +555,8 @@ export function MediaCarousel({
               showWatchedAgo={showWatchedAgo}
               showCountdown={showCountdown}
               showCaughtUp={showCaughtUp}
+              mark={mark}
+              meta={meta}
               eagerLoad={false}
             />
           </motion.div>

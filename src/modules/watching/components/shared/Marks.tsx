@@ -246,6 +246,38 @@ export function TopTenRibbon({ rank, size = "library", className }: { rank?: num
 }
 
 /**
+ * THE AWARD RIBBON — the Top 10's sibling in GOLD, the world's colour: a prize is the world's
+ * verdict on a title. It carries the CEREMONY YEAR ("2024"), four digits at a size that fits the
+ * hem — the Museum reads by year, and a ribbon that only said "winner" on a shelf of winners
+ * would say nothing (decisions.md 2026-09-15). Same hem, same shadow, same edge (`left-2 top-0`).
+ *   · card = the rail card and the category grid tile · tile = the library-size poster grid.
+ */
+const AWARD_RIBBON = {
+  card: { w: 26, h: 30, num: 8.5 },
+  tile: { w: 28, h: 34, num: 9.5 },
+} as const;
+export function AwardRibbon({ year, size = "card", className }: { year: number; size?: keyof typeof AWARD_RIBBON; className?: string }) {
+  const r = AWARD_RIBBON[size];
+  return (
+    <span
+      aria-label={`Won in ${year}`}
+      className={cn("flex items-start justify-center text-white select-none", className)}
+      style={{
+        width: r.w,
+        height: r.h,
+        backgroundColor: GOLD,
+        clipPath: "polygon(0 0, 100% 0, 100% 78%, 0 100%)",
+        borderTopRightRadius: 3,
+        filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.6))",
+        paddingTop: Math.round(r.h * 0.2),
+      }}
+    >
+      <span className="font-semibold leading-none tabular-nums tracking-tight" style={{ fontSize: r.num }}>{year}</span>
+    </span>
+  );
+}
+
+/**
  * "Caught up" — ONE badge for ONE status, so it can never fragment into three again. It means the
  * same thing wherever it appears — "you've seen everything that's aired, you're waiting on more" —
  * whether that's a weekly show between episodes (In Progress) or a series between seasons (Last
