@@ -267,32 +267,10 @@ export interface AwardCeremonyRow {
 }
 
 /** One row of the canon: a title in a category in a year, won or nominated, one line per credit. */
-export interface AwardRow {
-  id: number;
-  ceremony: AwardCeremony;
-  category: string;
-  year: number;
-  year_inferred: boolean;
-  won: boolean;
-  work_qid: string;
-  /** Null for an emmys.com row whose title could not be resolved to TMDB — kept, counted, unlinked. */
-  work_tmdb_id: number | null;
-  work_type: "film" | "serie";
-  work_title: string;
-  /** TMDB poster path ("/abc.jpg"); "" when TMDB has none; null when not enriched yet. */
-  poster_path: string | null;
-  work_year: number | null;
-  person_qid: string;
-  person_tmdb_id: number | null;
-  person_name: string | null;
-  /** TMDB profile path; "" when TMDB has none; null when not enriched yet. */
-  person_profile_path: string | null;
-  /** Emmys, series: the season aired in the eligibility window. 0 = none found; null = not looked up. */
-  season_number: number | null;
-  season_poster_path: string | null;
-}
-
-/** The rows of one (year, work) folded into one entry — what every surface actually shows. */
+/**
+ * One line of `watching.award_entries` — the awards table folded in SQL: one (ceremony, category,
+ * year, won, work[, person on a portrait category]) with its people. What every surface shows.
+ */
 export interface AwardEntry {
   key: string;
   ceremony: AwardCeremony;

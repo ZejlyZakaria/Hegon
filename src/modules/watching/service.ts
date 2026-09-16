@@ -6,7 +6,7 @@ import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import { reportError } from "@/shared/utils/report-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardCeremonyRow, AwardRow } from "./types";
+import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry } from "./types";
 import { deriveWatchStatus } from "./lib/watch-status";
 import { airedFromTmdb } from "./lib/series-state";
 import { runtimeFromTmdb } from "./lib/tmdb-runtime";
@@ -1828,8 +1828,11 @@ export async function getWatchingHeroData(
 // (Wikidata → watching.awards), read here, joined to the library by TMDB id.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const AWARD_COLUMNS =
-  "id, ceremony, category, year, year_inferred, won, work_qid, work_tmdb_id, work_type, work_title, poster_path, work_year, person_qid, person_tmdb_id, person_name, person_profile_path, season_number, season_poster_path";
+// `watching.award_entries` = the awards table FOLDED in SQL — one line per (ceremony, category,
+// year, won, work[, person on a portrait category]) with its people as jsonb. The table keeps one
+// line per credit; the wire carries entries (page Awards: 1 019 KB → see the migration).
+const AWARD_ENTRY_COLUMNS =
+  "key, ceremony, category, year, won, work_tmdb_id, work_type, work_title, poster_path, work_year, season_number, season_poster_path, people";
 
 export async function getAwardCategories(): Promise<AwardCategory[]> {
   const supabase = createClient();
@@ -1856,14 +1859,14 @@ export async function getAwardCeremonies(): Promise<AwardCeremonyRow[]> {
  * PostgREST caps a response at 1 000 rows; a ceremony's winners alone are ~2 000 lines (one per
  * credit). Page through by range until a short page comes back — the caller never sees it.
  */
-async function fetchAllAwardRows(build: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>): Promise<AwardRow[]> {
+async function fetchAllAwardRows(build: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>): Promise<AwardEntry[]> {
   const PAGE = 1000;
-  const out: AwardRow[] = [];
+  const out: AwardEntry[] = [];
   // eslint-disable-next-line no-restricted-syntax -- pas un N+1 : c'est la PAGINATION d'une seule requête (PostgREST plafonne à 1 000 lignes), 2-3 pages au plus, jamais une par élément.
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await build(from, from + PAGE - 1);
     if (error) throw error;
-    const rows = (data ?? []) as AwardRow[];
+    const rows = (data ?? []) as AwardEntry[];
     out.push(...rows);
     if (rows.length < PAGE) break;
   }
@@ -1871,55 +1874,59 @@ async function fetchAllAwardRows(build: (from: number, to: number) => PromiseLik
 }
 
 /** Winners of one ceremony, every category, every year — the Awards page's canon. */
-export async function getAwardWinners(ceremony: AwardCeremony): Promise<AwardRow[]> {
+export async function getAwardWinners(ceremony: AwardCeremony): Promise<AwardEntry[]> {
   const supabase = createClient();
   return fetchAllAwardRows((from, to) =>
-    supabase.schema("watching").from("awards").select(AWARD_COLUMNS)
+    supabase.schema("watching").from("award_entries").select(AWARD_ENTRY_COLUMNS)
       .eq("ceremony", ceremony).eq("won", true)
       .order("year", { ascending: false }).order("id").range(from, to),
   );
 }
 
 /** Everything in one category — winners AND nominees — for the category page. */
-export async function getAwardCategoryRows(ceremony: AwardCeremony, category: string): Promise<AwardRow[]> {
+export async function getAwardCategoryRows(ceremony: AwardCeremony, category: string): Promise<AwardEntry[]> {
   const supabase = createClient();
   return fetchAllAwardRows((from, to) =>
-    supabase.schema("watching").from("awards").select(AWARD_COLUMNS)
+    supabase.schema("watching").from("award_entries").select(AWARD_ENTRY_COLUMNS)
       .eq("ceremony", ceremony).eq("category", category)
       .order("year", { ascending: false }).order("won", { ascending: false }).order("id").range(from, to),
   );
 }
 
 /** One ceremony year, every category — the ceremony page. */
-export async function getAwardYearRows(ceremony: AwardCeremony, year: number): Promise<AwardRow[]> {
+export async function getAwardYearRows(ceremony: AwardCeremony, year: number): Promise<AwardEntry[]> {
   const supabase = createClient();
   return fetchAllAwardRows((from, to) =>
-    supabase.schema("watching").from("awards").select(AWARD_COLUMNS)
+    supabase.schema("watching").from("award_entries").select(AWARD_ENTRY_COLUMNS)
       .eq("ceremony", ceremony).eq("year", year)
       .order("won", { ascending: false }).order("id").range(from, to),
   );
 }
 
 /** A title's accolades (the fiche) — by TMDB id and type, across both ceremonies. */
-export async function getAwardsForWork(type: "film" | "serie", tmdbId: number): Promise<AwardRow[]> {
+export async function getAwardsForWork(type: "film" | "serie", tmdbId: number): Promise<AwardEntry[]> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .schema("watching").from("awards").select(AWARD_COLUMNS)
+    .schema("watching").from("award_entries").select(AWARD_ENTRY_COLUMNS)
     .eq("work_type", type).eq("work_tmdb_id", tmdbId)
     .order("year", { ascending: false }).order("won", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as AwardRow[];
+  return (data ?? []) as AwardEntry[];
 }
 
-/** A person's awards timeline (the person page). */
-export async function getAwardsForPerson(personTmdbId: number): Promise<AwardRow[]> {
+/**
+ * A person's awards timeline (the person page). The view folds co-credits into one entry, so the
+ * person is looked for INSIDE `people` (jsonb containment — `cs`, never `.contains()`, see the
+ * memory on jsonb containment).
+ */
+export async function getAwardsForPerson(personTmdbId: number): Promise<AwardEntry[]> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .schema("watching").from("awards").select(AWARD_COLUMNS)
-    .eq("person_tmdb_id", personTmdbId)
+    .schema("watching").from("award_entries").select(AWARD_ENTRY_COLUMNS)
+    .filter("people", "cs", JSON.stringify([{ tmdb_id: personTmdbId }]))
     .order("year", { ascending: false }).order("won", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as AwardRow[];
+  return (data ?? []) as AwardEntry[];
 }
 
 /**

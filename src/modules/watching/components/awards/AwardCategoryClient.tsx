@@ -10,7 +10,7 @@ import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/utils";
 import { AwardRibbon, ScoreMark, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
 import { useAwardCategories, useAwardCategoryRows, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
-import { canonStatus, foldEntries, indexOwned, isSeen, ownedFor, type CanonBucket } from "@/modules/watching/lib/awards";
+import { canonStatus, indexOwned, isSeen, ownedFor, type CanonBucket } from "@/modules/watching/lib/awards";
 import { displayTitle } from "@/modules/watching/utils";
 import type { AwardEntry, WatchingMedia } from "@/modules/watching/types";
 import { entryImage } from "./AwardsClient";
@@ -49,8 +49,8 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
 
   const owned = useMemo(() => indexOwned(ownedQ.data ?? []), [ownedQ.data]);
   const all = useMemo(
-    () => foldEntries(rowsQ.data ?? [], category?.portrait ? new Set([category.key]) : new Set()).sort((a, b) => b.year - a.year || Number(b.won) - Number(a.won)),
-    [rowsQ.data, category],
+    () => [...(rowsQ.data ?? [])].sort((a, b) => b.year - a.year || Number(b.won) - Number(a.won)),
+    [rowsQ.data],
   );
   const winners = useMemo(() => all.filter((e) => e.won), [all]);
   const entries = useMemo(() => {

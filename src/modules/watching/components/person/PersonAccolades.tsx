@@ -9,7 +9,7 @@ import { cn } from "@/shared/utils/utils";
 import { AwardRibbon, ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
 import { useAwardCategories, useAwardsForPerson } from "@/modules/watching/hooks/useAwards";
-import { ceremonyWord, foldEntries, posterUrl } from "@/modules/watching/lib/awards";
+import { ceremonyWord, posterUrl } from "@/modules/watching/lib/awards";
 import type { PersonTitle } from "@/modules/watching/service";
 import type { AwardCategory, AwardEntry } from "@/modules/watching/types";
 
@@ -50,8 +50,7 @@ export function PersonAccolades({ personId, name, yourTitles }: Props) {
   const [open, setOpen] = useState(false);
 
   const cats = useMemo(() => new Map((categoriesQ.data ?? []).map((c) => [c.key, c])), [categoriesQ.data]);
-  // One person → every row is theirs; the fold only merges nothing. Kept for the entry shape.
-  const entries = useMemo(() => foldEntries(rowsQ.data ?? []), [rowsQ.data]);
+  const entries = useMemo(() => rowsQ.data ?? [], [rowsQ.data]);
   const wins = useMemo(
     () => entries.filter((e) => e.won).sort((a, b) => (cats.get(a.category)?.rank ?? 99) - (cats.get(b.category)?.rank ?? 99) || b.year - a.year),
     [entries, cats],

@@ -49,11 +49,13 @@
     "",
     "✅ 2026-09-16 (ter) — migration 20260916000200 : awards.season_number + season_poster_path. colonnes +2.",
     "",
-    "✅ 2026-09-16 (quater) — migration 20260916000300 : watching.award_ceremonies (6 colonnes, PK, 1 policy). tables +1, colonnes +6, policies +1, index +1."
+    "✅ 2026-09-16 (quater) — migration 20260916000300 : watching.award_ceremonies (6 colonnes, PK, 1 policy). tables +1, colonnes +6, policies +1, index +1.",
+    "",
+    "✅ 2026-09-16 (quinquies) — migration 20260916000400 : VUE watching.award_entries (15 colonnes). Une vue n'est pas dans pg_tables mais SES COLONNES SONT dans information_schema.columns → colonnes +15, tables inchangées."
   ],
-  "_migrations_through": "20260916000300",
+  "_migrations_through": "20260916000400",
   "tables": 72,
-  "colonnes": 726,
+  "colonnes": 741,
   "policies": 213,
   "fonctions": 35,
   "index": 257,

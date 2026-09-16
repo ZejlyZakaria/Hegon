@@ -10,7 +10,7 @@ import { AwardRibbon } from "@/modules/watching/components/shared/Marks";
 import { useAwardCategories, useAwardsForWork } from "@/modules/watching/hooks/useAwards";
 import { useImdbId } from "@/modules/watching/hooks/useImdbId";
 import { useOmdbRatings } from "@/modules/watching/hooks/useOmdbRatings";
-import { ceremonyWord, foldEntries, portraitKeys } from "@/modules/watching/lib/awards";
+import { ceremonyWord } from "@/modules/watching/lib/awards";
 import { displayTitle } from "@/modules/watching/utils";
 import type { AwardCategory, AwardEntry, WatchingMedia } from "@/modules/watching/types";
 
@@ -70,7 +70,7 @@ export function Accolades({ media }: { media: WatchingMedia }) {
   const [open, setOpen] = useState(false);
 
   const cats = useMemo(() => new Map((categoriesQ.data ?? []).map((c) => [c.key, c])), [categoriesQ.data]);
-  const entries = useMemo(() => foldEntries(rowsQ.data ?? [], portraitKeys(categoriesQ.data ?? [])), [rowsQ.data, categoriesQ.data]);
+  const entries = useMemo(() => rowsQ.data ?? [], [rowsQ.data]);
   const wins = useMemo(
     () => entries.filter((e) => e.won).sort((a, b) => (cats.get(a.category)?.rank ?? 99) - (cats.get(b.category)?.rank ?? 99) || b.year - a.year),
     [entries, cats],

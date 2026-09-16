@@ -1,13 +1,13 @@
 import { seriesState } from "./series-state";
-import type { AwardCategory, AwardEntry, AwardRow, WatchingMedia } from "../types";
+import type { AwardCategory, AwardEntry, WatchingMedia } from "../types";
 
 /**
  * THE MUSEUM's arithmetic — pure, no React, no I/O.
  *
- * `watching.awards` keeps one line per CREDIT (Best Sound 2024 → four names, four rows). Every
- * surface shows TITLES, so the first thing any of them does is fold the rows of one (category,
- * year, work) into one entry with its people. The second thing is to ask the library whether it
- * owns that title — by TMDB id, the only join there is.
+ * `watching.awards` keeps one line per CREDIT (Best Sound 2024 → four names, four rows); the view
+ * `watching.award_entries` folds them into one entry per title with its people, in SQL, so what
+ * arrives here is already what the surfaces show. What is left to compute is the library's side:
+ * does it own that title — by TMDB id, the only join there is.
  */
 
 export const workKey = (type: "film" | "serie", tmdbId: number | null) => `${type}:${tmdbId ?? "?"}`;
@@ -17,40 +17,6 @@ export const posterUrl = (path: string | null) => (path ? `https://image.tmdb.or
 
 export const ceremonyWord = (c: "oscars" | "emmys", n: number) =>
   c === "oscars" ? (n === 1 ? "Oscar" : "Oscars") : n === 1 ? "Emmy" : "Emmys";
-
-/**
- * `perPerson` = the PORTRAIT categories (acting, directing): there a nomination IS a person, so four
- * nominated actresses of one show are four entries — while the co-writers of one screenplay
- * nomination (not in the set) stay one entry with several names.
- */
-export function foldEntries(rows: AwardRow[], perPerson: ReadonlySet<string> = new Set()): AwardEntry[] {
-  const out = new Map<string, AwardEntry>();
-  for (const r of rows) {
-    // An unresolved title (no TMDB id) folds on its own row key instead, so two of them never merge.
-    // `won` is part of the key: Aaron Paul (winner) and Giancarlo Esposito (nominee), same show,
-    // same category, same year, are TWO nominations — while co-writers of one nomination share
-    // one `won` and stay one entry.
-    const who = perPerson.has(r.category) && r.person_qid ? `|${r.person_qid}` : "";
-    const key = `${r.ceremony}|${r.category}|${r.year}|${r.won ? "W" : "N"}|${r.work_tmdb_id ? workKey(r.work_type, r.work_tmdb_id) : r.work_qid}${who}`;
-    let e = out.get(key);
-    if (!e) {
-      e = {
-        key, ceremony: r.ceremony, category: r.category, year: r.year, won: r.won,
-        work_tmdb_id: r.work_tmdb_id, work_type: r.work_type, work_title: r.work_title,
-        poster_path: r.poster_path, work_year: r.work_year, season_number: r.season_number, season_poster_path: r.season_poster_path, people: [],
-      };
-      out.set(key, e);
-    }
-    if (r.person_name && !e.people.some((p) => p.name === r.person_name)) {
-      e.people.push({ tmdb_id: r.person_tmdb_id, name: r.person_name, profile_path: r.person_profile_path });
-    }
-  }
-  return [...out.values()];
-}
-
-/** The library keyed the way the canon can ask for it. */
-/** The category keys that fold per person. */
-export const portraitKeys = (cats: { key: string; portrait: boolean }[]) => new Set(cats.filter((c) => c.portrait).map((c) => c.key));
 
 export function indexOwned(owned: WatchingMedia[]): Map<string, WatchingMedia> {
   const m = new Map<string, WatchingMedia>();
