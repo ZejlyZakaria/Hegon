@@ -3,6 +3,7 @@
 import { Fragment } from "react";
 import Image from "next/image";
 import { tmdbImage, tmdbImageFor } from "../../lib/tmdb-image";
+import { FollowMark } from "@/modules/watching/components/shared/FollowMark";
 import { ArrowLeft, User } from "lucide-react";
 import type { PersonProfile } from "../../service";
 import { HeroDescription } from "../detail/HeroDescription";
@@ -58,12 +59,16 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
             in a ~180px gutter, which broke it into three ragged lines and made a person page
             read like a different product from the title page it was reached from. */}
         <div className="relative -mt-16 flex flex-col items-center px-4 pb-2 text-center">
-          <div className="relative aspect-2/3 w-(--poster-md) shrink-0 overflow-hidden rounded-tile border border-white/10 bg-surface-2 shadow-xl">
-            {profile.profile_url ? (
-              <Image src={tmdbImageFor(profile.profile_url, 112, 3) || profile.profile_url} alt={profile.name} fill loading="lazy" sizes="112px" className="object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center"><User className="text-text-tertiary" size={28} /></div>
-            )}
+          <div className="relative aspect-2/3 w-(--poster-md) shrink-0 rounded-tile border border-white/10 bg-surface-2 shadow-xl">
+            <div className="relative h-full w-full overflow-hidden rounded-tile">
+              {profile.profile_url ? (
+                <Image src={tmdbImageFor(profile.profile_url, 112, 3) || profile.profile_url} alt={profile.name} fill loading="lazy" sizes="112px" className="object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center"><User className="text-text-tertiary" size={28} /></div>
+              )}
+            </div>
+            {/* Follow — the portrait's top-right, the action corner (owner, 2026-09-16). */}
+            <FollowMark personId={profile.id} name={profile.name} profileUrl={profile.profile_url} knownFor={profile.known_for_department} size="md" className="absolute -right-2 -top-2 z-10 shadow-lg" />
           </div>
 
           <h1 className="mt-3 text-balance text-xl font-bold leading-tight tracking-tight text-white">{profile.name}</h1>
@@ -96,6 +101,7 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
         <div className="absolute bottom-0 left-0 right-0 z-10 px-10 pb-8">
           <div className="flex items-end gap-8">
             {/* Portrait — same glossy frame as the detail-page poster */}
+            <div className="relative shrink-0">
             <div className="relative aspect-2/3 w-(--poster-xl) shrink-0 overflow-hidden rounded-card p-1">
               {profile.profile_url ? (
                 <>
@@ -118,6 +124,9 @@ export function PersonHero({ profile, roleLabel, backdrop, onBack }: Props) {
                   <div className="flex h-full w-full items-center justify-center"><User className="text-text-tertiary" size={40} /></div>
                 </div>
               )}
+            </div>
+            {/* Follow — the portrait's top-right, the action corner (owner, 2026-09-16). */}
+            <FollowMark personId={profile.id} name={profile.name} profileUrl={profile.profile_url} knownFor={profile.known_for_department} size="md" className="absolute -right-2.5 -top-2.5 z-10 shadow-lg" />
             </div>
 
             <div className="min-w-0 flex-1 pb-1">

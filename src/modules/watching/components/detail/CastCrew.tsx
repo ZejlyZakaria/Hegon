@@ -1,54 +1,26 @@
 "use client";
 
-import Image from "next/image";
-import { tmdbImageFor } from "../../lib/tmdb-image";
-import Link from "next/link";
-import { User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { SectionHeader } from "@/shared/components/ui/section-header";
+import { CarouselNav } from "@/shared/components/ui/carousel-nav";
+import { PersonFace } from "@/modules/watching/components/shared/PersonFace";
 import type { CastMember, CreditedDirector } from "../../hooks/useMediaCredits";
 
-function PersonCard({ id, name, src, subtitle, size = 60 }: {
-  id: number;
-  name: string;
-  src: string | null;
-  subtitle?: string | null;
-  size?: number;
-}) {
-  const initials = name.split(" ").slice(0, 2).map((p) => p[0]).join("").toUpperCase();
-  const linkable = id > 0;
+/**
+ * THE RAIL IS PAGED, 8 FACES TO A PAGE — owner, 2026-09-16 (was 9 faces, free-scrolling).
+ *
+ * Sixteen people now, the crew first: the whole cast is on the row already (no cap at storage,
+ * see mapCredits), so showing more costs no request. The faces grew so a follow « + » can sit on
+ * the rim of each one without crowding the name — hence 8 to a row, not 9. Prev / next are the
+ * same `CarouselNav` every rail in the module uses, and the page moves by a full row.
+ *
+ * Series show their CREATORS again (Creator / Series Director / EP, the jobs mapCredits already
+ * picked and this component used to hide) — the honest word under the face is "Creator".
+ */
+const MAX_TOTAL = 16;
+const GAP = 16;
 
-  const inner = (
-    <>
-      <div
-        className={`relative overflow-hidden rounded-full bg-surface-2 ring-2 ring-inset ring-white/10 transition-all ${linkable ? "group-hover:ring-accent-watching-vivid/60" : ""}`}
-        style={{ width: size, height: size }}
-      >
-        {src ? (
-          <Image src={tmdbImageFor(src, size) || src} alt={name} fill sizes={`${size}px`} loading="lazy" className="object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-text-tertiary">
-            {initials || <User size={14} />}
-          </div>
-        )}
-      </div>
-      <p className={`mt-2 w-full truncate text-micro font-medium text-text-secondary ${linkable ? "transition-colors group-hover:text-text-primary" : ""}`}>{name}</p>
-      {subtitle && <p className="mt-0.5 w-full truncate text-micro text-text-tertiary">{subtitle}</p>}
-    </>
-  );
-
-  if (linkable) {
-    return (
-      <Link href={`/perso/watching/person/${id}`} className="group flex shrink-0 flex-col items-center text-center" style={{ width: size }}>
-        {inner}
-      </Link>
-    );
-  }
-  return (
-    <div className="flex shrink-0 flex-col items-center text-center" style={{ width: size }}>
-      {inner}
-    </div>
-  );
-}
+function perView(w: number) { return w < 640 ? 4 : w < 1024 ? 6 : 8; }
 
 /**
  * THE SPACE THIS RAIL WILL OCCUPY, HELD WHILE ITS FACES ARE STILL COMING.
@@ -63,14 +35,15 @@ function PersonCard({ id, name, src, subtitle, size = 60 }: {
  * it is meant to stand in for, and then it reserves the wrong height — which is the bug again, with
  * extra steps. Same wrapper, same size, same count.
  */
-export function CastCrewSkeleton({ count = 9, size = 86 }: { count?: number; size?: number }) {
+export function CastCrewSkeleton({ count = 8 }: { count?: number }) {
+  const style = { width: `calc((100% - ${(count - 1) * GAP}px) / ${count})` };
   return (
     <section aria-hidden>
       <SectionHeader title="Cast & Crew" />
       <div className="-mx-4 flex gap-4 overflow-x-hidden px-4 py-1 sm:mx-0 sm:px-0">
         {Array.from({ length: count }).map((_, i) => (
-          <div key={i} className="flex shrink-0 flex-col items-center" style={{ width: size }}>
-            <div className="animate-pulse rounded-full bg-surface-2" style={{ width: size, height: size }} />
+          <div key={i} className="flex shrink-0 flex-col items-center" style={style}>
+            <div className="aspect-square w-full animate-pulse rounded-full bg-surface-2" />
             <div className="mt-2 h-3 w-4/5 animate-pulse rounded-control bg-surface-2" />
             <div className="mt-1 h-3 w-3/5 animate-pulse rounded-control bg-surface-2" />
           </div>
@@ -87,35 +60,54 @@ interface Props {
 }
 
 export function CastCrew({ cast, directors, isSeries }: Props) {
-  if (cast.length === 0 && (isSeries || directors.length === 0)) return null;
+  const railRef = useRef<HTMLDivElement>(null);
+  const [n, setN] = useState(8);
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    const onResize = () => setN(perView(window.innerWidth));
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
-  const MAX_TOTAL = 9;
-  const directorEntries = !isSeries
-    ? directors
-        .filter((d, i, arr) => arr.findIndex((x) => x.name === d.name) === i)
-        .map((d) => ({ id: d.id, name: d.name, src: d.profile_url, subtitle: "Director" }))
-    : [];
-  const castSlots = MAX_TOTAL - directorEntries.length;
-  const allPeople = [
-    ...directorEntries,
-    ...cast.slice(0, castSlots).map((p) => ({ id: p.id, name: p.name, src: p.profile_url, subtitle: p.character })),
+  if (cast.length === 0 && directors.length === 0) return null;
+
+  const crew = directors
+    .filter((d, i, arr) => arr.findIndex((x) => x.name === d.name) === i)
+    .map((d) => ({ id: d.id, name: d.name, src: d.profile_url, subtitle: isSeries ? "Creator" : "Director" }));
+  const people = [
+    ...crew,
+    ...cast.slice(0, Math.max(0, MAX_TOTAL - crew.length)).map((p) => ({ id: p.id, name: p.name, src: p.profile_url, subtitle: p.character })),
   ];
+  const pages = Math.max(1, Math.ceil(people.length / n));
+  const current = Math.min(page, pages - 1);
+  const style = { width: `calc((100% - ${(n - 1) * GAP}px) / ${n})` };
 
-  // No panel: this is a rail that scrolls. A frame whose content escapes through its own
-  // edge reads as a layout bug, not as "there's more to the right". Panels are for bounded
-  // content you act on (My Take, the rail); scrolling rails breathe on the page.
+  const go = (to: number) => {
+    const el = railRef.current;
+    if (!el) return;
+    const next = Math.max(0, Math.min(pages - 1, to));
+    setPage(next);
+    // One page = the rail's own width: the row scrolls by exactly what it shows.
+    el.scrollTo({ left: next * (el.clientWidth + GAP), behavior: "smooth" });
+  };
+
   return (
     <section>
-      <SectionHeader title="Cast & Crew" />
-      {/* Same bleed as every other rail: break out of the column gutter so a face can scroll
-          under the screen edge, and start at the same x as its neighbours. py-1 is the hover
-          scale's headroom — an overflow-x container clips vertically too. */}
+      <SectionHeader
+        title="Cast & Crew"
+        actions={pages > 1 ? <CarouselNav className="hidden lg:flex" onPrev={() => go(current - 1)} onNext={() => go(current + 1)} canPrev={current > 0} canNext={current < pages - 1} /> : undefined}
+      />
+      {/* Same bleed as every other rail: break out of the column gutter so a face can scroll under
+          the screen edge, and start at the same x as its neighbours. py-1 is the hover scale's
+          headroom — an overflow-x container clips vertically too. */}
       <div
-        className="-mx-4 flex gap-4 overflow-x-auto scroll-px-4 px-4 py-1 sm:mx-0 sm:px-0"
+        ref={railRef}
+        className="-mx-4 flex snap-x gap-4 overflow-x-auto scroll-px-4 px-4 py-1 sm:mx-0 sm:px-0 sm:scroll-px-0"
         style={{ scrollbarWidth: "none" }}
       >
-        {allPeople.map((person, i) => (
-          <PersonCard key={`${person.name}-${i}`} id={person.id} name={person.name} src={person.src} subtitle={person.subtitle} size={86} />
+        {people.map((person, i) => (
+          <PersonFace key={`${person.name}-${i}`} id={person.id} name={person.name} src={person.src} subtitle={person.subtitle} knownFor={person.subtitle === "Director" || person.subtitle === "Creator" ? "Directing" : "Acting"} style={style} />
         ))}
       </div>
     </section>

@@ -140,6 +140,15 @@ export const TMDB_KEYS = {
  * add never refetches the canon. The one per-user key (`owned`) sits INSIDE WATCHING_KEYS.all
  * for the opposite reason: adding a title must light it up on the Awards page.
  */
+/** People you follow — a preference of yours, its own family (nothing else needs to refetch on a follow). */
+export const PEOPLE_KEYS = {
+  all: ['people'] as const,
+  follows: (userId: string) => [...PEOPLE_KEYS.all, 'follows', userId] as const,
+  followedIds: (userId: string) => [...PEOPLE_KEYS.all, 'followed-ids', userId] as const,
+  upcoming: (userId: string) => [...PEOPLE_KEYS.all, 'upcoming', userId] as const,
+  ranking: (kind: string) => [...PEOPLE_KEYS.all, 'ranking', kind] as const,
+} as const;
+
 export const AWARD_KEYS = {
   all: ['awards'] as const,
   categories: () => [...AWARD_KEYS.all, 'categories'] as const,

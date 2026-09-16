@@ -2,7 +2,9 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
+import { PeopleView } from "@/modules/watching/components/library/PeopleView";
 import LibraryGrid from "@/modules/watching/components/library/LibraryGrid";
 import { QuickAddPanel } from "@/modules/watching/components/shared/QuickAddPanel";
 import type { WatchingMedia } from "@/modules/watching/types";
@@ -59,7 +61,17 @@ interface Props {
   userId: string;
 }
 
+// Library = what is yours: titles AND people (owner, 2026-09-16, §11). The view lives in the URL
+// (`?view=people`) so the browser's Back and a shared link land on the right one.
+const VIEWS = [{ value: "titles", label: "Titles" }, { value: "people", label: "People" }] as const;
+type View = (typeof VIEWS)[number]["value"];
+
 export default function LibraryClient({ initialItems, userId }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const view: View = searchParams.get("view") === "people" ? "people" : "titles";
+  const setView = (v: View) => router.push(v === "people" ? `${pathname}?view=people` : pathname);
   const deleteMediaMutation = useDeleteMedia();
   const setLibraryFilter = useWatchingUIStore((s) => s.setLibraryFilter);
   // Live query (seeded by the server list) → cross-surface adds/deletes reflect
@@ -114,12 +126,24 @@ export default function LibraryClient({ initialItems, userId }: Props) {
     }
   }, [deleteMediaMutation]);
 
+  if (view === "people") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <SegmentedControl size="md" value={view} onChange={setView} items={VIEWS.map(({ value, label }) => ({ value, label }))} />
+        </div>
+        <PeopleView userId={userId} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* header */}
       <div className="space-y-2">
-        {/* ── Desktop: chips + search + sort + Add ── */}
+        {/* ── Desktop: view + chips + search + sort + Add ── */}
         <div className="hidden items-center gap-3 sm:flex">
+          <SegmentedControl size="md" value={view} onChange={setView} items={VIEWS.map(({ value, label }) => ({ value, label }))} />
           <SegmentedControl
             size="md"
             value={mediaType}
@@ -158,8 +182,9 @@ export default function LibraryClient({ initialItems, userId }: Props) {
           </div>
         </div>
 
-        {/* ── Mobile: filter select + Add  /  search + sort ── */}
+        {/* ── Mobile: view / filter select + Add  /  search + sort ── */}
         <div className="space-y-2 sm:hidden">
+          <SegmentedControl size="md" value={view} onChange={setView} items={VIEWS.map(({ value, label }) => ({ value, label }))} />
           <div className="flex items-center gap-2">
             {/* Width fixed to the widest option ("Animes") — avoids jitter on selection */}
             <FilterSelect

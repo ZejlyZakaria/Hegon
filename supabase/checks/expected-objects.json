@@ -51,13 +51,17 @@
     "",
     "✅ 2026-09-16 (quater) — migration 20260916000300 : watching.award_ceremonies (6 colonnes, PK, 1 policy). tables +1, colonnes +6, policies +1, index +1.",
     "",
-    "✅ 2026-09-16 (quinquies) — migration 20260916000400 : VUE watching.award_entries (15 colonnes). Une vue n'est pas dans pg_tables mais SES COLONNES SONT dans information_schema.columns → colonnes +15, tables inchangées."
+    "✅ 2026-09-16 (quinquies) — migration 20260916000400 : VUE watching.award_entries (15 colonnes). Une vue n'est pas dans pg_tables mais SES COLONNES SONT dans information_schema.columns → colonnes +15, tables inchangées.",
+    "",
+    "✅ 2026-09-16 (sexies) — migrations 20260916000500 (watching.person_follows : 7 colonnes, PK, org_isolation + 3 policies démo) et 20260916000600 (watching.person_upcoming : 9 colonnes, PK, 1 policy ; cron watching-people-weekly). tables +2, colonnes +16, policies +5, index +2, crons +1.",
+    "",
+    "✅ 2026-09-17 — migration 20260917000000 : fonction watching.people_ranking(text, int, int, uuid). fonctions +1."
   ],
-  "_migrations_through": "20260916000400",
-  "tables": 72,
-  "colonnes": 741,
-  "policies": 213,
-  "fonctions": 35,
-  "index": 257,
-  "crons": 19
+  "_migrations_through": "20260917000000",
+  "tables": 74,
+  "colonnes": 757,
+  "policies": 218,
+  "fonctions": 36,
+  "index": 259,
+  "crons": 20
 }

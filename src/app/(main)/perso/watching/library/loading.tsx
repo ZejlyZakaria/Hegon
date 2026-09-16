@@ -1,9 +1,9 @@
-import { LibrarySkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
+import { LibraryLoading } from "@/modules/watching/components/library/LibraryLoading";
 
-export default function LibraryLoading() {
+export default function LibraryLoadingRoute() {
   return (
     <div className="max-w-400 mx-auto p-6">
-      <LibrarySkeleton />
+      <LibraryLoading />
     </div>
   );
 }

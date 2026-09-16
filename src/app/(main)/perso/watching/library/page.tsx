@@ -3,7 +3,8 @@ import { createServerClient } from "@/infrastructure/supabase/server";
 import LibraryClient from "@/modules/watching/components/library/LibraryClient";
 import { getLibraryMedia } from "@/modules/watching/service";
 
-export default async function LibraryPage() {
+export default async function LibraryPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const { view } = await searchParams;
   const supabase = await createServerClient();
   // Local JWT verification — the middleware already did it for this request. See lists/page.tsx
   // for the measurement (78.5ms of network against 0.47ms local).
@@ -17,7 +18,8 @@ export default async function LibraryPage() {
   // THE SAME READ the client hook re-runs — not a copy of it. This page used to inline the query
   // and share only the column list with `getLibraryMedia`; the service now takes the client, so
   // the server and the browser run one implementation (decisions.md 2026-07-21, audit 2026-09-13).
-  const initialItems = await getLibraryMedia(userId, supabase);
+  // Library › People reads its own tables client-side; the titles are not needed to paint it.
+  const initialItems = view === "people" ? [] : await getLibraryMedia(userId, supabase);
 
   return (
     <div className="p-6">
