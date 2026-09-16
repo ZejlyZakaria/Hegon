@@ -262,14 +262,14 @@ const AWARD_TAG = {
   tile: { h: 18, num: 10, padX: 7 },
 } as const;
 const CLUSTER_TOP = 8, CLUSTER_H = 24;
-export function AwardRibbon({ year, tone = "won", size = "card", className }: { year: number | string; tone?: "won" | "dim"; size?: keyof typeof AWARD_TAG; className?: string }) {
+export function AwardRibbon({ year, tone = "won", size = "card", inline = false, className }: { year: number | string; tone?: "won" | "dim"; size?: keyof typeof AWARD_TAG; /** In a line of text (the Accolades block) rather than hanging from an edge. */ inline?: boolean; className?: string }) {
   const r = AWARD_TAG[size];
   return (
     <span
       aria-label={tone === "won" ? `Won in ${year} — seen` : `Won in ${year} — not seen yet`}
-      className={cn("absolute left-0 z-10 flex items-center select-none", tone === "won" ? "text-white" : "text-white/80", className)}
+      className={cn(inline ? "inline-flex" : "absolute left-0 z-10 flex", "items-center select-none", tone === "won" ? "text-white" : "text-white/80", className)}
       style={{
-        top: CLUSTER_TOP + (CLUSTER_H - r.h) / 2,
+        top: inline ? undefined : CLUSTER_TOP + (CLUSTER_H - r.h) / 2,
         height: r.h,
         paddingLeft: r.padX,
         paddingRight: r.padX + 4,

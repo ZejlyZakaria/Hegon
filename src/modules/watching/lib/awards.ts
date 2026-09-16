@@ -12,11 +12,20 @@ import type { AwardCategory, AwardEntry, AwardRow, WatchingMedia } from "../type
 
 export const workKey = (type: "film" | "serie", tmdbId: number | null) => `${type}:${tmdbId ?? "?"}`;
 
-export function foldEntries(rows: AwardRow[]): AwardEntry[] {
+/**
+ * `perPerson` = the PORTRAIT categories (acting, directing): there a nomination IS a person, so four
+ * nominated actresses of one show are four entries — while the co-writers of one screenplay
+ * nomination (not in the set) stay one entry with several names.
+ */
+export function foldEntries(rows: AwardRow[], perPerson: ReadonlySet<string> = new Set()): AwardEntry[] {
   const out = new Map<string, AwardEntry>();
   for (const r of rows) {
     // An unresolved title (no TMDB id) folds on its own row key instead, so two of them never merge.
-    const key = `${r.ceremony}|${r.category}|${r.year}|${r.work_tmdb_id ? workKey(r.work_type, r.work_tmdb_id) : r.work_qid}`;
+    // `won` is part of the key: Aaron Paul (winner) and Giancarlo Esposito (nominee), same show,
+    // same category, same year, are TWO nominations — while co-writers of one nomination share
+    // one `won` and stay one entry.
+    const who = perPerson.has(r.category) && r.person_qid ? `|${r.person_qid}` : "";
+    const key = `${r.ceremony}|${r.category}|${r.year}|${r.won ? "W" : "N"}|${r.work_tmdb_id ? workKey(r.work_type, r.work_tmdb_id) : r.work_qid}${who}`;
     let e = out.get(key);
     if (!e) {
       e = {
@@ -26,7 +35,6 @@ export function foldEntries(rows: AwardRow[]): AwardEntry[] {
       };
       out.set(key, e);
     }
-    e.won = e.won || r.won;
     if (r.person_name && !e.people.some((p) => p.name === r.person_name)) {
       e.people.push({ tmdb_id: r.person_tmdb_id, name: r.person_name, profile_path: r.person_profile_path });
     }
@@ -35,6 +43,9 @@ export function foldEntries(rows: AwardRow[]): AwardEntry[] {
 }
 
 /** The library keyed the way the canon can ask for it. */
+/** The category keys that fold per person. */
+export const portraitKeys = (cats: { key: string; portrait: boolean }[]) => new Set(cats.filter((c) => c.portrait).map((c) => c.key));
+
 export function indexOwned(owned: WatchingMedia[]): Map<string, WatchingMedia> {
   const m = new Map<string, WatchingMedia>();
   for (const o of owned) {

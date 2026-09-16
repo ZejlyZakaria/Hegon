@@ -48,7 +48,10 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
   const ownedQ = useOwnedTitles(userId);
 
   const owned = useMemo(() => indexOwned(ownedQ.data ?? []), [ownedQ.data]);
-  const all = useMemo(() => foldEntries(rowsQ.data ?? []).sort((a, b) => b.year - a.year || Number(b.won) - Number(a.won)), [rowsQ.data]);
+  const all = useMemo(
+    () => foldEntries(rowsQ.data ?? [], category?.portrait ? new Set([category.key]) : new Set()).sort((a, b) => b.year - a.year || Number(b.won) - Number(a.won)),
+    [rowsQ.data, category],
+  );
   const winners = useMemo(() => all.filter((e) => e.won), [all]);
   const entries = useMemo(() => {
     const runs = GROUP_RUNS ? groupRuns(winners, !!category?.portrait) : winners.map((e) => ({ entry: e, years: [e.year] }));

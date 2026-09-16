@@ -8,7 +8,7 @@ import { ArrowLeft, CalendarClock } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { AwardRibbon, ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { useAwardCategories, useAwardCeremonies, useAwardYear, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
-import { canonStatus, foldEntries, indexOwned, isSeen, ownedFor } from "@/modules/watching/lib/awards";
+import { canonStatus, foldEntries, indexOwned, isSeen, ownedFor, portraitKeys } from "@/modules/watching/lib/awards";
 import { displayTitle } from "@/modules/watching/utils";
 import type { AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry, WatchingMedia } from "@/modules/watching/types";
 import { entryImage } from "./AwardsClient";
@@ -39,7 +39,7 @@ export function CeremonyClient({ userId, ceremony, year }: { userId: string; cer
   const info: AwardCeremonyRow | null = ceremoniesQ.data?.find((c) => c.ceremony === ceremony && c.year === year) ?? null;
   const categories = useMemo(() => (categoriesQ.data ?? []).filter((c) => c.ceremony === ceremony).sort((a, b) => a.rank - b.rank), [categoriesQ.data, ceremony]);
   const owned = useMemo(() => indexOwned(ownedQ.data ?? []), [ownedQ.data]);
-  const entries = useMemo(() => foldEntries(rowsQ.data ?? []), [rowsQ.data]);
+  const entries = useMemo(() => foldEntries(rowsQ.data ?? [], portraitKeys(categoriesQ.data ?? [])), [rowsQ.data, categoriesQ.data]);
   const byCategory = useMemo(() => {
     const m = new Map<string, AwardEntry[]>();
     for (const e of entries) m.set(e.category, [...(m.get(e.category) ?? []), e]);

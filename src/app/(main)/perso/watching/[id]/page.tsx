@@ -36,6 +36,7 @@ import { yearsPatch, type StatusPatch } from "@/modules/watching/lib/watch-statu
 import type { WatchingMedia } from "@/modules/watching/types";
 import { buildWatchedAt, type WatchDateParts } from "@/modules/watching/lib/watched-date";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
+import { Accolades } from "@/modules/watching/components/detail/Accolades";
 import { QuickStats } from "@/modules/watching/components/detail/QuickStats";
 import { InList } from "@/modules/watching/components/detail/InList";
 import { TopTenRank } from "@/modules/watching/components/detail/TopTenRank";
@@ -488,7 +489,9 @@ export default function MediaDetailPage() {
               {statusCard}
             </div>
 
-            {/* Your numbers first, the world's numbers (Details) after. */}
+            {/* Your numbers first, the world's numbers (Details) after — except the world's VERDICT:
+                seven Oscars outrank a budget line, so Accolades leads the rail right under the card. */}
+            <Accolades media={media} />
             <QuickStats media={media} view={view} />
 
             <AnimeThemes media={media} />

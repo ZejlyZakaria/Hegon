@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Trophy } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { Panel } from "@/shared/components/ui/panel";
 import { useImdbId } from "../../hooks/useImdbId";
@@ -47,34 +47,6 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-// OMDb awards come as one string ("Won 2 Oscars. 163 wins & 165 nominations total").
-// Split it into a bold headline + tabular counts so it reads as a highlight, not prose.
-function parseAwards(raw: string) {
-  const wins = raw.match(/(\d+)\s+wins?/i)?.[1] ?? null;
-  const noms = raw.match(/(\d+)\s+nomination/i)?.[1] ?? null;
-  const headline = raw.match(/^\s*(Won|Nominated for)[^.]*/i)?.[0]?.trim() ?? null;
-  return { headline, wins, noms, raw };
-}
-
-function AwardsBlock({ raw }: { raw: string }) {
-  const { headline, wins, noms } = parseAwards(raw);
-  const counts = [
-    wins && `${wins} win${wins === "1" ? "" : "s"}`,
-    noms && `${noms} nomination${noms === "1" ? "" : "s"}`,
-  ].filter(Boolean).join(" · ");
-  const title = headline ?? (wins ? "Award-winning" : noms ? "Award-nominated" : raw);
-
-  return (
-    <div className="flex items-start gap-2.5 border-b border-border-subtle px-4 py-3 sm:px-5">
-      <Trophy size={15} className="mt-0.5 shrink-0 text-amber-400" />
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-text-primary">{title}</p>
-        {counts && <p className="mt-0.5 text-xs tabular-nums text-text-tertiary">{counts}</p>}
-      </div>
-    </div>
-  );
-}
-
 interface Props {
   media: WatchingMedia;
   typeLabel: string;
@@ -112,7 +84,7 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
       }
     >
       <div className="overflow-hidden">
-        {omdb?.awards && <AwardsBlock raw={omdb.awards} />}
+        {/* Awards live in the Accolades block above (the canon, with OMDb's totals as context). */}
         {/* Reference only — year/runtime/seasons/status live in the hero, never twice. */}
         <div className="divide-y divide-border-subtle px-4 sm:px-5">
           <DetailRow label="Type" value={typeLabel} />

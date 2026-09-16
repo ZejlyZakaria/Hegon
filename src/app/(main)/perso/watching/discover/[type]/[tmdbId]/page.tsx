@@ -37,6 +37,7 @@ import { WhereToWatch } from "@/modules/watching/components/shared/WhereToWatch"
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
 import { MediaHero } from "@/modules/watching/components/detail/MediaHero";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
+import { Accolades } from "@/modules/watching/components/detail/Accolades";
 import { CastCrew, CastCrewSkeleton } from "@/modules/watching/components/detail/CastCrew";
 import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis";
 import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
@@ -408,6 +409,9 @@ export default function DiscoverDetailPage() {
         <div className="min-w-0">
           <div className="space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-2 lg:pr-8">
             <div className="hidden lg:block">{addCard}</div>
+
+            {/* The canon does not depend on possession — and it is a good reason to add the title. */}
+            <Accolades media={media} />
 
             <AnimeThemes media={media} />
 

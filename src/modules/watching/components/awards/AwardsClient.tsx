@@ -11,7 +11,7 @@ import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarouse
 import { AwardRibbon } from "@/modules/watching/components/shared/Marks";
 import { CarouselSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { useAwardCategories, useAwardCeremonies, useAwardWinners, useAwardYear, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
-import { buildShelf, coverage, foldEntries, indexOwned, ownedFor } from "@/modules/watching/lib/awards";
+import { buildShelf, coverage, foldEntries, indexOwned, ownedFor, portraitKeys } from "@/modules/watching/lib/awards";
 import { TrophyShelfPanel } from "./TrophyShelfPanel";
 import { ceremonyName, daysUntil } from "./CeremonyClient";
 import { isSeen } from "@/modules/watching/lib/awards";
@@ -74,7 +74,8 @@ export function AwardsClient({ userId }: { userId: string }) {
     () => (categoriesQ.data ?? []).filter((c) => c.ceremony === ceremony).sort((a, b) => a.rank - b.rank),
     [categoriesQ.data, ceremony],
   );
-  const entries = useMemo(() => foldEntries(winnersQ.data ?? []), [winnersQ.data]);
+  const perPerson = useMemo(() => portraitKeys(categoriesQ.data ?? []), [categoriesQ.data]);
+  const entries = useMemo(() => foldEntries(winnersQ.data ?? [], perPerson), [winnersQ.data, perPerson]);
   const owned = useMemo(() => indexOwned(ownedQ.data ?? []), [ownedQ.data]);
   const shelf = useMemo(() => buildShelf(entries, owned, categories), [entries, owned, categories]);
   const shelfById = useMemo(() => new Map(shelf.map((s) => [s.owned.id, s])), [shelf]);
@@ -85,7 +86,7 @@ export function AwardsClient({ userId }: { userId: string }) {
     <div className="space-y-8 p-4 md:p-6">
       {/* ── This year — the run-up to the next ceremony, while there is one ── */}
       {next && (nextRowsQ.data?.length ?? 0) > 0 && (() => {
-        const nominees = foldEntries(nextRowsQ.data ?? []);
+        const nominees = foldEntries(nextRowsQ.data ?? [], perPerson);
         const seen = nominees.filter((e) => isSeen(ownedFor(owned, e))).length;
         const days = daysUntil(next.held_on!);
         return (
