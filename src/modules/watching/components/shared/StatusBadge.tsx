@@ -33,8 +33,14 @@ interface StatusSource extends SeriesFacts {
  * Violet until the release date; then the priority, whatever it is — and WHITE when there is none:
  * violet means waiting, nothing else.
  */
-export function watchlistLevel(item: Pick<StatusSource, "priority_level" | "release_date">): WatchlistLevel {
-  if (item.release_date && item.release_date > new Date().toISOString().slice(0, 10)) return "waiting";
+export function watchlistLevel(item: Pick<StatusSource, "type" | "priority_level" | "release_date" | "status">): WatchlistLevel {
+  // The hub's own definition of "Waiting for" (service.ts AWAITING): a date ahead — or, for a film,
+  // no date at all while TMDB says it is not released (an announced anime film without a date).
+  const today = new Date().toISOString().slice(0, 10);
+  const waiting = item.release_date
+    ? item.release_date > today
+    : item.type === "film" && !!item.status && item.status !== "released";
+  if (waiting) return "waiting";
   return item.priority_level ?? "none";
 }
 

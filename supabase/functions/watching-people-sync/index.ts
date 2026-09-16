@@ -8,6 +8,9 @@
 // Also invoked for ONE person right after a follow (`{ person: <tmdb id> }`), so the new face's
 // projects show up now, not next Tuesday. Same code path, one id.
 //
+// The weekly run ends with a second job that shares the same TMDB budget: the titles you OWN that
+// are not out yet get their poster, date, title and cast refreshed (unreleased.ts).
+//
 // What counts as upcoming: a credit whose release (film) or first air date (series) is on or after
 // today − 30 days — the month after a release keeps it visible as "out now". Undated credits are
 // skipped (announced projects without a date are noise TMDB carries for years). Cast credits win
@@ -16,6 +19,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
+import { refreshUnreleased } from "./unreleased.ts";
 
 const TMDB = "https://api.themoviedb.org/3";
 const KEY = Deno.env.get("TMDB_API_KEY")!;
@@ -41,6 +45,22 @@ async function tmdb(path: string) {
   const res = await fetchWithRetry(`${TMDB}/${path}?api_key=${KEY}&language=en-US`);
   if (!res.ok) throw new Error(`TMDB ${path} ${res.status}`);
   return res.json();
+}
+
+/**
+ * The follow row carries a snapshot of the person (name, portrait, department) so the Following
+ * rail draws without a call per face. Snapshots age — a new portrait, a corrected name — so the
+ * weekly run refreshes them from TMDB for everyone following that person.
+ */
+async function refreshPerson(supabase: any, id: number) {
+  const p = await tmdb(`person/${id}`);
+  if (!p?.name) return;
+  const { error } = await supabase.schema("watching").from("person_follows").update({
+    name: p.name,
+    profile_url: p.profile_path ? `https://image.tmdb.org/t/p/w300${p.profile_path}` : null,
+    known_for: p.known_for_department ?? null,
+  }).eq("person_tmdb_id", id);
+  if (error) throw error;
 }
 
 function upcomingOf(personId: number, credits: any, floor: string): Row[] {
@@ -107,21 +127,26 @@ Deno.serve(async (req) => {
           if (ins.error) throw ins.error;
         }
         rows += fresh.length;
+        if (!one) await refreshPerson(supabase, id);
       } catch (e) {
         console.error(`person ${id}: ${errMsg(e)}`);
         failed.push(id);
       }
     }
 
-    // Full run only: drop the slices of people nobody follows any more.
+    // Full run only: drop the slices of people nobody follows any more, then refresh the owned
+    // titles that are not out yet.
+    let unreleased: { scanned: number; updated: number; failed: number } | { error: string } | null = null;
     if (!one) {
       const { error } = people.length
         ? await supabase.schema("watching").from("person_upcoming").delete().not("person_tmdb_id", "in", `(${people.join(",")})`)
         : await supabase.schema("watching").from("person_upcoming").delete().gte("person_tmdb_id", 0);
       if (error) throw error;
+      try { unreleased = await refreshUnreleased(supabase.schema("watching"), fetchWithRetry); }
+      catch (e) { unreleased = { error: errMsg(e) }; console.error(`unreleased: ${errMsg(e)}`); }
     }
 
-    return new Response(JSON.stringify({ ok: true, people: people.length, rows, failed }), {
+    return new Response(JSON.stringify({ ok: true, people: people.length, rows, failed, unreleased }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
