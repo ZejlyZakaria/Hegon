@@ -6,7 +6,7 @@ import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import { reportError } from "@/shared/utils/report-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry } from "./types";
+import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry, PersonFollow, PersonFollowInput, PersonUpcomingRow, PersonRankRow, RankingKind } from "./types";
 import { deriveWatchStatus } from "./lib/watch-status";
 import { airedFromTmdb } from "./lib/series-state";
 import { runtimeFromTmdb } from "./lib/tmdb-runtime";
@@ -161,9 +161,11 @@ export async function getMediaItems(
 // hand-copied copy of this string, synchronised by a sentence in a comment — and it had already
 // drifted, missing the five columns the paragraph above exists to explain. An invariant kept by
 // discipline is an invariant already broken; there is one list now, and the compiler carries it.
-// `priority` (the Top 10 rank) rides along for the library's TOP 10 badge.
+// `priority` (the Top 10 rank) rides along for the library's TOP 10 badge; `want_to_watch`,
+// `priority_level` and `release_date` for its watchlist BOOKMARK (violet while the title is not
+// out, then the priority's colour, white when none — the same rule as every poster).
 export const LIBRARY_COLUMNS =
-  "id, type, priority, title, original_title, poster_url, favorite, year, user_rating, watched_at, updated_at, tags, watched, in_progress, dropped, drop_reason, paused, current_season, current_episode, status, season_episodes, season_aired, season_years, caught_up_at";
+  "id, type, priority, title, original_title, poster_url, favorite, year, release_date, user_rating, watched_at, updated_at, tags, watched, in_progress, want_to_watch, priority_level, dropped, drop_reason, paused, current_season, current_episode, status, season_episodes, season_aired, season_years, caught_up_at";
 
 /**
  * The ONE library read, for both callers. `/library` is the module's single server-rendered page
@@ -553,6 +555,91 @@ export interface ForYouItem {
  * stops re-picking it and every device agrees. It lived in localStorage before: the system had no
  * memory of a "no".
  */
+// ═══════════════════════════════════════════════════════════════════════════
+// PEOPLE YOU FOLLOW (§11) — a preference: org-isolated, demo read-only.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** The ids you follow — all of them, for the marks; a list of integers, never heavy. */
+export async function getFollowedIds(userId: string): Promise<number[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("person_follows")
+    .select("person_tmdb_id")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return ((data ?? []) as { person_tmdb_id: number }[]).map((r) => r.person_tmdb_id);
+}
+
+/** The people you follow, newest first — one page (Library › People grows 50 at a time). */
+export async function getFollows(userId: string, limit: number, offset: number): Promise<PersonFollow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("person_follows")
+    .select("person_tmdb_id, name, profile_url, known_for, followed_at")
+    .eq("user_id", userId)
+    .order("followed_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+  if (error) throw error;
+  return (data ?? []) as PersonFollow[];
+}
+
+/**
+ * Your most watched actors / voice actors / directors, ranked IN SQL (`watching.people_ranking`)
+ * and paged: the browser used to download every cast array in the library to show twenty faces.
+ * The person page's rank ("#3 of your actors") keeps its own full map (getPeopleCounts) — the
+ * function applies the same rule, so the two agree.
+ */
+export async function getPeopleRanking(kind: RankingKind, limit: number, offset: number): Promise<PersonRankRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").rpc("people_ranking", { p_kind: kind, p_limit: limit, p_offset: offset });
+  if (error) throw error;
+  return (data ?? []) as PersonRankRow[];
+}
+
+export async function followPerson(userId: string, person: PersonFollowInput): Promise<void> {
+  const supabase = createClient();
+  const orgId = await getCurrentOrgId();
+  const { error } = await supabase
+    .schema("watching").from("person_follows")
+    .upsert({ user_id: userId, org_id: orgId, ...person }, { onConflict: "user_id,person_tmdb_id" });
+  if (error) throw error;
+}
+
+/** The robot's table, joined to your follows: what is coming from the people you follow — one page. */
+export async function getPersonUpcoming(userId: string, limit: number, offset: number): Promise<PersonUpcomingRow[]> {
+  const ids = await getFollowedIds(userId);
+  if (ids.length === 0) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("person_upcoming")
+    .select("person_tmdb_id, media_type, tmdb_id, title, poster_path, release_date, role, department")
+    .in("person_tmdb_id", ids)
+    .order("release_date", { ascending: true, nullsFirst: false }).order("tmdb_id")
+    .range(offset, offset + limit - 1);
+  if (error) throw error;
+  return (data ?? []) as PersonUpcomingRow[];
+}
+
+/**
+ * Ask the robot for ONE person now — right after a follow, so their projects show up today, not
+ * next Tuesday. Fire-and-forget: the weekly run is the truth, this is a courtesy.
+ */
+export async function syncPersonUpcoming(personTmdbId: number): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.functions.invoke("watching-people-sync", { body: { person: personTmdbId } });
+  if (error) throw error;
+}
+
+export async function unfollowPerson(userId: string, personTmdbId: number): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("watching").from("person_follows")
+    .delete()
+    .eq("user_id", userId).eq("person_tmdb_id", personTmdbId);
+  if (error) throw error;
+}
+
 export async function getForYouDismissals(userId: string, type: MediaType): Promise<number[]> {
   const supabase = createClient();
   const { data, error } = await supabase
@@ -1640,6 +1727,7 @@ export interface PersonTitle {
   poster_url: string | null;
   backdrop_url: string | null;
   year: number | null;
+  release_date: string | null;   // films: "waiting for" while it is ahead
   runtime: number | null;
   user_rating: number | null;
   watched: boolean;
@@ -1648,8 +1736,14 @@ export interface PersonTitle {
   paused: boolean;
   dropped: boolean;
   priority: number | null;   // Top 10 rank (per type) — null = not in a Top 10
+  priority_level: "high" | "medium" | "low" | null;   // the watchlist bookmark's colour
   current_season: number | null;
   current_episode: number | null;
+  // The series facts (lib/series-state) — "caught up" is a calculation, never a flag.
+  season_aired: number[] | null;
+  season_episodes: number[] | null;
+  status: string | null;
+  caught_up_at: string | null;
   watched_at: string | null;
   tmdb_id: number;
   role: string | null;
@@ -1659,7 +1753,7 @@ export interface PersonTitle {
 }
 
 const PERSON_TITLE_COLUMNS =
-  "id, type, title, poster_url, backdrop_url, year, runtime, user_rating, watched, in_progress, want_to_watch, paused, dropped, priority, current_season, current_episode, watched_at, tmdb_id, cast_members, directors";
+  "id, type, title, poster_url, backdrop_url, year, release_date, runtime, user_rating, watched, in_progress, want_to_watch, paused, dropped, priority, priority_level, current_season, current_episode, season_aired, season_episodes, status, caught_up_at, watched_at, tmdb_id, cast_members, directors";
 
 // Your collection titles featuring this person — matched on the person's TMDB filmography
 // (their credits' tmdb_ids) ∩ your library, NOT on stored cast_members. The stored cast is now the
@@ -1678,9 +1772,10 @@ export async function getTitlesByPerson(userId: string, creditTmdbIds: number[])
   if (error) throw error;
   return (data ?? []).map((r: any): PersonTitle => ({
     id: r.id, type: r.type, title: r.title, poster_url: r.poster_url, backdrop_url: r.backdrop_url,
-    year: r.year, runtime: r.runtime, user_rating: r.user_rating, watched: r.watched,
+    year: r.year, release_date: r.release_date ?? null, runtime: r.runtime, user_rating: r.user_rating, watched: r.watched,
     in_progress: r.in_progress, want_to_watch: r.want_to_watch, paused: r.paused, dropped: r.dropped,
-    priority: r.priority ?? null, current_season: r.current_season, current_episode: r.current_episode,
+    priority: r.priority ?? null, priority_level: r.priority_level ?? null, current_season: r.current_season, current_episode: r.current_episode,
+    season_aired: r.season_aired ?? null, season_episodes: r.season_episodes ?? null, status: r.status ?? null, caught_up_at: r.caught_up_at ?? null,
     watched_at: r.watched_at, tmdb_id: r.tmdb_id, role: null,
     cast_members: r.cast_members ?? [], directors: r.directors ?? [],
   }));
@@ -1701,7 +1796,7 @@ export async function getRatingsForType(userId: string, type: MediaType): Promis
   return (data ?? []).map((r: { user_rating: number }) => r.user_rating);
 }
 
-export interface PersonCount { n: number; name: string }
+export interface PersonCount { n: number; name: string; profile_url: string | null }
 
 export interface PeopleCounts {
   actors: Record<number, PersonCount>;       // on-screen cast, from films + series
@@ -1754,8 +1849,8 @@ export async function getPeopleCounts(userId: string): Promise<PeopleCounts> {
         if (curate && curatedOut(p.character)) continue;
         seen.add(p.id);
         const prev = bucket[p.id];
-        if (prev) prev.n += 1;
-        else bucket[p.id] = { n: 1, name: p.name };
+        if (prev) { prev.n += 1; if (!prev.profile_url && p.profile_url) prev.profile_url = p.profile_url; }
+        else bucket[p.id] = { n: 1, name: p.name, profile_url: p.profile_url ?? null };
       }
     };
     bump(row.type === "anime" ? voiceActors : actors, row.cast_members, true);
@@ -1939,7 +2034,7 @@ export async function getOwnedTitles(userId: string): Promise<WatchingMedia[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("watching").from("media_items")
-    .select(`${LIBRARY_COLUMNS}, tmdb_id, want_to_watch, backdrop_url`)
+    .select(`${LIBRARY_COLUMNS}, tmdb_id, backdrop_url`)
     .eq("user_id", userId)
     .not("is_reference", "is", true);
   if (error) throw error;

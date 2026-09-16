@@ -14,10 +14,11 @@ import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
-import { LoveMark, PriorityMark, TopTenRibbon, ScoreMark, CaughtUpBadge, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
+import { LoveMark, WatchlistMark, TopTenRibbon, ScoreMark, CaughtUpBadge, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
+import { watchlistLevel } from "@/modules/watching/components/shared/StatusBadge";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
 
-// Priority: the order of the rail carries the ranking, and `PriorityMark` flags only its top.
+// The watchlist bookmark: one object for "on your list", its colour is the priority.
 // See Marks.tsx — the reasoning lives with the grammar, not here.
 import { displayTitle, watchedAgo, releaseCountdown } from "@/modules/watching/utils";
 import { Clock, CalendarClock } from "lucide-react";
@@ -155,9 +156,9 @@ function MovieCard({
             `rounded-card` (12px), and at 0 the glyph would sit half on the curve. */}
         {mark ? (
           mark(item)
-        ) : item.want_to_watch && item.priority_level && !showCountdown && (
+        ) : item.want_to_watch && !showCountdown && (
           <div className="absolute left-2 top-0 z-10">
-            <PriorityMark level={item.priority_level} />
+            <WatchlistMark level={watchlistLevel(item)} />
           </div>
         )}
         {/* The Top 10 ribbon hangs from the same edge, for the same reason — with the RANK, since
@@ -172,7 +173,15 @@ function MovieCard({
             left = IDENTITY (what this title is: rank, priority), right = ACTIONS (favorite,
             menu). Same inset, same 24px item height, same gap → they align by construction
             instead of by three separate `top-2` / `top-3` guesses. */}
-        <div className={cn(OVERLAY_CLUSTER, "left-2")}>
+        <div className={cn(OVERLAY_CLUSTER, !mark && item.want_to_watch && !showCountdown ? "left-7" : "left-2")}>
+          {/* The heart is a FACT about the title, not an action — it lived in the right cluster
+              beside the menu, where the library card kept it left. Left, everywhere (owner, 2026-09-16);
+              the cluster steps right of a hanging bookmark so the two never overlap. */}
+          {item.favorite && !(showRankBadge && item.priority) && (
+            <span className={OVERLAY_CIRCLE}>
+              <LoveMark size={12} />
+            </span>
+          )}
           {/* Priority is "how badly do I want to watch this" — meaningless for a film that isn't out
               yet. In the Waiting for rail (showCountdown) the countdown is the only mark that belongs. */}
           {/* WHEN you watched it — a factual timestamp, not a verdict, so it's neutral white, not
@@ -294,15 +303,9 @@ function MovieCard({
         </div>
       </div>
 
-      {/* Right cluster = ACTIONS. The favorite mark lives here too — it used to float at
-          `right-10 top-3` while the menu sat at `right-2 top-2`, so nothing lined up.
-          (MediaActionMenu portals its dropdown, so no overflow clip.) */}
+      {/* Right cluster = ACTIONS, and only actions. (MediaActionMenu portals its dropdown, so no
+          overflow clip.) */}
       <div className={cn(OVERLAY_CLUSTER, "right-2")} onClick={(e) => e.stopPropagation()}>
-        {item.favorite && (
-          <span className={OVERLAY_CIRCLE}>
-            <LoveMark size={12} />
-          </span>
-        )}
         {/* ONE CLOCK. The card scales over 300 ms; the menu used to appear over 150 — two curves on
             one gesture, and the mark visibly 'arrived' before the card had settled. Same duration,
             same easing: the menu is part of the card, it moves with it. */}

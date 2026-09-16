@@ -15,7 +15,8 @@ import { PersonFace } from "@/modules/watching/components/shared/PersonFace";
 import { AddMark } from "@/modules/watching/components/shared/AddMark";
 import { FollowMark } from "@/modules/watching/components/shared/FollowMark";
 import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
-import { WatchlistMark } from "@/modules/watching/components/shared/Marks";
+import { WatchlistMark, type WatchlistLevel } from "@/modules/watching/components/shared/Marks";
+import { watchlistLevel } from "@/modules/watching/components/shared/StatusBadge";
 import { PEOPLE_PAGE, useFollowsPages, usePeopleRanking, useUpcomingPages } from "@/modules/watching/hooks/useFollows";
 import { useOwnedTitles } from "@/modules/watching/hooks/useAwards";
 import { indexOwned, posterUrl, workKey } from "@/modules/watching/lib/awards";
@@ -44,7 +45,7 @@ function perView(w: number) { return w < 640 ? 4 : w < 768 ? 6 : w < 1280 ? 8 : 
 
 interface Person { id: number; name: string; src: string | null; subtitle: string | null; knownFor: string | null }
 interface UpcomingGroup { row: PersonUpcomingRow; people: { name: string; role: string }[] }
-interface Owned { id: string; want: boolean; level: "high" | "medium" | "low" | null }
+interface Owned { id: string; want: boolean; level: WatchlistLevel }
 /** What a paged list hands the rail: what is loaded, whether there is more, and how to get it. */
 interface Paged<T> { items: T[]; hasMore: boolean; loadingMore: boolean; more: () => void; loading: boolean }
 
@@ -275,7 +276,7 @@ export function PeopleView({ userId }: { userId: string }) {
   })();
   const ownedOf = (g: UpcomingGroup): Owned | null => {
     const o = owned.get(workKey(g.row.media_type === "movie" ? "film" : "serie", g.row.tmdb_id));
-    return o ? { id: o.id, want: !!o.want_to_watch, level: o.priority_level ?? null } : null;
+    return o ? { id: o.id, want: !!o.want_to_watch, level: watchlistLevel(o) } : null;
   };
 
   return (

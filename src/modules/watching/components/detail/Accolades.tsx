@@ -159,7 +159,6 @@ function AccoladesPanel({ open, onClose, media, entries, cats }: { open: boolean
     <SlidingPanel
       open={open}
       onClose={onClose}
-      width="wide"
       icon={<Trophy size={15} style={{ color: AWARD }} />}
       title={
         <div className="min-w-0">

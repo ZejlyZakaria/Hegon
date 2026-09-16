@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bookmark, Eye, EyeOff, LayoutGrid, ListOrdered, Plus } from "lucide-react";
+import { ArrowLeft, Bookmark, Eye, EyeOff, LayoutGrid, ListOrdered } from "lucide-react";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/utils";
-import { AwardRibbon, ScoreMark, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
+import { AwardRibbon, ScoreMark } from "@/modules/watching/components/shared/Marks";
+import { AddMark } from "@/modules/watching/components/shared/AddMark";
 import { useAwardCategories, useAwardCategoryRows, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
 import { canonStatus, indexOwned, isSeen, ownedFor, type CanonBucket } from "@/modules/watching/lib/awards";
 import { displayTitle } from "@/modules/watching/utils";
@@ -243,18 +244,10 @@ function CanonTile({ entry, years, owned, showPeople, portrait }: { entry: Award
         </div>
       </div>
 
-      {/* Not yours yet → the door to add it. Always visible on touch, revealed on hover with a mouse. */}
-      {!owned && discover && (
-        <div className={cn(OVERLAY_CLUSTER, "right-2 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100")}>
-          <button
-            type="button"
-            aria-label={`Add ${entry.work_title}`}
-            onClick={(e) => { e.stopPropagation(); router.push(discover); }}
-            className={cn(OVERLAY_CIRCLE, "text-white/80 transition-colors hover:bg-black/85 hover:text-white")}
-          >
-            <Plus size={13} />
-          </button>
-        </div>
+      {/* Not yours yet → the « + » adds it to Want to Watch, one tap; the owned query refetches and
+          the tile lights up. */}
+      {!owned && entry.work_tmdb_id && (
+        <AddMark tmdbId={entry.work_tmdb_id} type={entry.work_type} title={entry.work_title} />
       )}
     </div>
   );

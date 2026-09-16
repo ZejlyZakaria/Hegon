@@ -401,7 +401,7 @@ export default function DiscoverDetailPage() {
           ) : null}
 
           {recommendations.length > 0 && (
-            <MoreLikeThis items={recommendations} loading={similarLoading} onAddClick={handleAddSimilar} />
+            <MoreLikeThis items={recommendations} type={mediaType} loading={similarLoading} onAddClick={handleAddSimilar} />
           )}
         </div>
 

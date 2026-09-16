@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, CalendarClock } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { AwardRibbon, ScoreMark } from "@/modules/watching/components/shared/Marks";
+import { AddMark } from "@/modules/watching/components/shared/AddMark";
 import { useAwardCategories, useAwardCeremonies, useAwardYear, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
 import { canonStatus, indexOwned, isSeen, ownedFor } from "@/modules/watching/lib/awards";
 import { displayTitle } from "@/modules/watching/utils";
@@ -142,6 +143,7 @@ function NomineeTile({ entry, owned, portrait, upcoming }: { entry: AwardEntry; 
           <div className="flex h-full w-full items-center justify-center p-2 text-center text-micro text-text-tertiary">{entry.work_title}</div>
         )}
         {entry.won && !upcoming && <AwardRibbon year={entry.year} tone={seen ? "won" : "dim"} size="card" />}
+        {!owned && entry.work_tmdb_id && <AddMark tmdbId={entry.work_tmdb_id} type={entry.work_type} title={entry.work_title} />}
         {!hasFace && !!entry.season_number && (
           <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/85 to-transparent p-2 pt-6">
             <span className="text-xs font-bold text-white">S{entry.season_number}</span>

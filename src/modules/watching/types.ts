@@ -258,6 +258,32 @@ export interface AwardCategory {
   portrait: boolean;
 }
 
+// ── People you follow (§11) ──
+export interface PersonFollowInput {
+  person_tmdb_id: number;
+  name: string;
+  profile_url: string | null;
+  known_for: string | null;
+}
+export interface PersonFollow extends PersonFollowInput {
+  followed_at: string;
+}
+/** The three rankings `watching.people_ranking` knows. */
+export type RankingKind = "actors" | "voice" | "directing";
+/** One line of `people_ranking` — a person and how many of your titles they are in. */
+export interface PersonRankRow { id: number; name: string; profile_url: string | null; n: number }
+/** One line of watching.person_upcoming — a followed person's dated project, by the robot. */
+export interface PersonUpcomingRow {
+  person_tmdb_id: number;
+  media_type: "movie" | "tv";
+  tmdb_id: number;
+  title: string;
+  poster_path: string | null;
+  release_date: string | null;
+  role: string | null;
+  department: string;
+}
+
 /** A ceremony (edition, date) — "98th Academy Awards · 15 Mar 2026". From Wikidata, by the robot. */
 export interface AwardCeremonyRow {
   ceremony: AwardCeremony;

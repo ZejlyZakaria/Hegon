@@ -1,5 +1,6 @@
 import { CheckCheck, Heart, Star } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
+import { Hint } from "@/shared/components/ui/tooltip";
 import { Badge } from "@/shared/components/ui/badge";
 
 /**
@@ -131,38 +132,51 @@ export const PRIORITY: Record<"high" | "medium" | "low", string> = {
   low: "var(--color-zinc-500)",
 };
 
+/** "Waiting for" — a want-to-watch whose release is still ahead. */
+export const WAITING = "#c4b5fd";
+/** A want-to-watch that is out and carries no priority — neutral, like the other facts. */
+export const WANT_NONE = "rgba(255,255,255,0.92)";
+
 /**
- * THE PRIORITY IS A RIBBON TOO — the Top 10's sibling, owner-decided 2026-09-15. A ribbon hanging
- * from the top edge IS a bookmark; the lucide bookmark said the same thing in another shape. Same
- * hem, same shadow, the colour carries the level. Narrower than the Top 10 (14×22 against 22×30)
- * because it carries no text: an empty ribbon at the Top 10's size shouts as loud without saying
- * anything, and a priority is a note to yourself, a Top 10 is a rank. The two never meet on one
- * poster — a want-to-watch is not eligible for the Top 10.
+ * THE WATCHLIST BOOKMARK — owner-decided 2026-09-16, replacing the diagonal priority ribbon.
  *
- * Two sizes, owner-tuned 2026-09-15: `card` hangs from the rail artwork (`left-2 top-0`, the
- * ribbon's slot); `row` stands in the watchlist panel's right column, a step smaller — the row
- * poster is 40 px wide, and a ribbon that fit it would be a coloured dot with the shape gone, so
- * it sits beside the row instead, at the row's scale.
+ * A bookmark hangs from the top edge and says, literally, "kept for later": that IS the watchlist.
+ * So it is ONE object for one fact — this title is on your list — and its colour says how badly:
+ * red / amber / grey for high / medium / low (the levels the add modal teaches, see `PRIORITY`),
+ * violet when you never said. The "Want to watch" chip that used to sit at the bottom of the
+ * poster under a scrim is gone; the poster is artwork again. It never meets the Top 10 ribbon —
+ * a want-to-watch is not eligible.
+ *
+ * Two sizes: `card` hangs from the rail artwork (`left-2 top-0`, the ribbon's slot); `row` stands
+ * in the watchlist panel's right column, a step smaller (the row poster is 40 px wide).
  */
-const PRIORITY_RIBBON = {
+/** The bookmark's five colours: the three priorities, "none" (white), "waiting" (violet, not out yet). */
+export type WatchlistLevel = "high" | "medium" | "low" | "none" | "waiting";
+export const WATCHLIST_COLOR: Record<WatchlistLevel, string> = { ...PRIORITY, none: WANT_NONE, waiting: WAITING };
+export const watchlistLabel = (level: WatchlistLevel) =>
+  level === "waiting" ? "Want to watch · waiting for release" : level === "none" ? "Want to watch" : `Want to watch · ${level} priority`;
+const BOOKMARK = {
   card: { w: 14, h: 22 },
   row:  { w: 10, h: 16 },
 } as const;
-export function PriorityMark({ level, size = "card", className }: { level: "high" | "medium" | "low"; size?: keyof typeof PRIORITY_RIBBON; className?: string }) {
-  const r = PRIORITY_RIBBON[size];
+export function WatchlistMark({ level, size = "card", className }: { level: WatchlistLevel; size?: keyof typeof BOOKMARK; className?: string }) {
+  const r = BOOKMARK[size];
+  const label = watchlistLabel(level);
   return (
-    <span
-      aria-label={`${level} priority`}
-      className={cn("block select-none", className)}
-      style={{
-        width: r.w,
-        height: r.h,
-        backgroundColor: PRIORITY[level],
-        clipPath: "polygon(0 0, 100% 0, 100% 78%, 0 100%)",
-        borderTopRightRadius: 3,
-        filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.6))",
-      }}
-    />
+    <Hint label={label}>
+      <span
+        aria-label={label}
+        className={cn("block select-none", className)}
+        style={{
+          width: r.w,
+          height: r.h,
+          backgroundColor: WATCHLIST_COLOR[level],
+          // The notch is the bookmark: a rectangle with its tail cut in.
+          clipPath: "polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%)",
+          filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.6))",
+        }}
+      />
+    </Hint>
   );
 }
 

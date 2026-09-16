@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
-import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { SectionHeader } from "@/shared/components/ui/section-header";
+import { cn } from "@/shared/utils/utils";
+import { AddMark } from "@/modules/watching/components/shared/AddMark";
+import type { MediaType } from "@/modules/watching/types";
 
 interface SimilarItem {
   id: number;
@@ -45,6 +49,8 @@ export function MoreLikeThisSkeleton() {
 
 interface Props {
   items: SimilarItem[];
+  /** The kind of the title these are like — a film's neighbours are films, an anime's are anime. */
+  type: MediaType;
   /**
    * True while the recommendations are still in flight. Without it this component could not tell
    * "none" from "not yet" — so on a cold load it returned null, the page skeleton's block vanished,
@@ -56,7 +62,10 @@ interface Props {
   onAddClick?: (item: SimilarItem) => void;
 }
 
-export function MoreLikeThis({ items, loading = false, onAddClick }: Props) {
+export function MoreLikeThis({ items, type, loading = false, onAddClick }: Props) {
+  const router = useRouter();
+  // The titles the « + » has just added: their tile now opens the fiche, like any owned title.
+  const [added, setAdded] = useState<Record<number, string>>({});
   if (loading) return <MoreLikeThisSkeleton />;
   if (items.length === 0) return null;
   const clickable = !!onAddClick;
@@ -77,12 +86,15 @@ export function MoreLikeThis({ items, loading = false, onAddClick }: Props) {
           const date = sim.release_date || sim.first_air_date;
           const year = date ? new Date(date).getFullYear() : null;
           return (
-            <button
+            // A div with a button role, not a <button>: the « + » inside is interactive too, and
+            // buttons don't nest.
+            <div
               key={sim.id}
-              type="button"
-              disabled={!clickable}
-              onClick={() => onAddClick?.(sim)}
-              className="group block w-(--rail-peek) shrink-0 snap-start cursor-pointer text-left disabled:cursor-default sm:w-(--poster-lg)"
+              role={clickable ? "button" : undefined}
+              tabIndex={clickable ? 0 : undefined}
+              onClick={() => { if (!clickable) return; if (added[sim.id]) router.push(`/perso/watching/${added[sim.id]}`); else onAddClick?.(sim); }}
+              onKeyDown={(e) => { if (clickable && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); (e.currentTarget as HTMLDivElement).click(); } }}
+              className={cn("group block w-(--rail-peek) shrink-0 snap-start text-left sm:w-(--poster-lg)", clickable && "cursor-pointer")}
             >
               <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
                 <Image
@@ -94,18 +106,14 @@ export function MoreLikeThis({ items, loading = false, onAddClick }: Props) {
                   className="object-cover"
                 />
                 {clickable && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/25 group-hover:opacity-100">
-                    <div className="on-artwork flex h-7 w-7 items-center justify-center rounded-full">
-                      <Plus size={13} className="text-white" />
-                    </div>
-                  </div>
+                  <AddMark tmdbId={sim.id} type={type} title={title} onAdded={(m) => setAdded((s) => ({ ...s, [sim.id]: m.id }))} />
                 )}
               </div>
               <p className="mt-2 truncate text-xs text-text-secondary transition-colors group-hover:text-text-primary">
                 {title}
               </p>
               {year && <p className="text-micro tabular-nums text-text-tertiary">{year}</p>}
-            </button>
+            </div>
           );
         })}
       </div>

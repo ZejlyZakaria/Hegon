@@ -13,7 +13,7 @@ import {
   tmdbResultType,
 } from "../service";
 import { buildMediaView } from "../lib/media-view";
-import type { ListType, TmdbListResult } from "../types";
+import type { ListType, MediaType, TmdbListResult } from "../types";
 import { STALE } from "@/shared/lib/stale";
 
 // The far end of what has AIRED, in storage coordinates — the honest "mark as watched" position for
@@ -39,13 +39,13 @@ export function useQuickAdd() {
   const queryClient = useQueryClient();
   const addMedia = useAddMedia();
 
-  const add = useCallback(
+  const addResolved = useCallback(
     async (
-      result: TmdbListResult,
+      id: number,
+      type: MediaType,
       listContext: ListType,
-      priorityLevel: "high" | "medium" | "low" = "medium",
+      priorityLevel: "high" | "medium" | "low",
     ) => {
-      const type = tmdbResultType(result);
       const tmdbType = type === "film" ? "movie" : "tv";
       const isSeries = type !== "film";
 
@@ -54,21 +54,21 @@ export function useQuickAdd() {
       // for anime, to place the lens in display space.
       const [bundle, credits, coursRow] = await Promise.all([
         queryClient.fetchQuery({
-          queryKey: TMDB_KEYS.bundle(type, result.id),
-          queryFn: () => getTitleBundle(result.id, tmdbType),
+          queryKey: TMDB_KEYS.bundle(type, id),
+          queryFn: () => getTitleBundle(id, tmdbType),
           staleTime: STALE.DAY,
           gcTime: STALE.DAY,
         }),
         queryClient.fetchQuery({
-          queryKey: TMDB_KEYS.credits(type, result.id),
-          queryFn: async () => mapCredits(await getMediaDetails(result.id, tmdbType), type),
+          queryKey: TMDB_KEYS.credits(type, id),
+          queryFn: async () => mapCredits(await getMediaDetails(id, tmdbType), type),
           staleTime: STALE.DAY,
           gcTime: STALE.DAY,
         }),
-        type === "anime" ? getAnimeCours(result.id) : Promise.resolve(null),
+        type === "anime" ? getAnimeCours(id) : Promise.resolve(null),
       ]);
 
-      const media = mapTmdbDetails(bundle, result.id, type);
+      const media = mapTmdbDetails(bundle, id, type);
       if (!media) throw new Error("Couldn't load this title.");
 
       const view = buildMediaView(
@@ -123,5 +123,38 @@ export function useQuickAdd() {
     [queryClient, addMedia],
   );
 
-  return { add };
+  const add = useCallback(
+    (result: TmdbListResult, listContext: ListType, priorityLevel: "high" | "medium" | "low" = "medium") =>
+      addResolved(result.id, tmdbResultType(result), listContext, priorityLevel),
+    [addResolved],
+  );
+
+  /**
+   * The « + » on a poster (More Like This, a person's credits, the Museum): the surface knows a
+   * TMDB id and a kind, not a search row. A `serie` hint is not trusted — to Wikidata and to a
+   * filmography every anime is a TV series — so the bundle decides, by the same rule the search
+   * results use (animation from JP/KR/CN). A film needs no second look.
+   */
+  const addByTmdb = useCallback(
+    async (id: number, hint: MediaType, listContext: ListType = "wantToWatch", priorityLevel: "high" | "medium" | "low" = "medium") => {
+      let type = hint;
+      if (hint === "serie") {
+        const bundle = await queryClient.fetchQuery({
+          queryKey: TMDB_KEYS.bundle("serie", id),
+          queryFn: () => getTitleBundle(id, "tv"),
+          staleTime: STALE.DAY,
+          gcTime: STALE.DAY,
+        });
+        type = tmdbResultType({
+          media_type: "tv",
+          genre_ids: Array.isArray(bundle.genres) ? bundle.genres.map((g: { id: number }) => g.id) : [],
+          origin_country: Array.isArray(bundle.origin_country) ? bundle.origin_country : [],
+        });
+      }
+      return addResolved(id, type, listContext, priorityLevel);
+    },
+    [queryClient, addResolved],
+  );
+
+  return { add, addByTmdb };
 }

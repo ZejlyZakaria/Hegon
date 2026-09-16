@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Bookmark, CalendarPlus, Check, ChevronDown, CircleSlash, Clock, Heart,
+  Bookmark, CalendarPlus, Check, CheckCheck, ChevronDown, CircleSlash, Clock, Heart,
   Minus, MoreHorizontal, PauseCircle, Pencil, Play, Plus, Repeat, RotateCcw, Trash2, X,
 } from "lucide-react";
 import {
@@ -26,7 +26,8 @@ import type { MediaView } from "../../lib/media-view";
 import { canComplete, deriveWatchStatus } from "../../lib/watch-status";
 import { WatchDatePicker } from "../shared/WatchDatePicker";
 import { WhereToWatch } from "../shared/WhereToWatch";
-import { PRIORITY } from "../shared/Marks";
+import { PRIORITY, WATCHLIST_COLOR } from "../shared/Marks";
+import { watchlistLevel } from "../shared/StatusBadge";
 import { partsFromISO, type WatchDateParts } from "../../lib/watched-date";
 import type { WatchingMedia, WatchStatus } from "../../types";
 import type { WatchProviderInfo } from "../../hooks/useWatchProviders";
@@ -490,7 +491,7 @@ export function StatusCard({
     // `watched` a lie. What the action really does is claim a POSITION — the last episode that
     // exists — so it says that instead, as a sentence about you.
     <DropdownMenuItem onClick={onMarkCaughtUp} className={menuItemClass}>
-      <Clock size={13} /> Seen everything that&apos;s out
+      <CheckCheck size={13} /> Seen everything that&apos;s out
     </DropdownMenuItem>
   );
 
@@ -632,8 +633,10 @@ export function StatusCard({
             transition={SPRING_SMOOTH}
             className="min-w-0"
           >
+            {/* The bookmark ICON wears the poster bookmark's colour — same rule (watchlistLevel):
+                violet while the title is not out, then the priority's. The chip itself stays. */}
             {status === "want_to_watch" && (
-              <StateChip icon={<Bookmark size={11} />}>
+              <StateChip icon={<Bookmark size={11} fill="currentColor" style={media.is_reference ? undefined : { color: WATCHLIST_COLOR[watchlistLevel(media)] }} />}>
                 {media.is_reference ? "Unwatched" : "Want to Watch"}
               </StateChip>
             )}
@@ -644,7 +647,7 @@ export function StatusCard({
                 state under the name of another state is the disease this whole module has been
                 treated for; the last place it survived was the label. */}
             {status === "in_progress" && caughtUp && (
-              <StateChip icon={<Clock size={11} />}>Caught Up</StateChip>
+              <StateChip icon={<CheckCheck size={11} />}>Caught Up</StateChip>
             )}
             {status === "in_progress" && !caughtUp && (
               <StateChip icon={<span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: TEAL, boxShadow: `0 0 6px ${TEAL}` }} />}>
@@ -950,7 +953,7 @@ export function StatusCard({
         {status === "in_progress" && caughtUp && (
           <motion.div key="f-caught" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
             <div className="flex items-center gap-2 rounded-control bg-white/10 px-3 py-2 text-xs font-medium text-white/80">
-              <Clock size={13} />
+              <CheckCheck size={13} />
               {caughtUpOn(seriesFacts) === "episode"
                 ? "All caught up — the next episode hasn't aired yet."
                 : "All caught up — waiting on the next season."}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
-import { CalendarClock, Plus } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
@@ -21,6 +21,7 @@ import { SeenTogether } from "@/modules/watching/components/person/SeenTogether"
 import { PersonInsights, type PersonInsightsData } from "@/modules/watching/components/person/PersonInsights";
 import { PersonTimelinePanel, datedCount } from "@/modules/watching/components/person/PersonTimelinePanel";
 import { PersonAccolades } from "@/modules/watching/components/person/PersonAccolades";
+import { AddMark } from "@/modules/watching/components/shared/AddMark";
 import type { PersonCredit, PersonTitle } from "@/modules/watching/service";
 
 const DEPT_LABEL: Record<string, string> = {
@@ -284,16 +285,20 @@ export default function PersonPage() {
                 <>
                   <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                     {visibleNotSeen.map((c) => (
-                      <button key={c.tmdb_id} type="button" onClick={() => openAdd(c)} className="group block w-full text-left">
+                      // A div with a button role: the « + » inside is a control too, and buttons don't nest.
+                      // Once added, the title leaves this grid for "Your titles" on its own (the by-person
+                      // query refetches), wearing the bookmark.
+                      <div
+                        key={c.tmdb_id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openAdd(c)}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openAdd(c); } }}
+                        className="group block w-full cursor-pointer text-left"
+                      >
                         <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
                           <Image src={tmdbImageFor(c.poster_url, 200) || "/placeholder.svg"} alt={c.title} fill loading="lazy" sizes="(max-width: 768px) 33vw, 200px" className="object-cover" />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/25 group-hover:opacity-100">
-                            {/* on-artwork carries its own hairline and contact shadow — the blur
-                                had nothing to refract on a still poster. */}
-                            <div className="on-artwork flex h-7 w-7 items-center justify-center rounded-full">
-                              <Plus size={13} className="text-white" />
-                            </div>
-                          </div>
+                          <AddMark tmdbId={c.tmdb_id} type={c.type} title={c.title} />
                         </div>
                         <p className="mt-2 truncate text-xs font-medium text-text-secondary transition-colors group-hover:text-text-primary">{c.title}</p>
                         {/* The caption line is always drawn, blank if there is no year. A tile is a
@@ -303,7 +308,7 @@ export default function PersonPage() {
                             hard-coded height, so the reserved line and a filled one can never
                             measure differently. */}
                         <p className="text-micro text-text-tertiary">{c.year || " "}</p>
-                      </button>
+                      </div>
                     ))}
                   </div>
                   {visibleNotSeen.length < filteredNotSeen.length && (

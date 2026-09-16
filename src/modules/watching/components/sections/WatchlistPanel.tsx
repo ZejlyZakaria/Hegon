@@ -7,7 +7,8 @@ import { SearchInput } from "@/shared/components/ui/search-input";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
-import { PriorityMark } from "@/modules/watching/components/shared/Marks";
+import { WatchlistMark } from "@/modules/watching/components/shared/Marks";
+import { watchlistLevel } from "@/modules/watching/components/shared/StatusBadge";
 import { useMediaItems } from "@/modules/watching/hooks/useMediaItems";
 import type { MediaType, WatchingMedia } from "@/modules/watching/types";
 
@@ -138,7 +139,7 @@ export function WatchlistPanel({
                         {[it.year, it.tags?.slice(0, 2).join(", ")].filter(Boolean).join(" · ")}
                       </span>
                     }
-                    right={it.priority_level ? <PriorityMark level={it.priority_level} size="row" className="mr-1.5" /> : undefined}
+                    right={<WatchlistMark level={watchlistLevel(it)} size="row" className="mr-1.5" />}
                   />
                 </li>
               ))}

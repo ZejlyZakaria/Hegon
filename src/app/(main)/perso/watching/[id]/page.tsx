@@ -363,7 +363,7 @@ export default function MediaDetailPage() {
     media.directors?.map((d) => ({ id: d.id ?? -1, name: d.name, profile_url: d.profile_url ?? null })) ??
     [];
   const cast = hasStoredCast ? (media.cast_members ?? []) : (credits?.cast ?? []);
-  const hasCastCrew = cast.length > 0 || (!isSeries && directors.length > 0);
+  const hasCastCrew = cast.length > 0 || directors.length > 0;
 
   // A recommendation opens on ITS OWN discover page — the home of a title you don't own.
   const handleAddSimilar = (sim: { id: number }) =>
@@ -475,7 +475,7 @@ export default function MediaDetailPage() {
           ) : null}
 
           {recommendations.length > 0 && (
-            <MoreLikeThis items={recommendations} loading={similarLoading} onAddClick={handleAddSimilar} />
+            <MoreLikeThis items={recommendations} type={media.type} loading={similarLoading} onAddClick={handleAddSimilar} />
           )}
 
         </div>

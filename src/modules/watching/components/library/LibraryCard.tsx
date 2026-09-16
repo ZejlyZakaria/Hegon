@@ -7,10 +7,10 @@ import Image from "next/image";
 import { tmdbImageFor } from "../../lib/tmdb-image";
 import { MoreVertical, Trash2, ExternalLink } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
-import { LoveMark, ScoreMark, TopTenRibbon, OVERLAY_CIRCLE, OVERLAY_CLUSTER } from "@/modules/watching/components/shared/Marks";
+import { LoveMark, ScoreMark, TopTenRibbon, WatchlistMark, OVERLAY_CIRCLE, OVERLAY_CLUSTER } from "@/modules/watching/components/shared/Marks";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { displayTitle } from "@/modules/watching/utils";
-import { posterStatus, PosterStatusBadge } from "@/modules/watching/components/shared/StatusBadge";
+import { posterStatus, StatusMark } from "@/modules/watching/components/shared/StatusBadge";
 
 interface Props {
   item: WatchingMedia;
@@ -103,13 +103,23 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
           <div className="absolute left-2 top-0 z-10">
             <TopTenRibbon />
           </div>
-        ) : item.favorite ? (
-          <div className={cn(OVERLAY_CLUSTER, "left-2")}>
-            <span className={OVERLAY_CIRCLE}>
-              <LoveMark size={12} />
-            </span>
+        ) : badge?.tone === "want" ? (
+          <div className="absolute left-2 top-0 z-10">
+            <WatchlistMark level={badge.level ?? "none"} />
           </div>
         ) : null}
+        {/* The cluster steps right of a hanging bookmark (14 px + a gap) so a favourite on the
+            watchlist wears both without one covering the other. */}
+        {((badge && badge.tone !== "want") || (item.favorite && !(item.priority != null && item.priority <= 10))) && (
+          <div className={cn(OVERLAY_CLUSTER, badge?.tone === "want" ? "left-7" : "left-2")}>
+            {badge && badge.tone !== "want" && <StatusMark status={badge} />}
+            {item.favorite && !(item.priority != null && item.priority <= 10) && (
+              <span className={OVERLAY_CIRCLE}>
+                <LoveMark size={12} />
+              </span>
+            )}
+          </div>
+        )}
 
         <div
           className={cn(OVERLAY_CLUSTER, "right-2 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100")}
@@ -125,7 +135,6 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
           </button>
         </div>
 
-        {badge && <PosterStatusBadge status={badge} />}
       </div>
 
       {/* dropdown — portal so it escapes all stacking contexts */}
