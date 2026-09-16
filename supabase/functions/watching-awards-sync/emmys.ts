@@ -83,8 +83,18 @@ const UMBRELLAS = [
   "ABC Theatre", "ABC Theater", "Live from Lincoln Center",
 ];
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** US retitles emmys.com uses that TMDB does not index as alternative titles. Grows by hand. */
+const ALIASES: Record<string, string> = {
+  "before the dinosaurs": "Walking with Monsters",
+};
 export function cleanTitle(raw: string): string {
   let t = raw.replace(/\s+/g, " ").trim();
+  if (ALIASES[t.toLowerCase()]) return ALIASES[t.toLowerCase()];
+  // A studio glued in front ("Disney Prep & Landing"), a volume/chapters suffix ("Star Wars Clone
+  // Wars Vol. 2 (Chapters 21-25)"), a possessive author in front ("Arthur Miller's Death of a
+  // Salesman") — none of them is the title TMDB knows.
+  t = t.replace(/^(Disney's|Disney|Pixar|Oprah Winfrey Presents:?)\s+/i, "");
+  t = t.replace(/\s+Vol\.?\s*\d+.*$/i, "");
   // A trailing parenthetical naming an umbrella (the closing bracket is sometimes missing).
   const paren = t.match(/^(.*?)\s*\(([^)]*)\)?\s*$/);
   if (paren && UMBRELLAS.some((u) => paren[2].toLowerCase().includes(u.toLowerCase()))) t = paren[1];
@@ -95,6 +105,12 @@ export function cleanTitle(raw: string): string {
   // A trailing "(1981)" is a year, not a title: TMDB matches the bare title.
   return t.replace(/\s*\(\d{4}\)\s*$/, "").trim();
 }
+/**
+ * "Arthur Miller's Death of a Salesman", "Tennessee Williams' A Streetcar Named Desire": the author
+ * in front is a billing, not the title. A LAST resort, never a first pass — "Schitt's Creek" and
+ * "Tyler Perry's House of Payne" are real titles (two capitalised words + 's, then the title).
+ */
+export const stripPossessive = (s: string) => s.replace(/^[A-Z][\w.]+ [A-Z][\w.]+'s?\s+(?=[A-Z"'])/, "").replace(/^"(.*)"$/, "$1");
 const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 // ── Resolution ─────────────────────────────────────────────────────────────────
@@ -114,19 +130,20 @@ export function makeResolver(tmdbKey: string, f: Fetch = fetch): Resolver {
   const people = new Map<string, Promise<number | null>>();
   const json = async (u: string) => { const r = await f(u, { headers: { "User-Agent": UA } }); return r.ok ? await r.json() : null; };
 
-  const tmdbSearch = async (title: string, kind: "tv" | "movie", year: number): Promise<number | null> => {
+  type Hit = { id: number; y: number | null; exact: boolean };
+  const tmdbSearch = async (title: string, kind: "tv" | "movie", year: number): Promise<Hit | null> => {
     const d = await json(`${TMDB}/search/${kind}?api_key=${tmdbKey}&query=${encodeURIComponent(title)}&include_adult=false`);
     const rs: { id: number; name?: string; title?: string; first_air_date?: string; release_date?: string; popularity: number }[] = d?.results ?? [];
     const want = norm(title);
-    // Started on or before the ceremony year (a nominee cannot postdate its ceremony), title
-    // matching after normalisation; the most popular of what remains.
-    const ok = rs.filter((r) => {
-      const y = Number((r.first_air_date ?? r.release_date ?? "").slice(0, 4));
-      return (!y || y <= year) && norm(r.name ?? r.title ?? "") === want;
-    });
-    const pool = ok.length ? ok : rs.filter((r) => { const y = Number((r.first_air_date ?? r.release_date ?? "").slice(0, 4)); return !y || y <= year; });
-    if (!pool.length) return null;
-    return pool.sort((a, b) => b.popularity - a.popularity)[0].id;
+    const hits = rs.map((r) => ({ id: r.id, y: Number((r.first_air_date ?? r.release_date ?? "").slice(0, 4)) || null, exact: norm(r.name ?? r.title ?? "") === want, pop: r.popularity }))
+      // Started on or before the ceremony year: a nominee cannot postdate its ceremony.
+      .filter((h) => !h.y || h.y <= year);
+    if (!hits.length) return null;
+    // Exact title first, then the CLOSEST to the ceremony (a nominee is recent: "The Office" 2005
+    // over 2001 for a 2006 Emmy; the 1979 "Lion, the Witch and the Wardrobe" over the 1967 one),
+    // then popularity. Popularity alone picked the famous namesake over the nominated one.
+    hits.sort((a, b) => Number(b.exact) - Number(a.exact) || (b.y ?? 0) - (a.y ?? 0) || b.pop - a.pop);
+    return hits[0];
   };
 
   const wikidataId = async (title: string, kind: "tv" | "movie", year: number): Promise<number | null> => {
@@ -156,15 +173,22 @@ export function makeResolver(tmdbKey: string, f: Fetch = fetch): Resolver {
       let p = works.get(k);
       if (!p) {
         p = (async () => {
-          const [byName, byId] = await Promise.all([tmdbSearch(title, kind, year), wikidataId(title, kind, year).catch(() => null)]);
-          if (byId) return { tmdb: byId, match: "id" as const };
-          if (byName) return { tmdb: byName, match: "name" as const };
-          // A TV movie filed under "limited series" (Behind the Candelabra) is a MOVIE on TMDB,
-          // and an anthology play the other way round: try the other kind before giving up.
           const other = kind === "tv" ? "movie" : "tv";
-          const [altName, altId] = await Promise.all([tmdbSearch(title, other, year), wikidataId(title, other, year).catch(() => null)]);
+          const [byName, byId, altName] = await Promise.all([
+            tmdbSearch(title, kind, year), wikidataId(title, kind, year).catch(() => null), tmdbSearch(title, other, year),
+          ]);
+          // A TV movie filed under "limited series" (Behind the Candelabra) is a MOVIE on TMDB, an
+          // animated special a movie too: when the primary kind only offers something from another
+          // era (≥ 5 years before) and the other kind has an exact title from the ceremony's own
+          // window, the other kind is the nominee (the 1979 animated Lion/Witch/Wardrobe, not the
+          // 1967 series).
+          const stale = !byName || !byName.exact || (byName.y != null && byName.y < year - 5);
+          if (stale && altName?.exact && altName.y != null && altName.y >= year - 1) return { tmdb: altName.id, match: "name" as const, kind: other };
+          if (byId) return { tmdb: byId, match: "id" as const };
+          if (byName) return { tmdb: byName.id, match: "name" as const };
+          const altId = await wikidataId(title, other, year).catch(() => null);
           if (altId) return { tmdb: altId, match: "id" as const, kind: other };
-          if (altName) return { tmdb: altName, match: "name" as const, kind: other };
+          if (altName) return { tmdb: altName.id, match: "name" as const, kind: other };
           // An EPISODE honoured on its own ("USS Callister (Black Mirror)", "Sherlock: The Lying
           // Detective"): TMDB has no such title, but it has the series — and the series is what
           // the Museum shows. The parenthetical names it, else the part before the colon.
@@ -173,7 +197,13 @@ export function makeResolver(tmdbKey: string, f: Fetch = fetch): Resolver {
           if (series && norm(series) !== norm(title)) {
             const [sName, sId] = await Promise.all([tmdbSearch(series, "tv", year), wikidataId(series, "tv", year).catch(() => null)]);
             if (sId) return { tmdb: sId, match: "name" as const, kind: "tv" as const };
-            if (sName) return { tmdb: sName, match: "name" as const, kind: "tv" as const };
+            if (sName) return { tmdb: sName.id, match: "name" as const, kind: "tv" as const };
+          }
+          const bare = stripPossessive(title);
+          if (bare !== title) {
+            const [bName, bAlt] = await Promise.all([tmdbSearch(bare, kind, year), tmdbSearch(bare, other, year)]);
+            const pick = bName?.exact ? { hit: bName, k: kind } : bAlt?.exact ? { hit: bAlt, k: other } : bName ? { hit: bName, k: kind } : bAlt ? { hit: bAlt, k: other } : null;
+            if (pick) return { tmdb: pick.hit.id, match: "name" as const, kind: (pick.k === kind ? undefined : pick.k) as "tv" | "movie" | undefined };
           }
           return { tmdb: null, match: "none" as const };
         })();

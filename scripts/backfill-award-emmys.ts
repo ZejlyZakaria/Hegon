@@ -69,12 +69,14 @@ if (from <= 1949) {
   console.log("deleted the Wikidata-sourced Emmy rows:", del.status);
 }
 
-/** Second chance for the rows that found no TMDB id — after a resolver improvement, not a re-download. */
+/** Second chance for the rows that found no TMDB id — or an id TMDB has no poster for, the usual
+ * face of a WRONG id (the 1967 series instead of the 1979 film) — after a resolver improvement,
+ * not a re-download. */
 async function reresolve() {
   const resolver = makeResolver(TMDB_KEY!);
   const rows: { id: number; work_qid: string; work_title: string; work_type: "film" | "serie"; category: string; year: number }[] = [];
   for (let from = 0; ; from += 1000) {
-    const r = await fetch(`${URL_}/rest/v1/awards?select=id,work_qid,work_title,work_type,category,year&source=eq.emmys&match=eq.none&order=year.desc`, { headers: { ...read, Range: `${from}-${from + 999}` } });
+    const r = await fetch(`${URL_}/rest/v1/awards?select=id,work_qid,work_title,work_type,category,year&source=eq.emmys&or=(match.eq.none,poster_path.eq.)&order=year.desc`, { headers: { ...read, Range: `${from}-${from + 999}` } });
     const page = r.ok ? await r.json() : [];
     rows.push(...page);
     if (page.length < 1000) break;
@@ -90,7 +92,7 @@ async function reresolve() {
     const realKind = found ?? kind;
     const up = await fetch(`${URL_}/rest/v1/awards?work_qid=eq.${encodeURIComponent(w.work_qid)}&source=eq.emmys`, {
       method: "PATCH", headers: { ...write, Prefer: "return=minimal" },
-      body: JSON.stringify({ work_tmdb_id: tmdb, match, work_type: realKind === "movie" ? "film" : "serie" }),
+      body: JSON.stringify({ work_tmdb_id: tmdb, match, work_type: realKind === "movie" ? "film" : "serie", poster_path: null, work_year: null }),
     });
     if (up.ok) fixed++;
   }
