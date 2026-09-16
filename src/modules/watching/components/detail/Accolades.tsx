@@ -10,7 +10,7 @@ import { AwardRibbon } from "@/modules/watching/components/shared/Marks";
 import { useAwardCategories, useAwardsForWork } from "@/modules/watching/hooks/useAwards";
 import { useImdbId } from "@/modules/watching/hooks/useImdbId";
 import { useOmdbRatings } from "@/modules/watching/hooks/useOmdbRatings";
-import { foldEntries, portraitKeys } from "@/modules/watching/lib/awards";
+import { ceremonyWord, foldEntries, portraitKeys } from "@/modules/watching/lib/awards";
 import { displayTitle } from "@/modules/watching/utils";
 import type { AwardCategory, AwardEntry, WatchingMedia } from "@/modules/watching/types";
 
@@ -39,8 +39,6 @@ const SCOPES: { value: Scope; label: string }[] = [
   { value: "won", label: "Winners" },
   { value: "nominee", label: "Nominees" },
 ];
-
-const ceremonyWord = (c: "oscars" | "emmys", n: number) => (c === "oscars" ? (n === 1 ? "Oscar" : "Oscars") : n === 1 ? "Emmy" : "Emmys");
 
 /** OMDb's one string — "Won 59 Primetime Emmys. 396 wins & 655 nominations total." — as context. */
 function omdbContext(raw: string): string | null {

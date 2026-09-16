@@ -20,6 +20,7 @@ import { PersonSkeleton } from "@/modules/watching/components/person/PersonSkele
 import { SeenTogether } from "@/modules/watching/components/person/SeenTogether";
 import { PersonInsights, type PersonInsightsData } from "@/modules/watching/components/person/PersonInsights";
 import { PersonTimelinePanel, datedCount } from "@/modules/watching/components/person/PersonTimelinePanel";
+import { PersonAccolades } from "@/modules/watching/components/person/PersonAccolades";
 import type { PersonCredit, PersonTitle } from "@/modules/watching/service";
 
 const DEPT_LABEL: Record<string, string> = {
@@ -324,6 +325,9 @@ export default function PersonPage() {
             <div className="hidden lg:block">
               <PersonJourney stats={journey} />
             </div>
+
+            {/* The canon's word on them — the block is the summary, the panel the timeline. */}
+            <PersonAccolades personId={personId} name={profile.name} yourTitles={yourTitles} />
 
             <SeenTogether titles={yourTitles} personId={personId} firstName={firstName} />
             <PersonInsights data={insights} firstName={firstName} />

@@ -11,7 +11,7 @@ import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarouse
 import { AwardRibbon } from "@/modules/watching/components/shared/Marks";
 import { CarouselSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { useAwardCategories, useAwardCeremonies, useAwardWinners, useAwardYear, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
-import { buildShelf, coverage, foldEntries, indexOwned, ownedFor, portraitKeys } from "@/modules/watching/lib/awards";
+import { buildShelf, coverage, foldEntries, indexOwned, ownedFor, portraitKeys, posterUrl } from "@/modules/watching/lib/awards";
 import { TrophyShelfPanel } from "./TrophyShelfPanel";
 import { ceremonyName, daysUntil } from "./CeremonyClient";
 import { isSeen } from "@/modules/watching/lib/awards";
@@ -35,7 +35,6 @@ const CEREMONIES: { value: AwardCeremony; label: string }[] = [
   { value: "emmys", label: "Emmys" },
 ];
 
-export const posterUrl = (path: string | null) => (path ? `https://image.tmdb.org/t/p/w500${path}` : null);
 
 /**
  * The image a canon entry shows. A portrait category (Best Actor) shows the PERSON — the prize is

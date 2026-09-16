@@ -14,7 +14,7 @@ import { canonStatus, isSeen, ownedFor } from "@/modules/watching/lib/awards";
 import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
 import { displayTitle } from "@/modules/watching/utils";
 import type { AwardCategory, AwardEntry, WatchingMedia } from "@/modules/watching/types";
-import { posterUrl } from "./AwardsClient";
+import { posterUrl } from "@/modules/watching/lib/awards";
 
 /**
  * THE NOMINEES, YEAR BY YEAR — a sliding panel on the category page (owner, 2026-09-16). A nominee

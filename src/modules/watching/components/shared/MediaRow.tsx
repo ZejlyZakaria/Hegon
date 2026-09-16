@@ -25,11 +25,13 @@ import { tmdbImageFor } from "../../lib/tmdb-image";
 export function MediaRow({
   posterUrl,
   title,
+  suffix,
   meta,
   eyebrow,
   right,
   below,
   href,
+  titleHref,
   onClick,
   selected,
   disabled,
@@ -37,6 +39,8 @@ export function MediaRow({
 }: {
   posterUrl: string | null;
   title: string;
+  /** After the title, on its line, in the tertiary colour — a season ("S1") the row is about. */
+  suffix?: React.ReactNode;
   /** The line under the title: a rating, a date, the arithmetic behind an hour count. */
   meta?: React.ReactNode;
   /** A small label ABOVE the row (Person Insights' "Highest rated" / "Hidden gem"). */
@@ -51,6 +55,14 @@ export function MediaRow({
   below?: React.ReactNode;
   /** Navigates (a real anchor: right-click, new-tab, all of it). Wins over onClick when both given. */
   href?: string;
+  /**
+   * A row with SEVERAL doors (a person's Accolades: the work opens the media, the category in the
+   * meta line opens the Museum). Anchors don't nest, so the row is not a link: the title's anchor
+   * is STRETCHED over the row with a pseudo-element, and any link inside `meta` sits above it
+   * (`relative z-10`). The hover follows the door — the title lights up for the row, the category
+   * for itself — and there is no row-wide background: that would say "one door".
+   */
+  titleHref?: string;
   onClick?: () => void;
   /** Keyboard cursor: wears the same clothes as hover, whichever way you reached the row. */
   selected?: boolean;
@@ -60,11 +72,12 @@ export function MediaRow({
 }) {
   const src = posterUrl ? (tmdbImageFor(posterUrl, 40) ?? posterUrl) : null;
   const interactive = (!!href || !!onClick) && !disabled;
+  const doors = !!titleHref && !disabled && !interactive;
 
   const body = (
     <>
       {eyebrow}
-      <div className="flex items-center gap-2.5">
+      <div className={cn("flex items-center gap-2.5", doors && "relative")}>
         {/* 4px + a hairline ring so a small poster doesn't float on the dark surface. */}
         <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-thumb bg-surface-2 ring-1 ring-border-subtle">
           {src ? (
@@ -77,12 +90,22 @@ export function MediaRow({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className={cn(
-            "truncate text-xs font-medium text-text-primary transition-colors",
-            interactive && "group-hover:text-accent-watching-vivid",
-          )}>
-            {title}
-          </p>
+          {doors ? (
+            <Link href={titleHref} className="group/title block min-w-0 after:absolute after:inset-0 after:content-['']">
+              <p className="truncate text-xs font-medium text-text-primary transition-colors group-hover/title:text-accent-watching-vivid">
+                {title}
+                {suffix && <span className="ml-1.5 font-normal text-text-tertiary">{suffix}</span>}
+              </p>
+            </Link>
+          ) : (
+            <p className={cn(
+              "truncate text-xs font-medium text-text-primary transition-colors",
+              interactive && "group-hover:text-accent-watching-vivid",
+            )}>
+              {title}
+              {suffix && <span className="ml-1.5 font-normal text-text-tertiary">{suffix}</span>}
+            </p>
+          )}
           {meta && <div className="mt-0.5 flex items-center gap-1.5">{meta}</div>}
           {below}
         </div>

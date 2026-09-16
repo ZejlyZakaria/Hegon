@@ -12,6 +12,12 @@ import type { AwardCategory, AwardEntry, AwardRow, WatchingMedia } from "../type
 
 export const workKey = (type: "film" | "serie", tmdbId: number | null) => `${type}:${tmdbId ?? "?"}`;
 
+/** A TMDB path from the awards table → a full URL; the consumer resizes it (`tmdbImageFor`). */
+export const posterUrl = (path: string | null) => (path ? `https://image.tmdb.org/t/p/w500${path}` : null);
+
+export const ceremonyWord = (c: "oscars" | "emmys", n: number) =>
+  c === "oscars" ? (n === 1 ? "Oscar" : "Oscars") : n === 1 ? "Emmy" : "Emmys";
+
 /**
  * `perPerson` = the PORTRAIT categories (acting, directing): there a nomination IS a person, so four
  * nominated actresses of one show are four entries — while the co-writers of one screenplay
