@@ -3,6 +3,7 @@ import { STALE } from "@/shared/lib/stale";
 import { AWARD_KEYS } from "./query-keys";
 import {
   getAwardCategories,
+  getAwardCeremonies,
   getAwardWinners,
   getAwardCategoryRows,
   getAwardYearRows,
@@ -19,6 +20,15 @@ export function useAwardCategories() {
   return useQuery({
     queryKey: AWARD_KEYS.categories(),
     queryFn: getAwardCategories,
+    staleTime: STALE.DAY,
+    gcTime: STALE.DAY,
+  });
+}
+
+export function useAwardCeremonies() {
+  return useQuery({
+    queryKey: AWARD_KEYS.ceremonies(),
+    queryFn: getAwardCeremonies,
     staleTime: STALE.DAY,
     gcTime: STALE.DAY,
   });

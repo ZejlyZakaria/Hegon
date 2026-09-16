@@ -143,6 +143,7 @@ export const TMDB_KEYS = {
 export const AWARD_KEYS = {
   all: ['awards'] as const,
   categories: () => [...AWARD_KEYS.all, 'categories'] as const,
+  ceremonies: () => [...AWARD_KEYS.all, 'ceremonies'] as const,
   winners: (ceremony: string) => [...AWARD_KEYS.all, 'winners', ceremony] as const,
   category: (ceremony: string, key: string) => [...AWARD_KEYS.all, 'category', ceremony, key] as const,
   year: (ceremony: string, year: number) => [...AWARD_KEYS.all, 'year', ceremony, year] as const,

@@ -11,7 +11,7 @@
 // Prints the resolution rate: how many nominees found their TMDB id by ID (Wikidata), by NAME
 // (TMDB search), or not at all. Reads .env.local. Posters: run backfill-award-posters.mjs after.
 
-import { fetchEmmyYear, makeResolver, type EmmyCategory, type EmmyRow } from "../supabase/functions/watching-awards-sync/emmys.ts";
+import { cleanTitle, fetchEmmyYear, makeResolver, type EmmyCategory, type EmmyRow } from "../supabase/functions/watching-awards-sync/emmys.ts";
 
 const env: Record<string, string> = {};
 for (const line of Deno.readTextFileSync(".env.local").split("\n")) {
@@ -74,9 +74,9 @@ if (from <= 1949) {
  * not a re-download. */
 async function reresolve() {
   const resolver = makeResolver(TMDB_KEY!);
-  const rows: { id: number; work_qid: string; work_title: string; work_type: "film" | "serie"; category: string; year: number }[] = [];
+  const rows: { id: number; work_qid: string; work_title: string; work_type: "film" | "serie"; category: string; year: number; poster_path: string | null }[] = [];
   for (let from = 0; ; from += 1000) {
-    const r = await fetch(`${URL_}/rest/v1/awards?select=id,work_qid,work_title,work_type,category,year&source=eq.emmys&or=(match.eq.none,poster_path.eq.)&order=year.desc`, { headers: { ...read, Range: `${from}-${from + 999}` } });
+    const r = await fetch(`${URL_}/rest/v1/awards?select=id,work_qid,work_title,work_type,category,year,poster_path&source=eq.emmys&or=(match.eq.none,poster_path.eq.)&order=year.desc`, { headers: { ...read, Range: `${from}-${from + 999}` } });
     const page = r.ok ? await r.json() : [];
     rows.push(...page);
     if (page.length < 1000) break;
@@ -87,7 +87,21 @@ async function reresolve() {
   let fixed = 0; const still: string[] = [];
   for (const w of works.values()) {
     const kind = w.work_type === "film" ? "movie" : "tv";
-    const { tmdb, match, kind: found } = await resolver.work(w.work_title, kind, w.year);
+    // An entry TMDB has no poster for is usually an EPISODE released as a film ("Sherlock: His
+    // Last Vow"): its series has the poster, and is what the Museum shows — try it first.
+    const base = cleanTitle(w.work_title); // the umbrella parenthetical is gone, a real one stays
+    const paren = base.match(/\(([^)]+)\)\s*$/)?.[1];
+    const parts = paren && !/^\d{4}$/.test(paren) ? [paren] : base.includes(":") ? base.split(":").map((s) => s.trim()) : [];
+    let hit = null as null | { tmdb: number | null; match: "id" | "name" | "none"; kind?: "tv" | "movie" };
+    if (w.poster_path === "") {
+      // Both sides of the colon are candidates ("Sherlock: His Last Vow", "The People v. O.J.
+      // Simpson: American Crime Story"): the one Wikidata confirms (match "id") is the series.
+      const hits = [];
+      for (const s of parts) { const h = await resolver.work(s, "tv", w.year); if (h.tmdb) hits.push(h); }
+      const best = hits.find((h) => h.match === "id") ?? null;
+      if (best) hit = { ...best, kind: best.kind ?? "tv" };
+    }
+    const { tmdb, match, kind: found } = hit ?? await resolver.work(w.work_title, kind, w.year);
     if (!tmdb) { still.push(w.work_title); continue; }
     const realKind = found ?? kind;
     const up = await fetch(`${URL_}/rest/v1/awards?work_qid=eq.${encodeURIComponent(w.work_qid)}&source=eq.emmys`, {

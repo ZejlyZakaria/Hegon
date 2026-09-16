@@ -92,7 +92,7 @@ function NomineeRow({ entry, owned, portrait }: { entry: AwardEntry; owned: Watc
   const seen = isSeen(owned);
   const film = owned ? displayTitle(owned) : entry.work_title;
   const href = owned ? `/perso/watching/${owned.id}` : entry.work_tmdb_id ? `/perso/watching/discover/${entry.work_type === "film" ? "film" : "serie"}/${entry.work_tmdb_id}` : undefined;
-  const poster = person?.profile_path ? tmdbImageFor(posterUrl(person.profile_path), 40) : owned?.poster_url ?? posterUrl(entry.poster_path);
+  const poster = person?.profile_path ? tmdbImageFor(posterUrl(person.profile_path), 40) : entry.season_poster_path ? posterUrl(entry.season_poster_path) : owned?.poster_url ?? posterUrl(entry.poster_path);
 
   // A person row is a div (the person opens on click), so the film can be a real link inside it;
   // a title row is the link itself. Never an <a> inside an <a>.
@@ -117,6 +117,7 @@ function NomineeRow({ entry, owned, portrait }: { entry: AwardEntry; owned: Watc
           )}
           <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", status.dotClass)} />
           <span className={cn("shrink-0", status.textClass)}>{status.label}</span>
+          {!!entry.season_number && <span className="shrink-0 tabular-nums text-text-tertiary">· S{entry.season_number}</span>}
         </span>
       }
       right={

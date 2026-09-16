@@ -6,7 +6,7 @@ import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import { reportError } from "@/shared/utils/report-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardRow } from "./types";
+import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardCeremonyRow, AwardRow } from "./types";
 import { deriveWatchStatus } from "./lib/watch-status";
 import { airedFromTmdb } from "./lib/series-state";
 import { runtimeFromTmdb } from "./lib/tmdb-runtime";
@@ -1829,7 +1829,7 @@ export async function getWatchingHeroData(
 // ═══════════════════════════════════════════════════════════════════════════
 
 const AWARD_COLUMNS =
-  "id, ceremony, category, year, year_inferred, won, work_qid, work_tmdb_id, work_type, work_title, poster_path, work_year, person_qid, person_tmdb_id, person_name, person_profile_path";
+  "id, ceremony, category, year, year_inferred, won, work_qid, work_tmdb_id, work_type, work_title, poster_path, work_year, person_qid, person_tmdb_id, person_name, person_profile_path, season_number, season_poster_path";
 
 export async function getAwardCategories(): Promise<AwardCategory[]> {
   const supabase = createClient();
@@ -1839,6 +1839,17 @@ export async function getAwardCategories(): Promise<AwardCategory[]> {
     .order("ceremony").order("rank");
   if (error) throw error;
   return (data ?? []) as AwardCategory[];
+}
+
+/** Every ceremony Wikidata knows, both series, newest first — the next one included once announced. */
+export async function getAwardCeremonies(): Promise<AwardCeremonyRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("award_ceremonies")
+    .select("ceremony, year, edition, held_on")
+    .order("year", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as AwardCeremonyRow[];
 }
 
 /**

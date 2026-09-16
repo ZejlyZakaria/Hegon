@@ -114,9 +114,11 @@ serve(async (req) => {
 
     // ── TMDB pass: poster + release year, for works that have none yet ──
     const enrich = await enrichPosters(SUPABASE_URL, readHeaders, writeHeaders, startedAt);
+    // ── The ceremonies (edition, date) — one query, so the next date shows as soon as Wikidata has it ──
+    const ceremonies = await syncCeremonies(SUPABASE_URL, writeHeaders).catch((e) => ({ error: errMsg(e) }));
 
     const failed = Object.values(report).filter((r) => "error" in r).length;
-    const body = { ok: failed === 0, since, ceremony: payload.ceremony ?? "all", failed, rows: total, enrich, ms: Date.now() - startedAt, report };
+    const body = { ok: failed === 0, since, ceremony: payload.ceremony ?? "all", failed, rows: total, enrich, ceremonies, ms: Date.now() - startedAt, report };
     return new Response(JSON.stringify(body), { status: failed === 0 ? 200 : 207, headers: { "Content-Type": "application/json" } });
   } catch (e) {
     console.error("awards-sync fatal:", errMsg(e));
@@ -189,5 +191,66 @@ async function enrichPosters(url: string, readHeaders: Record<string, string>, w
     return up.ok;
   });
 
-  return { works: works.length, worksDone, gone, people: people.length, peopleDone, remaining: works.length - worksDone + people.length - peopleDone };
+  // ── The SEASON that won (Emmys, series): the one aired in the eligibility window ──
+  type SeasonRow = { work_tmdb_id: number; year: number };
+  const pairs = await listMissing<SeasonRow>("select=work_tmdb_id,year&ceremony=eq.emmys&work_type=eq.serie&work_tmdb_id=not.is.null&season_number=is.null&order=year.desc", (r) => `${r.work_tmdb_id}:${r.year}`);
+  const seasonsOf = new Map<number, Promise<{ season_number: number; air_date: string | null; poster_path: string | null }[] | null>>();
+  let si = 0;
+  const seasonsDone = await runAll(pairs.length, async () => {
+    const p = pairs[si++];
+    let sp = seasonsOf.get(p.work_tmdb_id);
+    if (!sp) { sp = tmdb(`tv/${p.work_tmdb_id}`).then((d) => (d ? ((d.seasons as { season_number: number; air_date: string | null; poster_path: string | null }[]) ?? []) : null)); seasonsOf.set(p.work_tmdb_id, sp); }
+    const seasons = await sp;
+    if (seasons === undefined) return false;
+    const pick = pickEmmySeason(seasons ?? [], p.year);
+    const up = await patch(`ceremony=eq.emmys&work_tmdb_id=eq.${p.work_tmdb_id}&year=eq.${p.year}`, { season_number: pick?.season_number ?? 0, season_poster_path: pick?.poster_path ?? null });
+    return up.ok;
+  });
+
+  return { works: works.length, worksDone, gone, people: people.length, peopleDone, seasons: pairs.length, seasonsDone, remaining: works.length - worksDone + people.length - peopleDone + pairs.length - seasonsDone };
+}
+
+/**
+ * The ceremonies as Wikidata knows them: "98th Academy Awards" is PART OF THE SERIES (P179)
+ * Academy Awards (Q19020), with P585 (date) and P393 (edition); the Primetime Emmys likewise under
+ * Q1044427. (Their P31 is a generic "award ceremony" class shared with 400 other prizes — measured.)
+ * Upserted on (ceremony, year). An Emmy ceremony held in January (the 2024 strike year) belongs to
+ * the previous award year — the year emmys.com files it under.
+ */
+async function syncCeremonies(url: string, writeHeaders: Record<string, string>) {
+  const q = `SELECT ?item ?series ?date ?ord WHERE {
+    VALUES ?series { wd:Q19020 wd:Q1044427 }
+    ?item wdt:P179 ?series ; wdt:P585 ?date .
+    OPTIONAL { ?item wdt:P393 ?ord }
+  }`;
+  const r = await fetchWithRetry(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(q)}`, { headers: { "User-Agent": "HEGON/1.0 (https://hegon.fr; awards sync)", Accept: "application/sparql-results+json" } });
+  if (!r.ok) throw new Error(`ceremonies SPARQL ${r.status}`);
+  const bindings: Record<string, { value: string }>[] = (await r.json()).results?.bindings ?? [];
+  const rows = new Map<string, { ceremony: string; year: number; edition: number | null; held_on: string; qid: string; synced_at: string }>();
+  for (const b of bindings) {
+    const ceremony = b.series.value.endsWith("Q19020") ? "oscars" : "emmys";
+    const held_on = b.date.value.slice(0, 10);
+    let year = Number(held_on.slice(0, 4));
+    if (ceremony === "emmys" && Number(held_on.slice(5, 7)) <= 2) year -= 1;
+    if (!year) continue;
+    const row = { ceremony, year, edition: b.ord?.value ? Number(b.ord.value) || null : null, held_on, qid: b.item.value.split("/").pop()!, synced_at: new Date().toISOString() };
+    // Two ceremonies in one year (1930): keep the later date — the year's last word.
+    const prev = rows.get(`${ceremony}:${year}`);
+    if (!prev || prev.held_on < held_on) rows.set(`${ceremony}:${year}`, row);
+  }
+  const up = await fetchWithRetry(`${url}/rest/v1/award_ceremonies?on_conflict=ceremony,year`, { method: "POST", headers: writeHeaders, body: JSON.stringify([...rows.values()]) });
+  if (!up.ok) throw new Error(`ceremonies upsert ${up.status} ${await up.text()}`);
+  return { rows: rows.size };
+}
+
+/**
+ * The Emmy eligibility window is 1 June (year − 1) → 31 May (year): the season that aired in it is
+ * the one honoured. The LATEST season inside the window when several did (a show airing twice a
+ * year); none → null (the caller stamps 0 so it is not asked again). Specials (season 0) ignored.
+ */
+export function pickEmmySeason(seasons: { season_number: number; air_date: string | null; poster_path: string | null }[], year: number) {
+  const from = `${year - 1}-06-01`, to = `${year}-05-31`;
+  const inWindow = seasons.filter((s) => s.season_number > 0 && s.air_date && s.air_date >= from && s.air_date <= to);
+  if (!inWindow.length) return null;
+  return inWindow.sort((a, b) => (b.air_date! > a.air_date! ? 1 : -1))[0];
 }

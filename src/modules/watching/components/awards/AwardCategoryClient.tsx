@@ -188,7 +188,18 @@ function CanonTile({ entry, years, owned, showPeople, portrait }: { entry: Award
           ) : (
             <div className="flex h-full w-full items-center justify-center p-2 text-center text-micro text-text-tertiary">{entry.work_title}</div>
           )}
-          {entry.won && <AwardRibbon year={years.length > 1 ? `${Math.min(...years)}–${Math.max(...years)}` : entry.year} tone={seen ? "won" : "dim"} size="tile" />}
+          {/* The year tag is the DOOR to that ceremony — every category, that night. */}
+          {entry.won && (
+            <Link href={`/perso/watching/awards/ceremony/${entry.ceremony}/${entry.year}`} onClick={(ev) => ev.stopPropagation()} aria-label={`${entry.year} ceremony`}>
+              <AwardRibbon year={years.length > 1 ? `${Math.min(...years)}–${Math.max(...years)}` : entry.year} tone={seen ? "won" : "dim"} size="tile" className="transition-transform hover:scale-110" />
+            </Link>
+          )}
+          {/* Bottom-left = WHICH SEASON, the Seasons strip's own chip (Emmys, series, never on a face). */}
+          {!hasFace && !!entry.season_number && (
+            <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/85 to-transparent p-2 pt-7">
+              <span className="text-xs font-bold text-white">S{entry.season_number}</span>
+            </div>
+          )}
         </div>
         {hasFace ? (
           <>

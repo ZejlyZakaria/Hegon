@@ -22,7 +22,7 @@ export function foldEntries(rows: AwardRow[]): AwardEntry[] {
       e = {
         key, ceremony: r.ceremony, category: r.category, year: r.year, won: r.won,
         work_tmdb_id: r.work_tmdb_id, work_type: r.work_type, work_title: r.work_title,
-        poster_path: r.poster_path, work_year: r.work_year, people: [],
+        poster_path: r.poster_path, work_year: r.work_year, season_number: r.season_number, season_poster_path: r.season_poster_path, people: [],
       };
       out.set(key, e);
     }

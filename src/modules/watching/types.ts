@@ -258,6 +258,14 @@ export interface AwardCategory {
   portrait: boolean;
 }
 
+/** A ceremony (edition, date) — "98th Academy Awards · 15 Mar 2026". From Wikidata, by the robot. */
+export interface AwardCeremonyRow {
+  ceremony: AwardCeremony;
+  year: number;
+  edition: number | null;
+  held_on: string | null;
+}
+
 /** One row of the canon: a title in a category in a year, won or nominated, one line per credit. */
 export interface AwardRow {
   id: number;
@@ -279,6 +287,9 @@ export interface AwardRow {
   person_name: string | null;
   /** TMDB profile path; "" when TMDB has none; null when not enriched yet. */
   person_profile_path: string | null;
+  /** Emmys, series: the season aired in the eligibility window. 0 = none found; null = not looked up. */
+  season_number: number | null;
+  season_poster_path: string | null;
 }
 
 /** The rows of one (year, work) folded into one entry — what every surface actually shows. */
@@ -293,5 +304,7 @@ export interface AwardEntry {
   work_title: string;
   poster_path: string | null;
   work_year: number | null;
+  season_number: number | null;
+  season_poster_path: string | null;
   people: { tmdb_id: number | null; name: string; profile_path: string | null }[];
 }

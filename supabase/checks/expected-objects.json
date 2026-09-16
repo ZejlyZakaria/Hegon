@@ -45,13 +45,17 @@
     "",
     "✅ 2026-09-16 — migration 20260916000000 : source 'manual' (contrainte élargie + 1 ligne). Chiffres inchangés.",
     "",
-    "✅ 2026-09-16 (bis) — migration 20260916000100 : les 2 crons awards deviennent 4 (saison 2×/jour + mensuel). crons +2."
+    "✅ 2026-09-16 (bis) — migration 20260916000100 : les 2 crons awards deviennent 4 (saison 2×/jour + mensuel). crons +2.",
+    "",
+    "✅ 2026-09-16 (ter) — migration 20260916000200 : awards.season_number + season_poster_path. colonnes +2.",
+    "",
+    "✅ 2026-09-16 (quater) — migration 20260916000300 : watching.award_ceremonies (6 colonnes, PK, 1 policy). tables +1, colonnes +6, policies +1, index +1."
   ],
-  "_migrations_through": "20260916000100",
-  "tables": 71,
-  "colonnes": 718,
-  "policies": 212,
+  "_migrations_through": "20260916000300",
+  "tables": 72,
+  "colonnes": 726,
+  "policies": 213,
   "fonctions": 35,
-  "index": 256,
+  "index": 257,
   "crons": 19
 }

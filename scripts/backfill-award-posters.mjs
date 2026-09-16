@@ -90,3 +90,41 @@ const pworker = async () => {
 };
 await Promise.all(Array.from({ length: 8 }, pworker));
 console.log(`people: done ${pdone} · failed ${pfailed} · ${Math.round((Date.now() - t1) / 1000)} s`);
+
+// ── Seasons (Emmys, series): the season aired in the eligibility window, 1 June (y−1) → 31 May (y) ──
+const pairs = new Map();
+for (let from = 0; ; from += 1000) {
+  const { data, error } = await sb.from("awards").select("work_tmdb_id, year").eq("ceremony", "emmys").eq("work_type", "serie").not("work_tmdb_id", "is", null).is("season_number", null).range(from, from + 999);
+  if (error) throw error;
+  for (const r of data) pairs.set(`${r.work_tmdb_id}:${r.year}`, r);
+  if (data.length < 1000) break;
+}
+const plist2 = [...pairs.values()];
+console.log(`${plist2.length} (series, year) pairs without a season`);
+const seasonsCache = new Map();
+let sdone = 0, sfound = 0, si = 0;
+const t2 = Date.now();
+const sworker = async () => {
+  while (si < plist2.length) {
+    const p = plist2[si++];
+    if (!seasonsCache.has(p.work_tmdb_id)) {
+      seasonsCache.set(p.work_tmdb_id, (async () => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const r = await fetch(`https://api.themoviedb.org/3/tv/${p.work_tmdb_id}?api_key=${TMDB_API_KEY}`);
+          if (r.status === 429) { await new Promise((res) => setTimeout(res, 1500)); continue; }
+          return r.ok ? ((await r.json()).seasons ?? []) : [];
+        }
+        return [];
+      })());
+    }
+    const seasons = await seasonsCache.get(p.work_tmdb_id);
+    const from = `${p.year - 1}-06-01`, to = `${p.year}-05-31`;
+    const inWin = seasons.filter((s) => s.season_number > 0 && s.air_date && s.air_date >= from && s.air_date <= to).sort((a, b) => (b.air_date > a.air_date ? 1 : -1));
+    const pick = inWin[0] ?? null;
+    if (pick) sfound++;
+    const { error } = await sb.from("awards").update({ season_number: pick?.season_number ?? 0, season_poster_path: pick?.poster_path ?? null }).eq("ceremony", "emmys").eq("work_tmdb_id", p.work_tmdb_id).eq("year", p.year);
+    if (!error) sdone++;
+  }
+};
+await Promise.all(Array.from({ length: 8 }, sworker));
+console.log(`seasons: done ${sdone} · with a season ${sfound} · ${Math.round((Date.now() - t2) / 1000)} s`);

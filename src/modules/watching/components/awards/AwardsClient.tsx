@@ -4,15 +4,17 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Trophy } from "lucide-react";
+import { ArrowRight, CalendarClock, Trophy } from "lucide-react";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
 import { AwardRibbon } from "@/modules/watching/components/shared/Marks";
 import { CarouselSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
-import { useAwardCategories, useAwardWinners, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
+import { useAwardCategories, useAwardCeremonies, useAwardWinners, useAwardYear, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
 import { buildShelf, coverage, foldEntries, indexOwned, ownedFor } from "@/modules/watching/lib/awards";
 import { TrophyShelfPanel } from "./TrophyShelfPanel";
+import { ceremonyName, daysUntil } from "./CeremonyClient";
+import { isSeen } from "@/modules/watching/lib/awards";
 import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
 import type { AwardCategory, AwardCeremony, AwardEntry, WatchingMedia } from "@/modules/watching/types";
 
@@ -43,6 +45,8 @@ export const posterUrl = (path: string | null) => (path ? `https://image.tmdb.or
 export function entryImage(e: AwardEntry, o: WatchingMedia | null, portrait: boolean, cssPx: number): string | null {
   const face = portrait ? e.people.find((p) => p.profile_path)?.profile_path ?? null : null;
   if (face) return tmdbImageFor(posterUrl(face), cssPx);
+  // The SEASON that won, when the canon knows it (Emmys): Succession S4's own artwork, not the show's.
+  if (e.season_poster_path) return tmdbImageFor(posterUrl(e.season_poster_path), cssPx);
   if (o?.poster_url) return tmdbImageFor(o.poster_url, cssPx) || o.poster_url;
   return tmdbImageFor(posterUrl(e.poster_path), cssPx);
 }
@@ -54,6 +58,15 @@ export function AwardsClient({ userId }: { userId: string }) {
   const setCeremony = (c: AwardCeremony) => router.replace(`/perso/watching/awards?c=${c}`, { scroll: false });
   const [shelfOpen, setShelfOpen] = useState(false);
   const categoriesQ = useAwardCategories();
+  const ceremoniesQ = useAwardCeremonies();
+  // "This year": the next ceremony of this series whose date is still ahead — its nominees are the
+  // run-up. The section exists while nominees exist and the date has not passed; the day after,
+  // the winners flow into the categories and it is gone until next year.
+  const next = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return (ceremoniesQ.data ?? []).filter((c) => c.ceremony === ceremony && c.held_on && c.held_on >= today).sort((a, b) => a.year - b.year)[0] ?? null;
+  }, [ceremoniesQ.data, ceremony]);
+  const nextRowsQ = useAwardYear(ceremony, next?.year ?? 0);
   const winnersQ = useAwardWinners(ceremony);
   const ownedQ = useOwnedTitles(userId);
 
@@ -70,6 +83,35 @@ export function AwardsClient({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-8 p-4 md:p-6">
+      {/* ── This year — the run-up to the next ceremony, while there is one ── */}
+      {next && (nextRowsQ.data?.length ?? 0) > 0 && (() => {
+        const nominees = foldEntries(nextRowsQ.data ?? []);
+        const seen = nominees.filter((e) => isSeen(ownedFor(owned, e))).length;
+        const days = daysUntil(next.held_on!);
+        return (
+          <Link
+            href={`/perso/watching/awards/ceremony/${ceremony}/${next.year}`}
+            className="group flex flex-wrap items-center justify-between gap-3 rounded-card border border-border-subtle bg-surface-1 px-4 py-3.5 transition-colors hover:bg-surface-2"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-chip bg-surface-2">
+                <CalendarClock size={15} style={{ color: "var(--color-award)" }} />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-text-primary">
+                  {ceremonyName(ceremony, next.edition, next.year)}
+                  <span className="ml-2 font-semibold" style={{ color: "var(--color-award)" }}>{days === 0 ? "tonight" : days === 1 ? "tomorrow" : `in ${days} days`}</span>
+                </p>
+                <p className="mt-0.5 text-xs tabular-nums text-text-tertiary">
+                  {nominees.length} nominees · <span className="font-medium text-text-secondary">{seen}</span> seen · what remains to see before the night
+                </p>
+              </div>
+            </div>
+            <span className="flex items-center gap-1 text-xs text-text-tertiary transition-colors group-hover:text-text-primary">See the nominees <ArrowRight size={13} /></span>
+          </Link>
+        );
+      })()}
+
       {/* ── Your trophy shelf — the opening; the ceremony switch sits in its header ── */}
       {loading ? (
         <CarouselSkeleton />

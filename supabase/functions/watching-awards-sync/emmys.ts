@@ -81,6 +81,10 @@ const UMBRELLAS = [
   "Masterpiece Theatre", "Masterpiece Theater", "Masterpiece", "Hallmark Hall of Fame Presentation", "Hallmark Hall of Fame",
   "Great Performances", "American Playhouse", "CBS Playhouse", "An ABC Theatre Presentation", "An ABC Theater Presentation",
   "ABC Theatre", "ABC Theater", "Live from Lincoln Center",
+  "Producers' Showcase", "Ford Star Jubilee", "Your Show Time Series", "GE Theater", "GE Theatre", "General Electric Theater",
+  "NBC Tuesday Mystery Movie", "Tuesday Movie of the Week", "Hollywood Television Theatre", "Hollywood Television Theater",
+  "World Premiere NBC Monday Night at the Movies", "NBC World Premiere", "World Premiere", "ABC Novel for Television",
+  "Oprah Winfrey Presents", "AT&T Presents", "Bell System Family Theatre", "Kraft Television Theatre",
 ];
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** US retitles emmys.com uses that TMDB does not index as alternative titles. Grows by hand. */
@@ -88,7 +92,7 @@ const ALIASES: Record<string, string> = {
   "before the dinosaurs": "Walking with Monsters",
 };
 export function cleanTitle(raw: string): string {
-  let t = raw.replace(/\s+/g, " ").trim();
+  let t = raw.replace(/\s+/g, " ").replace(/\[/g, "(").replace(/\]/g, ")").trim();
   if (ALIASES[t.toLowerCase()]) return ALIASES[t.toLowerCase()];
   // A studio glued in front ("Disney Prep & Landing"), a volume/chapters suffix ("Star Wars Clone
   // Wars Vol. 2 (Chapters 21-25)"), a possessive author in front ("Arthur Miller's Death of a
@@ -150,7 +154,10 @@ export function makeResolver(tmdbKey: string, f: Fetch = fetch): Resolver {
     // Wikipedia search → page → wikibase item → P4983 (TV) / P4947 (film).
     const q = `${title} ${kind === "tv" ? "television series" : "film"}`;
     const s = await json(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=8&format=json&formatversion=2`);
-    const hits: { title: string; pageid: number }[] = (s?.query?.search ?? []).filter((p: { title: string }) => norm(p.title).startsWith(norm(title)));
+    // The page's title WITHOUT its qualifier must be the title — "Sherlock (TV series)" is Sherlock,
+    // "Sherlock Holmes (2013 TV series)" is not (a prefix match took the Russian one, 2026-09-16).
+    const bare = (s: string) => norm(s.replace(/\s*\([^)]*\)\s*$/, ""));
+    const hits: { title: string; pageid: number }[] = (s?.query?.search ?? []).filter((p: { title: string }) => bare(p.title) === norm(title));
     // Homonyms: "Scoop (2006 film)" vs "Scoop (2024 film)", "Mr. & Mrs. Smith (1996 TV series)" vs
     // "(2024 TV series)". The first hit is not the nominee; the one whose parenthetical year is
     // the LATEST at or before the ceremony year is. A title with no year at all is a plain page.
@@ -192,12 +199,13 @@ export function makeResolver(tmdbKey: string, f: Fetch = fetch): Resolver {
           // An EPISODE honoured on its own ("USS Callister (Black Mirror)", "Sherlock: The Lying
           // Detective"): TMDB has no such title, but it has the series — and the series is what
           // the Museum shows. The parenthetical names it, else the part before the colon.
-          const paren = rawTitle.match(/\(([^)]+)\)\s*$/)?.[1];
-          const series = paren && !/^\d{4}$/.test(paren) ? paren : rawTitle.includes(":") ? rawTitle.split(":")[0] : null;
-          if (series && norm(series) !== norm(title)) {
+          const paren = title.match(/\(([^)]+)\)\s*$/)?.[1]; // 'title' is cleaned: an umbrella parenthetical is already gone
+          const parts = paren && !/^\d{4}$/.test(paren) ? [paren] : title.includes(":") ? title.split(":").map((s) => s.trim()).reverse() : [];
+          for (const series of parts) {
+            if (!series || norm(series) === norm(title)) continue;
             const [sName, sId] = await Promise.all([tmdbSearch(series, "tv", year), wikidataId(series, "tv", year).catch(() => null)]);
             if (sId) return { tmdb: sId, match: "name" as const, kind: "tv" as const };
-            if (sName) return { tmdb: sName.id, match: "name" as const, kind: "tv" as const };
+            if (sName?.exact) return { tmdb: sName.id, match: "name" as const, kind: "tv" as const };
           }
           const bare = stripPossessive(title);
           if (bare !== title) {
