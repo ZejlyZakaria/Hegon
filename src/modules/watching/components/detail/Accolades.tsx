@@ -46,9 +46,17 @@ const ceremonyWord = (c: "oscars" | "emmys", n: number) => (c === "oscars" ? (n 
 function omdbContext(raw: string): string | null {
   const wins = raw.match(/(\d+)\s+wins?/i)?.[1];
   const noms = raw.match(/(\d+)\s+nomination/i)?.[1];
-  const headline = raw.match(/^\s*(?:Won|Nominated for)\s+(\d+)\s+(Primetime Emmys?|Oscars?|BAFTA[^.]*|Golden Globes?)/i);
+  // "Won 59 Primetime Emmys" and "Nominated for 53 Primetime Emmys" are two different facts
+  // (Better Call Saul: 53 nominations, not 53 wins — owner, 2026-09-16).
+  const headline = raw.match(/^\s*(Won|Nominated for)\s+(\d+)\s+(Primetime Emmys?|Oscars?|BAFTA[^.]*|Golden Globes?)/i);
   const parts: string[] = [];
-  if (headline) parts.push(`${headline[1]} ${headline[2].replace(/^Primetime /, "")} in all`);
+  if (headline) {
+    const n = Number(headline[2]);
+    const what = headline[3].replace(/^Primetime /, "");
+    parts.push(/^won/i.test(headline[1])
+      ? `${n} ${what} in all`
+      : `${n} ${what.replace(/s$/, "")} ${n === 1 ? "nomination" : "nominations"} in all`);
+  }
   if (wins) parts.push(`${wins} ${wins === "1" ? "win" : "wins"} worldwide`);
   else if (noms) parts.push(`${noms} nominations worldwide`);
   return parts.length ? parts.join(" · ") : null;

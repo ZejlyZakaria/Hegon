@@ -69,8 +69,10 @@ export function SlidingPanel({
           >
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
-              <div className="flex min-w-0 items-center gap-2">
-                {icon}
+              {/* The icon sits on the FIRST line of the title, not on the block's middle: a two-line
+                  title (name + counts) must not pull it down (owner, 2026-09-16). */}
+              <div className="flex min-w-0 items-start gap-2">
+                {icon && <span className="mt-[3px] flex shrink-0 items-center">{icon}</span>}
                 {typeof title === "string" ? (
                   <h2 className="truncate text-sm font-semibold text-text-primary">{title}</h2>
                 ) : (
