@@ -11,7 +11,7 @@ import { Hint } from "@/shared/components/ui/tooltip";
 import { LOVE } from "../shared/Marks";
 import { Panel } from "@/shared/components/ui/panel";
 import { WATCHING_ACCENT } from "../../ui";
-import { useAnimeThemes } from "../../hooks/useAnimeThemes";
+import { useAnimeThemes, useThemeCovers } from "../../hooks/useAnimeThemes";
 import { useThemeFavorites, useToggleThemeFavorite } from "../../hooks/useThemeFavorites";
 import { useThemePlayer, type PlayerTrack } from "../../store/theme-player";
 import { themeTrackKey } from "../../service";
@@ -106,6 +106,10 @@ function ThemeRow({
 export function AnimeThemes({ media }: { media: WatchingMedia }) {
   const isAnime = media.type === "anime";
   const { data: groups = [], isLoading } = useAnimeThemes(media.title, media.year ?? null, isAnime, !!media.title);
+  // Covers come second: the list paints, the art lands. Until then the row shows its note glyph —
+  // never the poster, so nothing swaps under the eye; the poster is the fallback once looked up.
+  const coverTracks = useMemo(() => groups.flatMap((g) => g.tracks.map((t) => ({ title: t.title, artist: t.artist }))), [groups]);
+  const { data: covers } = useThemeCovers(coverTracks);
   const { queue, index, isPlaying, play, toggle } = useThemePlayer();
   const currentId = queue[index]?.id ?? null;
 
@@ -124,11 +128,11 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
           audioUrl: t.audioUrl,
           videoUrl: t.videoUrl,
           animeName: g.name,
-          cover: t.cover ?? media.poster_url,
+          cover: covers ? (covers[`${t.title}|${t.artist}`] ?? t.cover ?? media.poster_url) : null,
           animePoster: media.poster_url,
         })),
       ),
-    [groups, media.tmdb_id, media.poster_url],
+    [groups, covers, media.tmdb_id, media.poster_url],
   );
   const indexOf = useMemo(() => new Map(flat.map((t, i) => [t.id, i])), [flat]);
 

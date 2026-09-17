@@ -18,7 +18,7 @@ import {
   Repeat2,
 } from "lucide-react";
 import { useInitOrg } from "@/shared/hooks/useInitOrg";
-import { useUserSettings, useDemoStatus } from "@/modules/settings/hooks/useSettings";
+import { useUserSettings } from "@/modules/settings/hooks/useSettings";
 import { TileFace } from "@/modules/dashboard-os/components/AppTile";
 import { OS_APPS } from "@/modules/dashboard-os/config";
 
@@ -162,13 +162,16 @@ function DockItem({
 
 // ─── dock ─────────────────────────────────────────────────────────────────────
 
-export default function Dock() {
+/**
+ * `hiddenModules` comes from the server layout, so the dock paints whole on the first frame of a
+ * reload — it used to wait for the settings and demo queries and pop its icons in afterwards. The
+ * client query still wins once it lands (the owner can hide a module from Settings without a
+ * reload); the two only disagree for the seconds between.
+ */
+export default function Dock({ hiddenModules: initialHidden }: { hiddenModules: string[] }) {
   const pathname = usePathname();
   const { data: userSettings } = useUserSettings();
-  const { isReady: demoReady } = useDemoStatus();
-  const hiddenModules = new Set(userSettings?.hidden_modules ?? []);
-  // Wait for both prefs + demo status before rendering nav → no icon flash.
-  const navReady = userSettings !== undefined && demoReady;
+  const hiddenModules = new Set(userSettings?.hidden_modules ?? initialHidden);
 
   useInitOrg();
 
@@ -183,8 +186,7 @@ export default function Dock() {
           <Image src="/logo/Hegon_white_logo.png" alt="HEGON" fill sizes="28px" priority className="object-contain" />
         </Link>
 
-        {navReady && (
-          <>
+        <>
             {/* Dashboard — always on for the owner (it's the home); for the demo it
                 follows hidden_modules, so the owner controls it from Demo & Sharing. */}
             {!hiddenModules.has("dashboard") && (
@@ -222,8 +224,7 @@ export default function Dock() {
                 </div>
               );
             })}
-          </>
-        )}
+        </>
       </nav>
     </aside>
   );

@@ -1386,17 +1386,20 @@ export async function searchAnimeThemes(title: string, year?: number | null): Pr
     .filter((g) => g.tracks.length > 0)
     .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999));
 
-  // Resolve every track's cover up-front (parallel) so the UI never shows a poster
-  // placeholder then swaps to the real art. Deduped + cached, so this is near-free
-  // after the first lookup of each song.
-  await Promise.all(
-    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — un appel iTunes PAR MORCEAU (API externe, quota). Correction = lot ou cache. → audit Watching, phase 3 axe 3.
-    groups.flatMap((g) => g.tracks).map(async (t) => {
-      t.cover = await searchItunesArtwork(t.title, t.artist);
-    }),
-  );
-
+  // The covers are NOT resolved here any more (17/09): they gated the whole section behind the
+  // slowest of N iTunes lookups, which is why Openings & Endings was the last thing on the page.
+  // The list returns at once; `resolveThemeCovers` fills the art in a second query.
   return groups;
+}
+
+/** The iTunes art of a batch of tracks, keyed `title|artist` — one query, N lookups inside, cached. */
+export async function resolveThemeCovers(tracks: { title: string; artist: string }[]): Promise<Record<string, string | null>> {
+  const out: Record<string, string | null> = {};
+  await Promise.all(
+    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — un appel iTunes PAR MORCEAU (API externe, quota), amorti par le cache localStorage ; ne bloque plus l'affichage de la liste.
+    tracks.map(async (t) => { out[`${t.title}|${t.artist}`] = await searchItunesArtwork(t.title, t.artist); }),
+  );
+  return out;
 }
 
 // Persistent cache for immutable derived URLs (art, banners) — never change, so once
