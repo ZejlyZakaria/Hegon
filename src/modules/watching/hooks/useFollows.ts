@@ -4,11 +4,23 @@ import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { toast } from "@/shared/utils/toast";
 import { STALE } from "@/shared/lib/stale";
 import { PEOPLE_KEYS } from "./query-keys";
-import { followPerson, getFollowedIds, getFollows, getPeopleRanking, getPersonUpcoming, syncPersonUpcoming, unfollowPerson } from "../service";
+import { followPerson, getFollowedIds, getFollows, getOwnedStatus, getPeopleRanking, getPersonUpcoming, syncPersonUpcoming, unfollowPerson } from "../service";
+import { AWARD_KEYS } from "./query-keys";
 import type { PersonFollowInput, RankingKind } from "../types";
 
 /** Every people list on Library › People grows 50 at a time, each page a database call (owner). */
 export const PEOPLE_PAGE = 50;
+
+/** The library as a status index (7 columns) — enough for a tile to know it is yours. */
+export function useOwnedStatus(userId: string | null) {
+  return useQuery({
+    queryKey: AWARD_KEYS.ownedStatus(),
+    queryFn: () => getOwnedStatus(userId!),
+    staleTime: STALE.TWO_MINUTES,
+    gcTime: STALE.TWO_MINUTES,
+    enabled: !!userId,
+  });
+}
 
 /** The ids you follow — what a FollowMark needs, and nothing more. Small, read once. */
 export function useFollowedIds(userId: string | null) {

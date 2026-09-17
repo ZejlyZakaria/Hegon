@@ -17,9 +17,8 @@ import { FollowMark } from "@/modules/watching/components/shared/FollowMark";
 import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
 import { WatchlistMark, type WatchlistLevel } from "@/modules/watching/components/shared/Marks";
 import { watchlistLevel } from "@/modules/watching/components/shared/StatusBadge";
-import { PEOPLE_PAGE, useFollowsPages, usePeopleRanking, useUpcomingPages } from "@/modules/watching/hooks/useFollows";
-import { useOwnedTitles } from "@/modules/watching/hooks/useAwards";
-import { indexOwned, posterUrl, workKey } from "@/modules/watching/lib/awards";
+import { PEOPLE_PAGE, useFollowsPages, useOwnedStatus, usePeopleRanking, useUpcomingPages } from "@/modules/watching/hooks/useFollows";
+import { posterUrl, workKey } from "@/modules/watching/lib/awards";
 import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
 import { FaceCellsSkeleton, PosterCellsSkeleton, Pulse } from "@/modules/watching/components/shared/WatchingSkeletons";
 import type { PersonUpcomingRow, RankingKind } from "@/modules/watching/types";
@@ -261,8 +260,13 @@ function RankingRail({ title, kind }: { title: string; kind: RankingKind }) {
 export function PeopleView({ userId }: { userId: string }) {
   const followsQ = useFollowsPages(userId);
   const upcomingQ = useUpcomingPages(userId);
-  const ownedQ = useOwnedTitles(userId);
-  const owned = useMemo(() => indexOwned(ownedQ.data ?? []), [ownedQ.data]);
+  const { data: ownedRows } = useOwnedStatus(userId);
+  // Keyed the way the canon joins: film:tmdb / serie:tmdb (an anime is a serie to TMDB).
+  const owned = useMemo(() => {
+    const m = new Map<string, NonNullable<typeof ownedRows>[number]>();
+    for (const o of ownedRows ?? []) { const k = workKey(o.type === "film" ? "film" : "serie", o.tmdb_id); if (!m.has(k)) m.set(k, o); }
+    return m;
+  }, [ownedRows]);
   const following = paged(followsQ, (f) => ({ id: f.person_tmdb_id, name: f.name, src: f.profile_url, subtitle: DEPT_LABEL[f.known_for ?? ""] ?? f.known_for ?? null, knownFor: f.known_for }));
   const nameOf = new Map(following.items.map((p) => [p.id, p.name]));
   // One tile per title: three people you follow on one film are one film, with three names. Rows

@@ -560,6 +560,34 @@ export interface ForYouItem {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** The ids you follow — all of them, for the marks; a list of integers, never heavy. */
+/** One row of the lean owned index: enough to link a tile to its fiche and colour its bookmark. */
+export interface OwnedStatusRow {
+  id: string;
+  type: MediaType;
+  tmdb_id: number;
+  want_to_watch: boolean;
+  priority_level: "high" | "medium" | "low" | null;
+  release_date: string | null;
+  status: string | null;
+}
+
+/**
+ * The library as a STATUS index — 7 columns, not the 30 of a library card. Library › People only
+ * needs "do I own it, is it on my list, what colour is the bookmark"; reading every row with
+ * `LIBRARY_COLUMNS` for that cost 379 KB per visit (measured 17/09). ~25 KB now.
+ */
+export async function getOwnedStatus(userId: string): Promise<OwnedStatusRow[]> {
+  if (!userId) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("media_items")
+    .select("id, type, tmdb_id, want_to_watch, priority_level, release_date, status")
+    .eq("user_id", userId)
+    .not("tmdb_id", "is", null);
+  if (error) throw error;
+  return (data ?? []) as OwnedStatusRow[];
+}
+
 export async function getFollowedIds(userId: string): Promise<number[]> {
   const supabase = createClient();
   const { data, error } = await supabase
