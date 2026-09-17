@@ -13,7 +13,7 @@ import { AddMark } from "@/modules/watching/components/shared/AddMark";
 import { useAwardCategories, useAwardCategoryRows, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
 import { canonStatus, indexOwned, isSeen, ownedFor, type CanonBucket } from "@/modules/watching/lib/awards";
 import { displayTitle } from "@/modules/watching/utils";
-import type { AwardEntry, WatchingMedia } from "@/modules/watching/types";
+import type { AwardEntry, OwnedIndexRow } from "@/modules/watching/types";
 import { entryImage } from "./AwardsClient";
 import { NomineesPanel } from "./NomineesPanel";
 
@@ -165,7 +165,7 @@ function groupRuns(winners: AwardEntry[], portrait: boolean): { entry: AwardEntr
  * seen this performance", which is exactly true. Two doors: the portrait opens the person, the
  * film line opens the film.
  */
-function CanonTile({ entry, years, owned, showPeople, portrait }: { entry: AwardEntry; years: number[]; owned: WatchingMedia | null; showPeople: boolean; portrait: boolean }) {
+function CanonTile({ entry, years, owned, showPeople, portrait }: { entry: AwardEntry; years: number[]; owned: OwnedIndexRow | null; showPeople: boolean; portrait: boolean }) {
   const router = useRouter();
   const seen = isSeen(owned);
   const status = canonStatus(owned);

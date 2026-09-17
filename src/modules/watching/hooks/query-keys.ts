@@ -160,4 +160,5 @@ export const AWARD_KEYS = {
   person: (tmdbId: number) => [...AWARD_KEYS.all, 'person', tmdbId] as const,
   owned: () => [...WATCHING_KEYS.all, 'owned-titles'] as const,
   ownedStatus: () => [...WATCHING_KEYS.all, 'owned-status'] as const,
+  shelfRows: (ids: string[]) => [...WATCHING_KEYS.all, 'shelf-rows', ids.join(",")] as const,
 } as const;

@@ -1,5 +1,5 @@
 import { seriesState } from "./series-state";
-import type { AwardCategory, AwardEntry, WatchingMedia } from "../types";
+import type { AwardCategory, AwardEntry, OwnedIndexRow } from "../types";
 
 /**
  * THE MUSEUM's arithmetic — pure, no React, no I/O.
@@ -18,8 +18,8 @@ export const posterUrl = (path: string | null) => (path ? `https://image.tmdb.or
 export const ceremonyWord = (c: "oscars" | "emmys", n: number) =>
   c === "oscars" ? (n === 1 ? "Oscar" : "Oscars") : n === 1 ? "Emmy" : "Emmys";
 
-export function indexOwned(owned: WatchingMedia[]): Map<string, WatchingMedia> {
-  const m = new Map<string, WatchingMedia>();
+export function indexOwned(owned: OwnedIndexRow[]): Map<string, OwnedIndexRow> {
+  const m = new Map<string, OwnedIndexRow>();
   for (const o of owned) {
     if (!o.tmdb_id) continue;
     // A series and an anime are both "serie" to Wikidata/TMDB TV.
@@ -30,7 +30,7 @@ export function indexOwned(owned: WatchingMedia[]): Map<string, WatchingMedia> {
   return m;
 }
 
-export const ownedFor = (owned: Map<string, WatchingMedia>, e: Pick<AwardEntry, "work_type" | "work_tmdb_id">) =>
+export const ownedFor = (owned: Map<string, OwnedIndexRow>, e: Pick<AwardEntry, "work_type" | "work_tmdb_id">) =>
   e.work_tmdb_id ? owned.get(workKey(e.work_type, e.work_tmdb_id)) ?? null : null;
 
 /**
@@ -38,7 +38,7 @@ export const ownedFor = (owned: Map<string, WatchingMedia>, e: Pick<AwardEntry, 
  * is still running (Widow's Bay, S1 complete, S2 not aired — you have seen the performance that
  * won). On the watchlist, in progress behind the air date, dropped: not yet.
  */
-export const isSeen = (o: WatchingMedia | null) =>
+export const isSeen = (o: OwnedIndexRow | null) =>
   !!o && (o.watched || (o.type !== "film" && o.in_progress && seriesState(o) === "caught-up"));
 
 /**
@@ -46,7 +46,7 @@ export const isSeen = (o: WatchingMedia | null) =>
  * prestigious win (lowest category rank) and how many more it has.
  */
 export interface ShelfItem {
-  owned: WatchingMedia;
+  owned: OwnedIndexRow;
   entry: AwardEntry;
   /** Other wins of the same title, beyond the one shown. */
   more: number;
@@ -54,7 +54,7 @@ export interface ShelfItem {
   labels: string[];
 }
 
-export function buildShelf(entries: AwardEntry[], owned: Map<string, WatchingMedia>, categories: AwardCategory[]): ShelfItem[] {
+export function buildShelf(entries: AwardEntry[], owned: Map<string, OwnedIndexRow>, categories: AwardCategory[]): ShelfItem[] {
   const rank = new Map(categories.map((c) => [c.key, c.rank]));
   const label = new Map(categories.map((c) => [c.key, c.label]));
   const byWork = new Map<string, AwardEntry[]>();
@@ -75,7 +75,7 @@ export function buildShelf(entries: AwardEntry[], owned: Map<string, WatchingMed
 }
 
 /** Coverage of one category: winners seen / winners total (distinct titles, not credits). */
-export function coverage(entries: AwardEntry[], owned: Map<string, WatchingMedia>, category: string) {
+export function coverage(entries: AwardEntry[], owned: Map<string, OwnedIndexRow>, category: string) {
   const winners = entries.filter((e) => e.category === category && e.won);
   const seen = winners.filter((e) => isSeen(ownedFor(owned, e))).length;
   return { seen, total: winners.length };
@@ -90,7 +90,7 @@ export function coverage(entries: AwardEntry[], owned: Map<string, WatchingMedia
 export type CanonBucket = "watched" | "want" | "unwatched";
 export interface CanonStatus { bucket: CanonBucket; label: string; dotClass: string; textClass: string }
 
-export function canonStatus(o: WatchingMedia | null): CanonStatus {
+export function canonStatus(o: OwnedIndexRow | null): CanonStatus {
   if (o?.watched) return { bucket: "watched", label: "Watched", dotClass: "bg-emerald-400", textClass: "text-emerald-400" };
   if (isSeen(o)) return { bucket: "watched", label: "Caught up", dotClass: "bg-emerald-400", textClass: "text-emerald-400" };
   if (o?.want_to_watch) return { bucket: "want", label: "Want to Watch", dotClass: "bg-zinc-500", textClass: "text-zinc-400" };

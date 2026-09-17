@@ -6,7 +6,7 @@ import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import { reportError } from "@/shared/utils/report-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry, PersonFollow, PersonFollowInput, PersonUpcomingRow, PersonRankRow, RankingKind } from "./types";
+import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry, OwnedIndexRow, PersonFollow, PersonFollowInput, PersonUpcomingRow, PersonRankRow, RankingKind } from "./types";
 import { deriveWatchStatus } from "./lib/watch-status";
 import { airedFromTmdb } from "./lib/series-state";
 import { runtimeFromTmdb } from "./lib/tmdb-runtime";
@@ -2055,19 +2055,36 @@ export async function getAwardsForPerson(personTmdbId: number): Promise<AwardEnt
   return (data ?? []) as AwardEntry[];
 }
 
+/** The Museum's owned index — see `OwnedIndexRow`. */
+export const OWNED_INDEX_COLUMNS =
+  "id, type, tmdb_id, title, original_title, poster_url, user_rating, watched, in_progress, want_to_watch, paused, dropped, priority_level, release_date, status, season_aired, current_season, current_episode, caught_up_at";
+
 /**
- * The whole library, every status, with the TMDB id the canon joins on. ~400 rows, one query —
- * cheaper than asking per poster, and it is what lets an award-winning title you own light up
- * with YOUR rating. The library columns, so the trophy shelf can be a plain MediaCarousel.
+ * The whole library as an INDEX, every status, with the TMDB id the canon joins on — one query,
+ * 19 columns. It used to carry the 30 library columns (377 KB measured on 17/09; 230 KB now); the
+ * trophy shelf, the one rail that draws full cards, fetches its ~60 rows by id (`getMediaItemsByIds`).
  */
-export async function getOwnedTitles(userId: string): Promise<WatchingMedia[]> {
+export async function getOwnedTitles(userId: string): Promise<OwnedIndexRow[]> {
   if (!userId) return [];
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("watching").from("media_items")
-    .select(`${LIBRARY_COLUMNS}, tmdb_id, backdrop_url`)
+    .select(OWNED_INDEX_COLUMNS)
     .eq("user_id", userId)
     .not("is_reference", "is", true);
   if (error) throw error;
-  return (data as unknown as WatchingMedia[]) ?? [];
+  return (data as unknown as OwnedIndexRow[]) ?? [];
+}
+
+/** Full library rows for a handful of ids — the trophy shelf's cards. Order = the ids' order. */
+export async function getMediaItemsByIds(ids: string[]): Promise<WatchingMedia[]> {
+  if (ids.length === 0) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("watching").from("media_items")
+    .select(`${LIBRARY_COLUMNS}, tmdb_id, backdrop_url`)
+    .in("id", ids);
+  if (error) throw error;
+  const by = new Map(((data as unknown as WatchingMedia[]) ?? []).map((r) => [r.id, r]));
+  return ids.map((id) => by.get(id)).filter((r): r is WatchingMedia => !!r);
 }

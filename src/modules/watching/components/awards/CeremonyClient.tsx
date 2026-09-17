@@ -11,7 +11,7 @@ import { AddMark } from "@/modules/watching/components/shared/AddMark";
 import { useAwardCategories, useAwardCeremonies, useAwardYear, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
 import { canonStatus, indexOwned, isSeen, ownedFor } from "@/modules/watching/lib/awards";
 import { displayTitle } from "@/modules/watching/utils";
-import type { AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry, WatchingMedia } from "@/modules/watching/types";
+import type { AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry, OwnedIndexRow } from "@/modules/watching/types";
 import { entryImage } from "./AwardsClient";
 
 /**
@@ -106,7 +106,7 @@ export function CeremonyClient({ userId, ceremony, year }: { userId: string; cer
   );
 }
 
-function CategoryRow({ category, entries, owned, upcoming }: { category: AwardCategory; entries: AwardEntry[]; owned: Map<string, WatchingMedia>; upcoming: boolean }) {
+function CategoryRow({ category, entries, owned, upcoming }: { category: AwardCategory; entries: AwardEntry[]; owned: Map<string, OwnedIndexRow>; upcoming: boolean }) {
   const seen = entries.filter((e) => isSeen(ownedFor(owned, e))).length;
   return (
     <section>
@@ -122,7 +122,7 @@ function CategoryRow({ category, entries, owned, upcoming }: { category: AwardCa
 }
 
 /** A nominee, compact: face or poster, the gold tag if it won (never before the ceremony), status. */
-function NomineeTile({ entry, owned, portrait, upcoming }: { entry: AwardEntry; owned: WatchingMedia | null; portrait: boolean; upcoming: boolean }) {
+function NomineeTile({ entry, owned, portrait, upcoming }: { entry: AwardEntry; owned: OwnedIndexRow | null; portrait: boolean; upcoming: boolean }) {
   const router = useRouter();
   const seen = isSeen(owned);
   const status = canonStatus(owned);

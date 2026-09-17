@@ -10,13 +10,13 @@ import { SectionHeader } from "@/shared/components/ui/section-header";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
 import { AwardRibbon } from "@/modules/watching/components/shared/Marks";
 import { CarouselSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
-import { useAwardCategories, useAwardCeremonies, useAwardWinners, useAwardYear, useOwnedTitles } from "@/modules/watching/hooks/useAwards";
+import { useAwardCategories, useAwardCeremonies, useAwardWinners, useAwardYear, useOwnedTitles, useShelfRows } from "@/modules/watching/hooks/useAwards";
 import { buildShelf, coverage, indexOwned, ownedFor, posterUrl } from "@/modules/watching/lib/awards";
 import { TrophyShelfPanel } from "./TrophyShelfPanel";
 import { ceremonyName, daysUntil } from "./CeremonyClient";
 import { isSeen } from "@/modules/watching/lib/awards";
 import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
-import type { AwardCategory, AwardCeremony, AwardEntry, WatchingMedia } from "@/modules/watching/types";
+import type { AwardCategory, AwardCeremony, AwardEntry, OwnedIndexRow } from "@/modules/watching/types";
 
 /**
  * THE MUSEUM — `/perso/watching/awards`. Your collection meets the canon.
@@ -41,7 +41,7 @@ const CEREMONIES: { value: AwardCeremony; label: string }[] = [
  * theirs — and falls back to the poster when TMDB has no photo of them; every other category shows
  * the work, preferring the library's own poster (a custom upload, the owner's pick) when owned.
  */
-export function entryImage(e: AwardEntry, o: WatchingMedia | null, portrait: boolean, cssPx: number): string | null {
+export function entryImage(e: AwardEntry, o: OwnedIndexRow | null, portrait: boolean, cssPx: number): string | null {
   const face = portrait ? e.people.find((p) => p.profile_path)?.profile_path ?? null : null;
   if (face) return tmdbImageFor(posterUrl(face), cssPx);
   // The SEASON that won, when the canon knows it (Emmys): Succession S4's own artwork, not the show's.
@@ -77,8 +77,11 @@ export function AwardsClient({ userId }: { userId: string }) {
   const owned = useMemo(() => indexOwned(ownedQ.data ?? []), [ownedQ.data]);
   const shelf = useMemo(() => buildShelf(entries, owned, categories), [entries, owned, categories]);
   const shelfById = useMemo(() => new Map(shelf.map((s) => [s.owned.id, s])), [shelf]);
+  // The shelf is the one rail that draws FULL cards: its ~60 rows come by id, the index stays lean.
+  const shelfIds = useMemo(() => shelf.map((s) => s.owned.id), [shelf]);
+  const shelfRowsQ = useShelfRows(shelfIds);
 
-  const loading = categoriesQ.isLoading || winnersQ.isLoading || ownedQ.isLoading;
+  const loading = categoriesQ.isLoading || winnersQ.isLoading || ownedQ.isLoading || (shelfIds.length > 0 && shelfRowsQ.isLoading);
 
   return (
     <div className="space-y-8 p-4 md:p-6">
@@ -118,7 +121,7 @@ export function AwardsClient({ userId }: { userId: string }) {
         <MediaCarousel
           title="Your trophy shelf"
           subtitle={`${shelf.length} award-winning ${shelf.length === 1 ? "title" : "titles"} you've seen`}
-          items={shelf.map((s) => s.owned)}
+          items={shelfRowsQ.data ?? []}
           actions={<SegmentedControl items={CEREMONIES} value={ceremony} onChange={setCeremony} size="sm" />}
           onSeeAll={() => setShelfOpen(true)}
           mark={(item) => {
@@ -175,7 +178,7 @@ export function AwardsClient({ userId }: { userId: string }) {
  * recent winners as the mosaic — in full colour, the mask is the category page's job (owner) —
  * and coverage instead of a count.
  */
-function CategoryCard({ category, entries, owned }: { category: AwardCategory; entries: AwardEntry[]; owned: Map<string, WatchingMedia> }) {
+function CategoryCard({ category, entries, owned }: { category: AwardCategory; entries: AwardEntry[]; owned: Map<string, OwnedIndexRow> }) {
   const winners = entries.filter((e) => e.category === category.key && e.won).sort((a, b) => b.year - a.year);
   const { seen, total } = coverage(entries, owned, category.key);
   const pct = total > 0 ? Math.round((seen / total) * 100) : 0;

@@ -258,6 +258,18 @@ export interface AwardCategory {
   portrait: boolean;
 }
 
+/**
+ * The library as the Museum reads it — an INDEX, not a card: the join key, the title and poster for
+ * a tile, the status facts `isSeen` / `canonStatus` / the bookmark need, your rating. 19 columns
+ * instead of 30: the full rows are fetched only for the titles a rail actually draws (the shelf).
+ */
+export type OwnedIndexRow = Pick<
+  WatchingMedia,
+  | "id" | "type" | "tmdb_id" | "title" | "original_title" | "poster_url" | "user_rating"
+  | "watched" | "in_progress" | "want_to_watch" | "paused" | "dropped"
+  | "priority_level" | "release_date" | "status" | "season_aired" | "current_season" | "current_episode" | "caught_up_at"
+>;
+
 // ── People you follow (§11) ──
 export interface PersonFollowInput {
   person_tmdb_id: number;

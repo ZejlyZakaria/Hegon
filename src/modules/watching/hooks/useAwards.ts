@@ -10,6 +10,7 @@ import {
   getAwardsForWork,
   getAwardsForPerson,
   getOwnedTitles,
+  getMediaItemsByIds,
 } from "../service";
 import type { AwardCeremony } from "../types";
 
@@ -80,6 +81,17 @@ export function useAwardsForPerson(personTmdbId: number | null) {
     staleTime: STALE.DAY,
     gcTime: STALE.DAY,
     enabled: !!personTmdbId,
+  });
+}
+
+/** The full cards of the titles on the trophy shelf — a handful of rows, fetched by id. */
+export function useShelfRows(ids: string[]) {
+  return useQuery({
+    queryKey: AWARD_KEYS.shelfRows(ids),
+    queryFn: () => getMediaItemsByIds(ids),
+    staleTime: STALE.TWO_MINUTES,
+    gcTime: STALE.TWO_MINUTES,
+    enabled: ids.length > 0,
   });
 }
 

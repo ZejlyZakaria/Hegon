@@ -13,7 +13,7 @@ import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { canonStatus, isSeen, ownedFor } from "@/modules/watching/lib/awards";
 import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
 import { displayTitle } from "@/modules/watching/utils";
-import type { AwardCategory, AwardEntry, WatchingMedia } from "@/modules/watching/types";
+import type { AwardCategory, AwardEntry, OwnedIndexRow } from "@/modules/watching/types";
 import { posterUrl } from "@/modules/watching/lib/awards";
 
 /**
@@ -26,7 +26,7 @@ import { posterUrl } from "@/modules/watching/lib/awards";
 const AWARD = "var(--color-award)";
 
 export function NomineesPanel({ open, onClose, category, entries, owned }: {
-  open: boolean; onClose: () => void; category: AwardCategory; entries: AwardEntry[]; owned: Map<string, WatchingMedia>;
+  open: boolean; onClose: () => void; category: AwardCategory; entries: AwardEntry[]; owned: Map<string, OwnedIndexRow>;
 }) {
   const [q, setQ] = useState("");
   const [year, setYear] = useState("all");
@@ -85,7 +85,7 @@ export function NomineesPanel({ open, onClose, category, entries, owned }: {
 }
 
 /** One nominee: the person (portrait categories) or the title; the library's word for it; Winner in gold. */
-function NomineeRow({ entry, owned, portrait }: { entry: AwardEntry; owned: WatchingMedia | null; portrait: boolean }) {
+function NomineeRow({ entry, owned, portrait }: { entry: AwardEntry; owned: OwnedIndexRow | null; portrait: boolean }) {
   const router = useRouter();
   const person = portrait ? entry.people.find((p) => p.profile_path) ?? entry.people[0] ?? null : null;
   const status = canonStatus(owned);
