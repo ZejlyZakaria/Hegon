@@ -14,10 +14,66 @@
 // catalogue lives in the season panel and the page rail — Best Episodes — is data-dependent, so
 // it is not drawn at all: see `DetailSkeleton`.)
 import { CastCrewSkeleton } from "../detail/CastCrew";
+import { MoreLikeThisSkeleton } from "../detail/MoreLikeThis";
 import { ROW_VARS } from "../../lib/dont-miss-layout";
+import { cn } from "@/shared/utils/utils";
 
-function Pulse({ className }: { className: string }) {
+/** THE pulse: one animation, one surface, one default corner. Every skeleton in Watching draws this. */
+export function Pulse({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-control bg-surface-2 ${className}`} />;
+}
+
+/**
+ * THE CELLS OF A PAGED RAIL — as many as the real rail shows at each width, not one more. A rail
+ * pages by `perView(window.innerWidth)`; a skeleton cannot read the window on the server, so the
+ * same breakpoints hide the extra cells in CSS. Two rails today: `people` (Library › People, 4 / 6 /
+ * 8 / 10 at base / sm / md / xl) and `cast` (Cast & Crew, 4 / 6 / 8 at base / sm / lg). The widths
+ * are the rail's own `calc((100% - (n-1)·gap) / n)`.
+ */
+export const RAIL_CELLS = {
+  people: {
+    count: 10,
+    cls: "[&:nth-child(n+5)]:hidden sm:[&:nth-child(n+5)]:flex sm:[&:nth-child(n+7)]:hidden md:[&:nth-child(n+7)]:flex md:[&:nth-child(n+9)]:hidden xl:[&:nth-child(n+9)]:flex",
+    w: "w-[calc((100%-3*16px)/4)] sm:w-[calc((100%-5*16px)/6)] md:w-[calc((100%-7*16px)/8)] xl:w-[calc((100%-9*16px)/10)]",
+  },
+  cast: {
+    count: 8,
+    cls: "[&:nth-child(n+5)]:hidden sm:[&:nth-child(n+5)]:flex sm:[&:nth-child(n+7)]:hidden lg:[&:nth-child(n+7)]:flex",
+    w: "w-[calc((100%-3*16px)/4)] sm:w-[calc((100%-5*16px)/6)] lg:w-[calc((100%-7*16px)/8)]",
+  },
+} as const;
+
+/** A row of pulsing FACES (round portrait, name, one word) sized like the rail it stands in for. */
+export function FaceCellsSkeleton({ rail }: { rail: keyof typeof RAIL_CELLS }) {
+  const r = RAIL_CELLS[rail];
+  return (
+    <div className="flex gap-4 py-1">
+      {Array.from({ length: r.count }).map((_, i) => (
+        <div key={i} className={cn("flex shrink-0 flex-col items-center", r.cls, r.w)}>
+          <Pulse className="aspect-square w-full rounded-full" />
+          <Pulse className="mt-2 h-3 w-4/5" />
+          <Pulse className="mt-1.5 h-2.5 w-1/2" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A row of pulsing POSTERS (2:3, title, two short lines) sized like the rail it stands in for. */
+export function PosterCellsSkeleton({ rail }: { rail: keyof typeof RAIL_CELLS }) {
+  const r = RAIL_CELLS[rail];
+  return (
+    <div className="flex gap-4 py-1">
+      {Array.from({ length: r.count }).map((_, i) => (
+        <div key={i} className={cn("flex shrink-0 flex-col", r.cls, r.w)}>
+          <Pulse className="aspect-2/3 w-full rounded-tile" />
+          <Pulse className="mt-2 h-3 w-4/5" />
+          <Pulse className="mt-1.5 h-2.5 w-2/5" />
+          <Pulse className="mt-1.5 h-2.5 w-3/5" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // ─── Carousel skeleton ────────────────────────────────────────────────────────
@@ -354,22 +410,9 @@ function SeasonsSkeleton({ w, n }: { w: string; n: number }) {
  * Unlike Seasons, the title + year print BELOW the artwork here, so each tile reserves that
  * two-line caption too (measured: without it the block stood ~55px short per row).
  */
-function MoreLikeThisSkeleton({ w, n }: { w: string; n: number }) {
-  return (
-    <div>
-      <div className={`mb-3 h-4 animate-pulse rounded bg-surface-2 ${w}`} />
-      <div className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-1 scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-6">
-        {Array.from({ length: n }, (_, j) => (
-          <div key={j} className="w-(--rail-peek) shrink-0 sm:w-auto">
-            <div className="aspect-2/3 animate-pulse rounded-tile bg-surface-2" />
-            <div className="mt-2 h-3 w-4/5 animate-pulse rounded-control bg-surface-2" />
-            <div className="mt-1 h-2.5 w-1/3 animate-pulse rounded-control bg-surface-2" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// More Like This is NOT redrawn here (same reason as Cast & Crew, since 2026-09-17): the route
+// skeleton drew a 4/6-column GRID while the component is a scrolling RAIL of fixed posters — the page
+// changed shape when the data landed. The component's own skeleton is the only one.
 
 /**
  * The label/value rows `QuickStats` and `MediaDetails` are both built from (`DetailRow` / `Row` —
@@ -489,7 +532,7 @@ export function DetailSkeleton({ isSeries }: { isSeries?: boolean } = {}) {
               series would be a re-layout wearing a placeholder's clothes for the other half. */}
           {isSeries && <SeasonsSkeleton w="w-20" n={6} />}
           <CastCrewSkeleton />
-          <MoreLikeThisSkeleton w="w-36" n={6} />
+          <MoreLikeThisSkeleton />
         </div>
 
         {/* Rail — the branded status card leads, then the quiet blocks */}
@@ -507,7 +550,7 @@ export function DetailSkeleton({ isSeries }: { isSeries?: boolean } = {}) {
             {/* Matches InList's OWN `isLoading` shape (`h-44 w-2/3`) — the full-page skeleton is
                 gone before InList mounts, so the honest target is what InList shows itself while
                 ITS queries are still in flight, not a guess at its (data-dependent) resolved size. */}
-            <div className="h-44 w-2/3 animate-pulse rounded-tile bg-surface-1" />
+            <div className="h-44 w-2/3 animate-pulse rounded-tile bg-surface-2" />
           </div>
         </div>
       </div>
@@ -538,7 +581,7 @@ export function DiscoverSkeleton({ isSeries, isAnime = false }: { isSeries: bool
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
           {isSeries ? seasons : cast}
           {isSeries ? cast : null}
-          <MoreLikeThisSkeleton w="w-36" n={6} />
+          <MoreLikeThisSkeleton />
         </div>
 
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-2 lg:pr-8">

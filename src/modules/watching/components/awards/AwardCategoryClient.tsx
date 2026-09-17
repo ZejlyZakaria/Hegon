@@ -84,9 +84,17 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
       <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-5 sm:px-6">
         <div>
           <p className="text-caption uppercase text-text-tertiary">{category?.ceremony === "emmys" ? "Emmys" : "Oscars"}</p>
-          <h1 className="mt-1 text-xl font-bold text-text-primary">{category?.label ?? "…"}</h1>
-          {!loading && (
-            <p className="mt-1 text-xs tabular-nums text-text-tertiary">
+          {/* Both lines are reserved at their real height while loading (h-7 title, h-4 stats), so the
+              filters facing them stand where they will stand — nothing slides down when the data lands. */}
+          {category ? (
+            <h1 className="mt-1 text-xl font-bold leading-7 text-text-primary">{category.label}</h1>
+          ) : (
+            <div className="mt-1 flex h-7 items-center"><div className="h-5 w-40 animate-pulse rounded-control bg-surface-2" /></div>
+          )}
+          {loading ? (
+            <div className="mt-1 flex h-4 items-center"><div className="h-3 w-52 animate-pulse rounded-control bg-surface-2" /></div>
+          ) : (
+            <p className="mt-1 h-4 text-xs leading-4 tabular-nums text-text-tertiary">
               <span className="font-medium text-text-secondary">{seen}</span> of {winners.length} winners watched
               {since ? ` · since ${since}` : ""}
             </p>

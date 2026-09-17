@@ -257,7 +257,7 @@ export function InList({ mediaItemId, userId }: Props) {
       />
 
       {isLoading ? (
-        <div className="h-44 w-2/3 animate-pulse rounded-tile bg-surface-1" />
+        <div className="h-44 w-2/3 animate-pulse rounded-tile bg-surface-2" />
       ) : cards.length === 0 ? (
         <div className="flex items-center gap-2.5 py-0.5">
           <List size={14} className="shrink-0 text-text-tertiary/50" />

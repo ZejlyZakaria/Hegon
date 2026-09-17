@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { PersonFace } from "@/modules/watching/components/shared/PersonFace";
+import { FaceCellsSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import type { CastMember, CreditedDirector } from "../../hooks/useMediaCredits";
 
 /**
@@ -35,19 +36,12 @@ function perView(w: number) { return w < 640 ? 4 : w < 1024 ? 6 : 8; }
  * it is meant to stand in for, and then it reserves the wrong height — which is the bug again, with
  * extra steps. Same wrapper, same size, same count.
  */
-export function CastCrewSkeleton({ count = 8 }: { count?: number }) {
-  const style = { width: `calc((100% - ${(count - 1) * GAP}px) / ${count})` };
+export function CastCrewSkeleton() {
   return (
     <section aria-hidden>
       <SectionHeader title="Cast & Crew" />
-      <div className="-mx-4 flex gap-4 overflow-x-hidden px-4 py-1 sm:mx-0 sm:px-0">
-        {Array.from({ length: count }).map((_, i) => (
-          <div key={i} className="flex shrink-0 flex-col items-center" style={style}>
-            <div className="aspect-square w-full animate-pulse rounded-full bg-surface-2" />
-            <div className="mt-2 h-3 w-4/5 animate-pulse rounded-control bg-surface-2" />
-            <div className="mt-1 h-3 w-3/5 animate-pulse rounded-control bg-surface-2" />
-          </div>
-        ))}
+      <div className="-mx-4 overflow-x-hidden px-4 sm:mx-0 sm:px-0">
+        <FaceCellsSkeleton rail="cast" />
       </div>
     </section>
   );

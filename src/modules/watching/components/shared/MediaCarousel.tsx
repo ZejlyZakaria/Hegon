@@ -14,8 +14,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
-import { LoveMark, WatchlistMark, TopTenRibbon, ScoreMark, CaughtUpBadge, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
-import { watchlistLevel } from "@/modules/watching/components/shared/StatusBadge";
+import { LoveMark, WatchlistMark, TopTenRibbon, ScoreMark, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
+import { StatusMark, watchlistLevel } from "@/modules/watching/components/shared/StatusBadge";
 import { WATCHING_ACCENT } from "@/modules/watching/ui";
 
 // The watchlist bookmark: one object for "on your list", its colour is the priority.
@@ -176,14 +176,6 @@ function MovieCard({
             instead of by three separate `top-2` / `top-3` guesses. */}
         <div className={cn(OVERLAY_CLUSTER, mark ? "left-0" : item.want_to_watch && !showCountdown ? "left-7" : "left-2")}>
           {mark?.(item)}
-          {/* The heart is a FACT about the title, not an action — it lived in the right cluster
-              beside the menu, where the library card kept it left. Left, everywhere (owner, 2026-09-16);
-              the cluster steps right of a hanging bookmark so the two never overlap. */}
-          {item.favorite && !(showRankBadge && item.priority) && (
-            <span className={OVERLAY_CIRCLE}>
-              <LoveMark size={12} />
-            </span>
-          )}
           {/* Priority is "how badly do I want to watch this" — meaningless for a film that isn't out
               yet. In the Waiting for rail (showCountdown) the countdown is the only mark that belongs. */}
           {/* WHEN you watched it — a factual timestamp, not a verdict, so it's neutral white, not
@@ -208,9 +200,10 @@ function MovieCard({
               On a narrow mobile card it collided with the actions opposite, so THERE it drops into
               the metadata row instead (see below). `sm:contents` so the Badge stays a direct flex
               child of the cluster on desktop. Teal (your state), CheckCheck ("everything seen"). */}
+          {/* Icon only — the double check says it; the word lives in the tooltip (owner, 2026-09-17). */}
           {caughtUp && (
             <span className="hidden sm:contents">
-              <CaughtUpBadge />
+              <StatusMark status={{ label: "Caught up", tone: "caughtup", level: null }} />
             </span>
           )}
         </div>
@@ -277,7 +270,7 @@ function MovieCard({
                 has no room for it top-left beside the actions, so it lives here instead; desktop
                 shows the top-left badge (above) and hides this. Same teal chip grammar as the
                 episode-position chip. */}
-            {caughtUp && <CaughtUpBadge className="shrink-0 sm:hidden" />}
+            {caughtUp && <StatusMark status={{ label: "Caught up", tone: "caughtup", level: null }} className="shrink-0 sm:hidden" />}
             {/* `truncate` on the Badge itself did nothing: the badge is an inline-flex box, and
                 text-overflow only applies to the element that HOLDS the text. So the label gets
                 its own span — "Science Fiction" ellipsises instead of shoving the year and the
@@ -308,6 +301,13 @@ function MovieCard({
       {/* Right cluster = ACTIONS, and only actions. (MediaActionMenu portals its dropdown, so no
           overflow clip.) */}
       <div className={cn(OVERLAY_CLUSTER, "right-2")} onClick={(e) => e.stopPropagation()}>
+        {/* The heart sits beside the menu, on the right (owner, 2026-09-17) — the left cluster is
+            the ribbon's and the states'. */}
+        {item.favorite && !(showRankBadge && item.priority) && (
+          <span className={OVERLAY_CIRCLE}>
+            <LoveMark size={12} />
+          </span>
+        )}
         {/* ONE CLOCK. The card scales over 300 ms; the menu used to appear over 150 — two curves on
             one gesture, and the mark visibly 'arrived' before the card had settled. Same duration,
             same easing: the menu is part of the card, it moves with it. */}

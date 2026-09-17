@@ -1042,7 +1042,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
         {isLoading && (
           <div className="space-y-px px-4 pt-1">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-14 animate-pulse rounded-control bg-surface-1" />
+              <div key={i} className="h-14 animate-pulse rounded-control bg-surface-2" />
             ))}
           </div>
         )}

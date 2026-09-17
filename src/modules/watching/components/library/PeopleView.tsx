@@ -21,6 +21,7 @@ import { PEOPLE_PAGE, useFollowsPages, usePeopleRanking, useUpcomingPages } from
 import { useOwnedTitles } from "@/modules/watching/hooks/useAwards";
 import { indexOwned, posterUrl, workKey } from "@/modules/watching/lib/awards";
 import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
+import { FaceCellsSkeleton, PosterCellsSkeleton, Pulse } from "@/modules/watching/components/shared/WatchingSkeletons";
 import type { PersonUpcomingRow, RankingKind } from "@/modules/watching/types";
 
 /**
@@ -327,21 +328,18 @@ export function PeopleView({ userId }: { userId: string }) {
 }
 
 // ── Skeletons — the exact shape of the rails above, at every width ──────────────────────────
-// Ten cells like the rail at desktop, and the same breakpoints hide the extra ones below: 4 on a
-// phone, 6 on a small tablet, 8 on a large one — so the pulse never shows a count the real rail
-// cannot. The header pulses stand in for the prev / next / See more controls.
-
-const CELL = "shrink-0 [&:nth-child(n+5)]:hidden sm:[&:nth-child(n+5)]:block sm:[&:nth-child(n+7)]:hidden lg:[&:nth-child(n+7)]:block lg:[&:nth-child(n+9)]:hidden xl:[&:nth-child(n+9)]:block";
-const CELL_W = "w-[calc((100%-3*16px)/4)] sm:w-[calc((100%-5*16px)/6)] lg:w-[calc((100%-7*16px)/8)] xl:w-[calc((100%-9*16px)/10)]";
+// The cells are the shared ones (`RAIL_CELLS.people`): ten at desktop, and the same breakpoints hide
+// the extra ones below, so the pulse never shows a count the real rail cannot. The header pulses
+// stand in for the prev / next / See more controls.
 
 function SkeletonHeader({ title }: { title: string }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
       <h3 className="text-title text-text-primary">{title}</h3>
       <div className="hidden items-center gap-1.5 lg:flex">
-        <div className="h-8 w-8 animate-pulse rounded-control bg-surface-2" />
-        <div className="h-8 w-8 animate-pulse rounded-control bg-surface-2" />
-        <div className="ml-1 h-8 w-20 animate-pulse rounded-control bg-surface-2" />
+        <Pulse className="h-8 w-8" />
+        <Pulse className="h-8 w-8" />
+        <Pulse className="ml-1 h-8 w-20" />
       </div>
     </div>
   );
@@ -352,15 +350,7 @@ export function PeopleSkeletonRail({ title }: { title: string }) {
   return (
     <section aria-hidden>
       <SkeletonHeader title={title} />
-      <div className="flex gap-4 py-1">
-        {Array.from({ length: 10 }).map((_, i) => (
-          <div key={i} className={cn(CELL, CELL_W, "flex flex-col items-center")}>
-            <div className="aspect-square w-full animate-pulse rounded-full bg-surface-2" />
-            <div className="mt-2 h-3 w-4/5 animate-pulse rounded-control bg-surface-2" />
-            <div className="mt-1.5 h-2.5 w-1/2 animate-pulse rounded-control bg-surface-2" />
-          </div>
-        ))}
-      </div>
+      <FaceCellsSkeleton rail="people" />
     </section>
   );
 }
@@ -370,16 +360,7 @@ function PosterSkeletonRail({ title }: { title: string }) {
   return (
     <section aria-hidden>
       <SkeletonHeader title={title} />
-      <div className="flex gap-4 py-1">
-        {Array.from({ length: 10 }).map((_, i) => (
-          <div key={i} className={cn(CELL, CELL_W)}>
-            <div className="aspect-2/3 w-full animate-pulse rounded-tile bg-surface-2" />
-            <div className="mt-2 h-3 w-4/5 animate-pulse rounded-control bg-surface-2" />
-            <div className="mt-1.5 h-2.5 w-2/5 animate-pulse rounded-control bg-surface-2" />
-            <div className="mt-1.5 h-2.5 w-3/5 animate-pulse rounded-control bg-surface-2" />
-          </div>
-        ))}
-      </div>
+      <PosterCellsSkeleton rail="people" />
     </section>
   );
 }

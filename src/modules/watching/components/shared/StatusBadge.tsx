@@ -88,7 +88,13 @@ export function StatusMark({ status, className }: { status: PosterStatus; classN
   const color = TONE[status.tone];
   return (
     <Hint label={status.label}>
-      <span className={cn(OVERLAY_CIRCLE, "text-black/85", className)} style={{ backgroundColor: color }} aria-label={status.label}>
+      <span
+        className={cn(OVERLAY_CIRCLE, "text-black/85", className)}
+        // The fill is the colour; the hairline is the heart's (a dark one — white/12 vanishes on
+        // amber), same contact shadow, same 24 px. Three circles on a poster, one silhouette.
+        style={{ backgroundColor: color, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.35), 0 1px 3px 0 rgba(0,0,0,0.40)" }}
+        aria-label={status.label}
+      >
         {status.tone === "watching" ? (
           <Play size={11} fill="currentColor" />
         ) : status.tone === "caughtup" ? (
