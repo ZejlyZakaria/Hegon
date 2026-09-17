@@ -154,9 +154,10 @@ function MovieCard({
             hangs from an edge. Held at the cluster's inset it floated in the corner and stopped
             reading as a bookmark at all. Flush to the top, then — but not to the left: the card is
             `rounded-card` (12px), and at 0 the glyph would sit half on the curve. */}
-        {mark ? (
-          mark(item)
-        ) : item.want_to_watch && !showCountdown && (
+        {/* A caller's mark (the shelf's year tag) joins the left cluster as its first item, so the
+            heart sits to its RIGHT instead of over it (owner, 2026-09-17); the cluster then starts
+            at the card's edge, where a tag that hangs from the edge belongs. */}
+        {!mark && item.want_to_watch && !showCountdown && (
           <div className="absolute left-2 top-0 z-10">
             <WatchlistMark level={watchlistLevel(item)} />
           </div>
@@ -173,7 +174,8 @@ function MovieCard({
             left = IDENTITY (what this title is: rank, priority), right = ACTIONS (favorite,
             menu). Same inset, same 24px item height, same gap → they align by construction
             instead of by three separate `top-2` / `top-3` guesses. */}
-        <div className={cn(OVERLAY_CLUSTER, !mark && item.want_to_watch && !showCountdown ? "left-7" : "left-2")}>
+        <div className={cn(OVERLAY_CLUSTER, mark ? "left-0" : item.want_to_watch && !showCountdown ? "left-7" : "left-2")}>
+          {mark?.(item)}
           {/* The heart is a FACT about the title, not an action — it lived in the right cluster
               beside the menu, where the library card kept it left. Left, everywhere (owner, 2026-09-16);
               the cluster steps right of a hanging bookmark so the two never overlap. */}

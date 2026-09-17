@@ -123,7 +123,7 @@ export function AwardsClient({ userId }: { userId: string }) {
           onSeeAll={() => setShelfOpen(true)}
           mark={(item) => {
             const s = shelfById.get(item.id);
-            return s ? <AwardRibbon year={s.entry.year} size="card" /> : null;
+            return s ? <AwardRibbon year={s.entry.year} size="card" inline /> : null;
           }}
           meta={(item) => {
             const s = shelfById.get(item.id);
