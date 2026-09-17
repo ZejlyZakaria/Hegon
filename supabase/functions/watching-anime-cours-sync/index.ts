@@ -43,7 +43,7 @@ const QUERY =
   `startDate{year month day} endDate{year} title{romaji english} coverImage{extraLarge large} } } }`;
 
 async function anilistByIds(ids: number[]): Promise<any[]> {
-  const res = await fetch(ANILIST, {
+  const res = await fetchWithRetry(ANILIST, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query: QUERY, variables: { ids } }),
@@ -131,7 +131,7 @@ Deno.serve(async () => {
 
     // ── The mapping (tmdb_id → AniList ids). Fetched once per run, and it is what DISCOVERS a new
     //    season: a new cour is a new AniList id we have never seen.
-    const fribb: any[] = await (await fetch(FRIBB)).json();
+    const fribb: any[] = await (await fetchWithRetry(FRIBB)).json();
     const idsFor = (tmdbId: number) => {
       const out = new Set<number>();
       for (const e of fribb) {

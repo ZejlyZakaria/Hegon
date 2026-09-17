@@ -197,7 +197,11 @@ function UpcomingTile({ group, owned }: { group: UpcomingGroup; owned: Owned | n
         )}
         {!owned && <AddMark tmdbId={row.tmdb_id} type={type} title={row.title} />}
       </div>
-      <p className="mt-2 truncate text-xs font-medium text-text-primary">{row.title}</p>
+      <p className="mt-2 truncate text-xs font-medium text-text-primary">
+        {row.title}
+        {/* A returning show: the season that starts, in the title's own line — like a person's Accolades. */}
+        {row.season_number ? <span className="ml-1.5 font-normal text-text-tertiary">S{row.season_number}</span> : null}
+      </p>
       <p className={cn("truncate text-micro tabular-nums", out ? "text-accent-watching-vivid" : "text-text-tertiary")}>{out ? "Out now" : dateLabel(row.release_date)}</p>
       {/* One person: name and part. Several: their surnames — three lines whatever happens, so the
           row of tiles stays level; the parts live in the tooltip. */}
@@ -218,6 +222,7 @@ function UpcomingRow({ group, owned }: { group: UpcomingGroup; owned: Owned | nu
       href={owned ? `/perso/watching/${owned.id}` : `/perso/watching/discover/${type}/${row.tmdb_id}`}
       posterUrl={posterUrl(row.poster_path)}
       title={row.title}
+      suffix={row.season_number ? `S${row.season_number}` : undefined}
       meta={
         <span className="truncate text-micro text-text-tertiary">
           <span className={cn("tabular-nums", out && "text-accent-watching-vivid")}>{out ? "Out now" : dateLabel(row.release_date)}</span>

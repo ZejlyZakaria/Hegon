@@ -14,7 +14,7 @@ const TYPES: MType[] = ["film", "serie", "anime"];
 
 async function tmdb(path: string, params: Record<string, string>) {
   const qs = new URLSearchParams({ api_key: KEY, language: "en-US", ...params });
-  const res = await fetch(`${TMDB}/${path}?${qs}`);
+  const res = await fetchWithRetry(`${TMDB}/${path}?${qs}`);
   if (!res.ok) throw new Error(`TMDB ${path} ${res.status}`);
   return res.json();
 }

@@ -47,7 +47,7 @@ const TMDB_BASE = "https://api.themoviedb.org/3";
 
 async function tmdb(key: string, endpoint: string, params: Record<string, string> = {}): Promise<any> {
   const search = new URLSearchParams({ api_key: key, language: "en-US", ...params });
-  const res = await fetch(`${TMDB_BASE}/${endpoint}?${search.toString()}`);
+  const res = await fetchWithRetry(`${TMDB_BASE}/${endpoint}?${search.toString()}`);
   if (!res.ok) throw new Error(`TMDB ${res.status}`);
   return res.json();
 }
@@ -259,18 +259,23 @@ Deno.serve(async () => {
 
   const types: MediaType[] = ["film", "serie", "anime"];
   let refreshed = 0;
+  let errors = 0;
   for (const userId of userIds) {
     for (const type of types) {
       try {
         if (await refreshUserType(supabase, tmdbKey, userId, type)) refreshed++;
       } catch (e) {
+        errors++;
         console.error("for-you refresh failed", userId, type, errMsg(e));
       }
     }
   }
 
+  // Nothing refreshed and everything threw (TMDB down, key dead): a 500, so the watchdog's
+  // section B sees it instead of a 200 that says "ok" over a run that did nothing (17/09).
+  const dead = errors > 0 && refreshed === 0;
   return new Response(
-    JSON.stringify({ ok: true, users: userIds.length, refreshed }),
-    { headers: { "Content-Type": "application/json" } },
+    JSON.stringify({ ok: !dead, users: userIds.length, refreshed, errors }),
+    { status: dead ? 500 : 200, headers: { "Content-Type": "application/json" } },
   );
 });

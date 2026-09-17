@@ -282,6 +282,8 @@ export interface PersonUpcomingRow {
   release_date: string | null;
   role: string | null;
   department: string;
+  /** A season premiere ahead (the robot asked the show): "S3". Null for a film or a first air date. */
+  season_number: number | null;
 }
 
 /** A ceremony (edition, date) — "98th Academy Awards · 15 Mar 2026". From Wikidata, by the robot. */

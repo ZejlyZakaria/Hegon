@@ -613,7 +613,7 @@ export async function getPersonUpcoming(userId: string, limit: number, offset: n
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("watching").from("person_upcoming")
-    .select("person_tmdb_id, media_type, tmdb_id, title, poster_path, release_date, role, department")
+    .select("person_tmdb_id, media_type, tmdb_id, title, poster_path, release_date, role, department, season_number")
     .in("person_tmdb_id", ids)
     .order("release_date", { ascending: true, nullsFirst: false }).order("tmdb_id")
     .range(offset, offset + limit - 1);

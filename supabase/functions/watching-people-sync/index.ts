@@ -16,6 +16,12 @@
 // skipped (announced projects without a date are noise TMDB carries for years). Cast credits win
 // over crew credits for the same title; crew keeps Directing and Writing only (an actor's
 // "Executive Producer" line on his own show is not a project you are waiting for).
+//
+// NEW SEASONS (owner, 2026-09-17): a person's credits only date a show's FIRST air date, so an
+// actor followed in a returning series never showed up. For each recurring series credit
+// (3+ episodes) the robot asks the show for its seasons; a season dated ahead — or started within
+// the month — is a premiere → the show enters with that date and `season_number`. Weekly episodes
+// of a running season are not "upcoming" and stay out.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
@@ -38,8 +44,10 @@ interface Row {
   release_date: string | null;
   role: string | null;
   department: string;
+  season_number: number | null;
   synced_at: string;
 }
+const RECURRING_EPISODES = 3;
 
 async function tmdb(path: string) {
   const res = await fetchWithRetry(`${TMDB}/${path}?api_key=${KEY}&language=en-US`);
@@ -78,7 +86,7 @@ function upcomingOf(personId: number, credits: any, floor: string): Row[] {
     byKey.set(key, {
       person_tmdb_id: personId, media_type, tmdb_id: c.id,
       title: c.title || c.name || "", poster_path: c.poster_path ?? null,
-      release_date: date, role, department, synced_at: now,
+      release_date: date, role, department, season_number: null, synced_at: now,
     });
   };
   for (const c of credits.cast ?? []) {
@@ -90,6 +98,40 @@ function upcomingOf(personId: number, credits: any, floor: string): Row[] {
     consider(c, c.job || null, c.department);
   }
   return [...byKey.values()];
+}
+
+/** The season premieres ahead among a person's recurring series — one show call per candidate. */
+async function newSeasonsOf(personId: number, credits: any, floor: string, already: Set<string>): Promise<Row[]> {
+  const now = new Date().toISOString();
+  const out: Row[] = [];
+  const shows = (credits.cast ?? []).filter((c: any) =>
+    c.media_type === "tv" && (c.episode_count ?? 0) >= RECURRING_EPISODES && !already.has(`tv:${c.id}`)
+    && !(c.character && NOT_A_PART.test(c.character)));
+  for (const c of shows) {
+    try {
+      const show = await tmdb(`tv/${c.id}`);
+      // A season TMDB has dated ahead (or that started within the month) — the honest premiere.
+      // `next_episode_to_air` only appears days before airing, so it is the fallback, not the rule.
+      const seasons: any[] = (show?.seasons ?? []).filter((s: any) => s.season_number > 0 && s.air_date && s.air_date >= floor);
+      seasons.sort((a: any, b: any) => a.air_date.localeCompare(b.air_date));
+      const next = show?.next_episode_to_air;
+      const premiere = seasons[0]
+        ? { air_date: seasons[0].air_date as string, season_number: seasons[0].season_number as number }
+        : next?.air_date && next.episode_number === 1 && next.air_date >= floor
+          ? { air_date: next.air_date as string, season_number: next.season_number as number }
+          : null;
+      if (!premiere) continue;
+      out.push({
+        person_tmdb_id: personId, media_type: "tv", tmdb_id: c.id,
+        title: show.name || c.name || "", poster_path: show.poster_path ?? c.poster_path ?? null,
+        release_date: premiere.air_date, role: c.character || null, department: "Acting",
+        season_number: premiere.season_number, synced_at: now,
+      });
+    } catch (e) {
+      console.error(`show ${c.id}: ${errMsg(e)}`);
+    }
+  }
+  return out;
 }
 
 Deno.serve(async (req) => {
@@ -119,6 +161,7 @@ Deno.serve(async (req) => {
       try {
         const credits = await tmdb(`person/${id}/combined_credits`);
         const fresh = upcomingOf(id, credits, floor);
+        fresh.push(...await newSeasonsOf(id, credits, floor, new Set(fresh.map((r) => `${r.media_type}:${r.tmdb_id}`))));
         // Rewrite the person's slice: delete what was, insert what is (a handful of rows).
         const del = await supabase.schema("watching").from("person_upcoming").delete().eq("person_tmdb_id", id);
         if (del.error) throw del.error;
@@ -146,7 +189,11 @@ Deno.serve(async (req) => {
       catch (e) { unreleased = { error: errMsg(e) }; console.error(`unreleased: ${errMsg(e)}`); }
     }
 
-    return new Response(JSON.stringify({ ok: true, people: people.length, rows, failed, unreleased }), {
+    // Everyone failed (a dead TMDB key, TMDB down): say so with a 500, so the watchdog's section B
+    // counts it — a 200 wrapping a list of failures is a silent death.
+    const allFailed = people.length > 0 && failed.length === people.length;
+    return new Response(JSON.stringify({ ok: !allFailed, people: people.length, rows, failed, unreleased }), {
+      status: allFailed ? 500 : 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {

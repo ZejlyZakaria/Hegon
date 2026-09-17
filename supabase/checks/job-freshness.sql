@@ -150,6 +150,22 @@ select * from (
     -- Recommandations, tous les 5 jours.
     select 'watching.for_you_cache',   'watching-for-you-5d',
            240, (select max(computed_at) from watching.for_you_cache)
+    union all
+    -- Le Musée : chaque passage ré-estampille ses lignes (upsert avec synced_at). Le cron est
+    -- 2×/jour en saison, MENSUEL hors saison (le 3) → seuil 35 jours : un robot mort se voit
+    -- sous cinq semaines, jamais une fausse alerte hors saison. (Ajouté le 17/09, bloc autonomie.)
+    select 'watching.awards',          'watching-awards-*-monthly',
+           840, (select max(synced_at) from watching.awards)
+    union all
+    select 'watching.award_ceremonies', 'watching-awards-*-monthly',
+           840, (select max(synced_at) from watching.award_ceremonies)
+    union all
+    -- Les sorties des gens suivis : réécrites chaque mardi (et à chaque follow). Seuil 8 jours.
+    -- Gardé par l'existence d'un suivi : sans personne suivie, la table est vide à bon droit.
+    select 'watching.person_upcoming', 'watching-people-weekly',
+           192, case when exists (select 1 from watching.person_follows)
+                     then (select max(synced_at) from watching.person_upcoming)
+                     else now() end
     -- ⛔ `sport.football_competitions` a été RETIRÉ de cette section le 2026-09-09.
     -- Sa colonne `updated_at` est un `default now()` — et le schéma ne contient
     -- AUCUN trigger (0 sur 68 tables), tandis que `football_sync_competitions`

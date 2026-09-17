@@ -54,7 +54,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function tmdb(path: string): Promise<any> {
   const qs = new URLSearchParams({ api_key: KEY, language: "en-US" });
   for (let attempt = 0; attempt < 4; attempt++) {
-    const res = await fetch(`${TMDB}/${path}?${qs}`);
+    const res = await fetchWithRetry(`${TMDB}/${path}?${qs}`);
     if (res.status === 429) { await sleep(1000 * (attempt + 1)); continue; }
     if (!res.ok) throw new Error(`TMDB ${res.status} on ${path}`);
     return res.json();

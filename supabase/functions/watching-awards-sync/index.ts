@@ -119,7 +119,10 @@ serve(async (req) => {
 
     const failed = Object.values(report).filter((r) => "error" in r).length;
     const body = { ok: failed === 0, since, ceremony: payload.ceremony ?? "all", failed, rows: total, enrich, ceremonies, ms: Date.now() - startedAt, report };
-    return new Response(JSON.stringify(body), { status: failed === 0 ? 200 : 207, headers: { "Content-Type": "application/json" } });
+    // Every category failed (Wikidata down, emmys.com changed its HTML): a 500, so the watchdog's
+    // section B sees it — a 207 wrapping a wall of failures would be a silent death (17/09).
+    const allFailed = failed > 0 && failed === Object.keys(report).length;
+    return new Response(JSON.stringify(body), { status: failed === 0 ? 200 : allFailed ? 500 : 207, headers: { "Content-Type": "application/json" } });
   } catch (e) {
     console.error("awards-sync fatal:", errMsg(e));
     return new Response(JSON.stringify({ ok: false, error: errMsg(e) }), { status: 500, headers: { "Content-Type": "application/json" } });
@@ -154,7 +157,7 @@ async function enrichPosters(url: string, readHeaders: Record<string, string>, w
   // A TMDB id Wikidata holds can be dead (merged, deleted): a 404 is stamped "" so we stop asking.
   // Anything else (429, 5xx) is NOT a verdict — the row stays null for the next run.
   const tmdb = async (path: string): Promise<Record<string, unknown> | null | undefined> => {
-    const r = await fetch(`${TMDB}/${path}?api_key=${TMDB_KEY}`);
+    const r = await fetchWithRetry(`${TMDB}/${path}?api_key=${TMDB_KEY}`);
     if (r.ok) return await r.json();
     return r.status === 404 ? null : undefined;
   };

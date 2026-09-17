@@ -55,11 +55,15 @@
     "",
     "✅ 2026-09-16 (sexies) — migrations 20260916000500 (watching.person_follows : 7 colonnes, PK, org_isolation + 3 policies démo) et 20260916000600 (watching.person_upcoming : 9 colonnes, PK, 1 policy ; cron watching-people-weekly). tables +2, colonnes +16, policies +5, index +2, crons +1.",
     "",
-    "✅ 2026-09-17 — migration 20260917000000 : fonction watching.people_ranking(text, int, int, uuid). fonctions +1."
+    "✅ 2026-09-17 — migration 20260917000000 : fonction watching.people_ranking(text, int, int, uuid). fonctions +1.",
+    "",
+    "✅ 2026-09-17 (bis) — migration 20260917000100 : person_upcoming.season_number. colonnes +1.",
+    "",
+    "✅ 2026-09-17 (ter) — migration 20260917000200 : contrainte check media_items_cour_only_anime remplace media_items_cour_columns_series_only (une contrainte n'est pas comptée). Chiffres inchangés."
   ],
-  "_migrations_through": "20260917000000",
+  "_migrations_through": "20260917000200",
   "tables": 74,
-  "colonnes": 757,
+  "colonnes": 758,
   "policies": 218,
   "fonctions": 36,
   "index": 259,
