@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { ownedRowFor, type OwnedMap } from "./possession";
+import { ownedRowFor, buildOwnedMap, type OwnedMap } from "./possession";
 
 // You own the SERIES Game of Thrones. TMDB id 1399 is also a (different) film.
 const owned: OwnedMap = {
-  1399: { id: "row-got", type: "serie" },
-  94997: { id: "row-hotd", type: "serie" },
-  372058: { id: "row-your-name", type: "film" },
-  1735: { id: "row-naruto", type: "anime" },
+  "tv:1399": { id: "row-got", type: "serie" },
+  "tv:94997": { id: "row-hotd", type: "serie" },
+  "movie:372058": { id: "row-your-name", type: "film" },
+  "tv:1735": { id: "row-naruto", type: "anime" },
 };
 
 describe("ownedRowFor", () => {
@@ -39,4 +39,10 @@ describe("ownedRowFor", () => {
     expect(ownedRowFor({ id: 1399, media_type: "person" }, owned)).toBeNull();
     expect(ownedRowFor({ id: 1399, media_type: null }, owned)).toBeNull();
   });
+});
+
+it("keeps colliding movie and TV identities simultaneously", () => {
+  const map = buildOwnedMap([{ id: "film", type: "film", tmdb_id: 1399 }, { id: "anime", type: "anime", tmdb_id: 1399 }]);
+  expect(ownedRowFor({ id: 1399, media_type: "movie" }, map)?.id).toBe("film");
+  expect(ownedRowFor({ id: 1399, media_type: "tv" }, map)?.id).toBe("anime");
 });

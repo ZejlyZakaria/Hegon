@@ -61,7 +61,7 @@
     "",
     "✅ 2026-09-17 (ter) — migration 20260917000200 : contrainte check media_items_cour_only_anime remplace media_items_cour_columns_series_only (une contrainte n'est pas comptée). Chiffres inchangés."
   ],
-  "_migrations_through": "20260917000200",
+  "_migrations_through": "20261011000000",
   "tables": 74,
   "colonnes": 758,
   "policies": 218,

@@ -1,3 +1,4 @@
+import { watchingTargetReached } from "./lib/watching-target";
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type {
@@ -165,7 +166,7 @@ export async function recalcWatchingGoals(): Promise<WatchingGoalDelta[]> {
 
   const { data: goals, error } = await supabase
     .from("goals")
-    .select("id, title, progress, metric_key, metric_target")
+    .select("id, user_id, title, progress, metric_key, metric_target, metric_period, metric_year")
     .eq("org_id", orgId)
     .eq("status", "active")
     .eq("progress_mode", "auto")
@@ -173,17 +174,18 @@ export async function recalcWatchingGoals(): Promise<WatchingGoalDelta[]> {
   if (error) throw error;
   if (!goals || goals.length === 0) return [];
 
-  type GoalRow = { id: string; title: string; progress: number; metric_key: string | null; metric_target: number | null };
+  type GoalRow = { id: string; user_id: string; title: string; progress: number; metric_key: string | null; metric_target: number | null; metric_period: string | null; metric_year: number | null };
   return Promise.all(
     // eslint-disable-next-line no-restricted-syntax -- N+1 connu — une requête par objectif (mesuré : vague 4 de /movies). Correction = 1 requête agrégée. → audit Goals, phase 3 axe 3.
     (goals as GoalRow[]).map(async (g) => {
       const next = await recalculateProgress(g.id);
       // Auto-complete the moment the target is reached (manual control still available).
-      if (g.progress < 100 && next >= 100) {
-        await supabase
+      if (watchingTargetReached(await countWatchingMedia(supabase, g.user_id, g.metric_key, g.metric_period, g.metric_year), g.metric_target)) {
+        const { error: completionError } = await supabase
           .from("goals")
           .update({ status: "completed", completed_at: new Date().toISOString() })
           .eq("id", g.id);
+        if (completionError) throw completionError;
       }
       return {
         id:            g.id,

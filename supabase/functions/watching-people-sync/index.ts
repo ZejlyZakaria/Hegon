@@ -1,3 +1,6 @@
+import { creditRole } from "../_shared/credit-roles.ts";
+import { batchOutcome } from "../_shared/batch-outcome.ts";
+import { fetchAllRows } from "../_shared/pagination.ts";
 // UPCOMING FROM PEOPLE YOU FOLLOW — the robot behind « Following » (Watching v4 §11, 2026-09-16).
 //
 // cron → table → app (R3/R6): every Tuesday this reads the union of everyone's follows
@@ -62,11 +65,12 @@ async function tmdb(path: string) {
  */
 async function refreshPerson(supabase: any, id: number) {
   const p = await tmdb(`person/${id}`);
-  if (!p?.name) return;
+  if (!p?.name) throw new Error("TMDB missing person name");
   const { error } = await supabase.schema("watching").from("person_follows").update({
     name: p.name,
     profile_url: p.profile_path ? `https://image.tmdb.org/t/p/w300${p.profile_path}` : null,
-    known_for: p.known_for_department ?? null,
+    // Keep the follow's credit-derived role (creator/voice/etc.) instead of replacing it
+    // with TMDB's broader person department while refreshing the portrait and name.
   }).eq("person_tmdb_id", id);
   if (error) throw error;
 }
@@ -94,14 +98,15 @@ function upcomingOf(personId: number, credits: any, floor: string): Row[] {
     consider(c, c.character || null, "Acting");
   }
   for (const c of credits.crew ?? []) {
-    if (!CREW_DEPARTMENTS.has(c.department)) continue;
-    consider(c, c.job || null, c.department);
+    const role = creditRole(c.job, c.media_type === "movie" ? "film" : "serie");
+    if (!CREW_DEPARTMENTS.has(c.department) && role !== "creator") continue;
+    consider(c, c.job || null, role === "creator" ? "Creating" : c.department);
   }
   return [...byKey.values()];
 }
 
 /** The season premieres ahead among a person's recurring series — one show call per candidate. */
-async function newSeasonsOf(personId: number, credits: any, floor: string, already: Set<string>): Promise<Row[]> {
+async function newSeasonsOf(personId: number, credits: any, floor: string, already: Set<string>, failures: string[]): Promise<Row[]> {
   const now = new Date().toISOString();
   const out: Row[] = [];
   const shows = (credits.cast ?? []).filter((c: any) =>
@@ -128,6 +133,7 @@ async function newSeasonsOf(personId: number, credits: any, floor: string, alrea
         season_number: premiere.season_number, synced_at: now,
       });
     } catch (e) {
+      failures.push(`show ${c.id}: ${errMsg(e)}`);
       console.error(`show ${c.id}: ${errMsg(e)}`);
     }
   }
@@ -149,28 +155,40 @@ Deno.serve(async (req) => {
     if (one) {
       people = [one];
     } else {
-      const { data, error } = await supabase.schema("watching").from("person_follows").select("person_tmdb_id");
-      if (error) throw error;
+      const data = await fetchAllRows<any>((from, to) => supabase.schema("watching").from("person_follows").select("person_tmdb_id").order("user_id").order("person_tmdb_id").range(from, to));
       people = [...new Set((data ?? []).map((r: any) => r.person_tmdb_id as number))];
     }
 
     const floor = new Date(Date.now() - KEEP_AFTER_DAYS * 86_400_000).toISOString().slice(0, 10);
-    let rows = 0;
+    let rows = 0, succeeded = 0;
+    const retained: number[] = [];
     const failed: number[] = [];
+    const secondaryFailures: string[] = [];
     for (const id of people) {
       try {
         const credits = await tmdb(`person/${id}/combined_credits`);
         const fresh = upcomingOf(id, credits, floor);
-        fresh.push(...await newSeasonsOf(id, credits, floor, new Set(fresh.map((r) => `${r.media_type}:${r.tmdb_id}`))));
-        // Rewrite the person's slice: delete what was, insert what is (a handful of rows).
-        const del = await supabase.schema("watching").from("person_upcoming").delete().eq("person_tmdb_id", id);
-        if (del.error) throw del.error;
-        if (fresh.length) {
-          const ins = await supabase.schema("watching").from("person_upcoming").upsert(fresh, { onConflict: "person_tmdb_id,media_type,tmdb_id" });
-          if (ins.error) throw ins.error;
+        const seasonFailures: string[] = [];
+        fresh.push(...await newSeasonsOf(id, credits, floor, new Set(fresh.map((r) => `${r.media_type}:${r.tmdb_id}`)), seasonFailures));
+        secondaryFailures.push(...seasonFailures);
+        if (seasonFailures.length) {
+          // An incomplete provider read cannot replace a complete cached slice.
+          // Leave its synced_at untouched and report the retained person explicitly.
+          retained.push(id);
+        } else {
+          const del = await supabase.schema("watching").from("person_upcoming").delete().eq("person_tmdb_id", id);
+          if (del.error) throw del.error;
+          if (fresh.length) {
+            const ins = await supabase.schema("watching").from("person_upcoming").upsert(fresh, { onConflict: "person_tmdb_id,media_type,tmdb_id" });
+            if (ins.error) throw ins.error;
+          }
+          rows += fresh.length;
+          succeeded++;
         }
-        rows += fresh.length;
-        if (!one) await refreshPerson(supabase, id);
+        if (!one) {
+          try { await refreshPerson(supabase, id); succeeded++; }
+          catch (e) { secondaryFailures.push(`person ${id} profile: ${errMsg(e)}`); }
+        }
       } catch (e) {
         console.error(`person ${id}: ${errMsg(e)}`);
         failed.push(id);
@@ -191,9 +209,11 @@ Deno.serve(async (req) => {
 
     // Everyone failed (a dead TMDB key, TMDB down): say so with a 500, so the watchdog's section B
     // counts it — a 200 wrapping a list of failures is a silent death.
-    const allFailed = people.length > 0 && failed.length === people.length;
-    return new Response(JSON.stringify({ ok: !allFailed, people: people.length, rows, failed, unreleased }), {
-      status: allFailed ? 500 : 200,
+    const extraFailed = unreleased == null ? 0 : "error" in unreleased ? 1 : unreleased.failed;
+    const extraSucceeded = unreleased != null && !("error" in unreleased) ? unreleased.updated : 0;
+    const result = batchOutcome(succeeded + extraSucceeded, failed.length + extraFailed + secondaryFailures.length);
+    return new Response(JSON.stringify({ ...result, people: people.length, rows, succeeded, retained, failed, secondaryFailures, unreleased }), {
+      status: result.status,
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {

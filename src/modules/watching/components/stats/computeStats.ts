@@ -1,3 +1,4 @@
+import { episodeCountsForTime } from "../../lib/episode-counts";
 import type { StatsRawItem, RewatchStatItem } from "../../service";
 import { buildMediaView, type MediaView } from "../../lib/media-view";
 import { isAwaitingNextSeason } from "../../lib/series-state";
@@ -135,8 +136,7 @@ function seasonYearOf(v: MediaView, i: StatsRawItem, season: number): number | n
 
 // Whether a completed season should be counted, and in which year. When a show
 // has ANY explicit per-season year (stamps), we TRUST them: only stamped seasons
-// count — unstamped ones (e.g. a future season TMDB lists, or one you didn't
-// watch) are ignored. Only a fully-legacy show (zero stamps) falls back to
+// have known annual attribution — unstamped ones remain unattributed; their aired viewing still counts all-time. Only a fully-legacy show (zero stamps) falls back to
 // watched_at/updated_at for all its seasons.
 function countedSeasonYear(v: MediaView, i: StatsRawItem, season: number): number | null {
   const stamped = v.yearMap?.[String(season)];
@@ -157,11 +157,12 @@ function seasonContributions(v: MediaView, i: StatsRawItem): { episodes: number;
   //
   // And the seasons are the VIEW's — three cours for Jujutsu Kaisen, not TMDB's single lump of 59.
   // Reading the raw column here is what put three years of watching into one.
-  const seasons = v.seasons.map((s) => (s.aired > 0 ? s.aired : s.episodes));
+  const seasons = v.seasons.map((s) => (s.airedKnown === false ? s.episodes : s.aired));
 
   // No per-season breakdown → single bucket on the title's year.
   if (seasons.length === 0) {
-    const eps = i.watched ? (i.episodes ?? 0) : (v.position.episode ?? 0);
+    const known = episodeCountsForTime(i).reduce((sum, n) => sum + n, 0);
+    const eps = i.watched ? known : i.season_aired != null ? Math.min(v.position.episode ?? 0, known) : (v.position.episode ?? 0);
     return [{ episodes: eps, year: seasonYearOf(v, i, 1) }];
   }
 
@@ -170,7 +171,7 @@ function seasonContributions(v: MediaView, i: StatsRawItem): { episodes: number;
   if (i.watched) {
     seasons.forEach((eps, idx) => {
       const y = countedSeasonYear(v, i, idx + 1);
-      if (y != null) out.push({ episodes: eps, year: y });
+      out.push({ episodes: eps, year: y });
     });
     return out;
   }
@@ -181,7 +182,7 @@ function seasonContributions(v: MediaView, i: StatsRawItem): { episodes: number;
   const ce = Math.min(v.position.episode ?? 0, seasons[cs - 1] ?? (v.position.episode ?? 0));
   for (let s = 1; s < cs; s++) {
     const y = countedSeasonYear(v, i, s);
-    if (y != null) out.push({ episodes: seasons[s - 1] ?? 0, year: y });
+    out.push({ episodes: seasons[s - 1] ?? 0, year: y });
   }
   out.push({ episodes: ce, year: v.yearMap?.[String(cs)] ?? fallbackYearOf(i) });
   return out;
@@ -278,22 +279,17 @@ export function seasonLabelFor(v: MediaView, i: StatsRawItem, year: number | nul
   return contiguous ? `Seasons ${seasons[0]}–${seasons[seasons.length - 1]}` : `${seasons.length} seasons`;
 }
 
-// Rating to rank/show a title by for a given year. Smart filter: if the whole
-// show was watched in a SINGLE year (all seasons same year), use the title's
-// overall rating — even if seasons were rated individually. Only when the show
-// spans MULTIPLE years do we use the rating of the season watched that year.
-// Films and all-time always use the title rating.
+// Annual series scores require ratings of seasons/cours attributed to that year.
+// Activity alone cannot date a title rating. Films and all-time use the title rating.
 function effectiveRating(v: MediaView, i: StatsRawItem, year: number | null): number | null {
   if (i.type === "film" || !year) return i.user_rating;
   const wy = watchedSeasonYears(v, i);
-  const isMultiYear = new Set(wy.map(([, y]) => y)).size >= 2;
-  if (!isMultiYear) return i.user_rating;
   const seasonsInY = wy.filter(([, y]) => y === year).map(([s]) => s);
   const ratings = seasonsInY
     .map((s) => v.ratingMap?.[String(s)])
     .filter((r): r is number => r != null);
-  if (ratings.length === 0) return i.user_rating;
-  return Math.max(...ratings);
+  if (ratings.length === 0) return null;
+  return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
 }
 
 export function computeStats(
@@ -391,7 +387,7 @@ export function computeStats(
   // announced count charged you for episodes nobody has seen, and made the rewatch slice of the
   // donut disagree with the per-type slices computed right beside it.
   const totalEps = (i: StatsRawItem) =>
-    (i.season_aired ?? i.season_episodes)?.reduce((a, b) => a + (b || 0), 0) || i.episodes || 0;
+    episodeCountsForTime(i).reduce((sum, n) => sum + n, 0);
   let rewatchCount = 0;
   const rewatchMin = { film: 0, serie: 0, anime: 0 };
   const rewatchEntries: RewatchEntry[] = [];
@@ -470,9 +466,8 @@ export function computeStats(
       const byRating = (b.rating ?? 0) - (a.rating ?? 0);
       if (byRating !== 0) return byRating;
       if (a.item.favorite !== b.item.favorite) return a.item.favorite ? -1 : 1;
-      return 0;
-    })
-    .slice(0, 6);
+      return a.item.id.localeCompare(b.item.id);
+    });
 
   const wrappedPosters = [...periodItems]
     .filter((i) => i.poster_url)
@@ -487,6 +482,7 @@ export function computeStats(
 
   const availableYears = [
     ...new Set([
+      ...rewatches.map((r) => new Date(r.watched_on).getFullYear()),
       ...completed.filter((i) => i.watched_at).map((i) => new Date(i.watched_at!).getFullYear()),
       ...items.filter((i) => i.in_progress && i.updated_at).map((i) => new Date(i.updated_at!).getFullYear()),
       // The stamps, in whichever space the title keeps them — a year you only ever recorded on a

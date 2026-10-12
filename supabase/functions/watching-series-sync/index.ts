@@ -1,3 +1,6 @@
+import { fetchAllRows } from "../_shared/pagination.ts";
+import { batchOutcome } from "../_shared/batch-outcome.ts";
+import { providerRegressed, confirmedGrowth } from "../_shared/provider-progress.ts";
 // THE ENGINE. Without this, the whole model is a photograph of the day you added a title.
 //
 // `status`, `season_episodes` and `season_aired` are facts about the WORLD, and the world moves
@@ -69,7 +72,7 @@ const lastAired = (aired: number[]) => {
   return null;
 };
 
-interface SeasonFacts { aired: number; endDate: string | null; poster: string | null; airDate: string | null }
+interface SeasonFacts { latest: string | null; aired: number; endDate: string | null; poster: string | null; airDate: string | null }
 
 /**
  * What has ACTUALLY aired in each season, and when each season ENDED.
@@ -104,7 +107,7 @@ async function seasonFacts(
 
     // Genuinely not out yet.
     if (s.air_date && s.air_date > TODAY) {
-      out.push({ aired: 0, endDate: null, poster, airDate });
+      out.push({ latest: null, aired: 0, endDate: null, poster, airDate });
       continue;
     }
 
@@ -117,13 +120,15 @@ async function seasonFacts(
       knownAired != null && knownEnd && knownEnd < TODAY &&
       knownAired === announced && knownAnnounced === announced
     ) {
-      out.push({ aired: knownAired, endDate: knownEnd, poster, airDate });
+      out.push({ latest: knownEnd, aired: knownAired, endDate: knownEnd, poster, airDate });
       continue;
     }
 
     const detail = await tmdb(`tv/${tmdbId}/season/${s.season_number}`);
-    const airedEps = (detail.episodes ?? []).filter((e: any) => e.air_date && e.air_date <= TODAY);
+    if (!Array.isArray(detail.episodes)) throw new Error("Incomplete season response");
+    const airedEps = detail.episodes.filter((e: any) => e.air_date && e.air_date <= TODAY);
     out.push({
+      latest: airedEps.map((e: any) => e.air_date as string).sort().at(-1) ?? null,
       aired: airedEps.length,
       // The END is the last episode that has actually aired — null while a season is mid-flight,
       // because there is no honest answer yet.
@@ -194,7 +199,8 @@ function groupByShow(rows: any[]): Map<number, any[]> {
  */
 async function selectBatch(supabase: any) {
   const pick = async (finished: boolean) => {
-    let q = supabase
+    const build = () => {
+      let q = supabase
       .from("media_items")
       .select(ROW_COLUMNS)
       .neq("type", "film")
@@ -203,8 +209,9 @@ async function selectBatch(supabase: any) {
     q = finished
       ? q.in("status", ["ended", "canceled", "cancelled"])
       : q.or("status.is.null,status.not.in.(ended,canceled,cancelled)");
-    const { data, error } = await q.order("last_synced_at", { ascending: true, nullsFirst: true });
-    if (error) throw error;
+    return q;
+    };
+    const data = await fetchAllRows<any>((from, to) => build().order("last_synced_at", { ascending: true, nullsFirst: true }).order("id").range(from, to));
     return (data ?? []) as any[];
   };
 
@@ -231,6 +238,7 @@ Deno.serve(async () => {
   try {
     const batch = await selectBatch(supabase);
 
+    let succeeded = 0;
     let changed = 0, repaired = 0, failed = 0, rows = 0;
     const log: string[] = [];
 
@@ -258,12 +266,22 @@ Deno.serve(async () => {
       const baseline = group.reduce((a, b) =>
         new Date(b.last_synced_at ?? 0).getTime() > new Date(a.last_synced_at ?? 0).getTime() ? b : a);
 
-      const facts = await seasonFacts(tmdbId, seasons, {
-        aired: baseline.season_aired,
-        announced: baseline.season_episodes,
-        ends: baseline.season_end_dates,
-      });
+      let facts: SeasonFacts[];
+      try {
+        facts = await seasonFacts(tmdbId, seasons, {
+          aired: baseline.season_aired,
+          announced: baseline.season_episodes,
+          ends: baseline.season_end_dates,
+        });
+      } catch (error) {
+        failed++; log.push(`${title}: ${errMsg(error)}`); continue;
+      }
       const season_aired = facts.map((f) => f.aired);
+      if (group.some((m) => providerRegressed(m.season_aired, season_aired) || providerRegressed(m.season_episodes, season_episodes))) {
+        failed++;
+        log.push(`${title}: provider counts regressed; preserving previous facts and personal state`);
+        continue;
+      }
 
       // ── THE WORLD'S FACTS — identical for every row that shares this tmdb_id, written in ONE
       //    statement, so two copies of a show can never disagree about what has aired.
@@ -319,7 +337,7 @@ Deno.serve(async () => {
         // The status this job writes to the app is a world fact; `watched` is the user's claim.
         // Rewriting the claim is the one thing this cron does that the app's single writer
         // (lib/watch-status.ts) does not control — so it must do it for a reason it can prove.
-        if (m.watched && m.season_aired != null && airedTotal > total(m.season_aired)) {
+        if (m.watched && confirmedGrowth(m.season_aired, season_aired, m.season_end_dates, facts.map((f) => f.latest))) {
           // Where "watched" placed you: the end of what HAD aired when you said it. Not the new
           // last episode (you would look caught up on what you haven't seen), not S1 E0 (you
           // would look like you never started).
@@ -356,21 +374,26 @@ Deno.serve(async () => {
       // ── THE WRITE — the world's facts for every row, plus its own posture fix where there is one.
       //    Rows without a fix still share ONE statement (two copies of a show never disagree about
       //    what has aired); a row with a fix gets world + fix together, atomically.
+      let titleSucceeded = false;
       const plainIds = group.map((r) => r.id).filter((id) => !fixes.has(id));
       if (plainIds.length > 0) {
         const { error: worldErr } = await supabase.from("media_items").update(world).in("id", plainIds);
+        if (!worldErr) titleSucceeded = true;
         if (worldErr) { failed++; log.push(`✗ ${title}: ${worldErr.message}`); }
       }
       for (const [id, fix] of fixes) {
         const { error: fixErr } = await supabase.from("media_items").update({ ...world, ...fix }).eq("id", id);
         if (fixErr) { failed++; log.push(`✗ ${title}: ${fixErr.message}`); continue; }
         repaired++;
+        titleSucceeded = true;
       }
+      if (titleSucceeded) succeeded++;
     }
 
+    const result = batchOutcome(succeeded, failed);
     return new Response(
-      JSON.stringify({ ok: true, shows: batch.length, rows, changed, repaired, failed, log }),
-      { headers: { "Content-Type": "application/json" } },
+      JSON.stringify({ ...result, shows: batch.length, rows, changed, repaired, failed, log }),
+      { status: result.status, headers: { "Content-Type": "application/json" } },
     );
   } catch (e) {
     return new Response(JSON.stringify({ error: errMsg(e) }), {

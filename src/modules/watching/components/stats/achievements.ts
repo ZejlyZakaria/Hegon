@@ -1,3 +1,5 @@
+import { episodeCountsForTime } from "../../lib/episode-counts";
+import { isDirectorCredit } from "../../lib/credit-roles";
 import type { Achievement } from "@/shared/components/achievements/types";
 import type { StatsRawItem } from "../../service";
 import type { HoursEntry, RewatchEntry } from "./computeStats";
@@ -71,11 +73,11 @@ const monthOf = (i: StatsRawItem) => {
 const yearOf = (i: StatsRawItem) => (i.watched_at ? [{ key: String(new Date(i.watched_at).getFullYear()), label: String(new Date(i.watched_at).getFullYear()) }] : []);
 const directorsOf = (i: StatsRawItem) => {
   const seen = new Set<number>();
-  return (i.directors ?? []).filter((p) => p?.id && !seen.has(p.id) && seen.add(p.id)).map((p) => ({ key: String(p.id), label: p.name }));
+  return (i.directors ?? []).filter((p) => isDirectorCredit(p, i.type)).filter((p) => p?.id && !seen.has(p.id) && seen.add(p.id)).map((p) => ({ key: String(p.id), label: p.name }));
 };
 /** Episodes of a show, AIRED over announced — the same ruler Quick Stats uses. */
 const episodesOf = (i: StatsRawItem) =>
-  i.type === "film" ? 0 : (i.season_aired ?? i.season_episodes)?.reduce((a, b) => a + (b || 0), 0) || i.episodes || 0;
+  i.type === "film" ? 0 : episodeCountsForTime(i).reduce((sum, n) => sum + n, 0);
 
 // Harmonised jewel tones — one cohesive set on graphite, told apart by icon + colour at a glance.
 // Thresholds are calibrated against a real, heavy library (≈270 films, ≈2,800 h) so the set stays
@@ -183,7 +185,7 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
       unit = rule.unit;
       // THE DONUT'S NUMBER, not a second sum — rewatches included, exactly what "Hours watched"
       // says on All time. The entries below only show where it came from.
-      value = Math.round(totalHours);
+      value = totalHours;
       const top = [...hours].sort((a, b) => b.minutes - a.minutes).slice(0, 10);
       groups = top.map((h) => ({ label: h.item.title, items: [h.item], value: Math.round(h.minutes / 60) }));
       // Cumulative, in the order you watched things — first viewings AND rewatches, since the total
@@ -198,7 +200,7 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
         acc += s.minutes;
         if (acc / 60 >= rule.goal) { unlockedAt = s.on; break; }
       }
-      formula = `${value.toLocaleString("en-GB")} hours across everything you finished, rewatches included — ${rule.description.toLowerCase()}.`;
+      formula = `${value.toLocaleString("en-GB")} hours across your viewing, rewatches included — ${rule.description.toLowerCase()}.`;
       break;
     }
   }

@@ -1,3 +1,5 @@
+import { creditRole } from "../_shared/credit-roles.ts";
+import { fetchAllRows } from "../_shared/pagination.ts";
 // THE TITLES YOU OWN THAT ARE NOT OUT YET — refreshed from TMDB once a week (owner, 2026-09-17).
 //
 // An add COPIES the world into media_items: poster, backdrop, title, release date, cast. For a
@@ -38,12 +40,11 @@ function credits(d: any, isFilm: boolean) {
     character: p.character || p.roles?.[0]?.character || null,
     profile_url: p.profile_path ? `${IMG}/w185${p.profile_path}` : null,
   }));
-  const jobs = isFilm ? ["Director"] : ["Creator", "Series Director", "Executive Producer"];
   const seen = new Set<number>();
-  const directors = (d.credits?.crew ?? [])
-    .filter((p: any) => jobs.includes(p.job) && !seen.has(p.id) && seen.add(p.id))
-    .slice(0, 3)
-    .map((p: any) => ({ id: p.id, name: p.name, profile_url: p.profile_path ? `${IMG}/w185${p.profile_path}` : null }));
+  const directors = [...(d.credits?.crew ?? []), ...(d.created_by ?? []).map((p: any) => ({ ...p, job: "Creator" }))]
+    .sort((a: any, b: any) => Number(creditRole(b.job, isFilm ? "film" : "serie") === "director") - Number(creditRole(a.job, isFilm ? "film" : "serie") === "director"))
+    .filter((p: any) => ["director", "creator"].includes(creditRole(p.job, isFilm ? "film" : "serie") ?? "") && !seen.has(p.id) && seen.add(p.id))
+    .map((p: any) => ({ id: p.id, role: creditRole(p.job, isFilm ? "film" : "serie"), name: p.name, profile_url: p.profile_path ? `${IMG}/w185${p.profile_path}` : null }));
   return { cast, directors };
 }
 
@@ -55,7 +56,7 @@ export async function refreshUnreleased(supabase: any, fetchImpl: typeof fetch):
   // either, and they are not waiting for anything). Series: nothing aired yet (the aired array).
   const [films, shows] = await Promise.all([
     supabase.from("media_items").select(cols).eq("type", "film").or(`release_date.gte.${floor},and(release_date.is.null,want_to_watch.eq.true,watched.eq.false,in_progress.eq.false)`).not("tmdb_id", "is", null).limit(BATCH),
-    supabase.from("media_items").select(cols).in("type", ["serie", "anime"]).not("tmdb_id", "is", null).limit(1000),
+    fetchAllRows<any>((from, to) => supabase.from("media_items").select(cols).in("type", ["serie", "anime"]).not("tmdb_id", "is", null).order("id").range(from, to)).then((data) => ({ data, error: null })),
   ]);
   if (films.error) throw films.error;
   if (shows.error) throw shows.error;

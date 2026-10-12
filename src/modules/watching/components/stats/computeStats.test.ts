@@ -383,3 +383,92 @@ describe("Films", () => {
     expect(computeStats([item({ type: "film", runtime: 120 })], [], null).counts.film).toBe(0);
   });
 });
+
+describe("Wave 1 analytical contracts", () => {
+  it("averages eligible season scores once per title across every annual consumer", () => {
+    const row = item({ watched: true, season_episodes: [10, 10, 10], season_aired: [10, 10, 10], season_years: { 1: 2023, 2: 2024, 3: 2024 }, season_ratings: { 1: 8, 2: 2, 3: 10 }, user_rating: 9 });
+    const annual = computeStats([row], [], 2024);
+    expect(annual.avgRating).toBe(6);
+    expect(annual.ratingDistribution.find((r) => r.score === 6)?.count).toBe(1);
+    expect(annual.topFavorites).toHaveLength(0); // six is below the existing threshold
+    expect(computeStats([{ ...row, favorite: true }], [], 2024).topFavorites[0].rating).toBe(6);
+    expect(computeStats([row], [], null).avgRating).toBe(9);
+  });
+  it.each([[0, 0], [4, 4], [10, 10]])("counts %i known aired episodes without announced fallback", (aired, expected) => {
+    const row = item({ watched: true, watched_at: "2024-01-01", episodes: 10, season_episodes: [10], season_aired: [aired] });
+    expect(computeStats([row], [], null).hours.serie).toBe(expected);
+    expect(computeStats([row], [{ media_item_id: row.id, watched_on: "2024-02-01" }], null).hours.rewatches).toBe(expected);
+  });
+  it("keeps the legacy estimate only for unknown aired metadata", () => {
+    const row = item({ watched: true, watched_at: "2024-01-01", season_episodes: [10], season_aired: null });
+    expect(computeStats([row], [], null).hours.serie).toBe(10);
+  });
+  it("retains every qualified pick in stable order for the panel", () => {
+    const rows = Array.from({ length: 9 }, (_, i) => item({ id: String(i), type: "film", watched: true, user_rating: 8 }));
+    expect(computeStats(rows.reverse(), [], null).topFavorites.map((r) => r.item.id)).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
+  });
+  it("includes a rewatch-only year in the selector", () => {
+    expect(computeStats([], [{ media_item_id: "gone", watched_on: "2025-01-01" }], null).availableYears).toContain(2025);
+  });
+});
+
+it("missing annual stamps never erase known all-time consumption", () => {
+  const row = item({ watched: true, watched_at: "2024-01-01", season_episodes: [10, 10], season_aired: [10, 10], season_years: { 1: 2023 }, runtime: 30 });
+  expect(computeStats([row], [], null).hours.serie).toBe(10);
+  expect(computeStats([row], [], 2023).hours.serie).toBe(5);
+  expect(computeStats([row], [], 2024).hours.serie).toBe(0); // unknown, not invented
+});
+
+describe("Annual rating attribution regression", () => {
+  it("keeps Hannibal's annual seasonal mean exactly 8.75", () => {
+    const row = item({ title: "Hannibal", watched: true, watched_at: "2026-01-01",
+      season_episodes: [13, 13], season_aired: [13, 13], season_years: { 1: 2026, 2: 2026 },
+      season_ratings: { 1: 8.5, 2: 9 }, user_rating: 9 });
+    const annual = computeStats([row], [], 2026);
+    expect(annual.topFavorites[0].rating).toBe(8.75);
+    expect(row.season_ratings).toEqual({ 1: 8.5, 2: 9 });
+  });
+  it.each([true, false])("Black Clover: current-year unrated activity, current stamp=%s", (stamped) => {
+    const row = item({ title: "Black Clover", type: "anime", user_rating: 9,
+      in_progress: true, current_season: 2, current_episode: 1, updated_at: "2026-10-01",
+      season_episodes: [10, 10], season_aired: [10, 3],
+      season_years: stamped ? { 1: 2022, 2: 2026 } : { 1: 2022 }, season_ratings: { 1: 9 },
+    });
+    const annual = computeStats([row], [], 2026);
+    expect(annual.counts.anime).toBe(1);
+    expect(annual.hours.anime).toBeGreaterThan(0);
+    expect(annual.avgRating).toBeNull();
+    expect(annual.ratedCount).toBe(0);
+    expect(annual.ratingDistribution.reduce((n, r) => n + r.count, 0)).toBe(0);
+    expect(annual.topFavorites).toHaveLength(0);
+    expect(computeStats([row], [], 2022).avgRating).toBe(9);
+    const all = computeStats([row], [], null);
+    expect(all.avgRating).toBe(9);
+    expect(all.topFavorites[0].rating).toBe(9);
+    // Wrapped may show activity, but an unrated current title cannot outrank a rated one via its old score.
+    const rated = item({ id: "rated", type: "film", watched: true, watched_at: "2026-01-01", user_rating: 8, poster_url: "rated.jpg" });
+    expect(computeStats([{ ...row, poster_url: "old.jpg" }, rated], [], 2026).wrappedPosters[0].poster_url).toBe("rated.jpg");
+  });
+  it("uses seasonal scores even when the whole series was watched in one year", () => {
+    const row = item({ watched: true, watched_at: "2026-01-01", season_aired: [10, 10], season_episodes: [10, 10],
+      season_years: { 1: 2026, 2: 2026 }, season_ratings: { 1: 2, 2: 10 }, user_rating: 9 });
+    const annual = computeStats([row], [], 2026);
+    expect(annual.avgRating).toBe(6);
+    expect(annual.ratedCount).toBe(1);
+    expect(annual.ratingDistribution.find((r) => r.score === 6)?.count).toBe(1);
+    expect(annual.topFavorites).toHaveLength(0);
+    expect(computeStats([row], [], null).avgRating).toBe(9);
+  });
+  it("uses cour ratings and years through the anime lens", () => {
+    const row = item({ tmdb_id: 100, type: "anime", in_progress: true, current_season: 1, current_episode: 11,
+      updated_at: "2026-10-01", season_aired: [20], season_episodes: [20], user_rating: 9,
+      cour_years: { 1: 2022, 2: 2026 }, cour_ratings: { 1: 9 } });
+    const cours = new Map<number, AnimeCoursRow>([[100, { tmdb_id: 100, source: "anilist", cours: [
+      { season: 1, anilist_id: 1, title: "Old", poster_url: null, year: 2022, end_year: 2022, episodes: 10, start_episode: 1, end_episode: 10 },
+      { season: 2, anilist_id: 2, title: "New", poster_url: null, year: 2026, end_year: 2026, episodes: 10, start_episode: 11, end_episode: 20 },
+    ] }]]);
+    expect(computeStats([row], [], 2026, cours)).toMatchObject({ avgRating: null, ratedCount: 0, topFavorites: [] });
+    expect(computeStats([{ ...row, cour_ratings: { 1: 9, 2: 7 } }], [], 2026, cours).avgRating).toBe(7);
+    expect(computeStats([row], [], null, cours).avgRating).toBe(9);
+  });
+});

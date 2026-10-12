@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { WATCHING_KEYS, TMDB_KEYS } from "./query-keys";
+import { WATCHING_KEYS, TMDB_KEYS, PEOPLE_KEYS } from "./query-keys";
 import {
   getExistingMediaItem,
   insertMediaItem,
@@ -32,7 +32,7 @@ interface AddMediaInput {
   seasons: number | null;
   episodes: number | null;
   runtime: number | null;
-  directors: { id?: number; name: string; profile_url: string | null }[] | null;
+  directors: { id?: number; name: string; profile_url: string | null; role?: string }[] | null;
   cast: { id: number; name: string; character: string | null; profile_url: string | null }[];
   studio: string | null;
   status: string | null;
@@ -343,6 +343,7 @@ export function useAddMedia() {
       // detail route (e.g. "More Like This") must leave the main-page carousels fresh
       // on Back (Next's Router Cache would otherwise restore them stale).
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all, refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: [...PEOPLE_KEYS.all, "ranking"] });
 
       // Remove only the added item from For You cache — refetch only when running low
       const forYouKey = TMDB_KEYS.forYou(variables.defaultType);

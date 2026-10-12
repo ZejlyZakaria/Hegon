@@ -1,3 +1,5 @@
+import { fetchAllRows } from "../_shared/pagination.ts";
+import { batchOutcome } from "../_shared/batch-outcome.ts";
 // For You — recommendation refresh (Supabase Edge Function, Deno).
 //
 // Runs on a cron (every ~5 days) entirely inside Supabase. For each user/type it:
@@ -96,31 +98,33 @@ async function refreshUserType(
   tmdbKey: string,
   userId: string,
   type: MediaType,
-): Promise<boolean> {
+): Promise<{ refreshed: boolean; succeeded: boolean; failed: number }> {
   const tmdbType = type === "film" ? "movie" : "tv";
   const minVoteCount = type === "film" ? 200 : 50;
 
+  const paged = (build: (from: number, to: number) => any) => fetchAllRows<any>(build).then((data) => ({ data, error: null }));
   const tbl = () => supabase.schema("watching").from("media_items");
 
   const [watchedRes, favRes, wantRes, ownedRes, prevRes, dismissedRes] = await Promise.all([
     tbl().select("id", { count: "exact", head: true })
       .eq("user_id", userId).eq("type", type).eq("watched", true),
-    tbl().select("tmdb_id, user_rating")
+    paged((from, to) => tbl().select("tmdb_id, user_rating")
       .eq("user_id", userId).eq("type", type).eq("favorite", true)
-      .not("user_rating", "is", null).order("user_rating", { ascending: false }),
-    tbl().select("tmdb_id")
+      .not("user_rating", "is", null).order("user_rating", { ascending: false }).order("id").range(from, to)),
+    paged((from, to) => tbl().select("tmdb_id")
       .eq("user_id", userId).eq("type", type).eq("want_to_watch", true)
-      .order("created_at", { ascending: false }),
-    tbl().select("tmdb_id").eq("user_id", userId).eq("type", type),
+      .order("created_at", { ascending: false }).order("id").range(from, to)),
+    paged((from, to) => tbl().select("tmdb_id").eq("user_id", userId).in("type", type === "film" ? ["film"] : ["serie", "anime"]).order("id").range(from, to)),
     supabase.schema("watching").from("for_you_cache")
       .select("items, seen_ids").eq("user_id", userId).eq("type", type).maybeSingle(),
-    supabase.schema("watching").from("for_you_dismissals")
-      .select("tmdb_id").eq("user_id", userId).eq("type", type),
+    paged((from, to) => supabase.schema("watching").from("for_you_dismissals")
+      .select("tmdb_id").eq("user_id", userId).eq("type", type).order("tmdb_id").range(from, to)),
   ]);
 
+  for (const res of [watchedRes, favRes, wantRes, ownedRes, prevRes, dismissedRes]) { if (res.error) throw res.error; }
   const watchedCount = watchedRes.count ?? 0;
   const favorites = (favRes.data ?? []) as { tmdb_id: number; user_rating: number }[];
-  if (watchedCount < WATCHED_THRESHOLD[type] || favorites.length === 0) return false;
+  if (watchedCount < WATCHED_THRESHOLD[type] || favorites.length === 0) return { refreshed: false, succeeded: false, failed: 0 };
 
   const windowIndex = Math.floor(Date.now() / (WINDOW_DAYS * 86_400_000));
   const favRating = new Map(favorites.map((f) => [f.tmdb_id, f.user_rating]));
@@ -151,10 +155,11 @@ async function refreshUserType(
   // candidate id → { item, accumulated taste score }
   const scored = new Map<number, { item: any; score: number }>();
 
+  let seedFailed = 0;
   await Promise.all(seedDefs.map(async ({ id, weight }) => {
     const recs = await tmdb(tmdbKey, `${tmdbType}/${id}/recommendations`, { page: "1" })
       .then((d) => d.results ?? [])
-      .catch(() => [] as any[]);
+      .catch(() => { seedFailed++; return [] as any[]; });
     const kept = recs
       .filter((r: any) =>
         !owned.has(r.id) &&
@@ -170,7 +175,8 @@ async function refreshUserType(
   }));
 
   // Don't wipe a good list on a transient empty result (TMDB hiccup, etc.).
-  if (scored.size === 0) return false;
+  if (seedFailed === seedDefs.length && seedDefs.length > 0) throw new Error("All recommendation seeds failed");
+  if (scored.size === 0) return { refreshed: false, succeeded: true, failed: seedFailed };
 
   // Relevance = taste score, lightly modulated by TMDB quality (taste dominates).
   const candidates: Candidate[] = [...scored.values()].map(({ item, score }) => {
@@ -239,7 +245,7 @@ async function refreshUserType(
     computed_at: new Date().toISOString(),
   });
   if (error) throw error;
-  return true;
+  return { refreshed: true, succeeded: true, failed: seedFailed };
 }
 
 Deno.serve(async () => {
@@ -253,17 +259,26 @@ Deno.serve(async () => {
   );
 
   // Users with at least one favorite (single-user today, but kept generic).
-  const { data: favUsers } = await supabase.schema("watching").from("media_items")
-    .select("user_id").eq("favorite", true);
+  let favUsers: any[];
+  try {
+    favUsers = await fetchAllRows<any>((from, to) => supabase.schema("watching").from("media_items")
+      .select("user_id").eq("favorite", true).order("id").range(from, to));
+  } catch (error) {
+    return new Response(JSON.stringify({ ok: false, error: errMsg(error) }), { status: 500 });
+  }
   const userIds = [...new Set((favUsers ?? []).map((u: any) => u.user_id))] as string[];
 
   const types: MediaType[] = ["film", "serie", "anime"];
   let refreshed = 0;
+  let succeeded = 0;
   let errors = 0;
   for (const userId of userIds) {
     for (const type of types) {
       try {
-        if (await refreshUserType(supabase, tmdbKey, userId, type)) refreshed++;
+        const result = await refreshUserType(supabase, tmdbKey, userId, type);
+        if (result.refreshed) refreshed++;
+        if (result.succeeded) succeeded++;
+        errors += result.failed;
       } catch (e) {
         errors++;
         console.error("for-you refresh failed", userId, type, errMsg(e));
@@ -273,9 +288,9 @@ Deno.serve(async () => {
 
   // Nothing refreshed and everything threw (TMDB down, key dead): a 500, so the watchdog's
   // section B sees it instead of a 200 that says "ok" over a run that did nothing (17/09).
-  const dead = errors > 0 && refreshed === 0;
+  const result = batchOutcome(succeeded, errors);
   return new Response(
-    JSON.stringify({ ok: !dead, users: userIds.length, refreshed, errors }),
-    { status: dead ? 500 : 200, headers: { "Content-Type": "application/json" } },
+    JSON.stringify({ ...result, users: userIds.length, refreshed, errors }),
+    { status: result.status, headers: { "Content-Type": "application/json" } },
   );
 });

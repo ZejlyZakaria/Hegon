@@ -24,6 +24,7 @@ import { useWatchingGoals } from "../../hooks/useWatchingGoals";
 import { goalMetricLabel } from "../../lib/goal-contribution";
 import { Button } from "@/shared/components/ui/button";
 import { FilterSelect } from "@/shared/components/ui/filter-select";
+import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { Hint } from "@/shared/components/ui/tooltip";
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
@@ -241,19 +242,21 @@ function HoursCard({
 
 function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel: string | null; rating: number | null; seasonPoster: string | null }[] }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="rounded-card surface-card p-5">
       <div className="mb-4 flex items-center gap-2">
         <Trophy size={14} className="text-text-tertiary" />
         <p className="text-sm font-semibold text-text-primary">Top Picks</p>
+        {items.length > 0 && <Button variant="subtle" size="xs" className="ml-auto" onClick={() => setOpen(true)}>See all</Button>}
       </div>
 
       {items.length === 0 ? (
         <p className="text-sm text-text-tertiary/50">Rate or favorite items to see your top picks</p>
       ) : (
         <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
-          {items.map(({ item, seasonLabel, rating, seasonPoster }) => (
+          {items.slice(0, 6).map(({ item, seasonLabel, rating, seasonPoster }) => (
             <MediaRow
               key={item.id}
               /* Already a full URL — and it has to be: a cour's artwork comes from AniList, so
@@ -282,6 +285,11 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
           ))}
         </div>
       )}
+      <SlidingPanel open={open} onClose={() => setOpen(false)} title="Top Picks" icon={<Trophy size={15} />}>
+        <div className="p-4">
+          {items.map(({ item, seasonLabel, rating, seasonPoster }) => <MediaRow key={item.id} href={`/perso/watching/${item.id}`} posterUrl={seasonPoster ?? item.poster_url} title={displayTitle(item)} meta={<span className="text-micro text-text-tertiary">{[seasonLabel ?? item.year, rating != null ? Number(rating.toFixed(2)).toString() : null].filter((v) => v != null).join(" / ")}</span>} right={item.favorite ? <Heart size={10} className="fill-red-400 text-red-400" /> : undefined} />)}
+        </div>
+      </SlidingPanel>
     </div>
   );
 }

@@ -113,18 +113,18 @@ describe("buildMediaView — an overlaid anime: display is COURS", () => {
  * the missing episodes air, the clamp stops biting and you are credited with three you never saw.
  */
 describe("claimableEpisodes / claimableSeasons — you cannot claim what has not aired", () => {
-  const s = (episodes: number, aired: number) => ({ season: 1, episodes, aired, poster: null, endDate: null });
+  const s = (episodes: number, aired: number, airedKnown = true) => ({ season: 1, episodes, aired, airedKnown, poster: null, endDate: null });
 
   it("bounds on what AIRED, not on what was announced", () => {
     expect(claimableEpisodes(s(8, 5))).toBe(5);
   });
 
   it("falls back to the announcement only when nothing is known to have aired", () => {
-    expect(claimableEpisodes(s(8, 0))).toBe(8);
+    expect(claimableEpisodes(s(8, 0, false))).toBe(8);
   });
 
   it("is null — never 0 — when neither number exists, so the door stays usable", () => {
-    expect(claimableEpisodes(s(0, 0))).toBeNull();
+    expect(claimableEpisodes(s(0, 0, false))).toBeNull();
     expect(claimableEpisodes(undefined)).toBeNull();
   });
 
@@ -134,7 +134,7 @@ describe("claimableEpisodes / claimableSeasons — you cannot claim what has not
   });
 
   it("falls back to the announced count when the sync has never run", () => {
-    expect(claimableSeasons([s(10, 0), s(8, 0)])).toBe(2);
+    expect(claimableSeasons([s(10, 0, false), s(8, 0, false)])).toBe(2);
   });
 
   it("says zero when there is nothing at all — the caller supplies its own fallback", () => {
@@ -278,4 +278,14 @@ describe("the stamping functions, through the lens", () => {
     expect(withLens.season_years).toEqual(withoutLens.season_years);
     expect(withLens.current_episode).toBe(withoutLens.current_episode);
   });
+});
+
+it("keeps known zero aired ceilings and falls back only for unavailable metadata", () => {
+  const zero = buildMediaView(hotd({ season_episodes: [8], season_aired: [0] }), null);
+  expect(claimableEpisodes(zero.seasons[0])).toBe(0);
+  expect(claimableSeasons(zero.seasons)).toBe(0);
+  const unknown = buildMediaView(hotd({ season_episodes: [8], season_aired: null }), null);
+  expect(claimableEpisodes(unknown.seasons[0])).toBe(8);
+  const overlaidZero = buildMediaView(blueLock({ season_aired: [0] }), blueLockCours);
+  expect(overlaidZero.seasons.every((s) => s.aired === 0)).toBe(true);
 });

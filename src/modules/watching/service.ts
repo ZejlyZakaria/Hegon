@@ -1,4 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { priorityPageRanges, watchlistFilter } from "./lib/watchlist-page";
+import { isExperienced } from "./lib/person-experience";
+import { fetchAllRows } from "./lib/pagination";
+import { creditRole, isDirectorCredit } from "./lib/credit-roles";
+import { buildOwnedMap, tmdbKind, mediaIdentity, type OwnedMap } from "./lib/possession";
 
 import { downscaleImage } from "@/shared/utils/downscale-image";
 import { createClient } from "@/infrastructure/supabase/client";
@@ -179,7 +184,7 @@ export async function getLibraryMedia(
   client: Pick<SupabaseClient, "schema"> = createClient(),
 ): Promise<WatchingMedia[]> {
   const supabase = client;
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching")
     .from("media_items")
     .select(LIBRARY_COLUMNS)
@@ -187,8 +192,8 @@ export async function getLibraryMedia(
     // Everything you've engaged with — seen, seeing, paused, or abandoned. Reference
     // stubs have all these flags false, so they're excluded automatically.
     .or("watched.eq.true,in_progress.eq.true,dropped.eq.true,paused.eq.true")
-    .order("updated_at", { ascending: false });
-  if (error) throw error;
+    .order("updated_at", { ascending: false })
+    .order("id").range(from, to));
   return (data as unknown as WatchingMedia[]) ?? [];
 }
 
@@ -198,13 +203,13 @@ export async function getOwnedTmdbIds(userId: string, type: MediaType): Promise<
   // Guard: an empty user_id builds an invalid PostgREST filter (`user_id=eq.`) → 400.
   if (!userId) return [];
   const supabase = createClient();
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching")
     .from("media_items")
     .select("tmdb_id")
     .eq("user_id", userId)
-    .eq("type", type);
-  if (error) throw error;
+    .in("type", tmdbKind(type) === "movie" ? ["film"] : ["serie", "anime"])
+    .order("id").range(from, to));
   return (data ?? []).map((i: { tmdb_id: number }) => i.tmdb_id);
 }
 
@@ -236,7 +241,7 @@ export interface StatsRawItem {
    * exact with no storage depth to reason about. (Actors are now stored deep enough for an honest
    * rank too, but directors stay the cleaner ruler for a "titles by one filmmaker" badge.)
    */
-  directors: { id: number; name: string }[] | null;
+  directors: { id: number; name: string; role?: string }[] | null;
   // In-progress support — Hours Watched counts partially-watched series/anime too.
   // Paused/dropped shows keep their watched episodes → they still count real time.
   watched: boolean;
@@ -274,7 +279,7 @@ export interface StatsData {
 
 export async function getWatchingStatsData(userId: string): Promise<StatsData> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching")
     .from("media_items")
     .select("id, tmdb_id, type, title, original_title, poster_url, backdrop_url, year, runtime, status, caught_up_at, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, directors, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters, season_end_dates, cour_years, cour_ratings")
@@ -282,8 +287,8 @@ export async function getWatchingStatsData(userId: string): Promise<StatsData> {
     // Anything you spent time on — completed, watching, paused, or dropped. The
     // episodes you actually watched are real hours regardless of current status.
     .or("watched.eq.true,in_progress.eq.true,paused.eq.true,dropped.eq.true")
-    .neq("is_reference", true);
-  if (error) throw error;
+    .neq("is_reference", true)
+    .order("id").range(from, to));
   const items = (data ?? []) as StatsRawItem[];
 
   // ONE read for every anime on the page — the same batch the rails use. Without it this page
@@ -361,16 +366,17 @@ export async function getExistingMediaItem(
   tmdbId: number
 ) {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
     // `type` and `status` are what let resolveTransition stop GUESSING the outcome from the list you
     // came through. Without them it congratulated you on finishing a show that is still airing.
     .select("id, type, status, favorite, priority, watched, watched_at, in_progress, want_to_watch, paused, dropped, current_episode, current_season, season_episodes, season_aired, season_years, caught_up_at")
     .eq("user_id", userId)
-    .eq("type", type)
+    .in("type", tmdbKind(type) === "movie" ? ["film"] : ["serie", "anime"])
     .eq("tmdb_id", tmdbId)
-    .maybeSingle();
+    .order("is_reference").order("id").limit(1).maybeSingle();
+  if (error) throw error;
   return data;
 }
 
@@ -579,12 +585,12 @@ export interface OwnedStatusRow {
 export async function getOwnedStatus(userId: string): Promise<OwnedStatusRow[]> {
   if (!userId) return [];
   const supabase = createClient();
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching").from("media_items")
     .select("id, type, tmdb_id, want_to_watch, priority_level, release_date, status")
     .eq("user_id", userId)
-    .not("tmdb_id", "is", null);
-  if (error) throw error;
+    .not("tmdb_id", "is", null)
+    .order("id").range(from, to));
   return (data ?? []) as OwnedStatusRow[];
 }
 
@@ -722,13 +728,13 @@ export async function getForYouRecommendations(
 
 export async function getListItems(listId: string): Promise<MediaListItemWithMedia[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching")
     .from("media_list_items")
     .select("id, position, note, added_at, media_items(*)")
     .eq("list_id", listId)
-    .order("position", { ascending: true });
-  if (error) throw error;
+    .order("position", { ascending: true })
+    .order("id").range(from, to));
   return (data ?? [])
     .filter((d: any) => d.media_items)
     .map((d: any) => ({
@@ -830,22 +836,20 @@ export async function searchCatalogue(query: string): Promise<CatalogueResult[]>
  * index — it exists so a discover page can hand you straight to your REAL fiche, which has your
  * history, your rating and every action a stranger's copy cannot offer.
  */
-export async function findOwnedMediaId(userId: string, tmdbId: number): Promise<{ id: string; type: MediaType } | null> {
-  // POSSESSION IS DECIDED BY tmdb_id, NOT type. The type is a routing hint (`tmdbResultType` GUESSES
-  // it from genre/country) — two authorities for one fact. If it guessed "anime" while your row is a
-  // "serie", filtering `.eq("type")` misses your row, discover thinks the title is new, and the
-  // unique index (user_id, tmdb_id, type) happily lets a SECOND row of the same show be created.
-  // So we match on tmdb_id alone and return the type we found. A bare list stub (is_reference) is not
-  // "owned" — redirecting to it would land you on a fiche with no history.
+export async function findOwnedMediaId(userId: string, tmdbId: number, type: MediaType): Promise<{ id: string; type: MediaType } | null> {
+  // Match the provider namespace: movies are films, TV includes both series and anime.
+  // Classification inside TV never creates a second ownership identity; stubs are not owned.
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .schema("watching")
     .from("media_items")
     .select("id, type")
     .eq("user_id", userId)
     .eq("tmdb_id", tmdbId)
+    .in("type", tmdbKind(type) === "movie" ? ["film"] : ["serie", "anime"])
     .not("is_reference", "is", true)
-    .limit(1);
+    .order("id").limit(1);
+  if (error) throw error;
   return (data as { id: string; type: MediaType }[] | null)?.[0] ?? null;
 }
 
@@ -860,30 +864,24 @@ export async function findOwnedMediaId(userId: string, tmdbId: number): Promise<
  * there when you click, and the route is right the first time.
  *
  * Batched for the same reason `getAnimeCoursMany` is: one query per list, never one per row.
- * Possession is decided by tmdb_id alone and stubs don't count — see `findOwnedMediaId`, whose
+ * Possession is decided by provider kind + tmdb_id and stubs don't count — see `findOwnedMediaId`, whose
  * rules this shares exactly.
  */
 export async function findOwnedMediaIds(
   userId: string,
   tmdbIds: number[],
-): Promise<Record<number, { id: string; type: MediaType }>> {
+): Promise<OwnedMap> {
   if (!userId || tmdbIds.length === 0) return {};
   const supabase = createClient();
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching")
     .from("media_items")
     .select("id, type, tmdb_id")
     .eq("user_id", userId)
     .in("tmdb_id", tmdbIds)
-    .not("is_reference", "is", true);
-  if (error) throw error;
-  const out: Record<number, { id: string; type: MediaType }> = {};
-  // First row wins, mirroring the `.limit(1)` of the single lookup: a title stored twice under two
-  // types is a data problem, and picking a side here at least keeps both surfaces agreeing.
-  for (const r of (data as unknown as { id: string; type: MediaType; tmdb_id: number }[]) ?? []) {
-    if (!out[r.tmdb_id]) out[r.tmdb_id] = { id: r.id, type: r.type };
-  }
-  return out;
+    .not("is_reference", "is", true)
+    .order("id").range(from, to));
+  return buildOwnedMap((data ?? []) as { id: string; type: MediaType; tmdb_id: number }[]);
 }
 
 /**
@@ -1006,17 +1004,19 @@ export async function addTmdbItemToList(
 
   const type: MediaType = tmdbResultType(tmdbItem);
 
-  // Match by tmdb_id. A REAL tracked item links as-is; a bare `is_reference` stub
+  // Match by provider kind + tmdb_id. A REAL tracked item links as-is; a bare `is_reference` stub
   // (e.g. left over from a previous list add) gets re-enriched in place so it's never
   // reused with missing data.
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .schema("watching")
     .from("media_items")
     .select("id, is_reference")
     .eq("user_id", userId)
     .eq("tmdb_id", tmdbItem.id)
-    .maybeSingle();
+    .in("type", tmdbKind(type) === "movie" ? ["film"] : ["serie", "anime"])
+    .order("is_reference").order("id").limit(1).maybeSingle();
 
+  if (existingError) throw existingError;
   const existingId = (existing as any)?.id as string | undefined;
   const existingIsReference = (existing as any)?.is_reference === true;
 
@@ -1203,14 +1203,14 @@ async function tmdbFetch<T>(endpoint: string, params: Record<string, string> = {
 
 export async function getEpisodeHighlights(mediaItemId: string): Promise<EpisodeHighlight[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching")
     .from("episode_highlights")
     .select("*")
     .eq("media_item_id", mediaItemId)
     .order("season", { ascending: true })
-    .order("episode", { ascending: true });
-  if (error) throw error;
+    .order("episode", { ascending: true })
+    .order("id").range(from, to));
   return (data ?? []) as EpisodeHighlight[];
 }
 
@@ -1541,12 +1541,12 @@ export async function removeThemeFavorite(trackKey: string): Promise<void> {
 // media_items.watched_at). watchedOn = 'YYYY-MM-DD'.
 export async function getRewatches(mediaItemId: string): Promise<Rewatch[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching").from("rewatches")
     .select("id, media_item_id, watched_on, created_at")
     .eq("media_item_id", mediaItemId)
-    .order("watched_on", { ascending: false });
-  if (error) throw error;
+    .order("watched_on", { ascending: false })
+    .order("id").range(from, to));
   return (data ?? []) as Rewatch[];
 }
 
@@ -1575,11 +1575,11 @@ export async function removeRewatch(id: string): Promise<void> {
 export interface RewatchStatItem { media_item_id: string; watched_on: string; }
 export async function getRewatchStats(userId: string): Promise<RewatchStatItem[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching").from("rewatches")
     .select("media_item_id, watched_on")
-    .eq("user_id", userId);
-  if (error) throw error;
+    .eq("user_id", userId)
+    .order("id").range(from, to));
   return (data ?? []) as RewatchStatItem[];
 }
 
@@ -1666,6 +1666,8 @@ export interface PersonProfile {
 }
 
 export interface PersonCredit {
+  roles?: { role: string | null; department: "Acting" | "Directing" | "Creating" }[];
+  release_date?: string | null;
   tmdb_id: number;
   type: MediaType;          // tv→serie (anime is a user choice on add)
   title: string;
@@ -1675,7 +1677,7 @@ export interface PersonCredit {
   vote: number;
   popularity: number;
   role: string | null;      // character (acting) or job (directing)
-  department: "Acting" | "Directing";
+  department: "Acting" | "Directing" | "Creating";
 }
 
 const NOISE_GENRES = new Set([10767, 10763, 10764]); // Talk · News · Reality
@@ -1703,7 +1705,7 @@ export async function getPersonBundle(
     known_for_department: p.known_for_department || null,
   };
 
-  const toCredit = (c: any, role: string | null, dept: "Acting" | "Directing"): PersonCredit | null => {
+  const toCredit = (c: any, role: string | null, dept: "Acting" | "Directing" | "Creating"): PersonCredit | null => {
     const mt = c.media_type;
     if (mt !== "movie" && mt !== "tv") return null;
     const title = c.title || c.name;
@@ -1713,6 +1715,7 @@ export async function getPersonBundle(
     const date = c.release_date || c.first_air_date || "";
     return {
       tmdb_id: c.id,
+      release_date: date || null,
       type: mt === "movie" ? "film" : "serie",
       title,
       poster_url: `https://image.tmdb.org/t/p/w342${c.poster_path}`,
@@ -1722,21 +1725,26 @@ export async function getPersonBundle(
       popularity: c.popularity ?? 0,
       role,
       department: dept,
+      roles: [{ role, department: dept }],
     };
   };
 
   const cc = p.combined_credits ?? {};
   const acting: (PersonCredit | null)[] = (cc.cast ?? []).map((c: any) => toCredit(c, c.character || null, "Acting"));
   const directing: (PersonCredit | null)[] = (cc.crew ?? [])
-    .filter((c: any) => ["Director", "Creator", "Series Director"].includes(c.job))
-    .map((c: any) => toCredit(c, c.job || "Director", "Directing"));
+    .filter((c: any) => ["director", "creator"].includes(creditRole(c.job, c.media_type === "movie" ? "film" : "serie") ?? ""))
+    .map((c: any) => toCredit(c, c.job || "Director", creditRole(c.job, c.media_type === "movie" ? "film" : "serie") === "creator" ? "Creating" : "Directing"));
 
   // Same title can appear twice (or as both cast & crew) → keep the most-voted, then
   // most popular first.
-  const byId = new Map<number, PersonCredit>();
+  const byId = new Map<string, PersonCredit>();
   for (const c of [...acting, ...directing].filter(Boolean) as PersonCredit[]) {
-    const prev = byId.get(c.tmdb_id);
-    if (!prev || c.vote > prev.vote) byId.set(c.tmdb_id, c);
+    const prev = byId.get(mediaIdentity(c.type, c.tmdb_id));
+    if (!prev) byId.set(mediaIdentity(c.type, c.tmdb_id), c);
+    else {
+      const roles = [...(prev.roles ?? []), ...(c.roles ?? [])].filter((r, index, all) => all.findIndex((x) => x.role === r.role && x.department === r.department) === index);
+      byId.set(mediaIdentity(c.type, c.tmdb_id), { ...(c.vote > prev.vote ? c : prev), roles });
+    }
   }
   const credits = [...byId.values()].sort((a, b) => b.popularity - a.popularity);
 
@@ -1748,6 +1756,7 @@ export interface PersonRef {
   id?: number;
   name: string;
   character?: string | null;
+  role?: string | null;
   profile_url?: string | null;
 }
 
@@ -1795,12 +1804,12 @@ const PERSON_TITLE_COLUMNS =
 export async function getTitlesByPerson(userId: string, creditTmdbIds: number[]): Promise<PersonTitle[]> {
   if (!userId || creditTmdbIds.length === 0) return [];
   const supabase = createClient();
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching").from("media_items").select(PERSON_TITLE_COLUMNS)
     .eq("user_id", userId)
     .in("tmdb_id", creditTmdbIds)
-    .or("watched.eq.true,in_progress.eq.true,dropped.eq.true,paused.eq.true,want_to_watch.eq.true,favorite.eq.true");
-  if (error) throw error;
+    .or("watched.eq.true,in_progress.eq.true,dropped.eq.true,paused.eq.true,want_to_watch.eq.true,favorite.eq.true")
+    .order("id").range(from, to));
   return (data ?? []).map((r: any): PersonTitle => ({
     id: r.id, type: r.type, title: r.title, poster_url: r.poster_url, backdrop_url: r.backdrop_url,
     year: r.year, release_date: r.release_date ?? null, runtime: r.runtime, user_rating: r.user_rating, watched: r.watched,
@@ -1818,12 +1827,12 @@ export async function getTitlesByPerson(userId: string, creditTmdbIds: number[])
 export async function getRatingsForType(userId: string, type: MediaType): Promise<number[]> {
   if (!userId) return [];
   const supabase = createClient();
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching").from("media_items").select("user_rating")
     .eq("user_id", userId)
     .eq("type", type)
-    .not("user_rating", "is", null);
-  if (error) throw error;
+    .not("user_rating", "is", null)
+    .order("id").range(from, to));
   return (data ?? []).map((r: { user_rating: number }) => r.user_rating);
 }
 
@@ -1855,11 +1864,11 @@ export async function getPeopleCounts(userId: string): Promise<PeopleCounts> {
   if (!userId) return { actors, voiceActors, directing };
 
   const supabase = createClient();
-  const { data, error } = await supabase
-    .schema("watching").from("media_items").select("type, cast_members, directors")
+  const data = await fetchAllRows<any>((from, to) => supabase
+    .schema("watching").from("media_items").select("type, cast_members, directors, watched, in_progress, paused, dropped, release_date, year")
     .eq("user_id", userId)
-    .or("watched.eq.true,in_progress.eq.true,paused.eq.true,dropped.eq.true");
-  if (error) throw error;
+    .or("watched.eq.true,in_progress.eq.true,paused.eq.true,dropped.eq.true")
+    .order("id").range(from, to));
 
   // Mirror getPersonBundle's filmography curation: a "Self" / "(uncredited)" cast credit is NOT
   // shown on a person's filmography, so it must not inflate their rank either — the count has to
@@ -1870,6 +1879,7 @@ export async function getPeopleCounts(userId: string): Promise<PeopleCounts> {
     !!role && (SELF_ROLE.test(role) || UNCREDITED_ROLE.test(role));
 
   for (const row of (data ?? []) as any[]) {
+    if (!isExperienced(row)) continue;
     // A person can be listed twice on one title — count the title once per role
     // (an actor-director like Eastwood still counts in both buckets).
     const bump = (bucket: Record<number, PersonCount>, people: PersonRef[] | null, curate = false) => {
@@ -1885,7 +1895,7 @@ export async function getPeopleCounts(userId: string): Promise<PeopleCounts> {
       }
     };
     bump(row.type === "anime" ? voiceActors : actors, row.cast_members, true);
-    bump(directing, row.directors);
+    bump(directing, (row.directors ?? []).filter((p: PersonRef) => isDirectorCredit(p, row.type)));
   }
   return { actors, voiceActors, directing };
 }
@@ -1920,12 +1930,15 @@ export async function getAnimeCoursMany(
   const ids = [...new Set(tmdbIds.filter(Boolean))];
   if (ids.length === 0) return new Map();
   const supabase = createClient();
-  const { data, error } = await supabase
-    .schema("watching").from("anime_cours")
-    .select("tmdb_id, cours, source")
-    .in("tmdb_id", ids);
-  if (error) throw error;
-  const rows = (data ?? []) as import("./types").AnimeCoursRow[];
+  const rows: import("./types").AnimeCoursRow[] = [];
+  // Bounded ID batches keep URLs small; each batch still pages through all matching rows.
+  // eslint-disable-next-line no-restricted-syntax -- Bounded batches of 200 IDs plus Range pagination, never one query per item.
+  for (let start = 0; start < ids.length; start += 200) {
+    rows.push(...await fetchAllRows<import("./types").AnimeCoursRow>((from, to) => supabase
+      .schema("watching").from("anime_cours")
+      .select("tmdb_id, cours, source")
+      .in("tmdb_id", ids.slice(start, start + 200)).order("tmdb_id").range(from, to)));
+  }
   return new Map(rows.map((r) => [r.tmdb_id, r]));
 }
 
@@ -2067,12 +2080,12 @@ export const OWNED_INDEX_COLUMNS =
 export async function getOwnedTitles(userId: string): Promise<OwnedIndexRow[]> {
   if (!userId) return [];
   const supabase = createClient();
-  const { data, error } = await supabase
+  const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching").from("media_items")
     .select(OWNED_INDEX_COLUMNS)
     .eq("user_id", userId)
-    .not("is_reference", "is", true);
-  if (error) throw error;
+    .not("is_reference", "is", true)
+    .order("id").range(from, to));
   return (data as unknown as OwnedIndexRow[]) ?? [];
 }
 
@@ -2087,4 +2100,41 @@ export async function getMediaItemsByIds(ids: string[]): Promise<WatchingMedia[]
   if (error) throw error;
   const by = new Map(((data as unknown as WatchingMedia[]) ?? []).map((r) => [r.id, r]));
   return ids.map((id) => by.get(id)).filter((r): r is WatchingMedia => !!r);
+}
+
+export interface WatchlistPageOptions { sort: "added" | "priority" | "title" | "year"; level: "all" | "high" | "medium" | "low"; search: string }
+export async function getWatchlistPage(userId: string, type: MediaType, options: WatchlistPageOptions, offset: number) {
+  const build = () => {
+    let query = createClient().schema("watching").from("media_items").select(SECTION_COLUMNS, { count: "exact" })
+      .eq("user_id", userId).eq("type", type).eq("want_to_watch", true);
+    if (options.level !== "all") query = query.eq("priority_level", options.level);
+    const filter = watchlistFilter(options.search, type === "film" ? RELEASED() : null);
+    if (filter) query = query.or(filter);
+    if (options.sort === "title") query = query.order("title");
+    if (options.sort === "year") query = query.order("year", { ascending: false, nullsFirst: false });
+    return query.order("updated_at", { ascending: false }).order("id");
+  };
+  if (options.sort === "priority" && options.level === "all") {
+    const bucket = (level: string | null) => level == null ? build().is("priority_level", null) : build().eq("priority_level", level);
+    const levels = ["high", "medium", "low", null];
+    // eslint-disable-next-line no-restricted-syntax -- Four fixed priority buckets, not one request per media; rows remain paginated to 50.
+    const counts = await Promise.all(levels.map(async (level) => {
+      const { count, error } = await bucket(level).limit(0);
+      if (error) throw error;
+      return count ?? 0;
+    }));
+    const ranges = priorityPageRanges(counts, offset);
+    const pages = levels.map((level, index) => {
+      const range = ranges[index];
+      return !range ? Promise.resolve([] as WatchingMedia[]) : Promise.resolve(bucket(level).range(range.from, range.to)).then(({ data, error }) => {
+        if (error) throw error;
+        return (data ?? []) as unknown as WatchingMedia[];
+      });
+    });
+    return { items: (await Promise.all(pages)).flat(), total: counts.reduce((sum, n) => sum + n, 0) };
+  }
+  const query = build();
+  const { data, count, error } = await query.range(offset, offset + 49);
+  if (error) throw error;
+  return { items: (data ?? []) as unknown as WatchingMedia[], total: count ?? 0 };
 }

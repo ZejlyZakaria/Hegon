@@ -1,5 +1,7 @@
 "use client";
 
+import { creditRoleLabel, followDepartment } from "../../lib/credit-roles";
+
 import { useEffect, useRef, useState } from "react";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
@@ -50,10 +52,10 @@ export function CastCrewSkeleton() {
 interface Props {
   cast: CastMember[];
   directors: CreditedDirector[];
-  isSeries: boolean;
+  type: "film" | "serie" | "anime";
 }
 
-export function CastCrew({ cast, directors, isSeries }: Props) {
+export function CastCrew({ cast, directors, type }: Props) {
   const railRef = useRef<HTMLDivElement>(null);
   const [n, setN] = useState(8);
   const [page, setPage] = useState(0);
@@ -68,10 +70,10 @@ export function CastCrew({ cast, directors, isSeries }: Props) {
 
   const crew = directors
     .filter((d, i, arr) => arr.findIndex((x) => x.name === d.name) === i)
-    .map((d) => ({ id: d.id, name: d.name, src: d.profile_url, subtitle: isSeries ? "Creator" : "Director" }));
+    .map((d) => ({ id: d.id, name: d.name, src: d.profile_url, subtitle: creditRoleLabel(d.role), knownFor: followDepartment(d.role, type, false) }));
   const people = [
     ...crew,
-    ...cast.slice(0, Math.max(0, MAX_TOTAL - crew.length)).map((p) => ({ id: p.id, name: p.name, src: p.profile_url, subtitle: p.character })),
+    ...cast.slice(0, Math.max(0, MAX_TOTAL - crew.length)).map((p) => ({ id: p.id, name: p.name, src: p.profile_url, subtitle: p.character, knownFor: followDepartment(null, type, true) })),
   ];
   const pages = Math.max(1, Math.ceil(people.length / n));
   const current = Math.min(page, pages - 1);
@@ -101,7 +103,7 @@ export function CastCrew({ cast, directors, isSeries }: Props) {
         style={{ scrollbarWidth: "none" }}
       >
         {people.map((person, i) => (
-          <PersonFace key={`${person.name}-${i}`} id={person.id} name={person.name} src={person.src} subtitle={person.subtitle} knownFor={person.subtitle === "Director" || person.subtitle === "Creator" ? "Directing" : "Acting"} style={style} />
+          <PersonFace key={`${person.name}-${i}`} id={person.id} name={person.name} src={person.src} subtitle={person.subtitle} knownFor={person.knownFor} style={style} />
         ))}
       </div>
     </section>

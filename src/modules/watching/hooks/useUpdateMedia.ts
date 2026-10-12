@@ -1,5 +1,6 @@
+import { hasAnyField, ANALYTICAL_FIELDS, PEOPLE_FIELDS, PERSON_FIELDS, WATCHLIST_FIELDS } from "../lib/mutation-dependencies";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { WATCHING_KEYS } from "./query-keys";
+import { WATCHING_KEYS, PEOPLE_KEYS } from "./query-keys";
 import { updateMediaItem } from "../service";
 import { syncWatchingGoals } from "../lib/sync-goals";
 import { syncWatchingHabits } from "../lib/sync-habits";
@@ -16,11 +17,7 @@ const STATUS_FIELDS = ["watched", "in_progress", "want_to_watch", "is_reference"
 
 // Any field whose change can move a number on the Stats page (counts, hours, ratings, genres, top
 // picks, activity). Notes are the only common edit that does NOT affect Stats.
-const STATS_FIELDS = [
-  "watched", "in_progress", "want_to_watch", "is_reference",
-  "user_rating", "favorite", "watched_at", "season_years", "season_ratings",
-  "current_season", "current_episode",
-] as const;
+
 
 export function useUpdateMedia() {
   const queryClient = useQueryClient();
@@ -92,7 +89,7 @@ export function useUpdateMedia() {
     onSuccess: (_, rawInput) => {
       const input = rawInput;
       const { id } = input;
-      const isStatusChange = STATUS_FIELDS.some((f) => input[f] != null);
+      const isStatusChange = hasAnyField(input, STATUS_FIELDS);
 
       // Only the type that actually moved. A caller that doesn't say falls back to all three —
       // correct, just wasteful, so nothing breaks while surfaces adopt it.
@@ -109,7 +106,7 @@ export function useUpdateMedia() {
        * titles left the badges correct and the positions wrong until a full reload.
        * `priority` sits in neither STATUS_FIELDS nor the section invalidations, so it needs saying.
        */
-      if (input.priority !== undefined) {
+      if (hasAnyField(input, ["priority", "favorite"])) {
         for (const type of touched) {
           queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.topRated(type), refetchType: "all" });
         }
@@ -140,7 +137,7 @@ export function useUpdateMedia() {
 
       // A season/episode progress change must refresh the In Progress carousels so
       // their progress bar reflects the new position (status change already does).
-      if (!isStatusChange && (input.current_season != null || input.current_episode != null)) {
+      if (!isStatusChange && hasAnyField(input, ["current_season", "current_episode"])) {
         for (const type of touched) {
           queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.inProgress(type) });
         }
@@ -150,17 +147,23 @@ export function useUpdateMedia() {
       // any of those change (prefix-match invalidates the per-user stats key). Keeps
       // Stats honest after a rating or Watch-History edit, not only after the
       // optimistic patch. Notes-only saves are skipped.
-      if (STATS_FIELDS.some((f) => input[f] != null)) {
+      if (hasAnyField(input, ANALYTICAL_FIELDS)) {
         queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "stats"] });
+        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "library"] });
       }
 
-      // Artwork (poster/backdrop) is neither a status nor a stat FIELD, but HEGON shows every edit
-      // everywhere at once. The optimistic patch already repoints the array caches (sections,
-      // library, detail); this covers the reads it can't reach — Stats' Top Picks & Wrapped are a
-      // COMPUTED object, and the person page's titles are keyed by tmdb_id, not row id.
-      if (input.poster_url !== undefined || input.backdrop_url !== undefined) {
-        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "stats"] });
+      if (!isStatusChange && hasAnyField(input, WATCHLIST_FIELDS)) {
+        for (const type of touched) queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.wantToWatch(type), refetchType: "all" });
+      }
+      if (hasAnyField(input, PERSON_FIELDS)) {
         queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "by-person"] });
+      }
+      if (hasAnyField(input, PEOPLE_FIELDS)) {
+        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "people-counts"] });
+        queryClient.invalidateQueries({ queryKey: [...PEOPLE_KEYS.all, "ranking"] });
+      }
+      if (hasAnyField(input, ["user_rating"])) {
+        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "ratings"] });
       }
     },
   });

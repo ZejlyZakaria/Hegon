@@ -18,17 +18,17 @@ export function useOwnedTmdbIds(userId: string, type: MediaType, enabled = true)
 
 /**
  * Your row for one tmdb_id — how a discover page knows to hand you to your real fiche. Matched by
- * tmdb_id ALONE (see findOwnedMediaId): the type is not part of possession, so a title stored under
+ * provider kind + tmdb_id (see findOwnedMediaId): serie/anime classification is not possession, so a title stored under
  * the "wrong" type is still found and never duplicated. Returns `{ id, type }` (the type actually
  * stored) so the caller can route correctly.
  *
  * Kept under WATCHING_KEYS.all ON PURPOSE: an add invalidates that namespace with refetchType:"all",
  * so this refetches right after you add a title and the redirect fires.
  */
-export function useOwnedMediaId(userId: string, tmdbId: number, enabled = true) {
+export function useOwnedMediaId(userId: string, tmdbId: number, type: MediaType, enabled = true) {
   return useQuery({
-    queryKey: [...WATCHING_KEYS.all, "owned-row", tmdbId],
-    queryFn: () => findOwnedMediaId(userId, tmdbId),
+    queryKey: [...WATCHING_KEYS.all, "owned-row", type === "film" ? "movie" : "tv", tmdbId],
+    queryFn: () => findOwnedMediaId(userId, tmdbId, type),
     staleTime: STALE.TWO_MINUTES,
     enabled: enabled && !!userId && tmdbId > 0,
   });

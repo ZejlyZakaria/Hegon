@@ -93,7 +93,7 @@ export default function DiscoverDetailPage() {
   // ── Already yours? Then this page is the wrong one: the real fiche has your history, your
   //    rating and every action. Send you there instead of showing a stranger's copy.
   const { data: ownedIds = [] } = useOwnedTmdbIds(userId ?? "", mediaType, !!userId);
-  const { data: ownedRow, isLoading: ownedLoading } = useOwnedMediaId(userId ?? "", id, !!userId);
+  const { data: ownedRow, isLoading: ownedLoading } = useOwnedMediaId(userId ?? "", id, mediaType, !!userId);
   const queryClient = useQueryClient();
   useEffect(() => {
     if (!ownedRow) return;
@@ -397,7 +397,7 @@ export default function DiscoverDetailPage() {
           {creditsLoading ? (
             <CastCrewSkeleton />
           ) : (cast.length > 0 || directors.length > 0) ? (
-            <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
+            <CastCrew cast={cast} directors={directors} type={mediaType} />
           ) : null}
 
           {recommendations.length > 0 && (

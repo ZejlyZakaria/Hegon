@@ -41,6 +41,8 @@ export interface ViewSeason {
   episodes: number;
   /** Episodes that have actually AIRED — the only source for progress decisions. */
   aired: number;
+  /** False means unavailable metadata; a known zero must never use announced episodes. */
+  airedKnown?: boolean;
   /** Absolute URL (AniList cour) or a TMDB path fragment (plain season). */
   poster: string | null;
   /** When the season finished airing — floors the year picker. */
@@ -60,21 +62,21 @@ export interface ViewSeason {
  * `HowFarDidYouGet` was already asking `aired` sixty lines below. One screen, two answers to one
  * question, and the one that let you overclaim was the one with a text input under it.
  *
- * The fallback is deliberate and narrow: when NOTHING is known to have aired (a payload still in
+ * The fallback is deliberate and narrow: only when airing metadata is unavailable (a payload still in
  * flight, or a row the sync has never reached) the announcement is all we have, and a ceiling of
  * zero would shut the door rather than protect it.
  */
 export function claimableEpisodes(season: ViewSeason | undefined): number | null {
   if (!season) return null;
-  if (season.aired > 0) return season.aired;
+  if (season.airedKnown !== false) return season.aired;
   return season.episodes > 0 ? season.episodes : null;
 }
 
-/** The last season you may claim: the last one with something aired, else the last announced. */
+/** The last season you may claim: the last one with something aired, else the last announced with unknown airing metadata. */
 export function claimableSeasons(seasons: ViewSeason[]): number {
   const lastAired = seasons.reduce((last, s, i) => (s.aired > 0 ? i + 1 : last), 0);
   if (lastAired > 0) return lastAired;
-  return seasons.reduce((last, s, i) => (s.episodes > 0 ? i + 1 : last), 0);
+  return seasons.reduce((last, s, i) => (s.airedKnown === false && s.episodes > 0 ? i + 1 : last), 0);
 }
 
 export type MediaViewSource = Pick<
@@ -159,6 +161,7 @@ export function buildMediaView(
       season: i + 1,
       episodes,
       aired: ov.seasonAired[i] ?? 0,
+      airedKnown: media.season_aired != null,
       poster: ov.seasonPosters[i] ?? null,
       endDate: ov.seasonEndDates[i] ?? null,
     }));
@@ -196,11 +199,12 @@ export function buildMediaView(
   // here, so a row that knows what aired but not what was announced produced a view with ZERO
   // seasons — and a caller that trusts the lens (stats does now) would then count nothing at all.
   // The announcement still wins when present: it is the fuller list.
-  const announced = media.season_episodes ?? media.season_aired ?? [];
+  const announced = Array.from({ length: Math.max(media.season_episodes?.length ?? 0, media.season_aired?.length ?? 0) }, (_, i) => media.season_episodes?.[i] ?? media.season_aired?.[i] ?? 0);
   const seasons: ViewSeason[] = announced.map((episodes, i) => ({
     season: i + 1,
     episodes: episodes ?? 0,
     aired: (media.season_aired ?? [])[i] ?? 0,
+    airedKnown: media.season_aired?.[i] != null,
     poster: (media.season_posters ?? [])[i] ?? null,
     endDate: (media.season_end_dates ?? [])[i] ?? null,
   }));

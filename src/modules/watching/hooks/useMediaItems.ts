@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { WATCHING_KEYS } from "./query-keys";
-import { countMediaItems, getMediaItems } from "../service";
-import type { GetMediaOptions } from "../service";
+import { countMediaItems, getMediaItems, getWatchlistPage } from "../service";
+import type { GetMediaOptions, WatchlistPageOptions } from "../service";
 import type { WatchingMedia, MediaType } from "../types";
 import { STALE } from "@/shared/lib/stale";
 
@@ -61,5 +61,20 @@ export function useMediaCount({ userId, type, enabled = true, ...options }: UseM
     staleTime: STALE.TWO_MINUTES,
     gcTime: STALE.HALF_HOUR,
     enabled,
+  });
+}
+
+export function useWatchlistPages(userId: string, type: MediaType, options: WatchlistPageOptions, enabled: boolean) {
+  return useInfiniteQuery({
+    queryKey: [...WATCHING_KEYS.watchlistAll(type), userId, options],
+    queryFn: ({ pageParam }) => getWatchlistPage(userId, type, options, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => {
+      const loaded = pages.reduce((sum, page) => sum + page.items.length, 0);
+      return loaded < last.total ? loaded : undefined;
+    },
+    enabled: enabled && !!userId,
+    staleTime: STALE.TWO_MINUTES,
+    gcTime: STALE.HALF_HOUR,
   });
 }

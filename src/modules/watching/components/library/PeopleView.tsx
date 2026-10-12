@@ -38,7 +38,7 @@ import type { PersonUpcomingRow, RankingKind } from "@/modules/watching/types";
  * thousand directors in one payload (owner, 2026-09-17).
  */
 
-const DEPT_LABEL: Record<string, string> = { Acting: "Actor", Directing: "Director", Writing: "Writer", Production: "Producer" };
+const DEPT_LABEL: Record<string, string> = { Creating: "Creator", "Voice Acting": "Voice actor", Acting: "Actor", Directing: "Director", Writing: "Writer", Production: "Producer" };
 const RAIL_MAX = 20;
 const GAP = 16;
 function perView(w: number) { return w < 640 ? 4 : w < 768 ? 6 : w < 1280 ? 8 : 10; }

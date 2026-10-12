@@ -1,0 +1,172 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { runInNewContext } from "node:vm";
+import ts from "typescript";
+import { describe, expect, it } from "vitest";
+import { fetchAllRows } from "./pagination";
+import { batchOutcome } from "../../../../supabase/functions/_shared/batch-outcome";
+import { creditRole } from "./credit-roles";
+
+// Execute the real Deno entrypoints; only provider transport and database boundaries are faked.
+type Row = Record<string, unknown>;
+type Query = { table: string; op: string; values?: Row | Row[]; person?: number; from: number; to: number };
+type Reply = { data: Row[] | null; error: unknown };
+function database(run: (q: Query) => Reply) {
+  return { schema() { return this; }, from(table: string) {
+    const q: Query = { table, op: "select", from: 0, to: 999 };
+    const chain = {
+      select() { return this; }, order() { return this; }, not() { return this; }, gte() { return this; },
+      eq(key: string, value: number) { if (key === "person_tmdb_id") q.person = value; return this; },
+      range(from: number, to: number) { q.from = from; q.to = to; return this; },
+      delete() { q.op = "delete"; return this; },
+      upsert(values: Row | Row[]) { q.op = "upsert"; q.values = values; return this; },
+      update(values: Row) { q.op = "update"; q.values = values; return this; },
+      then(done: (r: Reply) => unknown, fail?: (e: unknown) => unknown) { return Promise.resolve().then(() => run(q)).then(done, fail); },
+    };
+    return chain;
+  } };
+}
+function handler(name: string, db: ReturnType<typeof database>, fetcher: (url: string, init?: RequestInit) => Promise<Response>) {
+  let serve!: (req: Request) => Promise<Response>;
+  const source = readFileSync(resolve(`supabase/functions/${name}/index.ts`), "utf8");
+  const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const dependencies: Record<string, unknown> = {
+    "https://esm.sh/@supabase/supabase-js@2": { createClient: () => db },
+    "../_shared/retry.ts": { fetchWithRetry: fetcher, errMsg: (e: unknown) => e instanceof Error ? e.message : String(e) },
+    "../_shared/pagination.ts": { fetchAllRows }, "../_shared/batch-outcome.ts": { batchOutcome },
+    "../_shared/credit-roles.ts": { creditRole },
+    // Unreleased-title refresh is a separate job, outside these person-cache regressions.
+    "./unreleased.ts": { refreshUnreleased: async () => ({ scanned: 0, updated: 0, failed: 0 }) },
+  };
+  runInNewContext(js, {
+    exports: {}, require: (id: string) => { if (!(id in dependencies)) throw new Error(`Unexpected import ${id}`); return dependencies[id]; },
+    Deno: { env: { get: () => "test" }, serve: (fn: typeof serve) => { serve = fn; } },
+    Response, Request, console: { error() {} }, setTimeout: (fn: () => void) => { fn(); return 0; },
+  });
+  return async (body = {}) => {
+    const response = await serve(new Request("https://test.invalid", { method: "POST", body: JSON.stringify(body) }));
+    return { status: response.status, body: await response.json() };
+  };
+}
+const json = (body: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status }));
+const oldCour = { tmdb_id: 1, cours: [{ season: 1, episodes: 10 }], source: "anilist", resolved_at: "2020-01-01" };
+const valid = { data: { Page: { media: [{ id: 101, episodes: 10, startDate: { year: 2022 }, endDate: { year: 2022 }, title: { english: "Anime", romaji: null }, coverImage: null }] } } };
+function anime(responses: unknown[], mapped = true, mappingFailure?: "http" | "shape") {
+  const cache = new Map(responses.map((_, i) => [i + 1, { ...oldCour, tmdb_id: i + 1 }]));
+  const writes: Query[] = [];
+  let providerCalls = 0;
+  const db = database((q) => {
+    if (q.op === "upsert") { writes.push(q); const row = q.values as typeof oldCour; cache.set(row.tmdb_id, row); return { data: null, error: null }; }
+    const rows = q.table === "media_items" ? responses.map((_, i) => ({ tmdb_id: i + 1, title: `Anime ${i}`, status: "ongoing", episodes: 10 })) : [...cache.values()];
+    return { data: rows.slice(q.from, q.to + 1), error: null };
+  });
+  const run = handler("watching-anime-cours-sync", db, (url, init) => {
+    if (url.includes("githubusercontent")) {
+      if (mappingFailure === "http") return json([], 503);
+      if (mappingFailure === "shape") return json({ error: "Unavailable" });
+      return json(mapped ? responses.map((_, i) => ({ type: "TV", themoviedb_id: { tv: i + 1 }, anilist_id: 101 + i })) : []);
+    }
+    providerCalls++;
+    const id = JSON.parse(String(init?.body)).variables.ids[0];
+    const body = responses[id - 101];
+    return body === "malformed JSON" ? Promise.resolve(new Response("{")) : json(body);
+  });
+  return { run, cache, writes, providerCalls: () => providerCalls };
+}
+describe("AniList actual handler", () => {
+  it.each(["http", "shape"] as const)("preserves cache on mapping %s failure", async (failure) => {
+    const h = anime([valid], true, failure);
+    expect((await h.run()).status).toBe(500);
+    expect(h.writes).toHaveLength(0);
+    expect(h.cache.get(1)).toEqual(oldCour);
+    expect(h.providerCalls()).toBe(0);
+  });
+  it("writes validated provider data", async () => {
+    const h = anime([valid]);
+    expect(await h.run()).toMatchObject({ status: 200, body: { resolved: 1, failed: 0, ok: true } });
+    expect(h.cache.get(1)?.cours).toEqual([expect.objectContaining({ anilist_id: 101, episodes: 10 })]);
+  });
+  it("accepts an explicitly empty Page.media as a legitimate mismatch", async () => {
+    const h = anime([{ data: { Page: { media: [] } } }]);
+    expect(await h.run()).toMatchObject({ status: 200, body: { mismatch: 1, failed: 0 } });
+    expect(h.cache.get(1)).toMatchObject({ source: "mismatch", cours: [] });
+  });
+  it("keeps no mapping distinct from a failed AniList request", async () => {
+    const h = anime([valid], false);
+    expect(await h.run()).toMatchObject({ status: 200, body: { none: 1, failed: 0 } });
+    expect(h.providerCalls()).toBe(0);
+    expect(h.cache.get(1)?.source).toBe("none");
+  });
+  it.each([
+    { errors: [{ message: "Unavailable" }] },
+    { ...valid, errors: [{ message: "Partial GraphQL failure" }] },
+    null, {}, { data: null }, { data: { Page: {} } }, { data: { Page: { media: {} } } },
+    { data: { Page: { media: [null] } } }, { errors: "invalid", ...valid }, "malformed JSON",
+  ])("rejects semantic/malformed responses and preserves the old cache: %j", async (body) => {
+    const h = anime([body]);
+    expect(await h.run()).toMatchObject({ status: 500, body: { failed: 1, ok: false, outcome: "failure" } });
+    expect(h.writes).toHaveLength(0);
+    expect(h.cache.get(1)).toEqual(oldCour);
+  });
+  it("reports partial failure and writes only the valid item", async () => {
+    const h = anime([valid, { errors: [{ message: "Failed" }] }]);
+    expect(await h.run()).toMatchObject({ status: 207, body: { resolved: 1, failed: 1, outcome: "partial" } });
+    expect(h.writes).toHaveLength(1);
+    expect(h.cache.get(2)).toEqual({ ...oldCour, tmdb_id: 2 });
+  });
+  it("reports complete substantive failure across multiple items", async () => {
+    const h = anime([{}, { errors: [{ message: "Failed" }] }]);
+    expect(await h.run()).toMatchObject({ status: 500, body: { failed: 2 } });
+    expect(h.writes).toHaveLength(0);
+  });
+});
+function people(seasonFailure = false, profileFailure = false, primaryFailure = false) {
+  const old = { person_tmdb_id: 1, tmdb_id: 10, media_type: "tv", season_number: 2, synced_at: "2020-01-01" };
+  let cache: Row[] = [old];
+  const writes: Query[] = [];
+  const db = database((q) => {
+    if (q.op === "select") return { data: [{ person_tmdb_id: 1 }], error: null };
+    writes.push(q);
+    if (q.table === "person_upcoming" && q.person === 1 && q.op === "delete") cache = [];
+    if (q.table === "person_upcoming" && q.op === "upsert") cache = q.values as Row[];
+    return { data: null, error: null };
+  });
+  const run = handler("watching-people-sync", db, (url) => {
+    if (url.includes("combined_credits")) return primaryFailure ? json({}, 503) : json({ cast: [
+      seasonFailure ? { id: 10, media_type: "tv", name: "Returning", first_air_date: "2020-01-01", episode_count: 3 }
+        : { id: 20, media_type: "movie", title: "Upcoming", release_date: "2030-01-01", character: "Lead" },
+    ] });
+    if (url.includes("/tv/")) return json({}, 503);
+    return profileFailure ? json({}, 503) : json({ name: "Person", known_for_department: "Acting" });
+  });
+  return { run, cache: () => cache, old, writes };
+}
+describe("People actual handler", () => {
+  it("reports success after upcoming and profile writes", async () => {
+    const h = people();
+    expect(await h.run()).toMatchObject({ status: 200, body: { rows: 1, succeeded: 2, failed: [], secondaryFailures: [] } });
+    const profile = h.writes.find((q) => q.table === "person_follows" && q.op === "update");
+    expect(profile?.values).not.toHaveProperty("known_for"); // Retain creator/voice follow metadata.
+  });
+  it("reports partial success when upcoming writes succeed and profile refresh fails", async () => {
+    const h = people(false, true);
+    expect(await h.run()).toMatchObject({ status: 207, body: { rows: 1, succeeded: 1, failed: [], outcome: "partial" } });
+    expect(h.cache()[0].tmdb_id).toBe(20);
+  });
+  it("retains the old upcoming slice and timestamp after a secondary season failure", async () => {
+    const h = people(true);
+    expect(await h.run()).toMatchObject({ status: 207, body: { rows: 0, succeeded: 1, retained: [1], outcome: "partial" } });
+    expect(h.cache()).toEqual([h.old]);
+    expect(h.writes.filter((q) => q.table === "person_upcoming" && (q.person === 1 || q.op === "upsert"))).toHaveLength(0);
+  });
+  it("reports failure when the retained slice is the only attempted substantive refresh", async () => {
+    const h = people(true);
+    expect(await h.run({ person: 1 })).toMatchObject({ status: 500, body: { rows: 0, succeeded: 0, retained: [1] } });
+    expect(h.cache()).toEqual([h.old]);
+  });
+  it("preserves cache on primary failure and reports complete failure", async () => {
+    const h = people(false, false, true);
+    expect(await h.run()).toMatchObject({ status: 500, body: { failed: [1], succeeded: 0 } });
+    expect(h.cache()).toEqual([h.old]);
+  });
+});

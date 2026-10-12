@@ -1,5 +1,9 @@
 "use client";
 
+import { mediaIdentity } from "@/modules/watching/lib/possession";
+
+import { experienceSummary } from "@/modules/watching/lib/person-experience";
+
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -101,14 +105,8 @@ export default function PersonPage() {
 
   // ── Your relationship with this person ──
   const owned = yourTitles.length;
-  const total = credits.length;
-  const watched = yourTitles.filter((t) => t.watched);
-  // The count the rank is built from, and the one the "Watched" stat shows — ONE rule, so a shared
-  // rank is verifiable: real screen time (watched · in progress · paused · dropped), the same set
-  // `getPeopleCounts` ranks by. `watched` (finished only) stays for the rating-based insights below.
-  const watchedIn = yourTitles.filter((t) => t.watched || t.in_progress || t.paused || t.dropped);
-  const rated = yourTitles.filter((t) => t.user_rating != null);
-  const avgRating = rated.length ? rated.reduce((s, t) => s + (t.user_rating ?? 0), 0) / rated.length : null;
+  const total = credits.filter((c) => (!c.release_date || c.release_date <= new Date().toISOString().slice(0, 10)) && (!c.year || c.year <= new Date().getFullYear())).length;
+  const { experienced: watchedIn, completed: watched, rated, avgRating } = experienceSummary(yourTitles);
   const top = rated.length ? rated.reduce((a, b) => ((b.user_rating ?? 0) > (a.user_rating ?? 0) ? b : a)) : null;
 
   const ownedKeys = new Set(yourTitles.map((t) => `${kind(t.type)}:${t.tmdb_id}`));
@@ -127,7 +125,8 @@ export default function PersonPage() {
   const journey = {
     owned, total, watchedCount: watchedIn.length, avgRating,
     // Top 10 = a priority rank (one Top 10 per type), NOT the favorite heart.
-    topTen: yourTitles.filter((t) => t.priority != null).length,
+    topTen: watchedIn.filter((t) => t.priority != null).length,
+    completedCount: watched.length,
   };
 
   // ── Your [name]: rank in your library + the two titles that define your relationship ──
@@ -289,7 +288,7 @@ export default function PersonPage() {
                       // Once added, the title leaves this grid for "Your titles" on its own (the by-person
                       // query refetches), wearing the bookmark.
                       <div
-                        key={c.tmdb_id}
+                        key={mediaIdentity(c.type, c.tmdb_id)}
                         role="button"
                         tabIndex={0}
                         onClick={() => openAdd(c)}

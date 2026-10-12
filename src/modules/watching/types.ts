@@ -69,7 +69,7 @@ export interface WatchingMedia {
   // status/progress edit, so it could never date a review.
   note_updated_at?: string | null;
   tags: string[];
-  directors?: { id?: number; name: string; profile_url?: string }[];
+  directors?: { id?: number; name: string; profile_url?: string; role?: string }[];
   // Cast cached from TMDB (top ~12) so the detail page renders Cast & Crew from
   // the DB with no extra TMDB call. Matches CastMember from useMediaCredits.
   cast_members?: { id: number; name: string; character: string | null; profile_url: string | null }[];

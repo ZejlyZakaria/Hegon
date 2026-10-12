@@ -3,7 +3,8 @@
 import { Panel } from "@/shared/components/ui/panel";
 import { useRewatches } from "../../hooks/useRewatches";
 import { useRatingStanding } from "../../hooks/useRatingPercentile";
-import { airedCount, lastWatched, reachedEntries, seriesState, watchedCount } from "../../lib/series-state";
+import { episodeCountsForTime, hasEstimatedEpisodeCounts } from "../../lib/episode-counts";
+import { lastWatched, reachedEntries, seriesState, watchedCount } from "../../lib/series-state";
 import type { MediaView } from "../../lib/media-view";
 import type { WatchingMedia } from "../../types";
 
@@ -65,7 +66,9 @@ export function QuickStats({ media, view }: { media: WatchingMedia; view?: Media
   // a third implementation of it, next to the canonical one and the Stats page's (which counted
   // the announced). Three copies of "how many episodes have I watched" is how one screen ends up
   // disagreeing with the next about the same title.
-  const airedEps = airedCount(media);
+  const timeCounts = episodeCountsForTime(media);
+  const airedEps = timeCounts.reduce((sum, n) => sum + n, 0);
+  const estimated = hasEstimatedEpisodeCounts(media);
   // A TOTAL, and totals are invariant across the two spaces: cutting one flat season of 59 into
   // three cours does not change how many episodes exist. This is the same reason components/stats
   // is exempt from the guard entirely — it counts, it does not locate.
@@ -74,7 +77,7 @@ export function QuickStats({ media, view }: { media: WatchingMedia; view?: Media
   const totalEps = announcedList.reduce((a, b) => a + b, 0) || media.episodes || airedEps;
 
   const engaged = media.in_progress || media.paused || media.dropped;
-  const watchedEps = !isSeries ? 0 : media.watched ? airedEps : engaged ? watchedCount(media) : 0;
+  const watchedEps = !isSeries ? 0 : media.watched ? airedEps : engaged ? watchedCount({ ...media, season_aired: timeCounts }) : 0;
 
   // Runtime on a series is PER EPISODE — multiplying it by the whole show would be nonsense.
   // A rewatch replays what EXISTS, not what's been announced: you can't rewatch episode 8 of a
@@ -122,9 +125,9 @@ export function QuickStats({ media, view }: { media: WatchingMedia; view?: Media
 
   const rows = [
     totalEps > 0 && (watchedEps > 0 || media.watched)
-      ? { label: "Episodes watched", value: `${watchedEps} / ${totalEps}` }
+      ? { label: estimated ? "Estimated episodes watched" : "Episodes watched", value: `${watchedEps} / ${totalEps}` }
       : null,
-    minutes > 0 ? { label: "Watch time", value: hours(minutes) } : null,
+    minutes > 0 ? { label: estimated ? "Estimated watch time" : "Watch time", value: hours(minutes) } : null,
     rewatches.length > 0 ? { label: "Rewatches", value: rewatches.length } : null,
     firstYear && spansYears ? { label: "Started", value: firstYear } : null,
     spansYears

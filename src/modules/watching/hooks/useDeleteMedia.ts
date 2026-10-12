@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { WATCHING_KEYS } from "./query-keys";
+import { WATCHING_KEYS, PEOPLE_KEYS } from "./query-keys";
 import { deleteMediaItem } from "../service";
 import { syncWatchingGoals } from "../lib/sync-goals";
 import { toast } from "@/shared/utils/toast";
@@ -20,6 +20,7 @@ export function useDeleteMedia() {
       // the detail route must leave the main-page carousels fresh on Back (Next's
       // Router Cache would otherwise restore them stale). Mirrors useUpdateMedia.
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all, refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: [...PEOPLE_KEYS.all, "ranking"] });
       void syncWatchingGoals(queryClient);
     },
     onError: (error) => {

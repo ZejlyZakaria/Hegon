@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Bookmark } from "lucide-react";
+import { Button } from "@/shared/components/ui/button";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
@@ -9,13 +10,13 @@ import { FilterSelect } from "@/shared/components/ui/filter-select";
 import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
 import { WatchlistMark } from "@/modules/watching/components/shared/Marks";
 import { watchlistLevel } from "@/modules/watching/components/shared/StatusBadge";
-import { useMediaItems } from "@/modules/watching/hooks/useMediaItems";
-import type { MediaType, WatchingMedia } from "@/modules/watching/types";
+import { useWatchlistPages } from "@/modules/watching/hooks/useMediaItems";
+import type { MediaType } from "@/modules/watching/types";
 
 /**
  * THE WHOLE WATCHLIST — what the rail is a window on.
  *
- * Its own query, uncapped (the rail's 20 and the page's old 50 both hid titles; a list you cannot
+ * Its own paginated query (the rail's 20 and the page's old 50 both hid titles; a list you cannot
  * see is a list you forget), and the two things a long list needs: a way to order it and a way to
  * narrow it. Nothing here writes — a row opens the fiche, where every action lives.
  */
@@ -29,23 +30,6 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: "title", label: "Title" },
   { value: "year", label: "Year" },
 ];
-const RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
-
-function sortBy(items: WatchingMedia[], sort: Sort): WatchingMedia[] {
-  const out = [...items];
-  switch (sort) {
-    case "priority":
-      // High first; unprioritised last; ties keep the query's recency.
-      return out.sort((a, b) => (RANK[a.priority_level ?? ""] ?? 3) - (RANK[b.priority_level ?? ""] ?? 3));
-    case "title":
-      return out.sort((a, b) => a.title.localeCompare(b.title));
-    case "year":
-      return out.sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
-    default:
-      return out; // the query's own order: most recently added first
-  }
-}
-
 export function WatchlistPanel({
   open, onClose, userId, type,
 }: {
@@ -59,16 +43,9 @@ export function WatchlistPanel({
   const [q, setQ] = useState("");
 
   // Fetched only while the panel is open — the rail never pays for the list it doesn't show.
-  const { data: items = [], isLoading } = useMediaItems({ userId, type, wantToWatch: true, released: true, enabled: open });
-
-  const rows = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    const kept = items.filter((it) =>
-      (level === "all" || it.priority_level === level)
-      && (!needle || it.title.toLowerCase().includes(needle) || (it.original_title ?? "").toLowerCase().includes(needle)),
-    );
-    return sortBy(kept, sort);
-  }, [items, level, q, sort]);
+  const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } = useWatchlistPages(userId, type, { sort, level, search: q }, open);
+  const rows = data?.pages.flatMap((page) => page.items) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
 
   const noun = type === "film" ? "films" : type === "serie" ? "shows" : "animes";
 
@@ -80,7 +57,7 @@ export function WatchlistPanel({
       title={
         <h2 className="flex min-w-0 items-baseline gap-2 text-sm font-semibold text-text-primary">
           <span className="shrink-0">Want to Watch</span>
-          {!isLoading && <span className="font-normal tabular-nums text-text-tertiary">{items.length} {noun}</span>}
+          {!isLoading && <span className="font-normal tabular-nums text-text-tertiary">{total} {noun}</span>}
         </h2>
       }
     >
@@ -122,9 +99,9 @@ export function WatchlistPanel({
                 </li>
               ))}
             </ul>
-          ) : rows.length === 0 ? (
+          ) : isError && rows.length === 0 ? <p className="py-8 text-center text-xs text-text-tertiary">Could not load your watchlist. Please try again.</p> : rows.length === 0 ? (
             <p className="py-8 text-center text-xs text-text-tertiary">
-              {items.length === 0 ? "Nothing on your watchlist yet." : "Nothing matches."}
+              {q.trim() || level !== "all" ? "Nothing matches." : "Nothing on your watchlist yet."}
             </p>
           ) : (
             <ul>
@@ -145,6 +122,7 @@ export function WatchlistPanel({
               ))}
             </ul>
           )}
+          {hasNextPage && <Button variant="subtle" size="sm" className="mt-3" disabled={isFetchingNextPage} onClick={() => void fetchNextPage()}>{isFetchingNextPage ? "Loading..." : "See more"}</Button>}
         </div>
       </div>
     </SlidingPanel>

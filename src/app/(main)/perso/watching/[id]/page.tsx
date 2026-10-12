@@ -360,7 +360,7 @@ export default function MediaDetailPage() {
 
   const directors =
     credits?.directors ??
-    media.directors?.map((d) => ({ id: d.id ?? -1, name: d.name, profile_url: d.profile_url ?? null })) ??
+    media.directors?.map((d) => ({ id: d.id ?? -1, name: d.name, role: d.role === "director" || d.role === "creator" || d.role === "production" ? d.role : media.type === "film" ? "director" as const : undefined, profile_url: d.profile_url ?? null })) ??
     [];
   const cast = hasStoredCast ? (media.cast_members ?? []) : (credits?.cast ?? []);
   const hasCastCrew = cast.length > 0 || directors.length > 0;
@@ -471,7 +471,7 @@ export default function MediaDetailPage() {
           {creditsLoading ? (
             <CastCrewSkeleton />
           ) : hasCastCrew ? (
-            <CastCrew cast={cast} directors={directors} isSeries={isSeries} />
+            <CastCrew cast={cast} directors={directors} type={media.type} />
           ) : null}
 
           {recommendations.length > 0 && (

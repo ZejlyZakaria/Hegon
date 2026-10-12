@@ -9,6 +9,7 @@ export interface JourneyStats {
   owned: number;       // in your library, any status — gates the empty state
   total: number;
   watchedCount: number;
+  completedCount: number;
   avgRating: number | null;
   topTen: number;      // how many of your Top 10s (one per type) are theirs
 }
@@ -50,7 +51,7 @@ export function PersonJourney({ stats }: { stats: JourneyStats }) {
       ) : (
         <>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <MiniStat label="Watched">{watchedCount}</MiniStat>
+            <MiniStat label="Experienced">{watchedCount}</MiniStat>
             <MiniStat label="Avg rating">
               {avgRating != null ? (
                 <>
@@ -80,9 +81,10 @@ export function PersonJourney({ stats }: { stats: JourneyStats }) {
 
           <div className="my-3 h-px bg-white/10" />
           <div className="flex items-center justify-between text-label text-white/70">
-            <span className="inline-flex items-center gap-1.5"><Clapperboard size={12} /> Filmography</span>
+            <span className="inline-flex items-center gap-1.5"><Clapperboard size={12} /> Released filmography</span>
             <span className="tabular-nums text-white">{watchedCount} / {total}</span>
           </div>
+          <p className="mt-1 text-micro text-white/60">{stats.completedCount} completed; partial viewing included</p>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-black/25">
             <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: TEAL }} />
           </div>

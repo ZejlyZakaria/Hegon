@@ -1,3 +1,4 @@
+import { creditRole, type CreditRole } from "../lib/credit-roles";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery } from "@tanstack/react-query";
 import { TMDB_KEYS } from "./query-keys";
@@ -13,6 +14,7 @@ export interface CastMember {
 }
 
 export interface CreditedDirector {
+  role?: CreditRole;
   id: number;
   name: string;
   profile_url: string | null;
@@ -48,23 +50,18 @@ export function mapCredits(details: any, type: MediaType): MediaCredits {
         : null,
     }));
 
-  // Movies credit "Director"; series credit "Creator" / "Executive Producer".
-  const directorJobs =
-    type === "film"
-      ? ["Director"]
-      : ["Creator", "Series Director", "Executive Producer"];
-
   const seen = new Set<number>();
-  const directors: CreditedDirector[] = rawCrew
-    .filter((person) => directorJobs.includes(person.job))
+  const directors: CreditedDirector[] = [...rawCrew, ...(details?.created_by ?? []).map((p: any) => ({ ...p, job: "Creator" }))]
+    .filter((person) => ["director", "creator"].includes(creditRole(person.job, type) ?? ""))
+    .sort((a, b) => Number(creditRole(b.job, type) === "director") - Number(creditRole(a.job, type) === "director"))
     .filter((person) => {
       if (seen.has(person.id)) return false;
       seen.add(person.id);
       return true;
     })
-    .slice(0, 3)
     .map((person) => ({
       id: person.id,
+      role: creditRole(person.job, type) as CreditRole,
       name: person.name,
       profile_url: person.profile_path
         ? `https://image.tmdb.org/t/p/w185${person.profile_path}`

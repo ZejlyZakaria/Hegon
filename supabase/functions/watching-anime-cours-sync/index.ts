@@ -1,3 +1,5 @@
+import { fetchAllRows } from "../_shared/pagination.ts";
+import { batchOutcome } from "../_shared/batch-outcome.ts";
 // ANIME V2 — the AniList season overlay, kept fresh.
 //
 // `anime_cours` is a photograph of the day it was resolved. Seasons are announced, they air, and new
@@ -50,7 +52,23 @@ async function anilistByIds(ids: number[]): Promise<any[]> {
   });
   if (res.status === 429) throw new RateLimited();
   if (!res.ok) throw new Error(`AniList ${res.status}`);
-  return (await res.json()).data?.Page?.media ?? [];
+  const body = await res.json();
+  const object = (v: any) => v !== null && typeof v === "object" && !Array.isArray(v);
+  if (!object(body) || (body.errors != null && (!Array.isArray(body.errors) || body.errors.length > 0))) {
+    throw new Error("AniList invalid response or GraphQL errors");
+  }
+  const media = body.data?.Page?.media;
+  if (!object(body.data) || !object(body.data.Page) || !Array.isArray(media)) {
+    throw new Error("AniList missing Page.media");
+  }
+  if (media.some((m: any) => !object(m) || !Number.isInteger(m.id)
+    || !(m.episodes === null || (Number.isInteger(m.episodes) && m.episodes > 0))
+    || !object(m.startDate) || !(m.endDate === null || object(m.endDate))
+    || !object(m.title) || !(typeof m.title.english === "string" || typeof m.title.romaji === "string")
+    || !(m.coverImage === null || object(m.coverImage)))) {
+    throw new Error("AniList invalid media record");
+  }
+  return media;
 }
 
 /** Order by air date, cumulative-sum the episodes → each cour's TMDB flat-episode range. */
@@ -91,22 +109,20 @@ Deno.serve(async () => {
   try {
     // ── The candidates: every anime SOMEBODY owns. Driving from media_items means an anime that has
     //    been deleted everywhere simply stops being asked about, with no GC job to write.
-    const { data: rows, error: rowsErr } = await supabase
+    const rows = await fetchAllRows<any>((from, to) => supabase
       .from("media_items")
       .select("tmdb_id,title,status,episodes")
       .eq("type", "anime")
       .eq("is_reference", false)
-      .not("tmdb_id", "is", null);
-    if (rowsErr) throw rowsErr;
+      .not("tmdb_id", "is", null).order("id").range(from, to));
 
     const shows = new Map<number, { title: string; status: string | null; episodes: number | null }>();
     for (const r of rows ?? []) {
       if (!shows.has(r.tmdb_id)) shows.set(r.tmdb_id, { title: r.title, status: r.status, episodes: r.episodes });
     }
 
-    const { data: existing, error: exErr } = await supabase
-      .from("anime_cours").select("tmdb_id,resolved_at");
-    if (exErr) throw exErr;
+    const existing = await fetchAllRows<any>((from, to) => supabase
+      .from("anime_cours").select("tmdb_id,resolved_at").order("tmdb_id").range(from, to));
     const resolvedAt = new Map<number, number>();
     for (const c of existing ?? []) {
       resolvedAt.set(c.tmdb_id, c.resolved_at ? new Date(c.resolved_at).getTime() : 0);
@@ -131,7 +147,10 @@ Deno.serve(async () => {
 
     // ── The mapping (tmdb_id → AniList ids). Fetched once per run, and it is what DISCOVERS a new
     //    season: a new cour is a new AniList id we have never seen.
-    const fribb: any[] = await (await fetchWithRetry(FRIBB)).json();
+    const mappingResponse = await fetchWithRetry(FRIBB);
+    if (!mappingResponse.ok) throw new Error(`Anime mapping ${mappingResponse.status}`);
+    const fribb: any[] = await mappingResponse.json();
+    if (!Array.isArray(fribb)) throw new Error("Anime mapping invalid response");
     const idsFor = (tmdbId: number) => {
       const out = new Set<number>();
       for (const e of fribb) {
@@ -148,8 +167,8 @@ Deno.serve(async () => {
       const stamp = new Date().toISOString();
 
       if (ids.length === 0) {
-        none++;
-        await supabase.from("anime_cours").upsert({ tmdb_id: tmdbId, cours: [], source: "none", resolved_at: stamp });
+        const { error } = await supabase.from("anime_cours").upsert({ tmdb_id: tmdbId, cours: [], source: "none", resolved_at: stamp });
+        if (error) { failed++; log.push(`${info.title}: ${error.message}`); } else none++;
         continue;
       }
 
@@ -157,7 +176,7 @@ Deno.serve(async () => {
       try {
         media = await anilistByIds(ids);
       } catch (e) {
-        if (e instanceof RateLimited) { rateLimited = true; log.push("· AniList rate-limited — stopping, the cron will resume"); break; }
+        if (e instanceof RateLimited) { failed += batch.length - resolved - mismatch - none - failed; rateLimited = true; log.push("· AniList rate-limited — stopping, the cron will resume"); break; }
         failed++; log.push(`✗ ${info.title}: ${errMsg(e)}`);
         continue;
       }
@@ -170,19 +189,20 @@ Deno.serve(async () => {
       // overlay would put the wrong episodes in the wrong season — so it is stored, and NOT trusted.
       const ok = info.episodes == null || sum === info.episodes;
       const source = ok ? "anilist" : "mismatch";
-      ok ? resolved++ : mismatch++;
 
       const { error: upErr } = await supabase
         .from("anime_cours").upsert({ tmdb_id: tmdbId, cours, source, resolved_at: stamp });
       if (upErr) { failed++; log.push(`✗ ${info.title}: ${upErr.message}`); continue; }
 
+      ok ? resolved++ : mismatch++;
       if (!ok) log.push(`⚠ ${info.title}: AniList ${sum} ≠ TMDB ${info.episodes} → flat fallback`);
       else log.push(`· ${info.title}: ${cours.length} season(s), ${sum} ep`);
     }
 
+    const result = batchOutcome(resolved + mismatch + none, failed);
     return new Response(
-      JSON.stringify({ ok: true, shows: batch.length, resolved, mismatch, none, failed, rateLimited, log }),
-      { headers: { "Content-Type": "application/json" } },
+      JSON.stringify({ ...result, shows: batch.length, resolved, mismatch, none, failed, rateLimited, log }),
+      { status: result.status, headers: { "Content-Type": "application/json" } },
     );
   } catch (e) {
     return new Response(JSON.stringify({ error: errMsg(e) }), {

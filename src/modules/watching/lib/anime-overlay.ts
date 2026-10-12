@@ -1,3 +1,4 @@
+import { episodeCountsForTime } from "./episode-counts";
 // =====================================================
 // ANIME V2 — the AniList season overlay, in ONE place (pure, testable).
 // =====================================================
@@ -96,8 +97,7 @@ export type OverlaySource = Pick<
 export function buildOverlay(media: OverlaySource, cours: AnimeCour[]): OverlayView {
   // Episodes ACTUALLY AIRED across the whole show (TMDB truth), used to split aired-per-cour.
   const flatAired =
-    (media.season_aired ?? media.season_episodes ?? []).reduce((a, b) => a + (b ?? 0), 0) ||
-    (media.episodes ?? 0);
+    episodeCountsForTime(media).reduce((sum, n) => sum + n, 0);
 
   const seasonEpisodes: number[] = [];
   const seasonAired: number[] = [];
