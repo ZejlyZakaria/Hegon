@@ -18,6 +18,7 @@ import type { MediaView } from "../lib/media-view";
 import { insertMediaSchema, toColumns, updateMediaSchema } from "../schemas/media.schema";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
+import { buildWatchedAtProjection } from "../lib/watched-date";
 import type { ListType, MediaType } from "../types";
 
 interface AddMediaInput {
@@ -39,6 +40,7 @@ interface AddMediaInput {
   customPosterUrl?: string | null;
   genres: string[];
   watchedAt?: string | null;
+  historyDate?: { year: number; month: number | null; day: number | null } | null;
   /**
    * HOW FAR YOU GOT — for a series, the ONLY honest input. `null` = "not started".
    * The list you came from no longer decides your status; this does. See below.
@@ -59,6 +61,7 @@ export function useAddMedia() {
   const isDemo = useIsDemo();
 
   return useMutation({
+    retry: false,
     mutationFn: async (input: AddMediaInput) => {
       if (isDemo) throw new DemoReadOnlyError();
       const userId = await getCurrentUserId();
@@ -133,7 +136,7 @@ export function useAddMedia() {
       // landed in LIMBO — in your library, in no rail, reading "Want to Watch" on its own page.
       const claim = addStatusPatch(
         listContext,
-        { position: position ?? null, stance, facts: claimFacts, watchedAt },
+        { position: position ?? null, stance, facts: claimFacts, watchedAt: input.historyDate ? buildWatchedAtProjection(input.historyDate) : watchedAt },
         defaultType,
         view,
       );
@@ -156,6 +159,8 @@ export function useAddMedia() {
           : null);
 
       const insertData = {
+        history_date: input.historyDate,
+        history_intent: "claim",
         user_id: userId,
         type: defaultType,
         // THE STATUS, WHOLE, FROM ONE PLACE. Every flag, the position, `caught_up_at`, `watched_at`
@@ -259,7 +264,7 @@ export function useAddMedia() {
       // wrote a POSITION without recomputing `caught_up_at`: precisely the write the gate exists to
       // refuse, performed by the hook that documents it.
       const guarded = (patch: Record<string, unknown>) =>
-        updateMediaItem(existing!.id, toColumns(updateMediaSchema.parse({ id: existing!.id, type: defaultType, ...patch })));
+        updateMediaItem(existing!.id, toColumns(updateMediaSchema.parse({ id: existing!.id, type: defaultType, ...patch, expected_revision: existing!.personal_revision, history_date: input.historyDate, history_intent: "claim" })));
 
       switch (transition.action) {
         /**
@@ -324,13 +329,13 @@ export function useAddMedia() {
         // recentlyWatched, library, wantToWatch onto an existing entry. The row is rebuilt whole,
         // so the INSERT barrier is the right shape — and the same three invariants apply.
         case "update:merge": {
-          const updateData: Record<string, unknown> = { ...insertData };
+          const updateData: Record<string, unknown> = { ...insertData, type: existing!.type };
           if (existing!.priority != null) {
             updateData.priority = existing!.priority;
             updateData.favorite = true;
           }
           insertMediaSchema.parse(updateData);
-          return updateMediaItem(existing!.id, updateData);
+          return updateMediaItem(existing!.id, { ...updateData, expected_revision: existing!.personal_revision });
         }
 
         // no existing entry → fresh insert

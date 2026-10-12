@@ -84,3 +84,23 @@ describe("Actual review UI regressions", () => {
     ]);
   });
 });
+
+
+describe("Wave 2A rewatch precision input", () => {
+  it.each([[2022, null, "2022"], [2022, 8, "2022-08"]] as const)("submits year %s month %s without fabricating a day", (year,month,expected) => {
+    const values = [year,month];
+    let call = 0;
+    let submitted: string | undefined;
+    const loaded = component("src/modules/watching/components/detail/StatusCard.tsx", {
+      react: { useState: () => [values[call++], () => {}] },
+    }, "RewatchDatePicker, fmtDate");
+    const picker = loaded.RewatchDatePicker as (props: unknown) => unknown;
+    const button = elements(picker({ releaseISO: "2000-01-01", pending: false, onCancel() {}, onAdd: (input: string) => { submitted = input; } }))
+      .find(e => e.props["aria-label"] === "Add rewatch");
+    expect(button?.props.disabled).toBe(false);
+    (button?.props.onClick as () => void)();
+    expect(submitted).toBe(expected);
+    const format = loaded.fmtDate as (input: string) => string;
+    expect(format(expected)).toBe(month === null ? "2022" : "Aug 2022");
+  });
+});

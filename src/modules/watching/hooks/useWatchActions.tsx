@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateMedia } from "./useUpdateMedia";
 import { useMediaView } from "./useMediaView";
@@ -34,6 +35,7 @@ import { reportError } from "@/shared/utils/report-error";
 type Target =
   | (StatusFacts & {
       id: string;
+      personal_revision?: number;
       tmdb_id?: number;
       season_posters?: (string | null)[] | null;
       season_end_dates?: (string | null)[] | null;
@@ -61,6 +63,8 @@ type Target =
  */
 export function useWatchActions(media: Target, presetView?: MediaView | null) {
   const updateMedia = useUpdateMedia();
+  // Toast Undo retains its closure; carry the revision returned by this hook's own write.
+  const ownRevision = useRef<{ id: string; value: number } | null>(null);
   const queryClient = useQueryClient();
 
   /**
@@ -110,7 +114,7 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
     });
   };
 
-  const write = async (patch: StatusPatch | null, message: string): Promise<StatusPatch | null> => {
+  const write = async (patch: StatusPatch | null, message: string, intent: "viewing" | "correction" | "claim" = "claim", expectedRevision?: number): Promise<(StatusPatch & { personal_revision?: number }) | null> => {
     if (!media || !patch) return null;
     // The goals a completion would count towards — started now, only on that path, served from the
     // cache when a goals surface already holds them fresh. Its failure is its own (reported, R8),
@@ -123,10 +127,17 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
     try {
       // `type` never reaches the database — it scopes the invalidations, so pausing an anime
       // stops refetching the film carousels.
-      await updateMedia.mutateAsync({ id: media.id, type: media.type, ...patch });
+      const now = new Date();
+      const revision = expectedRevision ?? (ownRevision.current?.id === media.id
+        ? Math.max(ownRevision.current.value, media.personal_revision ?? 0) : media.personal_revision);
+      const saved = await updateMedia.mutateAsync({
+        id: media.id, type: media.type, ...patch, expected_revision: revision, history_intent: intent,
+        ...(intent === "viewing" ? { history_date: { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() } } : {}),
+      });
+      if (saved.personal_revision !== undefined) ownRevision.current = { id: media.id, value: saved.personal_revision };
       if (patch.watched === true) rippleWatched(await goalsP);
       else if (message) toast(message);
-      return patch;
+      return { ...patch, personal_revision: saved.personal_revision };
     } catch (err) {
       // The demo guard toasts on its own; useUpdateMedia rolls the optimistic update back.
       if (!isDemoReadOnlyError(err)) toast.error("Failed to update.");
@@ -192,7 +203,7 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
      * false claim for another.
      */
     setPosition: (season: number, episode: number, kind: "viewing" | "correction", message = "") =>
-      media ? write(positionPatch(media, season, episode, kind, view), message) : Promise.resolve(null),
+      media ? write(positionPatch(media, season, episode, kind, view), message, kind) : Promise.resolve(null),
 
     /**
      * UNDO IS NOT A CORRECTION — and the toast is the only caller that can tell them apart.
@@ -215,11 +226,11 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
      * surface never selected the column and does not KNOW — writing null on that would erase a real
      * date to undo a mis-tap. A surface that cannot answer simply doesn't get asked.
      */
-    undoPosition: (season: number, episode: number, lastWatchedAt?: string | null) => {
+    undoPosition: (season: number, episode: number, lastWatchedAt?: string | null, expectedRevision?: number) => {
       if (!media) return Promise.resolve(null);
       const patch = positionPatch(media, season, episode, "correction", view);
       if (!patch) return Promise.resolve(null);
-      return write(lastWatchedAt === undefined ? patch : { ...patch, last_watched_at: lastWatchedAt }, "");
+      return write(lastWatchedAt === undefined ? patch : { ...patch, last_watched_at: lastWatchedAt }, "", "correction", expectedRevision);
     },
   };
 }

@@ -31,7 +31,7 @@
 
 import { stampSeasons, seasonRange } from "./season-years";
 import { RESET_STATUS } from "./status-flags";
-import { buildWatchedAt } from "./watched-date";
+import { buildWatchedAtProjection } from "./watched-date";
 import {
   caughtUpAt,
   hasReachedSeason,
@@ -117,7 +117,7 @@ export function maxYear(map: Record<string, number> | null | undefined): number 
 
 /** `watched_at` for a series, from its finish year — or `now` when we have no year (finishing live). */
 function dateFromFinishYear(year: number | null): string {
-  return year ? buildWatchedAt({ year, month: null, day: null }) : new Date().toISOString();
+  return year ? buildWatchedAtProjection({ year, month: null, day: null }) : new Date().toISOString();
 }
 
 /**
@@ -200,7 +200,7 @@ export function markWatchedPatch(m: StatusFacts, view?: MediaView | null): Statu
   // WHEN did you watch it — and for a series that is NOT the moment you clicked. The truth is the
   // year you finished the last season (`season_years`), so `watched_at` follows it: a show you
   // finished in 2014 gets a 2014 timestamp, not "now", and it no longer sits atop Recently Watched
-  // with a "2 weeks ago" badge. `buildWatchedAt` maps the current year back to `now`, so finishing
+  // with a "2 weeks ago" badge. `buildWatchedAtProjection` maps the current year back to `now`, so finishing
   // something today still stamps today. A film keeps `now` (the date picker refines it).
   const watchedAt = isSeries ? dateFromFinishYear(maxYear(seasonYears ?? sp.map)) : new Date().toISOString();
 
@@ -581,7 +581,7 @@ export function positionPatch(
       ? {
           watched: true, in_progress: false, want_to_watch: false, is_reference: false, ...RESET_STATUS,
           // Same as markWatchedPatch: a series is finished WHEN its last season aired, not when you
-          // corrected the record. The finish year (from season_years) dates it; buildWatchedAt maps
+          // corrected the record. The finish year (from season_years) dates it; buildWatchedAtProjection maps
           // the current year back to now.
           watched_at: dateFromFinishYear(maxYear(seasonYears ?? sp.map)),
         }

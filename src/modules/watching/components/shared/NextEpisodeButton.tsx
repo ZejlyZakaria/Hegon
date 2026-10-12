@@ -111,7 +111,7 @@ export function NextEpisodeButton({ item, view }: { item: WatchingMedia; view?: 
           //
           // The DATE, though, does come back: this is a cancellation, not a later fix, so the title
           // must not stay at the top of Last Watched for an episode you just said you hadn't seen.
-          onClick: () => { void actions.undoPosition(from.season, from.episode, from.lastWatchedAt); },
+          onClick: () => { void actions.undoPosition(from.season, from.episode, from.lastWatchedAt, patch.personal_revision); },
         },
       },
     );

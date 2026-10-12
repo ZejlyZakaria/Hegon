@@ -61,6 +61,9 @@ export interface WatchingMedia {
   watch_status?: WatchStatus;
   favorite: boolean;
   watched_at: string | null;
+  personal_revision?: number;
+  history_version?: 0 | 1;
+  viewing_date?: { year: number; month: number | null; day: number | null } | null;
   priority: number | null;  
   priority_level?: "high" | "medium" | "low"; 
   tmdb_id: number;
@@ -226,7 +229,7 @@ export interface AnimeCoursRow {
 export interface Rewatch {
   id: string;
   media_item_id: string;
-  watched_on: string;  // 'YYYY-MM-DD'
+  watched_on: string;  // UI: YYYY / YYYY-MM / YYYY-MM-DD; legacy rows retain their date projection.
   created_at: string;
 }
 

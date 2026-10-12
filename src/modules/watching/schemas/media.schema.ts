@@ -6,6 +6,9 @@ import { z } from "zod";
 
 const updateMediaFields = z.object({
   id: z.string(),
+  expected_revision: z.number().int().nonnegative().optional(),
+  history_date: z.object({ year: z.number().int(), month: z.number().int().nullable(), day: z.number().int().nullable() }).nullable().optional(),
+  history_intent: z.enum(["viewing", "correction", "claim"]).optional(),
   /**
    * ROUTING METADATA — never written to the database, and stripped before the update.
    *

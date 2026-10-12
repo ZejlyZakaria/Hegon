@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { assertion, captureHistory, parseViewingInput, viewingDate, type HistoryMetadata, type StoredViewingAssertion } from "./lib/viewing-history";
+import { buildWatchedAtProjection } from "./lib/watched-date";
 import { priorityPageRanges, watchlistFilter } from "./lib/watchlist-page";
 import { isExperienced } from "./lib/person-experience";
 import { fetchAllRows } from "./lib/pagination";
@@ -96,7 +98,7 @@ export async function uploadCustomPoster(file: File): Promise<string | null> {
 // `tmdb_id`, which the lens needed and this list didn't carry — a surface can't speak about a fact
 // it never selected.)
 const SECTION_COLUMNS =
-  "id, type, tmdb_id, title, original_title, poster_url, backdrop_url, year, release_date, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, last_watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
+  "id, personal_revision, type, tmdb_id, title, original_title, poster_url, backdrop_url, year, release_date, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, last_watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
 
 export async function getMediaItems(
   userId: string,
@@ -170,7 +172,7 @@ export async function getMediaItems(
 // `priority_level` and `release_date` for its watchlist BOOKMARK (violet while the title is not
 // out, then the priority's colour, white when none — the same rule as every poster).
 export const LIBRARY_COLUMNS =
-  "id, type, priority, title, original_title, poster_url, favorite, year, release_date, user_rating, watched_at, updated_at, tags, watched, in_progress, want_to_watch, priority_level, dropped, drop_reason, paused, current_season, current_episode, status, season_episodes, season_aired, season_years, caught_up_at";
+  "id, personal_revision, type, priority, title, original_title, poster_url, favorite, year, release_date, user_rating, watched_at, updated_at, tags, watched, in_progress, want_to_watch, priority_level, dropped, drop_reason, paused, current_season, current_episode, status, season_episodes, season_aired, season_years, caught_up_at";
 
 /**
  * The ONE library read, for both callers. `/library` is the module's single server-rendered page
@@ -282,7 +284,7 @@ export async function getWatchingStatsData(userId: string): Promise<StatsData> {
   const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching")
     .from("media_items")
-    .select("id, tmdb_id, type, title, original_title, poster_url, backdrop_url, year, runtime, status, caught_up_at, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, directors, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters, season_end_dates, cour_years, cour_ratings")
+    .select("id, personal_revision, tmdb_id, type, title, original_title, poster_url, backdrop_url, year, runtime, status, caught_up_at, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, directors, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters, season_end_dates, cour_years, cour_ratings")
     .eq("user_id", userId)
     // Anything you spent time on — completed, watching, paused, or dropped. The
     // episodes you actually watched are real hours regardless of current status.
@@ -324,30 +326,52 @@ export async function getRecentWatchedActivity(
     .map((r: { type: string; watched_at: string }) => ({ type: r.type, watched_at: r.watched_at }));
 }
 
-export async function updateMediaItem(
-  id: string,
-  data: Record<string, any>
-): Promise<WatchingMedia> {
-  // THE UPDATE BARRIER, IN THE PIPE — the twin of insertMediaItem's guard. Until now the invariant
-  // (a position write must recompute caught_up_at) lived only in useUpdateMedia's memory, and one
-  // caller — addTmdbItemToList's heal branch — already walked around it. Enforced here, no update
-  // path can skip it, including ones not written yet.
-  //
-  // VALIDATION ONLY — we parse to make superRefine THROW on a broken invariant, and then write the
-  // original `data`, never the parse output. So the schema stripping unknown "world fact" columns
-  // (runtime, status, studio…) from its return is harmless: those columns still reach the database,
-  // because `data` is what we write. The parse is a gate, not a filter.
+/** Send a frozen command. A transport retry reuses its key, revision and exact payload. */
+async function runPersonalCommand(command: Record<string, unknown>): Promise<WatchingMedia> {
+  const db = createClient().schema("watching");
+  const first = await db.rpc("personal_history_command", { command });
+  // No retry for validation/security/stale-revision failures. Only a lost transport is ambiguous.
+  const result = first.error && !first.error.code
+    ? await db.rpc("personal_history_command", { command }) : first;
+  if (result.error) throw result.error;
+  if (!result.data) throw new Error("The historical action was saved, but this title is no longer in your library.");
+  return result.data as WatchingMedia;
+}
+
+async function activeViewingRecords(mediaId: string): Promise<StoredViewingAssertion[]> {
+  const db = createClient().schema("watching");
+  return fetchAllRows<StoredViewingAssertion>((from, to) => db.from("viewing_records")
+    .select("id, kind, scope_kind, scope_key, completion_basis, year, month, day, date_precision, date_confidence, scope_confidence, origin, ranges:viewing_ranges(season_key, season_number_at_recording, episode_from, episode_to, episode_ids, minutes, duration_basis)").eq("media_item_id",mediaId).is("retracted_at",null)
+    .order("id").range(from,to));
+}
+
+export async function updateMediaItem(id: string, data: Record<string, any>): Promise<WatchingMedia> {
   updateMediaSchema.parse({ id, ...data });
-  const supabase = createClient();
-  const { data: result, error } = await supabase
-    .schema("watching")
-    .from("media_items")
-    .update({ ...data, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw error;
-  return result as WatchingMedia;
+  const { expected_revision, history_date, history_intent, ...patch } = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+  const personalFields = ["watched", "in_progress", "want_to_watch", "paused", "dropped", "drop_reason", "favorite", "priority", "priority_level", "is_reference", "notes", "tags", "user_rating", "current_season", "current_episode", "season_years", "cour_years", "season_ratings", "cour_ratings", "watched_at", "last_watched_at", "caught_up_at", "viewing_date"];
+  if (history_date === undefined && !personalFields.some(key => key in patch)) {
+    // Provider/artwork refresh only: no personal revision or history event.
+    const { data: result, error } = await createClient().schema("watching").from("media_items")
+      .update({ ...patch, updated_at: new Date().toISOString() }).eq("id",id).select().single();
+    if (error) throw error;
+    return result as WatchingMedia;
+  }
+  const before = await getMediaItemById(id);
+  if (!before) throw new Error("Media unavailable");
+  // A supplied UI token must win over this fresh read: never silently rebase a stale gesture.
+  const revision = expected_revision ?? before.personal_revision;
+  if (revision !== before.personal_revision) throw new Error("This title changed. Reload before editing.");
+  const meta: HistoryMetadata = { history_date, history_intent };
+  const captures = ["watched", "current_season", "current_episode", "season_years", "cour_years", "watched_at"].some(k => k in patch) || history_date !== undefined;
+  const active = captures ? await activeViewingRecords(id) : [];
+  const history = captures ? captureHistory(before,patch,meta,active) : { records: [], retract_ids: [] };
+  if (history_date !== undefined) {
+    viewingDate(history_date);
+    patch.viewing_date = history_date;
+    if (before.type === "film") patch.watched_at = history_date ? buildWatchedAtProjection(history_date) : null;
+  }
+  return runPersonalCommand({ mode: "update", media_id: id, operation_key: crypto.randomUUID(),
+    expected_revision: revision, patch, ...history, reason: "User corrected viewing history" });
 }
 
 export async function deleteMediaItem(id: string): Promise<void> {
@@ -371,7 +395,7 @@ export async function getExistingMediaItem(
     .from("media_items")
     // `type` and `status` are what let resolveTransition stop GUESSING the outcome from the list you
     // came through. Without them it congratulated you on finishing a show that is still airing.
-    .select("id, type, status, favorite, priority, watched, watched_at, in_progress, want_to_watch, paused, dropped, current_episode, current_season, season_episodes, season_aired, season_years, caught_up_at")
+    .select("id, personal_revision, type, status, favorite, priority, watched, watched_at, in_progress, want_to_watch, paused, dropped, current_episode, current_season, season_episodes, season_aired, season_years, caught_up_at")
     .eq("user_id", userId)
     .in("type", tmdbKind(type) === "movie" ? ["film"] : ["serie", "anime"])
     .eq("tmdb_id", tmdbId)
@@ -381,23 +405,14 @@ export async function getExistingMediaItem(
 }
 
 export async function insertMediaItem(data: Record<string, any>): Promise<WatchingMedia> {
-  const supabase = createClient();
-  // THE BARRIER, IN THE PIPE — not in the caller's memory. The update path has been gated since the
-  // day a comment stating its rule was broken twenty lines below itself; this door had nothing, so
-  // a row with no status at all (in your library, in none of its rails) was insertable from any
-  // caller, including ones not written yet. It is not, now. Build the status with `addStatusPatch`.
   insertMediaSchema.parse(data);
+  const { history_date, history_intent, ...columns } = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+  delete columns.expected_revision;
   const orgId = await getCurrentOrgId();
-  const { data: result, error } = await supabase
-    .schema("watching")
-    .from("media_items")
-    .insert({ ...data, org_id: orgId })
-    .select()
-    .single();
-  if (error) throw error;
-  return result as WatchingMedia;
+  const patch = { ...columns, org_id: orgId, ...(history_date !== undefined ? { viewing_date: history_date } : {}) };
+  const history = captureHistory(null,patch,{ history_date, history_intent: history_intent ?? "claim" });
+  return runPersonalCommand({ mode: "insert", media_id: crypto.randomUUID(), operation_key: crypto.randomUUID(), patch, ...history });
 }
-
 
 export async function getMediaItemById(id: string): Promise<WatchingMedia | null> {
   const supabase = createClient();
@@ -1540,34 +1555,46 @@ export async function removeThemeFavorite(trackKey: string): Promise<void> {
 // One row per re-viewing event of a media item (the first watch stays on
 // media_items.watched_at). watchedOn = 'YYYY-MM-DD'.
 export async function getRewatches(mediaItemId: string): Promise<Rewatch[]> {
-  const supabase = createClient();
-  const data = await fetchAllRows<any>((from, to) => supabase
-    .schema("watching").from("rewatches")
-    .select("id, media_item_id, watched_on, created_at")
-    .eq("media_item_id", mediaItemId)
-    .order("watched_on", { ascending: false })
-    .order("id").range(from, to));
-  return (data ?? []) as Rewatch[];
+  const db = createClient().schema("watching");
+  const [rows, dates] = await Promise.all([
+    fetchAllRows<Rewatch>((from, to) => db.from("rewatches")
+      .select("id, media_item_id, watched_on, created_at").eq("media_item_id",mediaItemId)
+      .order("watched_on",{ ascending: false }).order("id").range(from,to)),
+    fetchAllRows<{ id: string; year: number; month: number | null; day: number | null }>((from,to) => db.from("viewing_records")
+      .select("id, year, month, day").eq("media_item_id",mediaItemId).eq("kind","REWATCH")
+      .is("retracted_at",null).order("id").range(from,to)),
+  ]);
+  const byId = new Map(dates.map(d => [d.id,d]));
+  // UI uses the known precision; getRewatchStats continues to read the legacy date projection.
+  return rows.map(row => {
+    const date = byId.get(row.id);
+    if (!date) return row; // legacy date: no retrospective precision claim
+    const year = String(date.year).padStart(4,"0");
+    const month = date.month === null ? "" : `-${String(date.month).padStart(2,"0")}`;
+    const day = date.day === null ? "" : `-${String(date.day).padStart(2,"0")}`;
+    return { ...row, watched_on: year + month + day };
+  });
 }
 
-export async function addRewatch(mediaItemId: string, watchedOn: string): Promise<void> {
-  const supabase = createClient();
-  const userId = await getCurrentUserId();
-  if (!userId) throw new Error("Not authenticated");
-  const orgId = await getCurrentOrgId();
-  const { error } = await supabase
-    .schema("watching").from("rewatches")
-    .insert({ org_id: orgId, user_id: userId, media_item_id: mediaItemId, watched_on: watchedOn });
-  if (error) throw error;
+export async function addRewatch(mediaItemId: string, watchedOn: string, expectedRevision?: number): Promise<WatchingMedia> {
+  const before = await getMediaItemById(mediaItemId);
+  if (!before) throw new Error("Media unavailable");
+  // The existing UI does not ask for scope. Do not pretend it asserted today's entire title.
+  const record = assertion("REWATCH",viewingDate(parseViewingInput(watchedOn)),[]);
+  return runPersonalCommand({ mode: "rewatch", media_id: mediaItemId, operation_key: crypto.randomUUID(),
+    expected_revision: expectedRevision ?? before.personal_revision, patch: {}, records: [record] });
 }
 
-export async function removeRewatch(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .schema("watching").from("rewatches")
-    .delete()
-    .eq("id", id);
+export async function removeRewatch(id: string, expectedRevision?: number): Promise<WatchingMedia> {
+  const db = createClient().schema("watching");
+  const { data: rewatch, error } = await db.from("rewatches").select("media_item_id").eq("id",id).single();
   if (error) throw error;
+  const before = await getMediaItemById(rewatch.media_item_id);
+  if (!before) throw new Error("Media unavailable");
+  const active = await activeViewingRecords(before.id);
+  return runPersonalCommand({ mode: "remove_rewatch", media_id: before.id, operation_key: crypto.randomUUID(),
+    expected_revision: expectedRevision ?? before.personal_revision, patch: {}, records: [],
+    rewatch_id: id, retract_ids: active.some(r => r.id === id) ? [id] : [], reason: "User removed rewatch" });
 }
 
 // All rewatch events for the user (Stats). Joined to items in computeStats by
@@ -2070,7 +2097,7 @@ export async function getAwardsForPerson(personTmdbId: number): Promise<AwardEnt
 
 /** The Museum's owned index — see `OwnedIndexRow`. */
 export const OWNED_INDEX_COLUMNS =
-  "id, type, tmdb_id, title, original_title, poster_url, user_rating, watched, in_progress, want_to_watch, paused, dropped, priority_level, release_date, status, season_aired, current_season, current_episode, caught_up_at";
+  "id, personal_revision, type, tmdb_id, title, original_title, poster_url, user_rating, watched, in_progress, want_to_watch, paused, dropped, priority_level, release_date, status, season_aired, current_season, current_episode, caught_up_at";
 
 /**
  * The whole library as an INDEX, every status, with the TMDB id the canon joins on — one query,

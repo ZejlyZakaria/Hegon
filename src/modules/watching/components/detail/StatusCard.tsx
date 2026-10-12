@@ -28,7 +28,7 @@ import { WatchDatePicker } from "../shared/WatchDatePicker";
 import { WhereToWatch } from "../shared/WhereToWatch";
 import { PRIORITY, WATCHLIST_COLOR } from "../shared/Marks";
 import { watchlistLevel } from "../shared/StatusBadge";
-import { partsFromISO, type WatchDateParts } from "../../lib/watched-date";
+import { type WatchDateParts } from "../../lib/watched-date";
 import type { WatchingMedia, WatchStatus } from "../../types";
 import type { WatchProviderInfo } from "../../hooks/useWatchProviders";
 
@@ -76,8 +76,11 @@ function watchedYearOf(media: WatchingMedia, yearMap: Record<string, number> | n
 }
 
 const fmtDate = (d: string) =>
-  new Date(d).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
-const todayISO = () => new Date().toISOString().slice(0, 10);
+  d.length === 4 ? d : new Date(d).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
+const todayISO = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+};
 
 // ── Card atoms (white-on-teal language, ex-My Record skin) ─────────────────────
 
@@ -294,8 +297,8 @@ function RewatchDatePicker({ releaseISO, onAdd, onCancel, pending }: {
   const monthMax = y === now.getFullYear() ? now.getMonth() + 1 : 12;
   const months = range(monthMin, monthMax);
 
-  const complete = y != null && m != null;
-  const submit = () => { if (complete) onAdd(`${y}-${String(m).padStart(2, "0")}-01`); };
+  const complete = y != null;
+  const submit = () => { if (complete) onAdd(m == null ? String(y) : `${y}-${String(m).padStart(2, "0")}`); };
 
   const triggerCls = "h-8 flex-1 border-0 bg-white/10 text-white/90 focus:ring-0 data-[placeholder]:text-white/45";
   const contentCls = "border-border-strong bg-surface-3";
@@ -310,7 +313,7 @@ function RewatchDatePicker({ releaseISO, onAdd, onCancel, pending }: {
         </SelectContent>
       </Select>
       <Select value={m != null ? String(m) : undefined} onValueChange={(v) => setM(Number(v))} disabled={y == null}>
-        <SelectTrigger variant="legacy" className={triggerCls}><SelectValue placeholder="Month" /></SelectTrigger>
+        <SelectTrigger variant="legacy" className={triggerCls}><SelectValue placeholder="Month (optional)" /></SelectTrigger>
         <SelectContent variant="legacy" className={contentCls}>
           {months.map((mm) => <SelectItem key={mm} value={String(mm)} className={itemCls}>{MONTHS[mm - 1]}</SelectItem>)}
         </SelectContent>
@@ -432,8 +435,8 @@ export function StatusCard({
   const canRewatch = isSeries ? atLastEpisode || caughtUp : media.watched;
 
   const { data: rewatches = [] } = useRewatches(canRewatch ? media.id : "");
-  const addRewatch = useAddRewatch(media.id);
-  const removeRewatch = useRemoveRewatch(media.id);
+  const addRewatch = useAddRewatch(media.id, media.personal_revision);
+  const removeRewatch = useRemoveRewatch(media.id, media.personal_revision);
   const [backdating, setBackdating] = useState(false);
 
   // A rewatch can't predate the title's release — constrains the date picker.
@@ -789,7 +792,7 @@ export function StatusCard({
                         <PopoverContent align="end" className="w-72 border-border-strong bg-surface-3 p-3">
                           <label className="mb-1.5 block text-micro text-text-tertiary">When did you watch it?</label>
                           <WatchDatePicker
-                            value={partsFromISO(media.watched_at) ?? { year: selectedYear ?? new Date().getFullYear(), month: null, day: null }}
+                            value={media.viewing_date ?? { year: selectedYear ?? new Date().getFullYear(), month: null, day: null }}
                             onChange={onWatchedDateChange}
                             minYear={media.year ?? 1900}
                             // …AND the release MONTH, so a film out in November can't be marked

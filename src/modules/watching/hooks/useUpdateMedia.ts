@@ -24,6 +24,7 @@ export function useUpdateMedia() {
   const isDemo = useIsDemo();
 
   return useMutation({
+    retry: false,
     mutationFn: (rawInput: UpdateMediaInput) => {
       if (isDemo) throw new DemoReadOnlyError();
       // The schema was a TYPE and nothing else — declared, never run, so its rules were suggestions.
@@ -37,7 +38,12 @@ export function useUpdateMedia() {
       if (isDemo) return; // read-only demo: skip the optimistic update
       const input = rawInput;
       const { id } = input;
+      const cached = queryClient.getQueryData<{ personal_revision?: number }>(WATCHING_KEYS.detail(id));
+      rawInput.expected_revision ??= cached?.personal_revision;
       const updates = toColumns(input);
+      delete updates.expected_revision;
+      delete updates.history_date;
+      delete updates.history_intent;
 
       // Cancel only the detail query + list-items — avoid disrupting sections/ForYou
       await queryClient.cancelQueries({ queryKey: WATCHING_KEYS.detail(id) });
@@ -76,17 +82,19 @@ export function useUpdateMedia() {
       return { snapshot };
     },
 
-    onError: (err, _input, context) => {
+    onError: (err, input, context) => {
       if (handledDemoError(err)) return;
       if (context?.snapshot) {
         for (const [key, data] of context.snapshot) {
           queryClient.setQueryData(key, data);
         }
       }
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.detail(input.id) });
       toast.error("Update failed. Please try again.");
     },
 
-    onSuccess: (_, rawInput) => {
+    onSuccess: (saved, rawInput) => {
+      queryClient.setQueryData(WATCHING_KEYS.detail(rawInput.id), saved);
       const input = rawInput;
       const { id } = input;
       const isStatusChange = hasAnyField(input, STATUS_FIELDS);

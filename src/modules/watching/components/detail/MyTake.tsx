@@ -39,19 +39,23 @@ export function MyTake({ media, forceNoteOpen }: Props) {
   const [savedFlash, setSavedFlash] = useState(false);
 
   const mediaIdRef = useRef<string | null>(null);
+  const draftRevision = useRef(media.personal_revision);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingRef = useRef<{ notes: string; rating: number } | null>(null);
+  const pendingRef = useRef<{ notes: string; rating: number; expected_revision?: number } | null>(null);
 
   useEffect(() => {
     if (media.id !== mediaIdRef.current) {
       mediaIdRef.current = media.id;
+      draftRevision.current = media.personal_revision;
       setRating(media.user_rating ?? 0);
       setNotes(media.notes ?? "");
       setEditing(false);
       pendingRef.current = null;
+    } else if (!pendingRef.current && notes === (media.notes ?? "") && rating === (media.user_rating ?? 0)) {
+      draftRevision.current = media.personal_revision;
     }
-  }, [media]);
+  }, [media, notes, rating]);
 
   // Flush a pending edit if the user leaves before the debounce fires.
   useEffect(() => () => {
@@ -59,15 +63,16 @@ export function MyTake({ media, forceNoteOpen }: Props) {
     if (flashRef.current) clearTimeout(flashRef.current);
     if (pendingRef.current && mediaIdRef.current) {
       const p = pendingRef.current;
-      updateMedia.mutate({ id: mediaIdRef.current, notes: p.notes, user_rating: p.rating > 0 ? p.rating : null });
+      updateMedia.mutate({ id: mediaIdRef.current, expected_revision: p.expected_revision, notes: p.notes, user_rating: p.rating > 0 ? p.rating : null });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const save = async (next: { notes: string; rating: number }) => {
+  const save = async (next: { notes: string; rating: number; expected_revision?: number }) => {
     pendingRef.current = null;
     try {
-      await updateMedia.mutateAsync({ id: media.id, notes: next.notes, user_rating: next.rating > 0 ? next.rating : null });
+      const saved = await updateMedia.mutateAsync({ id: media.id, expected_revision: next.expected_revision, notes: next.notes, user_rating: next.rating > 0 ? next.rating : null });
+      draftRevision.current = saved.personal_revision;
       setSavedFlash(true);
       if (flashRef.current) clearTimeout(flashRef.current);
       flashRef.current = setTimeout(() => setSavedFlash(false), 1400);
@@ -81,9 +86,10 @@ export function MyTake({ media, forceNoteOpen }: Props) {
   };
 
   const schedule = (next: { notes: string; rating: number }) => {
-    pendingRef.current = next;
+    const pending = { ...next, expected_revision: draftRevision.current };
+    pendingRef.current = pending;
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => save(next), AUTOSAVE_MS);
+    timerRef.current = setTimeout(() => save(pending), AUTOSAVE_MS);
   };
 
   const flushNow = () => {

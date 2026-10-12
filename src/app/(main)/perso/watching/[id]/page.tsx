@@ -34,7 +34,7 @@ import { SeasonPanel } from "@/modules/watching/components/detail/SeasonPanel";
 import { useMediaView } from "@/modules/watching/hooks/useMediaView";
 import { yearsPatch, type StatusPatch } from "@/modules/watching/lib/watch-status";
 import type { WatchingMedia } from "@/modules/watching/types";
-import { buildWatchedAt, type WatchDateParts } from "@/modules/watching/lib/watched-date";
+import { buildWatchedAtProjection, type WatchDateParts } from "@/modules/watching/lib/watched-date";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { Accolades } from "@/modules/watching/components/detail/Accolades";
 import { QuickStats } from "@/modules/watching/components/detail/QuickStats";
@@ -183,7 +183,7 @@ export default function MediaDetailPage() {
     const next = !favorite;
     setFavorite(next);
     try {
-      await updateMedia.mutateAsync({ id: media.id, favorite: next });
+      await updateMedia.mutateAsync({ id: media.id, expected_revision: media.personal_revision, favorite: next });
       toast(next ? "Added to favorites." : "Removed from favorites.");
     } catch (err) {
       setFavorite(!next);
@@ -255,7 +255,7 @@ export default function MediaDetailPage() {
       // marking it watched used to leave the date at today, so Last Watched claimed you finished it
       // this afternoon.
       await updateMedia.mutateAsync({
-        id: media.id,
+        id: media.id, expected_revision: media.personal_revision,
         type: media.type,
         ...yearsPatch(media, next, view.writeYears),
       });
@@ -275,7 +275,7 @@ export default function MediaDetailPage() {
   const handleSeasonRating = async (season: number, value: number | null) => {
     if (!media || !view) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, ...view.writeRating(season, value) });
+      await updateMedia.mutateAsync({ id: media.id, expected_revision: media.personal_revision, ...view.writeRating(season, value) });
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
@@ -286,19 +286,19 @@ export default function MediaDetailPage() {
   const handlePriorityChange = async (level: "high" | "medium" | "low" | null) => {
     if (!media) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, type: media.type, priority_level: level });
+      await updateMedia.mutateAsync({ id: media.id, expected_revision: media.personal_revision, type: media.type, priority_level: level });
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
     }
   };
 
-  // A FILM's date is a real timestamp. The shared picker (month + day) feeds buildWatchedAt, the
+  // A FILM's date is a real timestamp. The shared picker (month + day) feeds buildWatchedAtProjection, the
   // same construction the add flow uses, so a corrected date sorts precisely in Recently Watched.
   const handleWatchedDateChange = async (parts: WatchDateParts) => {
     if (!media) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, type: media.type, watched_at: buildWatchedAt(parts) });
+      await updateMedia.mutateAsync({ id: media.id, expected_revision: media.personal_revision, type: media.type, watched_at: buildWatchedAtProjection(parts), history_date: parts, history_intent: "correction" });
       toast("Date updated.");
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
@@ -318,11 +318,11 @@ export default function MediaDetailPage() {
     if (!media) return;
     try {
       await updateMedia.mutateAsync({
-        id: media.id,
+        id: media.id, expected_revision: media.personal_revision,
         type: media.type,
         // eslint-disable-next-line no-restricted-syntax -- explicit `view ? lens : raw` fallback; the raw side only runs when there is no overlay.
         ...(view ? view.writeYear(1, yr) : { season_years: { ...(media.season_years ?? {}), "1": yr } }),
-        ...(media.watched ? { watched_at: buildWatchedAt({ year: yr, month: null, day: null }) } : {}),
+        ...(media.watched ? { watched_at: buildWatchedAtProjection({ year: yr, month: null, day: null }) } : {}),
       });
       toast("Year updated.");
     } catch (err) {

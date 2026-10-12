@@ -41,6 +41,7 @@ export function TopTenRank({ media }: { media: WatchingMedia }) {
   const write = async (id: string, priority: number | null) =>
     updateMedia.mutateAsync({
       id,
+      expected_revision: id === media.id ? media.personal_revision : ranked.find(row => row.id === id)?.personal_revision,
       // Naming the type scopes the cache invalidation to the rail that actually moved.
       type: media.type,
       priority,
