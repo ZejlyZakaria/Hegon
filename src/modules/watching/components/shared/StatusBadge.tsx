@@ -44,10 +44,10 @@ export function watchlistLevel(item: Pick<StatusSource, "type" | "priority_level
   return item.priority_level ?? "none";
 }
 
-// Colour carries the meaning — the same three the list views' dots already speak.
+// Poster consumption states use violet/indigo; personal ranking keeps the Watching teal.
 const TONE: Record<Exclude<PosterStatus["tone"], "want">, string> = {
-  watching: "var(--color-accent-watching-vivid)",
-  caughtup: "var(--color-accent-watching-vivid)",
+  watching: "#a78bda",
+  caughtup: "#9295cc",
   paused: "#7dd3fc",
   dropped: "#fcd34d",
 };
