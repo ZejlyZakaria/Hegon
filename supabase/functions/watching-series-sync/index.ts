@@ -1,36 +1,11 @@
+// deno-lint-ignore-file no-explicit-any
+import { providerRefreshSucceeded } from "../_shared/provider-progress.ts";
 import { fetchAllRows } from "../_shared/pagination.ts";
 import { batchOutcome } from "../_shared/batch-outcome.ts";
-import { providerRegressed, confirmedGrowth } from "../_shared/provider-progress.ts";
-// THE ENGINE. Without this, the whole model is a photograph of the day you added a title.
-//
-// `status`, `season_episodes` and `season_aired` are facts about the WORLD, and the world moves
-// on its own. Nothing refreshed them, ever — so The Boys stayed "ongoing" for eternity, House of
-// the Dragon's season 3 would never grow past the four episodes it had the day you added it, and
-// a caught-up show could never light up as NEW, because nothing was ever going to tell it that
-// season 4 had dropped. Every derived rule in the app is a function of two numbers; this job is
-// what keeps the second one true.
-//
-// ── IT WORKS IN BATCHES, AND THAT IS NOT A COMPROMISE ─────────────────────────────────────────
-// A full pass is well over a thousand TMDB calls, counted naively — nowhere near a single
-// invocation's budget. So each run takes a slice, and the cron brings it back. A run that dies
-// takes a batch with it, not the job.
-//
-// ── IT COUNTS SHOWS, NOT ROWS ─────────────────────────────────────────────────────────────────
-// `media_items` is per-user: 239 rows, 124 distinct series. Walking rows asked TMDB the same
-// question twice and hid a real defect — see `selectBatch`.
-//
-// ── AND NOT EVERYTHING DESERVES THE SAME ATTENTION ────────────────────────────────────────────
-// Three quarters of the library is FINISHED. A job that re-verifies Breaking Bad as often as a show
-// airing on Sunday is spending its whole budget confirming the obvious — so it doesn't.
-//
-// ── IT ONLY ASKS FOR WHAT COULD HAVE CHANGED ──────────────────────────────────────────────────
-// Counting what aired means opening a season and counting episodes whose date has passed. Doing
-// that for all 23 seasons of One Piece, forever, to re-learn that season 4 ended in 2003, is
-// absurd. A season that has FULLY AIRED, ended in the past, and whose announced count hasn't moved,
-// cannot change — so we reuse what we stored. That is what `season_end_dates` buys, and it
-// typically cuts a long-running show to a single call.
-//
-// deno-lint-ignore-file no-explicit-any
+import { compactSeason, type SeasonEvidence } from "../_shared/provider-evidence.ts";
+// Fetch compact episode membership; the transactional provider command alone classifies changes
+// and projects accepted world facts. Counts/status/max dates cannot reopen personal posture.
+// Batches remain bounded by work, not personal rows. No complete provider payload is archived.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
@@ -65,79 +40,29 @@ async function tmdb(path: string): Promise<any> {
   throw new Error(`TMDB rate-limited on ${path}`);
 }
 
-const total = (a: number[] | null | undefined) => (a ?? []).reduce((x, y) => x + (y || 0), 0);
+interface SeasonFacts { evidence: SeasonEvidence; poster: string | null; airDate: string | null }
 
-const lastAired = (aired: number[]) => {
-  for (let s = aired.length; s >= 1; s--) if ((aired[s - 1] ?? 0) > 0) return { season: s, episode: aired[s - 1] };
-  return null;
-};
-
-interface SeasonFacts { latest: string | null; aired: number; endDate: string | null; poster: string | null; airDate: string | null }
-
-/**
- * What has ACTUALLY aired in each season, and when each season ENDED.
- *
- * TMDB's season list carries announced seasons at their full episode count, so the only honest
- * answer is to open the season and count the episodes whose air date has passed.
- *
- * Two traps, both of which have already bitten us:
- *   · An episode with NO air date has not aired. An unknown date is not a past date.
- *   · A season with no air date is NOT a future season — TMDB simply doesn't always carry one
- *     (One Piece has none on most of its 23). Reading a missing date as "unaired" once reported
- *     [61, 0, 0, 0…] for a show with a thousand episodes behind it. Only a date that is genuinely
- *     in the FUTURE lets us skip a season without asking.
- */
+// Full membership reads also discover removals with unchanged counts. Never reuse bare totals.
 async function seasonFacts(
   tmdbId: number,
   seasons: any[],
-  prev: { aired: number[] | null; announced: number[] | null; ends: (string | null)[] | null },
 ): Promise<SeasonFacts[]> {
   const out: SeasonFacts[] = [];
   const TODAY = today();
 
   for (let i = 0; i < seasons.length; i++) {
     const s = seasons[i];
-    const announced = s.episode_count ?? 0;
     // The poster and the start date come free with the show payload — no season call needed. They
     // are why `useSeasonRefresh` existed, firing a TMDB request on every detail-page open to write
     // the ANNOUNCED counts and never the aired ones. This job already knows everything that hook
     // knew, and more, so the hook is gone.
     const poster = s.poster_path ?? null;
-    const airDate = s.air_date ?? null;
-
-    // Genuinely not out yet.
-    if (s.air_date && s.air_date > TODAY) {
-      out.push({ latest: null, aired: 0, endDate: null, poster, airDate });
-      continue;
-    }
-
-    // Settled: fully aired, finished airing in the past, and nobody has added an episode to it
-    // since. It cannot change. Reuse — this is what keeps a 23-season show cheap.
-    const knownAired = prev.aired?.[i];
-    const knownEnd = prev.ends?.[i] ?? null;
-    const knownAnnounced = prev.announced?.[i];
-    if (
-      knownAired != null && knownEnd && knownEnd < TODAY &&
-      knownAired === announced && knownAnnounced === announced
-    ) {
-      out.push({ latest: knownEnd, aired: knownAired, endDate: knownEnd, poster, airDate });
-      continue;
-    }
 
     const detail = await tmdb(`tv/${tmdbId}/season/${s.season_number}`);
     if (!Array.isArray(detail.episodes)) throw new Error("Incomplete season response");
-    const airedEps = detail.episodes.filter((e: any) => e.air_date && e.air_date <= TODAY);
-    out.push({
-      latest: airedEps.map((e: any) => e.air_date as string).sort().at(-1) ?? null,
-      aired: airedEps.length,
-      // The END is the last episode that has actually aired — null while a season is mid-flight,
-      // because there is no honest answer yet.
-      endDate: airedEps.length === announced && airedEps.length > 0
-        ? airedEps[airedEps.length - 1].air_date
-        : null,
-      poster,
-      airDate,
-    });
+    const evidence = compactSeason(s, detail.episodes, TODAY);
+    const airDate = evidence.episodes.filter((e) => e.aired === true && e.air_date).map((e) => e.air_date!).sort()[0] ?? s.air_date ?? null;
+    out.push({ evidence, poster, airDate });
     await sleep(60);   // TMDB is generous, not infinite
   }
 
@@ -251,143 +176,38 @@ Deno.serve(async () => {
         show = await tmdb(`tv/${tmdbId}`);
       } catch (e) {
         failed++;
+        await supabase.rpc("observe_provider", { command: { provider: "tmdb", work_key: `tv:${tmdbId}`, error_code: "PROVIDER_FAILURE" } });
         log.push(`✗ ${title}: ${errMsg(e)}`);
         continue;
       }
 
-      const seasons = (show.seasons ?? []).filter((s: any) => s.season_number > 0);   // no Specials
-      const raw = String(show.status ?? "").toLowerCase();
-      const status = isFinished(raw) ? (raw === "ended" ? "ended" : "canceled") : "ongoing";
-      const season_episodes: number[] = seasons.map((s: any) => s.episode_count ?? 0);
-
-      // The freshest row is the baseline for "which seasons can I skip re-counting". A stale
-      // baseline can only cost us extra TMDB calls, never a wrong answer: the reuse test compares
-      // against TMDB's OWN episode_count, so anything that has moved fails it and gets refetched.
-      const baseline = group.reduce((a, b) =>
-        new Date(b.last_synced_at ?? 0).getTime() > new Date(a.last_synced_at ?? 0).getTime() ? b : a);
-
-      let facts: SeasonFacts[];
-      try {
-        facts = await seasonFacts(tmdbId, seasons, {
-          aired: baseline.season_aired,
-          announced: baseline.season_episodes,
-          ends: baseline.season_end_dates,
-        });
-      } catch (error) {
-        failed++; log.push(`${title}: ${errMsg(error)}`); continue;
-      }
-      const season_aired = facts.map((f) => f.aired);
-      if (group.some((m) => providerRegressed(m.season_aired, season_aired) || providerRegressed(m.season_episodes, season_episodes))) {
-        failed++;
-        log.push(`${title}: provider counts regressed; preserving previous facts and personal state`);
+      if (!show || typeof show !== "object" || !Array.isArray(show.seasons) || show.id !== tmdbId || !show.status) {
+        failed++; log.push(`${title}: invalid show response`);
+        await supabase.rpc("observe_provider", { command: { provider: "tmdb", work_key: `tv:${tmdbId}`, error_code: "INVALID_RESPONSE" } });
         continue;
       }
-
-      // ── THE WORLD'S FACTS — identical for every row that shares this tmdb_id, written in ONE
-      //    statement, so two copies of a show can never disagree about what has aired.
-      const world = {
-        status,
-        seasons: seasons.length,
-        episodes: total(season_episodes),
-        season_episodes,
-        season_aired,
-        season_end_dates: facts.map((f) => f.endDate),
-        season_posters: facts.map((f) => f.poster),
-        season_air_dates: facts.map((f) => f.airDate),
-        last_synced_at: new Date().toISOString(),   // this is what rotates the batch
-      };
-
-      const airedTotal = total(season_aired);
-      if (
-        baseline.status !== status ||
-        JSON.stringify(baseline.season_aired) !== JSON.stringify(season_aired)
-      ) {
-        changed++;
-        log.push(`· ${title}: ${baseline.status} → ${status}, aired ${total(baseline.season_aired)} → ${airedTotal}`);
+      const seasons = show.seasons.filter((s: any) => s.season_number > 0).sort((a: any,b: any) => a.season_number-b.season_number);
+      const raw = String(show.status).toLowerCase();
+      const status = isFinished(raw) ? (raw === "ended" ? "ended" : "canceled") : "ongoing";
+      let facts: SeasonFacts[];
+      try {
+        facts = await seasonFacts(tmdbId, seasons);
+      } catch (error) {
+        failed++; log.push(`${title}: ${errMsg(error)}`);
+        await supabase.rpc("observe_provider", { command: { provider: "tmdb", work_key: `tv:${tmdbId}`, error_code: "PROVIDER_FAILURE" } }); continue;
       }
-
-      // ── YOUR FACTS — per row, because your position is yours and the demo's is the demo's. ────
-      //
-      // ⚠️ COMPUTED FIRST, WRITTEN WITH THE WORLD — one UPDATE per row, never two (contre-examen du
-      // 13/09). The world facts used to go out in one batch statement BEFORE this loop, and the
-      // posture fix in a second statement per row. If the second failed (a killed isolate, a 504
-      // the single retry did not catch), the new `season_aired` was already on the row: the very
-      // comparison below — new aired > the row's snapshot — could never be true again, and the
-      // show stayed "watched" with episodes you had not seen, for good. Now a row's snapshot is
-      // consumed only in the same statement that acts on it; a failure leaves it intact and the
-      // next run simply tries again.
-      const fixes = new Map<string, Record<string, unknown>>();
-      for (const m of group) {
-        const fix: Record<string, unknown> = {};
-
-        // A row marked `watched` on a show that has MORE EPISODES than the row's own snapshot knew —
-        // a show still going, or a finished one that came back. That comparison, and ONLY that, is
-        // proof you have something left to watch.
-        //
-        // ⚠️ GROWTH IS A COMPARISON AGAINST A PREVIOUS SNAPSHOT, NEVER A DEDUCTION. Two ways this
-        // rule has destroyed the library before:
-        //   · the naive test ("more has aired than you've seen") un-watched Breaking Bad, Lost and
-        //     Suits — a watched show with no position reports zero seen. No baseline → no claim.
-        //   · a SEPARATE branch fired on the status LABEL alone ("watched, and the show is not
-        //     over" → caught-up). TMDB is edited by volunteers; Haikyu!! flipped Ended → Returning
-        //     Series → Ended between two runs and the row was un-watched with nothing new to watch
-        //     (2026-09-12). A label proves nothing about what aired. That branch is gone: the one
-        //     rule below serves both cases, and it needs the numbers.
-        //
-        // The status this job writes to the app is a world fact; `watched` is the user's claim.
-        // Rewriting the claim is the one thing this cron does that the app's single writer
-        // (lib/watch-status.ts) does not control — so it must do it for a reason it can prove.
-        if (m.watched && confirmedGrowth(m.season_aired, season_aired, m.season_end_dates, facts.map((f) => f.latest))) {
-          // Where "watched" placed you: the end of what HAD aired when you said it. Not the new
-          // last episode (you would look caught up on what you haven't seen), not S1 E0 (you
-          // would look like you never started).
-          const seen = lastAired(m.season_aired);
-          Object.assign(fix, {
-            watched: false,
-            // A revival does not un-drop a show. If you walked away from it, you walked away from
-            // it — the world coming back with more episodes is not you changing your mind. The
-            // stance you chose survives; only the false claim of completion dies.
-            in_progress: !m.paused && !m.dropped,
-            current_season: m.current_season ?? seen?.season ?? 1,
-            current_episode: m.current_episode ?? seen?.episode ?? 0,
-            caught_up_at: m.caught_up_at ?? m.watched_at ?? new Date().toISOString(),
-          });
-          log.push(`⚠ ${title}: ${isFinished(status) ? "finished show grew" : "more aired since watched"} (${total(m.season_aired)} → ${airedTotal} aired)`);
-        }
-
-        /**
-         * A ROW THAT CLAIMS THE IMPOSSIBLE. The app clamps a position beyond what aired so nothing
-         * *displays* wrong — which is right, and which also means a corrupt row can sit there for
-         * years in perfect silence. The three we know about (a True Detective at S4 E6 when only
-         * season 1 was watched — it's an anthology) were found by accident, on a screen, by eye.
-         * This job opens every row anyway: noticing costs nothing, and a clamp that hides a
-         * contradiction instead of reporting it is a bug wearing the coat of a safety feature.
-         */
-        const airedHere = season_aired[(m.current_season ?? 1) - 1] ?? 0;
-        if ((m.current_episode ?? 0) > airedHere) {
-          log.push(`⚠ ${title}: position S${m.current_season}E${m.current_episode} claims more than aired (${airedHere})`);
-        }
-
-        if (Object.keys(fix).length > 0) fixes.set(m.id, fix);
+      const { data: evidence, error } = await supabase.rpc("observe_provider", { command: {
+        provider: "tmdb", work_key: `tv:${tmdbId}`, facts: { status, seasons: facts.map((f) => f.evidence) },
+        projection: { season_posters: facts.map((f) => f.poster), season_air_dates: facts.map((f) => f.airDate) },
+      } });
+      if (error || !providerRefreshSucceeded(evidence)) {
+        failed++; log.push(`${title}: ${error?.message ?? evidence?.reason_code ?? evidence?.classification}`); continue;
       }
+      if (evidence.accepted) changed++;
+      if (evidence.growth) repaired++;
+      succeeded++;
+      log.push(`${title}: ${evidence.classification}`);
 
-      // ── THE WRITE — the world's facts for every row, plus its own posture fix where there is one.
-      //    Rows without a fix still share ONE statement (two copies of a show never disagree about
-      //    what has aired); a row with a fix gets world + fix together, atomically.
-      let titleSucceeded = false;
-      const plainIds = group.map((r) => r.id).filter((id) => !fixes.has(id));
-      if (plainIds.length > 0) {
-        const { error: worldErr } = await supabase.from("media_items").update(world).in("id", plainIds);
-        if (!worldErr) titleSucceeded = true;
-        if (worldErr) { failed++; log.push(`✗ ${title}: ${worldErr.message}`); }
-      }
-      for (const [id, fix] of fixes) {
-        const { error: fixErr } = await supabase.from("media_items").update({ ...world, ...fix }).eq("id", id);
-        if (fixErr) { failed++; log.push(`✗ ${title}: ${fixErr.message}`); continue; }
-        repaired++;
-        titleSucceeded = true;
-      }
-      if (titleSucceeded) succeeded++;
     }
 
     const result = batchOutcome(succeeded, failed);

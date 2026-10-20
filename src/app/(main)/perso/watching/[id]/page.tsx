@@ -31,6 +31,8 @@ import { DROP_REASONS } from "@/modules/watching/lib/drop-reasons";
 import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonHistoryStrip";
 import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import { SeasonPanel } from "@/modules/watching/components/detail/SeasonPanel";
+import { useScopeRatings } from "@/modules/watching/hooks/useScopeRatings";
+import { ratingAction, scopeMatchesView, scopeDisplayScores } from "@/modules/watching/lib/scope-ratings";
 import { useMediaView } from "@/modules/watching/hooks/useMediaView";
 import { yearsPatch, type StatusPatch } from "@/modules/watching/lib/watch-status";
 import type { WatchingMedia } from "@/modules/watching/types";
@@ -113,6 +115,7 @@ export default function MediaDetailPage() {
   // THE LENS — the one object that knows which coordinate space this title lives in. It fetches the
   // AniList cours itself when they matter, and hands back everything in DISPLAY space.
   const view = useMediaView(media);
+  const scopedRatings = useScopeRatings(id, !!media && media.type !== "film", media?.tmdb_id ?? 0);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [imagesOpen, setImagesOpen] = useState(false);
   const [dropSheetOpen, setDropSheetOpen] = useState(false);
@@ -275,7 +278,17 @@ export default function MediaDetailPage() {
   const handleSeasonRating = async (season: number, value: number | null) => {
     if (!media || !view) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, expected_revision: media.personal_revision, ...view.writeRating(season, value) });
+      const kind = view.overlaid ? "COUR" : "SEASON";
+      const previous = scopedRatings.data?.find((r) => r.kind === kind && r.number === season);
+      if (!previous || !scopeMatchesView(previous, view, season)) {
+        void scopedRatings.refresh();
+        toast.error("Season details changed. Review them before rating.");
+        return;
+      }
+      await scopedRatings.save({ media_id: media.id, expected_revision: media.personal_revision ?? 0,
+        scope_kind: kind, scope_number: season, score: value, action: ratingAction(previous, value),
+        previous_rating_id: previous?.rating_id ?? null,
+        expected_scope_key: previous.scope_key, expected_snapshot_id: previous?.provider_snapshot_id ?? null, expected_mapping_snapshot_id: previous?.mapping_snapshot_id ?? null });
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
@@ -446,9 +459,8 @@ export default function MediaDetailPage() {
               seasonAirDates={view?.overlaid ? undefined : media.season_air_dates}
               seasonEndDates={view?.seasons.map((s) => s.endDate)}
               seasonYears={view?.yearMap}
-              // ONE SEASON, ONE VERDICT: a single-season title's rating is the one you gave it in
-              // My Take — the card shows that, and the panel offers no second control.
-              seasonRatings={view && view.seasons.length === 1 ? (media.user_rating ? { "1": media.user_rating } : null) : view?.ratingMap}
+              // Scoped opinions remain independent of the global title rating.
+              seasonRatings={scopeDisplayScores(scopedRatings.data, view)}
               showPoster={media.poster_url}
               releaseYear={media.year ?? null}
               currentSeason={shown.season}
@@ -543,6 +555,9 @@ export default function MediaDetailPage() {
           position={shown}
           readOnly={isUnwatched}
           onYearChange={handleSeasonYear}
+          onRefreshRatings={() => { void scopedRatings.refresh(); }}
+          ratingContexts={scopedRatings.data}
+          ratingSaving={scopedRatings.isSaving || scopedRatings.isPending}
           onRatingChange={handleSeasonRating}
           onSetPosition={handleSetPosition}
         />

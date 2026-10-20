@@ -1,7 +1,7 @@
 import { CheckCheck, Pause, Play, X } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
-import { Hint } from "@/shared/components/ui/tooltip";
-import { OVERLAY_CIRCLE, OVERLAY_CLUSTER, WatchlistMark, type WatchlistLevel } from "@/modules/watching/components/shared/Marks";
+import { Badge } from "@/shared/components/ui/badge";
+import { WatchlistMark, type WatchlistLevel } from "@/modules/watching/components/shared/Marks";
 import { seriesState, type SeriesFacts } from "@/modules/watching/lib/series-state";
 
 // The status a title carries on its poster. Watched carries none — it's the library's
@@ -44,10 +44,10 @@ export function watchlistLevel(item: Pick<StatusSource, "type" | "priority_level
   return item.priority_level ?? "none";
 }
 
-// Poster consumption states use violet/indigo; personal ranking keeps the Watching teal.
+// Poster consumption states use warm orange; personal ranking keeps the Watching teal.
 const TONE: Record<Exclude<PosterStatus["tone"], "want">, string> = {
-  watching: "#a78bda",
-  caughtup: "#9295cc",
+  watching: "#ffb477",
+  caughtup: "#eea064",
   paused: "#7dd3fc",
   dropped: "#fcd34d",
 };
@@ -70,49 +70,33 @@ export function posterStatus(item: StatusSource): PosterStatus | null {
   return null;
 }
 
-/**
- * WHERE A TITLE STANDS, said by a glyph and a colour — owner-decided 2026-09-16. It was a chip
- * with the word, at the bottom of the poster, over a scrim that darkened 40 % of the artwork.
- * The glyphs are the video player's own (▶ ❚❚ ✕), the three most universal icons there are, and
- * the colours are the ones the list views' dots already use — nothing new to learn, and the poster
- * is artwork again. The word survives in the list views and in the tooltip.
- *
- * Not a ribbon: a ribbon hangs from an edge and says a RANK or a FLAG (Top 10, award, bookmark).
- * A status is a state — it takes the circle, the heart's own object, in the left cluster (info).
- * The colour is the FILL and the glyph is BLACK — the pairing the module already speaks (the
- * accent button, the followed FollowMark: teal disc, dark glyph). A coloured glyph on the dark
- * disc was near invisible over a busy poster; white on the fill didn't match (owner, twice).
- */
+/** A readable consumption label on artwork; colour and glyph retain their meanings. */
 export function StatusMark({ status, className }: { status: PosterStatus; className?: string }) {
   if (status.tone === "want") return null;
-  const color = TONE[status.tone];
+  const label = status.tone === "watching" ? "In Progress" : status.tone === "caughtup" ? "Caught Up" : status.label;
   return (
-    <Hint label={status.label}>
-      <span
-        className={cn(OVERLAY_CIRCLE, "text-black/85", className)}
-        // The fill is the colour; the hairline is the heart's (a dark one — white/12 vanishes on
-        // amber), same contact shadow, same 24 px. Three circles on a poster, one silhouette.
-        style={{ backgroundColor: color, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.35), 0 1px 3px 0 rgba(0,0,0,0.40)" }}
-        aria-label={status.label}
-      >
-        {status.tone === "watching" ? (
-          <Play size={11} fill="currentColor" />
-        ) : status.tone === "caughtup" ? (
-          <CheckCheck size={12} strokeWidth={2.5} />
-        ) : status.tone === "paused" ? (
-          <Pause size={11} fill="currentColor" />
-        ) : (
-          <X size={12} strokeWidth={2.5} />
-        )}
-      </span>
-    </Hint>
+    <Badge
+      variant="solid"
+      size="sm"
+      color={TONE[status.tone]}
+      className={cn("min-h-4 max-w-full shrink-0 gap-0.5 rounded-chip px-1 py-0.5 text-caption font-semibold leading-none tracking-normal [&_svg]:shrink-0", className)}
+    >
+      {status.tone === "watching" ? (
+        <Play size={10} fill="currentColor" />
+      ) : status.tone === "caughtup" ? (
+        <CheckCheck size={11} strokeWidth={2.5} />
+      ) : status.tone === "paused" ? (
+        <Pause size={10} fill="currentColor" />
+      ) : (
+        <X size={11} strokeWidth={2.5} />
+      )}
+      <span className="min-w-0 text-left leading-tight">{label}</span>
+    </Badge>
   );
 }
 
 /**
- * The ONE status on a poster, SELF-PLACED — for the plain grids (a person's titles) whose tile
- * carries nothing else in the corner. A surface that composes its own left cluster (the library
- * card: Top 10, heart) places `WatchlistMark` / `StatusMark` itself, so nothing overlaps.
+ * Consumption labels sit bottom-left; watchlist bookmarks retain their top-left placement.
  */
 export function PosterStatusBadge({ status, className }: { status: PosterStatus; className?: string }) {
   if (status.tone === "want") {
@@ -123,7 +107,7 @@ export function PosterStatusBadge({ status, className }: { status: PosterStatus;
     );
   }
   return (
-    <div className={cn(OVERLAY_CLUSTER, "left-2", className)}>
+    <div className={cn("absolute bottom-2 left-2 right-2 z-10 flex", className)}>
       <StatusMark status={status} />
     </div>
   );

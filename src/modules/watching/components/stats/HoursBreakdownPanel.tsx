@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { MediaRow } from "../shared/MediaRow";
 import { displayTitle } from "../../utils";
+import { parseViewingInput, viewingDate } from "../../lib/viewing-history";
+import { formatHistoryDate } from "../../lib/history-analytics";
 import type { ComputedStats, HoursEntry, RewatchEntry } from "./computeStats";
 
 /**
@@ -25,7 +27,7 @@ function fmt(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-const DATE_FMT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
 
 /**
  * The right-hand column: what this title contributed, and what fraction of the slice that is.
@@ -68,7 +70,7 @@ export function HoursBreakdownPanel({
   const open = slice !== null;
   const period = year ? String(year) : "All time";
 
-  const open_ = (id: string) => { onClose(); router.push(`/perso/watching/${id}`); };
+  const open_ = (id: string) => { if (id.startsWith("history:")) return; onClose(); router.push(`/perso/watching/${id}`); };
 
   // Rewatches are events, everything else is an aggregate. Split here rather than pretending one
   // row grammar fits both: a rewatch has a date, a series has a calculation.
@@ -111,10 +113,10 @@ export function HoursBreakdownPanel({
                 onClick={() => open_(e.item.id)}
                 meta={
                   <span className="text-micro text-text-tertiary">
-                    Rewatched {DATE_FMT.format(new Date(e.watchedOn))}
+                    Rewatched {e.watchedOn === "Date unknown" ? e.watchedOn : formatHistoryDate(viewingDate(parseViewingInput(e.watchedOn)))}{e.scope ? ` / ${e.scope}` : ""}{e.durationUnknown && e.minutes!=null ? " / duration partly unknown" : ""}
                   </span>
                 }
-                right={<Contribution minutes={e.minutes} total={totalMin} />}
+                right={e.minutes==null ? <span className="text-xs text-text-tertiary">Duration unknown</span> : <Contribution minutes={e.minutes} total={totalMin} />}
               />
             ))
           : counted.map((e) => (
@@ -136,7 +138,7 @@ export function HoursBreakdownPanel({
                         right was the same fact twice, in two formats, which reads as two facts. */}
                     {e.item.type !== "film" && (
                       <span className="text-micro tabular-nums text-text-tertiary">
-                        {e.episodes} ep × {e.runtime} min
+                        {e.source ? `${e.episodes} ep / ${e.source === "HISTORY" ? "frozen duration" : e.source === "MIXED" ? "history + legacy estimate" : "legacy estimate"}${e.runtime==null ? " (partly unknown)" : ""}` : `${e.episodes} ep x ${e.runtime} min`}
                       </span>
                     )}
                   </>
@@ -151,7 +153,7 @@ export function HoursBreakdownPanel({
         {unknown.length > 0 && (
           <div className="space-y-1 border-t border-border-subtle pt-4">
             <p className="text-micro text-text-tertiary">
-              {unknown.length} {unknown.length === 1 ? "title has" : "titles have"} no known runtime — counted as zero
+              {unknown.length} {unknown.length === 1 ? "title has" : "titles have"} unknown duration; excluded from known hours
             </p>
             {unknown.map((e) => (
               <MediaRow

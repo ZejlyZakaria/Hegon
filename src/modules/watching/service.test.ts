@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/tests/mocks/server";
-import { getPersonBundle, getWatchlistPage, getAnimeCoursMany } from "./service";
+import { getPersonBundle, getWatchlistPage, getAnimeCoursMany, saveScopeRating, getHistoryAnalytics, addRewatch, getRewatches } from "./service";
 import { mapCredits } from "./hooks/useMediaCredits";
 afterEach(() => vi.unstubAllEnvs());
 describe("Watching provider service contracts", () => {
@@ -63,5 +63,74 @@ describe("Watching complete collection requests", () => {
     const rows = await getAnimeCoursMany(Array.from({ length: 1201 }, (_, i) => i + 1));
     expect(rows.size).toBe(1201);
     expect(calls).toBe(7);
+  });
+});
+
+
+describe("scope rating transport idempotency", () => {
+  it("retries a lost transport with the identical operation and catalogue context", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://watching-test.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
+    const requests: Record<string, unknown>[] = [];
+    server.use(http.post("https://watching-test.supabase.co/rest/v1/rpc/scope_rating_command", async ({ request }) => {
+      const body = await request.json() as { command: Record<string, unknown> };
+      requests.push(body.command);
+      return requests.length === 1 ? HttpResponse.error() : HttpResponse.json({ media: { id: "media", personal_revision: 2 } });
+    }));
+    await expect(saveScopeRating({ media_id: "media", expected_revision: 1, scope_kind: "SEASON", scope_number: 2,
+      score: 9, action: "CONFIRM", previous_rating_id: "old", expected_scope_key: "tmdb-season:2002", expected_snapshot_id: "snapshot", expected_mapping_snapshot_id: null })).resolves.toMatchObject({ personal_revision: 2 });
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toEqual(requests[1]);
+    expect(requests[0].operation_key).toMatch(/^[0-9a-f-]{36}$/);
+    expect(requests[0].expected_snapshot_id).toBe("snapshot");
+  });
+});
+
+describe("Wave2C canonical service boundaries",()=>{
+  const setup=()=>{vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL","https://watching-test.supabase.co");vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY","test-anon-key");};
+  it("pages records/ranges/ratings past1000 with owner filters and no per-record calls",async()=>{
+    setup();const calls:Record<string,number>={};
+    for (const table of ["viewing_records","viewing_ranges","scope_ratings"]) server.use(http.get(`https://watching-test.supabase.co/rest/v1/${table}`,({request})=>{
+      const q=new URL(request.url).searchParams;expect(q.get(table==="viewing_ranges" ? "record.user_id" : "user_id")).toBe("eq.owner");
+      const offset=Number(q.get("offset") ?? 0),limit=Number(q.get("limit") ?? 1000);calls[table]=(calls[table] ?? 0)+1;
+      const rows=Array.from({length:Math.max(0,Math.min(limit,1105-offset))},(_,i)=>({id:String(offset+i),viewing_record_id:String(offset+i)}));
+      return HttpResponse.json(rows);
+    }));
+    const result=await getHistoryAnalytics("owner");expect(result.records).toHaveLength(1105);expect(result.ratings).toHaveLength(1105);expect(result.records[1104].ranges).toHaveLength(1);
+    expect(Object.values(calls)).toEqual([2,2,2]);
+  });
+  it("reads only rewatch history, hides compatibility duplicates and preserves legacy uncertainty",async()=>{
+    setup();server.use(http.get("https://watching-test.supabase.co/rest/v1/rewatches",()=>HttpResponse.json([
+      {id:"new",watched_on:"2026-01-01",created_at:"2026-10-18"},{id:"removed",watched_on:"2026-01-01",created_at:"2026-10-18"},{id:"legacy",watched_on:"2022-01-01",created_at:"2022-01-01"},
+    ])),http.get("https://watching-test.supabase.co/rest/v1/viewing_records",({request})=>{
+      const q=new URL(request.url).searchParams;expect(q.get("kind")).toBe("eq.REWATCH");expect(q.get("media_item_id")).toBe("eq.movie");
+      return HttpResponse.json([{id:"new",kind:"REWATCH",scope_kind:"WHOLE_TITLE",year:2026,month:null,day:null,date_precision:"YEAR",retracted_at:null,recorded_at:"2026-10-18"},
+        {id:"removed",kind:"REWATCH",scope_kind:"UNKNOWN",retracted_at:"2026-10-18"}]);
+    }));
+    const rows=await getRewatches("movie");expect(rows).toHaveLength(2);expect(rows[0].watched_on).toBe("2026");expect(rows[1]).toMatchObject({id:"legacy",watched_on:"Date unknown",scope_known:false});
+  });
+  it("records an explicit whole-film scope and retries the same frozen operation",async()=>{
+    setup();const requests:Record<string,unknown>[]=[];
+    server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>HttpResponse.json({id:"movie",type:"film",runtime:120,season_aired:null,personal_revision:4})),
+      http.post("https://watching-test.supabase.co/rest/v1/rpc/personal_history_command",async({request})=>{
+        const body=await request.json() as {command:Record<string,unknown>};requests.push(body.command);
+        return requests.length===1 ? HttpResponse.error():HttpResponse.json({id:"movie",personal_revision:5});
+      }));
+    await expect(addRewatch("movie",{date:{year:2026,month:10,day:18},scope:{kind:"WHOLE_TITLE"}},4)).resolves.toMatchObject({personal_revision:5});
+    expect(requests).toHaveLength(2);expect(requests[0]).toEqual(requests[1]);expect(requests[0].records).toMatchObject([{kind:"REWATCH",scope_kind:"WHOLE_TITLE",date_precision:"DAY",ranges:[{minutes:120}]}]);
+  });
+});
+
+
+describe("Wave2C ambiguous cour write boundary",()=>{
+  it("rejects guessed cour membership before sending a personal command",async()=>{
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL","https://watching-test.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY","test-anon-key");
+    let writes=0;
+    server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>HttpResponse.json({id:"anime",type:"anime",tmdb_id:42,runtime:24,season_episodes:[24,12],season_aired:[12,12],personal_revision:4})),
+      http.post("https://watching-test.supabase.co/rest/v1/rpc/personal_history_command",()=>{writes++;return HttpResponse.json({});}));
+    await expect(addRewatch("anime",{date:null,scope:{kind:"COUR",number:1,courId:501}},4,
+      {snapshot_id:null,mapping_snapshot_id:null,seasons:[],cours:[{id:501,number:1,start:13,end:24}]})).rejects.toThrow("Refresh season details before recording this rewatch");
+    expect(writes).toBe(0);
   });
 });

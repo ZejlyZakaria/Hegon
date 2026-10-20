@@ -45,7 +45,7 @@ type MediaCarouselProps = {
   showWatchedAgo?: boolean;
   /** Waiting for only — surface WHEN a film comes out, the anticipation made legible. */
   showCountdown?: boolean;
-  /** Last Watched only — flag a caught-up title (up to date, not finished) with a teal badge. */
+  /** Last Watched only — flag a caught-up title (up to date, not finished) with a consumption-status badge. */
   showCaughtUp?: boolean;
   /**
    * The Museum's rail: a mark on the artwork (the gold year tag, which positions itself) INSTEAD
@@ -174,7 +174,7 @@ function MovieCard({
             left = IDENTITY (what this title is: rank, priority), right = ACTIONS (favorite,
             menu). Same inset, same 24px item height, same gap → they align by construction
             instead of by three separate `top-2` / `top-3` guesses. */}
-        <div className={cn(OVERLAY_CLUSTER, mark ? "left-0" : item.want_to_watch && !showCountdown ? "left-7" : "left-2")}>
+        <div className={cn(OVERLAY_CLUSTER, mark ? "left-0" : showRankBadge && item.priority ? "left-9" : item.want_to_watch && !showCountdown ? "left-7" : "left-2")}>
           {mark?.(item)}
           {/* Priority is "how badly do I want to watch this" — meaningless for a film that isn't out
               yet. In the Waiting for rail (showCountdown) the countdown is the only mark that belongs. */}
@@ -195,20 +195,10 @@ function MovieCard({
               {countdown}
             </Badge>
           )}
-          {/* Caught up — DESKTOP only. A wide card has room beside the heart + menu, and the
-              top-left is where the other states (ago, countdown) already live, so it belongs here.
-              On a narrow mobile card it collided with the actions opposite, so THERE it drops into
-              the metadata row instead (see below). `sm:contents` so the Badge stays a direct flex
-              child of the cluster on desktop. Teal (your state), CheckCheck ("everything seen"). */}
-          {/* Icon only — the double check says it; the word lives in the tooltip (owner, 2026-09-17). */}
-          {caughtUp && (
-            <span className="hidden sm:contents">
-              <StatusMark status={{ label: "Caught up", tone: "caughtup", level: null }} />
-            </span>
-          )}
         </div>
 
         <div className="absolute bottom-0 inset-x-0 p-4">
+          {caughtUp && <StatusMark status={{ label: "Caught up", tone: "caughtup", level: null }} className="mb-2" />}
           <h4 className="text-sm font-semibold text-white line-clamp-1">
             {displayTitle(item)}
           </h4>
@@ -266,11 +256,6 @@ function MovieCard({
             )}
 
           <div className="mt-1.5 flex min-w-0 items-center gap-2">
-            {/* Caught up — MOBILE only, on the same line as the year + rating. The narrow card
-                has no room for it top-left beside the actions, so it lives here instead; desktop
-                shows the top-left badge (above) and hides this. Same teal chip grammar as the
-                episode-position chip. */}
-            {caughtUp && <StatusMark status={{ label: "Caught up", tone: "caughtup", level: null }} className="shrink-0 sm:hidden" />}
             {/* `truncate` on the Badge itself did nothing: the badge is an inline-flex box, and
                 text-overflow only applies to the element that HOLDS the text. So the label gets
                 its own span — "Science Fiction" ellipsises instead of shoving the year and the

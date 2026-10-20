@@ -1,4 +1,8 @@
 "use client";
+import { RewatchForm, ViewingHistory } from "./RewatchForm";
+import type { RewatchRequest, RewatchCatalogue } from "../../lib/rewatch";
+
+import { isWatchableNow } from "../../lib/watchable";
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -75,8 +79,6 @@ function watchedYearOf(media: WatchingMedia, yearMap: Record<string, number> | n
   return yearMap?.["1"] ?? null;
 }
 
-const fmtDate = (d: string) =>
-  d.length === 4 ? d : new Date(d).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 const todayISO = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -270,79 +272,6 @@ function PrimaryAction({ icon, children, onClick, disabled }: {
 
 const menuItemClass = "gap-2.5 px-3 py-2 text-xs text-text-secondary focus:bg-surface-2 focus:text-text-primary";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const range = (from: number, to: number) =>
-  from > to ? [] : Array.from({ length: to - from + 1 }, (_, i) => from + i);
-
-// Log a past rewatch, constrained to [release, today] — you can't have rewatched a
-// title before it existed. Month precision is enough (Year → Month, month narrows to
-// the release/now bounds), so everything fits on one row.
-function RewatchDatePicker({ releaseISO, onAdd, onCancel, pending }: {
-  releaseISO: string | null;
-  onAdd: (iso: string) => void;
-  onCancel: () => void;
-  pending: boolean;
-}) {
-  const now = new Date();
-  const rel = releaseISO ? new Date(releaseISO) : null;
-  const valid = rel && !Number.isNaN(rel.getTime());
-  const relY = valid ? rel!.getFullYear() : null;
-  const relM = valid ? rel!.getMonth() + 1 : null;
-
-  const [y, setY] = useState<number | null>(null);
-  const [m, setM] = useState<number | null>(null);
-
-  const years = range(relY ?? 1950, now.getFullYear()).reverse();
-  const monthMin = y != null && y === relY ? relM! : 1;
-  const monthMax = y === now.getFullYear() ? now.getMonth() + 1 : 12;
-  const months = range(monthMin, monthMax);
-
-  const complete = y != null;
-  const submit = () => { if (complete) onAdd(m == null ? String(y) : `${y}-${String(m).padStart(2, "0")}`); };
-
-  const triggerCls = "h-8 flex-1 border-0 bg-white/10 text-white/90 focus:ring-0 data-[placeholder]:text-white/45";
-  const contentCls = "border-border-strong bg-surface-3";
-  const itemCls = "text-xs focus:bg-surface-2 focus:text-text-primary";
-
-  return (
-    <div className="mt-2 flex items-center gap-1.5">
-      <Select value={y != null ? String(y) : undefined} onValueChange={(v) => { setY(Number(v)); setM(null); }}>
-        <SelectTrigger variant="legacy" className={triggerCls}><SelectValue placeholder="Year" /></SelectTrigger>
-        <SelectContent variant="legacy" className={contentCls}>
-          {years.map((yr) => <SelectItem key={yr} value={String(yr)} className={itemCls}>{yr}</SelectItem>)}
-        </SelectContent>
-      </Select>
-      <Select value={m != null ? String(m) : undefined} onValueChange={(v) => setM(Number(v))} disabled={y == null}>
-        <SelectTrigger variant="legacy" className={triggerCls}><SelectValue placeholder="Month (optional)" /></SelectTrigger>
-        <SelectContent variant="legacy" className={contentCls}>
-          {months.map((mm) => <SelectItem key={mm} value={String(mm)} className={itemCls}>{MONTHS[mm - 1]}</SelectItem>)}
-        </SelectContent>
-      </Select>
-      <Hint label="Add rewatch">
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!complete || pending}
-          aria-label="Add rewatch"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-white/15 text-white transition-colors hover:bg-white/20 disabled:opacity-40"
-        >
-          <Check size={14} />
-        </button>
-      </Hint>
-      <Hint label="Cancel">
-        <button
-          type="button"
-          onClick={onCancel}
-          aria-label="Cancel"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-white/60 transition-colors hover:text-white"
-        >
-          <X size={14} />
-        </button>
-      </Hint>
-    </div>
-  );
-}
-
 // ── StatusCard ──────────────────────────────────────────────────────────────────
 // THE state-aware surface of the detail page — the module's branded hero card,
 // first in the right rail (desktop) / right under the hero (mobile). One home for
@@ -391,6 +320,7 @@ export function StatusCard({
   favorite, onFavoriteToggle, onMarkWatched, onMarkCaughtUp, onStartWatching, onPause, onDrop,
   onResume, onAddNote, onSeasonYearChange, onWatchedDateChange, onPriorityChange, onDelete, isUpdating,
 }: Props) {
+  const watchable = isWatchableNow(media);
   const status: CardStatus = CARD_STATUS[deriveWatchStatus(media)];
 
   // "Mark as completed" used to appear when you reached the last ANNOUNCED episode — which for
@@ -432,16 +362,13 @@ export function StatusCard({
    * that shelf has no such button. The condition was never `watched`; it was HAVE YOU SEEN IT
    * ALL. Completed and caught-up both answer yes.
    */
-  const canRewatch = isSeries ? atLastEpisode || caughtUp : media.watched;
+  const canRewatch = watchable && (isSeries ? (view?.position.episode ?? 0)>0 || (view?.position.season ?? 1)>1 || atLastEpisode || caughtUp : media.watched);
 
   const { data: rewatches = [] } = useRewatches(canRewatch ? media.id : "");
   const addRewatch = useAddRewatch(media.id, media.personal_revision);
   const removeRewatch = useRemoveRewatch(media.id, media.personal_revision);
   const [backdating, setBackdating] = useState(false);
 
-  // A rewatch can't predate the title's release — constrains the date picker.
-  // Series carry a full S1 air date; films only a year → floor to Jan 1.
-  const releaseISO = media.season_air_dates?.[0] || (media.year ? `${media.year}-01-01` : null);
 
   // THE STEPPERS SHOW THE ANNOUNCED AND STOP AT THE AIRED. Two numbers, two jobs — see StepRow.
   // "4 / 8" with a dead "+" tells you both truths at once: the season has eight episodes, and
@@ -460,7 +387,7 @@ export function StatusCard({
   // card used to keep its own `!isSeries || isFinished` copy, which called every film completable
   // and let you mark an unreleased one as watched.
   const completable = canComplete(media);
-  const releaseKnown = isSeries || completable;
+  const releaseKnown = watchable;
 
   // "Season 3" when you finished it, "S3 · E4" when you walked out mid-season. Both are true
   // sentences; which one applies is a fact about your position, not a formatting choice.
@@ -484,7 +411,7 @@ export function StatusCard({
    * So on a running series that's what the item says — and it does the honest thing: it puts your
    * position at the last AIRED episode instead of writing `watched = true` over a blank position.
    */
-  const markItem = completable ? (
+  const markItem = !watchable ? null : completable ? (
     <DropdownMenuItem onClick={onMarkWatched} className={menuItemClass}>
       <Check size={13} /> Mark as watched
     </DropdownMenuItem>
@@ -527,16 +454,11 @@ export function StatusCard({
   for (let y = currentYear; y >= Math.min(floorYear, currentYear); y--) years.push(y);
 
 
-  const logRewatch = async (on: string) => {
-    if (!on) return;
-    try {
-      await addRewatch.mutateAsync(on);
-      setBackdating(false);
-      toast("Rewatch logged.");
-    } catch (err) {
-      if (isDemoReadOnlyError(err)) return;
-      toast.error("Failed to log rewatch.");
-    }
+  const [rewatchDate,setRewatchDate]=useState("");
+  const [editingRewatch,setEditingRewatch]=useState<string|undefined>();
+  const logRewatch=(on:string) => {setRewatchDate(on);setEditingRewatch(undefined);setBackdating(true);};
+  const saveRewatch=async (request:RewatchRequest,catalogue:RewatchCatalogue) => {
+    await addRewatch.mutateAsync({request,catalogue});setBackdating(false);toast("Rewatch logged.");
   };
 
   const handleRemoveRewatch = async (id: string) => {
@@ -569,7 +491,7 @@ export function StatusCard({
                     className="group inline-flex items-center gap-1 text-label font-medium text-white transition-colors hover:text-white/90"
                   >
                     {rewatches.length === 1 && lastRewatch
-                      ? fmtDate(lastRewatch)
+                      ? lastRewatch
                       : `${rewatches.length} times`}
                     <ChevronDown size={11} className="text-white/40 transition-colors group-hover:text-white/70" />
                   </button>
@@ -582,12 +504,13 @@ export function StatusCard({
                     >
                       <span className="inline-flex items-center gap-2 text-xs text-text-secondary">
                         <Repeat size={11} className="text-accent-watching-vivid" />
-                        {fmtDate(r.watched_on)}
+                        {r.watched_on} / {r.scope_label ?? "Legacy scope unknown"}
                       </span>
                       {/* Always visible — an `opacity-0 … group-hover` delete is unreachable on
                           touch, where there is no hover to reveal it. No tooltip: an ✕ on a dated
                           row already reads as "remove", and a Hint that only appears on hover would
                           be the same desktop-only crutch. */}
+                      {r.scope_known && <button type="button" className="text-xs text-text-tertiary" onClick={()=>{setEditingRewatch(r.id);setRewatchDate(r.watched_on==="Date unknown" ? "" : r.watched_on);setBackdating(true);}}>Correct</button>}
                       <button
                         type="button"
                         aria-label="Remove this rewatch"
@@ -605,14 +528,7 @@ export function StatusCard({
         </>
       )}
 
-      {backdating && (
-        <RewatchDatePicker
-          releaseISO={releaseISO}
-          pending={addRewatch.isPending}
-          onAdd={(iso) => logRewatch(iso)}
-          onCancel={() => setBackdating(false)}
-        />
-      )}
+
     </>
   );
 
@@ -715,12 +631,12 @@ export function StatusCard({
                       door for it — "Log rewatch" was welded to the word `watched`. The primary
                       slot is taken by the "All caught up" line, which is the more important
                       truth, so both rewatch actions live here. */}
-                  {caughtUp && (
+                  {watchable && caughtUp && (
                     <>
                       <DropdownMenuItem onClick={() => logRewatch(todayISO())} className={menuItemClass}>
                         <Repeat size={13} /> Log rewatch
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setBackdating((v) => !v)} className={menuItemClass}>
+                      <DropdownMenuItem onClick={() => logRewatch("")} className={menuItemClass}>
                         <CalendarPlus size={13} /> Log a past rewatch
                       </DropdownMenuItem>
                     </>
@@ -744,7 +660,7 @@ export function StatusCard({
                 </>
               )}
               {status === "watched" && (
-                <DropdownMenuItem onClick={() => setBackdating((v) => !v)} className={menuItemClass}>
+                <DropdownMenuItem onClick={() => logRewatch("")} className={menuItemClass}>
                   <CalendarPlus size={13} /> Log a past rewatch
                 </DropdownMenuItem>
               )}
@@ -917,7 +833,7 @@ export function StatusCard({
       <AnimatePresence mode="popLayout" initial={false}>
         {status === "want_to_watch" && (
           <motion.div key="f-want" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
-            {isSeries ? (
+            {isSeries && watchable ? (
               <PrimaryAction icon={<Play size={13} className="fill-current" />} onClick={onStartWatching} disabled={isUpdating}>
                 Start watching
               </PrimaryAction>
@@ -941,7 +857,7 @@ export function StatusCard({
           </motion.div>
         )}
 
-        {status === "in_progress" && atLastEpisode && (
+        {watchable && status === "in_progress" && atLastEpisode && (
           <motion.div key="f-complete" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
             <PrimaryAction icon={<Check size={13} />} onClick={onMarkWatched} disabled={isUpdating}>
               Mark as completed
@@ -964,7 +880,7 @@ export function StatusCard({
           </motion.div>
         )}
 
-        {(status === "paused" || status === "dropped") && (
+        {watchable && (status === "paused" || status === "dropped") && (
           <motion.div key="f-resume" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
             <PrimaryAction icon={<RotateCcw size={13} />} onClick={onResume} disabled={isUpdating}>
               Resume watching
@@ -972,7 +888,7 @@ export function StatusCard({
           </motion.div>
         )}
 
-        {status === "watched" && (
+        {watchable && status === "watched" && (
           <motion.div key="f-rewatch" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
             <PrimaryAction icon={<Plus size={13} />} onClick={() => logRewatch(todayISO())} disabled={addRewatch.isPending}>
               Log rewatch
@@ -980,6 +896,10 @@ export function StatusCard({
           </motion.div>
         )}
       </AnimatePresence>
+      {canRewatch && !media.watched && !caughtUp && <button type="button" className="mt-2 text-xs text-white/70" onClick={()=>logRewatch(todayISO())}>Record scoped rewatch</button>}
+      {backdating && view && <RewatchForm key={`${rewatchDate}:${editingRewatch ?? "new"}`} media={media} view={view} date={rewatchDate} replaces={editingRewatch} pending={addRewatch.isPending} onSave={saveRewatch} onClose={()=>setBackdating(false)}/>}
+      <ViewingHistory mediaId={media.id}/>
+
 
       {/* ── Footer: where to watch. A quiet, separated strip — it's reference, not an action
              on this card, so it closes it instead of interrupting it. ── */}

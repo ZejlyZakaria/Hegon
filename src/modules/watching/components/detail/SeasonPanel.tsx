@@ -10,6 +10,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { cn } from "@/shared/utils/utils";
 import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
+import { scopeMatchesView, type ScopeRatingContext } from "../../lib/scope-ratings";
 import { StarRating } from "../shared/StarRating";
 import { ScoreMark } from "../shared/Marks";
 import { tmdbImage, tmdbImageFor } from "../../lib/tmdb-image";
@@ -117,6 +118,9 @@ interface Props {
   /** An unwatched title (want-to-watch / reference): the panel reads, it never claims. */
   readOnly: boolean;
   onYearChange: (season: number, year: number) => void;
+  ratingContexts?: ScopeRatingContext[];
+  ratingSaving?: boolean;
+  onRefreshRatings?: () => void;
   onRatingChange: (season: number, value: number | null) => void;
   /** "I watched through this season" — the page re-derives the status. */
   onSetPosition: (season: number, episode: number) => void;
@@ -124,7 +128,7 @@ interface Props {
 
 export function SeasonPanel({
   open, onClose, media, view, season: s, position, readOnly,
-  onYearChange, onRatingChange, onSetPosition,
+  onYearChange, onRatingChange, ratingContexts, ratingSaving, onRefreshRatings, onSetPosition,
 }: Props) {
   const idx = s - 1;
   const info = view.seasons[idx];
@@ -139,6 +143,8 @@ export function SeasonPanel({
   const complete = isSeasonComplete(facts, s);
   const fullyWatched = !readOnly && hasFullyWatchedSeason(facts, s);
   const datable = !readOnly && isSeasonDatable(facts, s);
+  const availableSeen = !readOnly && aired > 0 && info?.airedKnown !== false
+    && (position.season > s || (position.season === s && position.episode >= aired));
   // "Now" is a season you are ACTIVELY inside — the strip gates its badge on `in_progress` and so
   // does this. A paused or dropped show is inside a season too, but the word for that is the
   // show's word (Paused / Dropped), not "Now" — the StatusCard next to this panel says so.
@@ -214,15 +220,14 @@ export function SeasonPanel({
 
   /* ── Your record ───────────────────────────────────────────────────────────────────────── */
   const year = view.yearMap?.[String(s)];
-  // ONE SEASON, ONE VERDICT. A show with a single season has nothing to rate "per season" — the
-  // rating you gave the title in My Take IS this season's rating, and asking for it twice was the
-  // app inviting a contradiction. The panel shows it and does not offer a second control.
-  const single = view.seasons.length === 1;
   // A stamp on a season you haven't REACHED is a claim you're no longer making (you stepped back,
   // or dropped the show before it). The data stays; we stop reading it — the strip's rule, applied
   // here too, so the card and the panel never disagree about the same number.
   const reachedSeason = media.watched || s <= position.season;
-  const rating = single ? (media.user_rating ?? 0) : (reachedSeason ? (view.ratingMap?.[String(s)] ?? 0) : 0);
+  const candidateContext = ratingContexts?.find((r) => r.kind === (view.overlaid ? "COUR" : "SEASON") && r.number === s);
+  const matchingScope = scopeMatchesView(candidateContext, view, s);
+  const ratingContext = matchingScope ? candidateContext : undefined;
+  const rating = ratingContext ? (ratingContext.score ?? 0) : (reachedSeason ? (view.ratingMap?.[String(s)] ?? 0) : 0);
 
   // Year options — never before the season finished airing, never after now.
   const currentYear = new Date().getFullYear();
@@ -276,9 +281,9 @@ export function SeasonPanel({
         {status.label === "Watched" && year ? ` · ${year}` : ""}
       </Badge>
       {/* A score the season carries but cannot edit here (not fully aired, stepped back into it,
-          or a single-season title whose rating is the title's) is still YOUR fact — the strip
+          or an incomplete available scope) is still YOUR fact — the strip
           shows it, so the panel does too. Read-only: the claim is not open, the memory is. */}
-      {(!datable || single) && rating > 0 && <ScoreMark value={rating} source="mine" onArtwork />}
+      {(!availableSeen || !matchingScope) && rating > 0 && <ScoreMark value={rating} source="mine" onArtwork />}
       {bestHere > 0 && (
         <span className="flex items-center gap-1 text-micro text-white/70 tabular-nums">
           <Star size={11} style={{ color: GOLD, fill: GOLD }} />
@@ -291,7 +296,7 @@ export function SeasonPanel({
   const yearEdit = datable ? (
     <YearPen value={year ?? null} years={years} onChange={(y) => onYearChange(s, y)} />
   ) : null;
-  const stars = datable && !single ? (
+  const stars = availableSeen && matchingScope && !ratingSaving ? (
     <StarRating size="sm" onArtwork value={rating} onChange={(v) => onRatingChange(s, v)} />
   ) : null;
   const jump = canJump && !behind ? (
@@ -386,7 +391,11 @@ export function SeasonPanel({
             <p className="pr-8 text-sm font-semibold text-white tabular-nums">{factsLine}</p>
             {span && <p className="mt-0.5 text-xs text-white/60">{span}</p>}
             {statusRow && <div className="mt-2 flex flex-wrap items-center gap-2">{statusRow}</div>}
-            {(datable || canJump) && (
+            {!readOnly && <ScopeRatingReceipt context={ratingContext} score={rating} canConfirm={availableSeen && matchingScope} saving={ratingSaving} onConfirm={() => onRatingChange(s, rating)} />}
+            {!readOnly && !ratingSaving && !matchingScope && onRefreshRatings && (
+              <button type="button" className="mt-2 self-start rounded-control bg-white/10 px-2 py-1 text-xs text-white" onClick={onRefreshRatings}>Refresh season details before rating</button>
+            )}
+            {(datable || canJump || availableSeen) && (
               <div className="mt-auto flex flex-col gap-1.5 pt-3">
                 {datable && <div className="flex h-6 items-center justify-between gap-3"><span className="whitespace-nowrap text-xs text-white/70">Year watched</span>{yearEdit}</div>}
                 {/* On a phone the column beside the poster is ~230 px: label + ten stars + number do not
@@ -616,5 +625,24 @@ function YearPen({ value, years, onChange }: { value: number | null; years: numb
         </Select>
       </PopoverContent>
     </Popover>
+  );
+}
+
+
+/** A historical score remains visible while its current coverage needs explicit confirmation. */
+export function ScopeRatingReceipt({ context, score, canConfirm, saving, onConfirm }: {
+  context?: ScopeRatingContext; score: number; canConfirm: boolean; saving?: boolean; onConfirm: () => void;
+}) {
+  if (score <= 0) return null;
+  return (
+    <div className="mt-2 text-xs text-white/70">
+      {context?.covered_episodes != null && <p>{context.kind === "COUR" ? <>Originally rated {context.covered_episodes} {context.covered_episodes === 1 ? "episode" : "episodes"}</> : <>Rated through episode {context.covered_episodes}</>}</p>}
+      {(context?.validity ?? "SCOPE_UNVERIFIED") === "SCOPE_UNVERIFIED" && <p>Rating scope unverified</p>}
+      {context?.validity === "NEEDS_RECONFIRMATION" && (
+        <><p>Needs reconfirmation</p>{canConfirm && !saving && (
+          <button type="button" className="mt-1 rounded-control bg-white/10 px-2 py-1 text-xs text-white" onClick={onConfirm}>Confirm {score}</button>
+        )}</>
+      )}
+    </div>
   );
 }

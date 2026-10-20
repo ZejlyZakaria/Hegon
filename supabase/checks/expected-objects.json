@@ -62,7 +62,7 @@
     "✅ 2026-09-17 (ter) — migration 20260917000200 : contrainte check media_items_cour_only_anime remplace media_items_cour_columns_series_only (une contrainte n'est pas comptée). Chiffres inchangés.",
     "2026-10-12 Wave 2A: viewing_records (28 columns), viewing_ranges (9), media_items +5; tables +2, columns +42, policies +2, functions +3, indexes +7. Deltas measured by isolated PostgreSQL 16 rehearsal; production application remains owner-only."
   ],
-  "_migrations_through": "20261013000000",
+  "_migrations_through": "20261018000000",
   "tables": 79,
   "colonnes": 836,
   "policies": 223,

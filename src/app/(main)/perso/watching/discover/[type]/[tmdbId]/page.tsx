@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { isWatchableNow } from "@/modules/watching/lib/watchable";
+
 /**
  * A title you do NOT own — the same page, minus you.
  *
@@ -189,6 +191,7 @@ export default function DiscoverDetailPage() {
    */
   const runAdd = async (target: ListType) => {
     if (!raw || !media || adding) return;
+    if (target !== "wantToWatch" && !isWatchableNow(media)) return;
     setAdding(target);
     try {
       const position =
@@ -330,7 +333,7 @@ export default function DiscoverDetailPage() {
           <Plus />
           Want to watch
         </Button>
-        {isSeries && (
+        {isSeries && isWatchableNow(media) && (
           <Button variant="quiet" size="sm" className="w-full" disabled={adding !== null} onClick={() => runAdd("inProgress")}>
             <Play />
             Start watching
@@ -339,10 +342,10 @@ export default function DiscoverDetailPage() {
         {/* THE LABEL FOLLOWS THE FACT. On a running series you cannot have finished it — you can
             only be up to date, and that is what gets written. Calling it "watched" here would be
             the very sentence this module spent weeks removing. */}
-        <Button variant="quiet" size="sm" className="w-full" disabled={adding !== null} onClick={() => runAdd("recentlyWatched")}>
+        {isWatchableNow(media) && (<Button variant="quiet" size="sm" className="w-full" disabled={adding !== null} onClick={() => runAdd("recentlyWatched")}>
           <Check />
           {isSeries && media.status !== "ended" ? "I'm caught up" : "Mark as watched"}
-        </Button>
+        </Button>)}
         {/* On a title you own, this is reference. Here it is part of the decision you came to make:
             "can I actually watch this?" belongs next to "do I want to". */}
         <WhereToWatch providers={providers} />

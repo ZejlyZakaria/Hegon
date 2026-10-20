@@ -6,6 +6,7 @@ import { STALE } from "@/shared/lib/stale";
 
 export interface EpisodeInfo {
   number: number;
+  runtime?: number | null;
   name: string;
   still_url: string | null;
   /** The bare TMDB path — a surface that needs another size (the season panel: w500) builds its own url. */
@@ -18,6 +19,7 @@ export interface EpisodeInfo {
 function mapEpisodes(data: any): EpisodeInfo[] {
   return (data?.episodes ?? []).map((e: any) => ({
     number: e.episode_number,
+    runtime: typeof e.runtime === "number" && e.runtime > 0 ? e.runtime : null,
     name: e.name || `Episode ${e.episode_number}`,
     still_url: e.still_path ? `https://image.tmdb.org/t/p/w300${e.still_path}` : null,
     still_path: e.still_path ?? null,

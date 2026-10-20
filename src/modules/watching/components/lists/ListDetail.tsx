@@ -454,7 +454,7 @@ function StatusDropdown({ item, lens }: { item: MediaListItemWithMedia; lens?: M
               {actions.canComplete ? "Mark as watched" : "Seen everything that's out"}
             </button>
           )}
-          {isSeries && currentStatus !== "watching" && (
+          {actions.canConsume && isSeries && currentStatus !== "watching" && (
             <button
               type="button"
               onClick={() => handleAction("in_progress")}

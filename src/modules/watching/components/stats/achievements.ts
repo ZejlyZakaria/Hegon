@@ -197,7 +197,7 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
       ].sort((a, b) => a.on.localeCompare(b.on));
       let acc = 0;
       for (const s of sittings) {
-        acc += s.minutes;
+        acc += s.minutes ?? 0;
         if (acc / 60 >= rule.goal) { unlockedAt = s.on; break; }
       }
       formula = `${value.toLocaleString("en-GB")} hours across your viewing, rewatches included — ${rule.description.toLowerCase()}.`;

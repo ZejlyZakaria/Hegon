@@ -229,6 +229,8 @@ export interface AnimeCoursRow {
 export interface Rewatch {
   id: string;
   media_item_id: string;
+  scope_label?: string;
+  scope_known?: boolean;
   watched_on: string;  // UI: YYYY / YYYY-MM / YYYY-MM-DD; legacy rows retain their date projection.
   created_at: string;
 }

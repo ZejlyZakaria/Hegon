@@ -1,3 +1,8 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { parseViewingInput } from "./viewing-history";
+import * as seriesFacts from "./series-state";
+import { isWatchableNow } from "./watchable";
+import { canComplete, deriveWatchStatus } from "./watch-status";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
@@ -18,7 +23,7 @@ function component(path: string, extra: Record<string, unknown>, expose?: string
   const exports: Record<string, unknown> = {};
   const deps: Record<string, unknown> = {
     "react/jsx-runtime": jsx,
-    react: { useState: (value: unknown) => [value, () => {}], useEffect() {}, useRef: () => ({ current: null }) },
+    react: { useState: (value: unknown) => [value, () => {}], useEffect() {}, useMemo: (fn: () => unknown) => fn(), useRef: () => ({ current: null }) },
     "@/modules/watching/lib/possession": { mediaIdentity },
     "@/modules/watching/lib/person-experience": { experienceSummary },
     "@/modules/watching/lib/tmdb-image": { tmdbImageFor },
@@ -86,21 +91,131 @@ describe("Actual review UI regressions", () => {
 });
 
 
-describe("Wave 2A rewatch precision input", () => {
-  it.each([[2022, null, "2022"], [2022, 8, "2022-08"]] as const)("submits year %s month %s without fabricating a day", (year,month,expected) => {
-    const values = [year,month];
-    let call = 0;
-    let submitted: string | undefined;
-    const loaded = component("src/modules/watching/components/detail/StatusCard.tsx", {
-      react: { useState: () => [values[call++], () => {}] },
-    }, "RewatchDatePicker, fmtDate");
-    const picker = loaded.RewatchDatePicker as (props: unknown) => unknown;
-    const button = elements(picker({ releaseISO: "2000-01-01", pending: false, onCancel() {}, onAdd: (input: string) => { submitted = input; } }))
-      .find(e => e.props["aria-label"] === "Add rewatch");
-    expect(button?.props.disabled).toBe(false);
-    (button?.props.onClick as () => void)();
-    expect(submitted).toBe(expected);
-    const format = loaded.fmtDate as (input: string) => string;
-    expect(format(expected)).toBe(month === null ? "2022" : "Aug 2022");
+describe("Wave2C explicit rewatch form",()=>{
+  it.each(["2022","2022-08","2022-08-12"])("preserves exact user precision %s",(input)=>{
+    const values=[input,"WHOLE_TITLE",1,"",""];let call=0;let submitted:unknown;
+    const loaded=component("src/modules/watching/components/detail/RewatchForm.tsx",{
+      react:{useState:()=>[values[call++],()=>{}]},
+      "@tanstack/react-query":{useQuery:()=>({data:{seasons:[],cours:[]}}),useQueryClient:()=>({})},
+      "../../lib/viewing-history":{parseViewingInput},
+      "../../hooks/query-keys":{WATCHING_KEYS:{all:["watching"]}},
+    });
+    const form=loaded.RewatchForm as (props:unknown)=>unknown;
+    const button=elements(form({media:{id:"movie",type:"film"},view:{pending:false,overlaid:false,seasons:[]},date:input,pending:false,onClose(){},onSave:(request:unknown)=>{submitted=request;}})).find(e=>e.type==="button" && e.props.children==="Record rewatch");
+    expect(button?.props.disabled).toBe(false);(button!.props.onClick as ()=>void)();
+    expect(submitted).toMatchObject({date:parseViewingInput(input),scope:{kind:"WHOLE_TITLE"}});
+  });
+  it("blocks stale cour mapping until the displayed identity/range matches",()=>{
+    let writes=0;
+    const render=(id:number)=>{
+      const values=["2022","COUR",1,"",""];let call=0;
+      const loaded=component("src/modules/watching/components/detail/RewatchForm.tsx",{
+        react:{useState:()=>[values[call++],()=>{}]},
+        "@tanstack/react-query":{useQuery:()=>({data:{seasons:[],cours:[{id:502,number:1,start:1,end:13}]}}),useQueryClient:()=>({})},
+        "../../lib/viewing-history":{parseViewingInput},
+      "../../hooks/query-keys":{WATCHING_KEYS:{all:["watching"]}},
+      });
+      return elements((loaded.RewatchForm as (props:unknown)=>unknown)({media:{id:"anime",type:"anime"},view:{pending:false,overlaid:true,cours:[{anilist_id:id,season:1,start_episode:1,end_episode:13}]},date:"2022",pending:false,onClose(){},onSave(){writes++;}})).find(e=>e.type==="button" && e.props.children==="Record rewatch")!;
+    };
+    const stale=render(501);expect(stale.props.disabled).toBe(true);(stale.props.onClick as ()=>void)();expect(writes).toBe(0);
+    const refreshed=render(502);expect(refreshed.props.disabled).toBe(false);(refreshed.props.onClick as ()=>void)();expect(writes).toBe(1);
+  });
+});
+
+describe("Wave2C rating history visibility",()=>{
+  it("shows old9 and revised8.5 as separate assertions without claiming viewing dates",()=>{
+    const loaded=component("src/modules/watching/components/detail/RewatchForm.tsx",{
+      react:{useState:()=>[true,()=>{}]},
+      "@tanstack/react-query":{useQuery:()=>({data:{records:[],ratings:[{id:"old",score:9,scope_kind:"COUR",scope_number_at_recording:1,episode_ids:[1,2],recorded_at:"2026-10-18"},{id:"new",score:8.5,scope_kind:"COUR",scope_number_at_recording:2,episode_ids:[1,2,3],recorded_at:"2026-10-18"}]}})},
+      "../../hooks/query-keys":{WATCHING_KEYS:{all:["watching"]}},
+    });
+    const html=renderToStaticMarkup((loaded.ViewingHistory as (props:unknown)=>ReactElement)({mediaId:"fixture"}));
+    expect(html).toContain("Rating: 9 / 10");expect(html).toContain("Rating: 8.5 / 10");expect(html).toContain("recording dates");
+  });
+});
+
+describe("watchable consumption actions", () => {
+  const deps = {
+    "../../lib/watchable": { isWatchableNow },
+    "../../lib/watch-status": { canComplete, deriveWatchStatus },
+    "../../lib/drop-reasons": { dropReasonLabel: () => null },
+    "../../hooks/useRewatches": {
+      useRewatches: () => ({ data: [] }),
+      useAddRewatch: () => ({ isPending: false }),
+      useRemoveRewatch: () => ({ isPending: false }),
+    },
+    "../../lib/series-state": seriesFacts,
+    "../shared/StatusBadge": { watchlistLevel: () => "medium" },
+    "../shared/Marks": { WATCHLIST_COLOR: { medium: "orange" } },
+  };
+  it.each(["film", "serie", "anime"])("hides unavailable consumption in the %s detail card", (type) => {
+    const loaded = component("src/modules/watching/components/detail/StatusCard.tsx", deps);
+    const render = loaded.StatusCard as (props: unknown) => unknown;
+    const media = { id: "upcoming", type, release_date: "2099-01-01", season_aired: [0],
+      season_episodes: [8], want_to_watch: true, status: "ongoing", current_episode: 0 };
+    const nodes = elements(render({ media, isSeries: type !== "film", currentSeason: 1, currentEpisode: 0 }));
+    const text = nodes.map((node) => node.props.children).flat(Infinity).filter((child) => typeof child === "string");
+    expect(text).not.toContain("Start watching");
+    expect(text).not.toContain("Mark as watched");
+    expect(text).not.toContain("Seen everything that's out");
+    expect(text.some((value) => String(value).includes("Not released yet"))).toBe(true);
+    expect(text).toContain("Want to Watch");
+  });
+  it.each(["film", "serie", "anime"])("keeps released %s detail actions", (type) => {
+    const loaded = component("src/modules/watching/components/detail/StatusCard.tsx", deps);
+    const render = loaded.StatusCard as (props: unknown) => unknown;
+    const nodes = elements(render({ media: { id: "released", type, release_date: "2020-01-01",
+      status: "released", season_aired: [1], season_episodes: [8], want_to_watch: true },
+      isSeries: type !== "film", currentSeason: 1, currentEpisode: 0 }));
+    const text = nodes.map((node) => node.props.children).flat(Infinity).filter((child) => typeof child === "string");
+    expect(text).toContain(type === "film" ? "Mark as watched" : "Start watching");
+  });
+  it.each(["film", "serie", "anime"])("guards unavailable %s actions without a mutation", async (type) => {
+    let writes = 0;
+    const loaded = component("src/modules/watching/hooks/useWatchActions.tsx", {
+      "../lib/watchable": { isWatchableNow }, "../lib/watch-status": { canComplete },
+      "./useUpdateMedia": { useUpdateMedia: () => ({ mutateAsync: () => { writes++; } }) },
+      "./useMediaView": { useMediaView: () => null },
+      "@tanstack/react-query": { useQueryClient: () => ({}) },
+      "@/shared/utils/toast": { toast: { error() {} } },
+    });
+    const hook = loaded.useWatchActions as (media: unknown) => { canMark: boolean; canConsume: boolean;
+      startWatching(): Promise<unknown>; markWatched(): Promise<unknown>; markCaughtUp(): Promise<unknown> };
+    const actions = hook({ id: "upcoming", type, release_date: "2099-01-01", season_aired: [0] });
+    expect(actions.canMark).toBe(false);
+    expect(actions.canConsume).toBe(false);
+    await actions.startWatching(); await actions.markWatched(); await actions.markCaughtUp();
+    expect(writes).toBe(0);
+  });
+});
+
+
+describe("discover availability outside the library", () => {
+  it.each(["film", "serie", "anime"])("offers only Want to watch for an upcoming %s", (type) => {
+    const media = { type, title: "Upcoming", release_date: "2099-01-01", season_aired: [0], tags: [] };
+    const data = () => ({ data: undefined, isLoading: false });
+    const loaded = component("src/app/(main)/perso/watching/discover/[type]/[tmdbId]/page.tsx", {
+      "next/navigation": { useParams: () => ({ type, tmdbId: "1" }), useRouter: () => ({}) },
+      "@tanstack/react-query": { useQueryClient: () => ({}) },
+      "@/modules/watching/lib/watchable": { isWatchableNow },
+      "@/modules/watching/lib/media-view": { buildMediaView: () => ({ seasons: [], overlaid: false }) },
+      "@/modules/watching/hooks/useTmdbDetails": { useTmdbDetails: () => ({ data: media }) },
+      "@/modules/watching/hooks/useTitleBundle": { useTitleBundle: data },
+      "@/modules/watching/hooks/useAddMedia": { useAddMedia: () => ({}) },
+      "@/modules/watching/hooks/useSimilarTitles": { useSimilarTitles: data },
+      "@/modules/watching/hooks/useMediaCredits": { useMediaCredits: data },
+      "@/modules/watching/hooks/useMediaTrailer": { useMediaTrailer: data },
+      "@/modules/watching/hooks/useOwnedTmdbIds": { useOwnedMediaId: data, useOwnedTmdbIds: data },
+      "@/modules/watching/hooks/useWatchProviders": { useWatchProviders: data },
+      "@/modules/watching/hooks/useAnimeCours": { useAnimeCours: data },
+      "@/modules/watching/hooks/useWatchingUIStore": { useWatchingUIStore: () => () => {} },
+    });
+    const page = loaded.default as () => unknown;
+    const text = elements(page()).map((node) => node.props.children).flat(Infinity)
+      .filter((child) => typeof child === "string").join(" ");
+    expect(text).toContain("Want to watch");
+    expect(text).not.toContain("Mark as watched");
+    expect(text).not.toContain("Start watching");
+    expect(text).not.toContain("I'm caught up");
   });
 });

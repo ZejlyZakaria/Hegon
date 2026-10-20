@@ -1,3 +1,5 @@
+// deno-lint-ignore-file no-explicit-any
+import { providerRefreshSucceeded } from "../_shared/provider-progress.ts";
 import { fetchAllRows } from "../_shared/pagination.ts";
 import { batchOutcome } from "../_shared/batch-outcome.ts";
 // ANIME V2 — the AniList season overlay, kept fresh.
@@ -18,7 +20,6 @@ import { batchOutcome } from "../_shared/batch-outcome.ts";
 // · Drives from media_items, so an anime nobody owns any more is never re-fetched, and a newly added
 //   one (no row yet = infinitely stale) is resolved on the very next run.
 //
-// deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { fetchWithRetry, errMsg } from "../_shared/retry.ts";
 
@@ -106,6 +107,7 @@ Deno.serve(async () => {
     { db: { schema: "watching" }, global: { fetch: fetchWithRetry } },
   );
 
+  let attemptedWorks: number[] = [];
   try {
     // ── The candidates: every anime SOMEBODY owns. Driving from media_items means an anime that has
     //    been deleted everywhere simply stops being asked about, with no GC job to write.
@@ -147,6 +149,7 @@ Deno.serve(async () => {
 
     // ── The mapping (tmdb_id → AniList ids). Fetched once per run, and it is what DISCOVERS a new
     //    season: a new cour is a new AniList id we have never seen.
+    attemptedWorks = batch.map((item) => item.tmdbId);
     const mappingResponse = await fetchWithRetry(FRIBB);
     if (!mappingResponse.ok) throw new Error(`Anime mapping ${mappingResponse.status}`);
     const fribb: any[] = await mappingResponse.json();
@@ -164,11 +167,12 @@ Deno.serve(async () => {
 
     for (const { tmdbId, info } of batch) {
       const ids = idsFor(tmdbId);
-      const stamp = new Date().toISOString();
 
       if (ids.length === 0) {
-        const { error } = await supabase.from("anime_cours").upsert({ tmdb_id: tmdbId, cours: [], source: "none", resolved_at: stamp });
-        if (error) { failed++; log.push(`${info.title}: ${error.message}`); } else none++;
+        const { data, error } = await supabase.rpc("observe_provider", { command: {
+          provider: "anilist", work_key: `tv:${tmdbId}`, facts: { cours: [] }, projection: { cours: [] },
+        } });
+        if (error || !providerRefreshSucceeded(data)) { failed++; log.push(`${info.title}: missing mapping; accepted cache preserved`); } else none++;
         continue;
       }
 
@@ -176,6 +180,7 @@ Deno.serve(async () => {
       try {
         media = await anilistByIds(ids);
       } catch (e) {
+        await supabase.rpc("observe_provider", { command: { provider: "anilist", work_key: `tv:${tmdbId}`, error_code: e instanceof RateLimited ? "RATE_LIMITED" : "PROVIDER_FAILURE" } });
         if (e instanceof RateLimited) { failed += batch.length - resolved - mismatch - none - failed; rateLimited = true; log.push("· AniList rate-limited — stopping, the cron will resume"); break; }
         failed++; log.push(`✗ ${info.title}: ${errMsg(e)}`);
         continue;
@@ -188,12 +193,12 @@ Deno.serve(async () => {
       // Piece is ongoing with no AniList count; JoJo's TMDB carries arcs AniList doesn't map), the
       // overlay would put the wrong episodes in the wrong season — so it is stored, and NOT trusted.
       const ok = info.episodes == null || sum === info.episodes;
-      const source = ok ? "anilist" : "mismatch";
 
-      const { error: upErr } = await supabase
-        .from("anime_cours").upsert({ tmdb_id: tmdbId, cours, source, resolved_at: stamp });
-      if (upErr) { failed++; log.push(`✗ ${info.title}: ${upErr.message}`); continue; }
-
+      const { data: evidence, error: upErr } = await supabase.rpc("observe_provider", { command: {
+        provider: "anilist", work_key: `tv:${tmdbId}`,
+        facts: { cours: cours.map((c) => ({ id: c.anilist_id, number: c.season, announced: c.episodes, start: c.start_episode, end: c.end_episode })) }, projection: { cours },
+      } });
+      if (upErr || !providerRefreshSucceeded(evidence)) { failed++; log.push(`${info.title}: ${upErr?.message ?? evidence?.reason_code ?? evidence?.classification}`); continue; }
       ok ? resolved++ : mismatch++;
       if (!ok) log.push(`⚠ ${info.title}: AniList ${sum} ≠ TMDB ${info.episodes} → flat fallback`);
       else log.push(`· ${info.title}: ${cours.length} season(s), ${sum} ep`);
@@ -205,6 +210,7 @@ Deno.serve(async () => {
       { status: result.status, headers: { "Content-Type": "application/json" } },
     );
   } catch (e) {
+    await Promise.all(attemptedWorks.map((tmdbId) => Promise.resolve(supabase.rpc("observe_provider", { command: { provider: "anilist", work_key: `tv:${tmdbId}`, error_code: "PROVIDER_FAILURE" } })).catch(() => null)));
     return new Response(JSON.stringify({ error: errMsg(e) }), {
       status: 500, headers: { "Content-Type": "application/json" },
     });

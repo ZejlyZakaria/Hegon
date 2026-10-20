@@ -1,3 +1,5 @@
+import { compactSeason } from "../../../../supabase/functions/_shared/provider-evidence";
+import { providerRefreshSucceeded } from "../../../../supabase/functions/_shared/provider-progress";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
@@ -9,13 +11,23 @@ import { creditRole } from "./credit-roles";
 
 // Execute the real Deno entrypoints; only provider transport and database boundaries are faked.
 type Row = Record<string, unknown>;
-type Query = { table: string; op: string; values?: Row | Row[]; person?: number; from: number; to: number };
+type Query = { finished?: boolean; table: string; op: string; values?: Row | Row[]; person?: number; from: number; to: number };
+type ProviderReply = { data: Row; error: unknown };
+type ProviderInput = { command: { provider: string; work_key: string; facts?: Row; projection?: Row } };
 type Reply = { data: Row[] | null; error: unknown };
-function database(run: (q: Query) => Reply) {
-  return { schema() { return this; }, from(table: string) {
+function database(run: (q: Query) => Reply, observe?: (params: ProviderInput) => ProviderReply) {
+  return { schema() { return this; }, async rpc(_name: string, params: ProviderInput) {
+    if (observe) return observe(params);
+    if (!params.command.facts) return { data: { classification: "FAILED" }, error: null };
+    if (params.command.provider === "anilist") {
+      const result = run({ table: "anime_cours", op: "upsert", values: { tmdb_id: Number(params.command.work_key.split(":")[1]), cours: params.command.projection?.cours, source: "anilist" }, from: 0, to: 999 });
+      return { data: { classification: "BASELINE", accepted: true, growth: false }, error: result.error };
+    }
+    return { data: { classification: "BASELINE", accepted: true, growth: false }, error: null };
+  }, from(table: string) {
     const q: Query = { table, op: "select", from: 0, to: 999 };
     const chain = {
-      select() { return this; }, order() { return this; }, not() { return this; }, gte() { return this; },
+      select() { return this; }, neq() { return this; }, in(key: string) { if (key === "status") q.finished=true; return this; }, or() { q.finished=false; return this; }, order() { return this; }, not() { return this; }, gte() { return this; },
       eq(key: string, value: number) { if (key === "person_tmdb_id") q.person = value; return this; },
       range(from: number, to: number) { q.from = from; q.to = to; return this; },
       delete() { q.op = "delete"; return this; },
@@ -35,13 +47,15 @@ function handler(name: string, db: ReturnType<typeof database>, fetcher: (url: s
     "../_shared/retry.ts": { fetchWithRetry: fetcher, errMsg: (e: unknown) => e instanceof Error ? e.message : String(e) },
     "../_shared/pagination.ts": { fetchAllRows }, "../_shared/batch-outcome.ts": { batchOutcome },
     "../_shared/credit-roles.ts": { creditRole },
+    "../_shared/provider-progress.ts": { providerRefreshSucceeded },
+    "../_shared/provider-evidence.ts": { compactSeason },
     // Unreleased-title refresh is a separate job, outside these person-cache regressions.
     "./unreleased.ts": { refreshUnreleased: async () => ({ scanned: 0, updated: 0, failed: 0 }) },
   };
   runInNewContext(js, {
     exports: {}, require: (id: string) => { if (!(id in dependencies)) throw new Error(`Unexpected import ${id}`); return dependencies[id]; },
     Deno: { env: { get: () => "test" }, serve: (fn: typeof serve) => { serve = fn; } },
-    Response, Request, console: { error() {} }, setTimeout: (fn: () => void) => { fn(); return 0; },
+    Response, Request, URLSearchParams, console: { error() {} }, setTimeout: (fn: () => void) => { fn(); return 0; },
   });
   return async (body = {}) => {
     const response = await serve(new Request("https://test.invalid", { method: "POST", body: JSON.stringify(body) }));
@@ -51,14 +65,22 @@ function handler(name: string, db: ReturnType<typeof database>, fetcher: (url: s
 const json = (body: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status }));
 const oldCour = { tmdb_id: 1, cours: [{ season: 1, episodes: 10 }], source: "anilist", resolved_at: "2020-01-01" };
 const valid = { data: { Page: { media: [{ id: 101, episodes: 10, startDate: { year: 2022 }, endDate: { year: 2022 }, title: { english: "Anime", romaji: null }, coverImage: null }] } } };
-function anime(responses: unknown[], mapped = true, mappingFailure?: "http" | "shape") {
-  const cache = new Map(responses.map((_, i) => [i + 1, { ...oldCour, tmdb_id: i + 1 }]));
+function anime(responses: unknown[], mapped = true, mappingFailure?: "http" | "shape", hasCache = true) {
+  const cache = new Map<number, Row>((hasCache ? responses : []).map((_, i) => [i + 1, { ...oldCour, tmdb_id: i + 1 }]));
   const writes: Query[] = [];
   let providerCalls = 0;
   const db = database((q) => {
     if (q.op === "upsert") { writes.push(q); const row = q.values as typeof oldCour; cache.set(row.tmdb_id, row); return { data: null, error: null }; }
     const rows = q.table === "media_items" ? responses.map((_, i) => ({ tmdb_id: i + 1, title: `Anime ${i}`, status: "ongoing", episodes: 10 })) : [...cache.values()];
     return { data: rows.slice(q.from, q.to + 1), error: null };
+  }, (params) => {
+    const tmdbId = Number(params.command.work_key.split(":")[1]);
+    if (!params.command.facts) return { data: { classification: "FAILED", growth: false }, error: null };
+    const cours = params.command.projection?.cours as Row[];
+    if (cours.length === 0 && cache.has(tmdbId)) return { data: { classification: "REGRESSION", growth: false }, error: null };
+    const row = { tmdb_id: tmdbId, cours, source: cours.length ? "anilist" : "none", resolved_at: "2026-10-13" };
+    writes.push({ table: "anime_cours", op: "upsert", values: row, from: 0, to: 999 }); cache.set(tmdbId,row);
+    return { data: { classification: "BASELINE", growth: false, accepted: true }, error: null };
   });
   const run = handler("watching-anime-cours-sync", db, (url, init) => {
     if (url.includes("githubusercontent")) {
@@ -86,13 +108,14 @@ describe("AniList actual handler", () => {
     expect(await h.run()).toMatchObject({ status: 200, body: { resolved: 1, failed: 0, ok: true } });
     expect(h.cache.get(1)?.cours).toEqual([expect.objectContaining({ anilist_id: 101, episodes: 10 })]);
   });
-  it("accepts an explicitly empty Page.media as a legitimate mismatch", async () => {
+  it("retains accepted mapping when a structurally valid empty result removes it", async () => {
     const h = anime([{ data: { Page: { media: [] } } }]);
-    expect(await h.run()).toMatchObject({ status: 200, body: { mismatch: 1, failed: 0 } });
-    expect(h.cache.get(1)).toMatchObject({ source: "mismatch", cours: [] });
+    expect(await h.run()).toMatchObject({ status: 500, body: { failed: 1 } });
+    expect(h.cache.get(1)).toEqual(oldCour);
+    expect(h.writes).toHaveLength(0);
   });
   it("keeps no mapping distinct from a failed AniList request", async () => {
-    const h = anime([valid], false);
+    const h = anime([valid], false, undefined, false);
     expect(await h.run()).toMatchObject({ status: 200, body: { none: 1, failed: 0 } });
     expect(h.providerCalls()).toBe(0);
     expect(h.cache.get(1)?.source).toBe("none");
@@ -168,5 +191,38 @@ describe("People actual handler", () => {
     const h = people(false, false, true);
     expect(await h.run()).toMatchObject({ status: 500, body: { failed: [1], succeeded: 0 } });
     expect(h.cache()).toEqual([h.old]);
+  });
+});
+
+
+describe("series sync actual provenance boundary", () => {
+  it.each(["GROWTH", "REGRESSION", "AMBIGUOUS", "RESTORATION", "UNCHANGED"])("uses the authoritative %s result without direct personal writes", async (classification) => {
+    const commands: Row[] = [], writes: Query[] = [];
+    const db = database((q) => {
+      if (q.op !== "select") writes.push(q);
+      return { data: q.finished ? [] : [{ id: "row", tmdb_id: 1, title: "Fixture", last_synced_at: null }], error: null };
+    }, ({ command }) => {
+      commands.push(command);
+      return { data: { classification, accepted: classification === "GROWTH", growth: classification === "GROWTH" }, error: null };
+    });
+    const run = handler("watching-series-sync", db, (url) => url.includes("/season/")
+      ? json({ episodes: [{ id: 10001, episode_number: 1, air_date: "2020-01-01" }] })
+      : json({ id: 1, status: "Ended", seasons: [{ id: 2001, season_number: 1, episode_count: 1 }] }));
+    const response = await run();
+    expect(response.body.error).toBeUndefined();
+    expect(response.status).toBe(["REGRESSION","AMBIGUOUS"].includes(classification) ? 500 : 200);
+    expect(writes).toHaveLength(0);
+    expect(commands[0].facts).toMatchObject({ seasons: [{ episodes: [{ id: 10001, number: 1, aired: true }] }] });
+  });
+  it("records a failed check without sending malformed facts or writing personal state", async () => {
+    const commands: Row[] = [];
+    const db = database((q) => ({ data: q.finished ? [] : [{ id: "row", tmdb_id: 1, title: "Fixture", last_synced_at: null }], error: null }), ({ command }) => {
+      commands.push(command); return { data: { classification: "FAILED", growth: false }, error: null };
+    });
+    const run = handler("watching-series-sync", db, () => json({ error: "Invalid payload" }));
+    expect((await run()).status).toBe(500);
+    expect(commands).toHaveLength(1);
+    expect(commands[0].error_code).toBe("INVALID_RESPONSE");
+    expect(commands[0].facts).toBeUndefined();
   });
 });

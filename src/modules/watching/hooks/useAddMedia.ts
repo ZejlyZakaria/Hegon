@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { isWatchableNow } from "../lib/watchable";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { WATCHING_KEYS, TMDB_KEYS, PEOPLE_KEYS } from "./query-keys";
 import {
@@ -111,6 +112,14 @@ export function useAddMedia() {
             selectedItem.last_episode_to_air as { season_number: number; episode_number: number } | undefined,
           )
         : null;
+      const watchable = isWatchableNow({
+        type: defaultType, release_date: selectedItem.release_date,
+        first_air_date: selectedItem.first_air_date, season_aired: seasonAiredList,
+      });
+      if (!watchable && (listContext === "inProgress" || listContext === "recentlyWatched"
+        || listContext === "library" || listContext === "topTen" || (position?.episode ?? 0) > 0)) {
+        throw new Error("This title has no released content to watch yet.");
+      }
       // ANNOUNCED, not aired. These two were the same array here — a copy-paste that quietly told
       // every rule downstream that a season still coming out had already finished.
       const seasonEpisodesList: number[] | null = isSeries

@@ -3,7 +3,10 @@
 import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRewatches, addRewatch, removeRewatch } from "../service";
-import { WATCHING_KEYS } from "./query-keys";
+import type { RewatchRequest, RewatchCatalogue } from "../lib/rewatch";
+import type { EpisodeInfo } from "./useSeasonEpisodes";
+import { STALE } from "@/shared/lib/stale";
+import { TMDB_KEYS, WATCHING_KEYS } from "./query-keys";
 import { useIsDemo } from "@/modules/settings/hooks/useSettings";
 import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 
@@ -12,6 +15,7 @@ export function useRewatches(mediaItemId: string) {
     queryKey: WATCHING_KEYS.rewatches(mediaItemId),
     queryFn: () => getRewatches(mediaItemId),
     enabled: !!mediaItemId,
+    staleTime: STALE.MINUTE, gcTime: STALE.HOUR,
   });
 }
 
@@ -21,14 +25,20 @@ export function useAddRewatch(mediaItemId: string, expectedRevision?: number) {
   const ownRevision = useRef<{ id: string; value: number } | null>(null);
   return useMutation({
     retry: false,
-    mutationFn: (watchedOn: string) => {
+    mutationFn: ({request,catalogue}: {request:RewatchRequest;catalogue:RewatchCatalogue}) => {
       if (isDemo) throw new DemoReadOnlyError();
-      return addRewatch(mediaItemId, watchedOn, Math.max(expectedRevision ?? 0, ownRevision.current?.id === mediaItemId ? ownRevision.current.value : 0, queryClient.getQueryData<{ personal_revision?: number }>(WATCHING_KEYS.detail(mediaItemId))?.personal_revision ?? 0));
+      const runtimes:Record<string,number>={};
+      const media=queryClient.getQueryData<{tmdb_id:number;season_episodes?:number[]}>(WATCHING_KEYS.detail(mediaItemId));
+      for (let season=1;season<=(media?.season_episodes?.length ?? 0);season++) {
+        const episodes=queryClient.getQueryData<EpisodeInfo[]>(TMDB_KEYS.seasonEpisodes(media!.tmdb_id,season));
+        for (const ep of episodes ?? []) if (ep.runtime!=null && ep.runtime>0) runtimes[`${season}:${ep.number}`]=ep.runtime;
+      }
+      return addRewatch(mediaItemId, request, Math.max(expectedRevision ?? 0, ownRevision.current?.id === mediaItemId ? ownRevision.current.value : 0, queryClient.getQueryData<{ personal_revision?: number }>(WATCHING_KEYS.detail(mediaItemId))?.personal_revision ?? 0), catalogue, runtimes);
     },
     onSuccess: (saved) => {
       if (saved.personal_revision !== undefined) ownRevision.current = { id: mediaItemId, value: saved.personal_revision };
       queryClient.setQueryData(WATCHING_KEYS.detail(mediaItemId), saved);
-      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.detail(mediaItemId) });
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all });
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.rewatches(mediaItemId) });
       // Rewatches feed Hours Watched + the Rewatches stat → keep Stats live.
       queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "stats"] });
@@ -50,7 +60,7 @@ export function useRemoveRewatch(mediaItemId: string, expectedRevision?: number)
     onSuccess: (saved) => {
       if (saved.personal_revision !== undefined) ownRevision.current = { id: mediaItemId, value: saved.personal_revision };
       queryClient.setQueryData(WATCHING_KEYS.detail(mediaItemId), saved);
-      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.detail(mediaItemId) });
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.all });
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.rewatches(mediaItemId) });
       // Rewatches feed Hours Watched + the Rewatches stat → keep Stats live.
       queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "stats"] });

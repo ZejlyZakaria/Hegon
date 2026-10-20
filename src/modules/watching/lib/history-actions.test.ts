@@ -1,3 +1,4 @@
+import { isWatchableNow } from "./watchable";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
@@ -24,6 +25,7 @@ function actionsHarness() {
     } }) };
     if (id === "./useMediaView") return { useMediaView: () => null };
     if (id === "../lib/watch-status") return status;
+    if (id === "../lib/watchable") return { isWatchableNow };
     if (id.endsWith("/toast")) return { toast };
     if (id.endsWith("/demo-guard")) return { isDemoReadOnlyError: () => false };
     if (id.endsWith("/report-error")) return { reportError: () => {} };

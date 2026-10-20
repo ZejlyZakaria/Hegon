@@ -206,7 +206,7 @@ export function MediaActionMenu({
               </MenuItem>
             )}
 
-            {isSeries && !item.in_progress && !item.watched && (
+            {actions.canConsume && isSeries && !item.in_progress && !item.watched && (
               <MenuItem
                 onClick={(e) => {
                   e.stopPropagation();

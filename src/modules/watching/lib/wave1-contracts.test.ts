@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { batchOutcome } from "../../../../supabase/functions/_shared/batch-outcome";
-import { providerRegressed, confirmedGrowth } from "../../../../supabase/functions/_shared/provider-progress";
+import { providerRegressed, providerRefreshSucceeded } from "../../../../supabase/functions/_shared/provider-progress";
 import { collaborators, experienceSummary } from "./person-experience";
 import { creditRole, isDirectorCredit, followDepartment } from "./credit-roles";
 import { hasAnyField, ANALYTICAL_FIELDS, PEOPLE_FIELDS } from "./mutation-dependencies";
@@ -20,14 +20,15 @@ describe("Wave 1 contracts", () => {
     const degraded = [26, 26, 25];
     expect(providerRegressed(stable, degraded)).toBe(true);
     const retained = providerRegressed(stable, degraded) ? stable : degraded;
-    expect(confirmedGrowth(retained, stable, [null, null, "2015-06-30"], [null, null, "2015-06-30"])).toBe(false);
+    expect(providerRefreshSucceeded({ classification: "RESTORATION", growth: false })).toBe(true);
     expect(retained).toEqual(stable);
     expect(providerRegressed(stable, [26, 26])).toBe(true);
   });
-  it("distinguishes genuine dated growth from restored old content", () => {
-    expect(confirmedGrowth([26], [27], ["2015-06-30"], ["2026-10-10"])).toBe(true);
-    expect(confirmedGrowth([25], [26], ["2015-06-30"], ["2015-06-30"])).toBe(false);
-    expect(confirmedGrowth(null, [26], null, ["2015-06-30"])).toBe(false);
+  it("requires the provider evidence classifier instead of inferring growth from counts/dates", () => {
+    expect(providerRefreshSucceeded({ classification: "AMBIGUOUS", growth: false })).toBe(false);
+    expect(providerRefreshSucceeded({ classification: "REGRESSION", growth: false })).toBe(false);
+    expect(providerRefreshSucceeded({ classification: "GROWTH", growth: true })).toBe(true);
+    expect(providerRefreshSucceeded({ count: 27, latest: "2026-10-10" })).toBe(false);
   });
   it("counts each collaborator once per provider work despite duplicate and dual credits", () => {
     const person = { id: 2, name: "Dual role", role: "director" };

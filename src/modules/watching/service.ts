@@ -1,5 +1,7 @@
+import { buildRewatch, emptyCatalogue, type RewatchRequest, type RewatchCatalogue } from "./lib/rewatch";
+import { formatHistoryDate, type HistoricalViewing, type HistoricalRating, type HistoryAnalytics } from "./lib/history-analytics";
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { assertion, captureHistory, parseViewingInput, viewingDate, type HistoryMetadata, type StoredViewingAssertion } from "./lib/viewing-history";
+import { captureHistory, viewingDate, type HistoryMetadata, type StoredViewingAssertion } from "./lib/viewing-history";
 import { buildWatchedAtProjection } from "./lib/watched-date";
 import { priorityPageRanges, watchlistFilter } from "./lib/watchlist-page";
 import { isExperienced } from "./lib/person-experience";
@@ -277,6 +279,7 @@ export interface StatsData {
   items: StatsRawItem[];
   /** tmdb_id → its AniList cours. Empty map when nothing is overlaid. */
   cours: Map<number, import("./types").AnimeCoursRow>;
+  history: HistoryAnalytics;
 }
 
 export async function getWatchingStatsData(userId: string): Promise<StatsData> {
@@ -284,11 +287,10 @@ export async function getWatchingStatsData(userId: string): Promise<StatsData> {
   const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching")
     .from("media_items")
-    .select("id, personal_revision, tmdb_id, type, title, original_title, poster_url, backdrop_url, year, runtime, status, caught_up_at, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, directors, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters, season_end_dates, cour_years, cour_ratings")
+    .select("id, personal_revision, history_version, viewing_date, tmdb_id, type, title, original_title, poster_url, backdrop_url, year, runtime, status, caught_up_at, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, directors, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters, season_end_dates, cour_years, cour_ratings")
     .eq("user_id", userId)
     // Anything you spent time on — completed, watching, paused, or dropped. The
     // episodes you actually watched are real hours regardless of current status.
-    .or("watched.eq.true,in_progress.eq.true,paused.eq.true,dropped.eq.true")
     .neq("is_reference", true)
     .order("id").range(from, to));
   const items = (data ?? []) as StatsRawItem[];
@@ -299,7 +301,8 @@ export async function getWatchingStatsData(userId: string): Promise<StatsData> {
   const cours = await getAnimeCoursMany(
     items.filter((i) => i.type === "anime").map((i) => i.tmdb_id ?? 0),
   );
-  return { items, cours };
+  const history = await getHistoryAnalytics(userId);
+  return { items: includeRetainedHistory(items, history), cours, history };
 }
 
 // Recent watched activity (type + date) for the Watching→Habits bridge. Only
@@ -1554,57 +1557,83 @@ export async function removeThemeFavorite(trackKey: string): Promise<void> {
 // ── Rewatches ────────────────────────────────────────────────────────────────
 // One row per re-viewing event of a media item (the first watch stays on
 // media_items.watched_at). watchedOn = 'YYYY-MM-DD'.
-export async function getRewatches(mediaItemId: string): Promise<Rewatch[]> {
-  const db = createClient().schema("watching");
-  const [rows, dates] = await Promise.all([
-    fetchAllRows<Rewatch>((from, to) => db.from("rewatches")
-      .select("id, media_item_id, watched_on, created_at").eq("media_item_id",mediaItemId)
-      .order("watched_on",{ ascending: false }).order("id").range(from,to)),
-    fetchAllRows<{ id: string; year: number; month: number | null; day: number | null }>((from,to) => db.from("viewing_records")
-      .select("id, year, month, day").eq("media_item_id",mediaItemId).eq("kind","REWATCH")
-      .is("retracted_at",null).order("id").range(from,to)),
+export async function getViewingHistory(mediaItemId: string): Promise<HistoricalViewing[]> {
+  const db=createClient().schema("watching");
+  const [records,ranges]=await Promise.all([
+    fetchAllRows<HistoricalViewing>((from,to) => db.from("viewing_records").select("*")
+      .eq("media_item_id",mediaItemId).order("recorded_at",{ ascending:false }).order("id").range(from,to)),
+    fetchAllRows<import("./lib/viewing-history").ViewingRange & {viewing_record_id:string}>((from,to) => db.from("viewing_ranges")
+      .select("*, record:viewing_records!inner(media_item_id)").eq("record.media_item_id",mediaItemId).order("id").range(from,to)),
   ]);
-  const byId = new Map(dates.map(d => [d.id,d]));
-  // UI uses the known precision; getRewatchStats continues to read the legacy date projection.
-  return rows.map(row => {
-    const date = byId.get(row.id);
-    if (!date) return row; // legacy date: no retrospective precision claim
-    const year = String(date.year).padStart(4,"0");
-    const month = date.month === null ? "" : `-${String(date.month).padStart(2,"0")}`;
-    const day = date.day === null ? "" : `-${String(date.day).padStart(2,"0")}`;
-    return { ...row, watched_on: year + month + day };
-  });
+  const byId=new Map<string,typeof ranges>();
+  for (const range of ranges) {const group=byId.get(range.viewing_record_id) ?? [];group.push(range);byId.set(range.viewing_record_id,group);}
+  return records.map(r => ({...r,ranges:byId.get(r.id) ?? []}));
 }
-
-export async function addRewatch(mediaItemId: string, watchedOn: string, expectedRevision?: number): Promise<WatchingMedia> {
-  const before = await getMediaItemById(mediaItemId);
-  if (!before) throw new Error("Media unavailable");
-  // The existing UI does not ask for scope. Do not pretend it asserted today's entire title.
-  const record = assertion("REWATCH",viewingDate(parseViewingInput(watchedOn)),[]);
-  return runPersonalCommand({ mode: "rewatch", media_id: mediaItemId, operation_key: crypto.randomUUID(),
-    expected_revision: expectedRevision ?? before.personal_revision, patch: {}, records: [record] });
+export async function getMediaHistory(mediaItemId:string):Promise<{records:HistoricalViewing[];ratings:HistoricalRating[]}> {
+  const [records,ratings]=await Promise.all([
+    getViewingHistory(mediaItemId),
+    fetchAllRows<HistoricalRating>((from,to)=>createClient().schema("watching").from("scope_ratings").select("*").eq("media_item_id",mediaItemId).order("recorded_at",{ascending:false}).order("id").range(from,to)),
+  ]);
+  return {records,ratings};
 }
-
-export async function removeRewatch(id: string, expectedRevision?: number): Promise<WatchingMedia> {
-  const db = createClient().schema("watching");
-  const { data: rewatch, error } = await db.from("rewatches").select("media_item_id").eq("id",id).single();
+export async function getRewatches(mediaItemId: string): Promise<Rewatch[]> {
+  const db=createClient().schema("watching");
+  const [legacy, records]=await Promise.all([
+    fetchAllRows<Rewatch>((from,to) => db.from("rewatches").select("id, media_item_id, watched_on, created_at").eq("media_item_id",mediaItemId).order("id").range(from,to)),
+    fetchAllRows<Pick<HistoricalViewing,"id"|"kind"|"scope_kind"|"year"|"month"|"day"|"date_precision"|"retracted_at"|"recorded_at">>((from,to)=>db.from("viewing_records")
+      .select("id,kind,scope_kind,year,month,day,date_precision,retracted_at,recorded_at").eq("media_item_id",mediaItemId).eq("kind","REWATCH").order("id").range(from,to)),
+  ]);
+  const represented=new Set(records.filter(r => r.kind==="REWATCH").map(r => r.id));
+  return [...records.filter(r => r.kind==="REWATCH" && !r.retracted_at).map(r => ({ id:r.id,media_item_id:mediaItemId,
+    watched_on:formatHistoryDate(r),created_at:r.recorded_at,scope_label:r.scope_kind,scope_known:true })),
+    ...legacy.filter(r => !represented.has(r.id)).map(r => ({ ...r,watched_on:"Date unknown",scope_label:"Legacy scope unknown",scope_known:false }))]
+    .sort((a,b) => b.created_at.localeCompare(a.created_at));
+}
+export async function getRewatchCatalogue(tmdbId: number | null): Promise<RewatchCatalogue> {
+  if (!tmdbId) return emptyCatalogue();
+  const db=createClient().schema("watching");
+  const { data:heads,error }=await db.from("provider_heads").select("provider, accepted_snapshot_id").eq("work_key",`tv:${tmdbId}`);
   if (error) throw error;
-  const before = await getMediaItemById(rewatch.media_item_id);
+  const ids=(heads ?? []).flatMap((h: { accepted_snapshot_id:string|null }) => h.accepted_snapshot_id ? [h.accepted_snapshot_id] : []);
+  const {data:snapshots,error:snapshotError}=await db.from("provider_snapshots").select("id, provider, facts").in("id",ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
+  if (snapshotError) throw snapshotError;
+  const tmdb=snapshots?.find((s: { provider:string; id:string; facts:RewatchCatalogue }) => s.provider==="tmdb"), anilist=snapshots?.find((s: { provider:string; id:string; facts:RewatchCatalogue }) => s.provider==="anilist");
+  const {data:cached,error:cacheError}=await db.from("anime_cours").select("cours,source").eq("tmdb_id",tmdbId).maybeSingle();
+  if (cacheError) throw cacheError;
+  const legacyCours=cached?.source==="anilist" ? (cached.cours as import("./types").AnimeCour[]).map(c => ({id:c.anilist_id,number:c.season,start:c.start_episode,end:c.end_episode})) : [];
+  return { snapshot_id:tmdb?.id ?? null,mapping_snapshot_id:anilist?.id ?? null,seasons:tmdb?.facts.seasons ?? [],cours:anilist?.facts.cours ?? legacyCours };
+}
+export async function addRewatch(mediaItemId: string, request: RewatchRequest, expectedRevision?: number, catalogue?: RewatchCatalogue,
+  runtimes: Readonly<Record<string,number>> = {}): Promise<WatchingMedia> {
+  const before=await getMediaItemById(mediaItemId);
   if (!before) throw new Error("Media unavailable");
-  const active = await activeViewingRecords(before.id);
-  return runPersonalCommand({ mode: "remove_rewatch", media_id: before.id, operation_key: crypto.randomUUID(),
-    expected_revision: expectedRevision ?? before.personal_revision, patch: {}, records: [],
-    rewatch_id: id, retract_ids: active.some(r => r.id === id) ? [id] : [], reason: "User removed rewatch" });
+  const context=catalogue ?? await getRewatchCatalogue(before.type==="film" ? null : before.tmdb_id);
+  const record=buildRewatch(before,request,context,runtimes);
+  return runPersonalCommand({ mode:"rewatch",media_id:mediaItemId,operation_key:crypto.randomUUID(),expected_revision:expectedRevision ?? before.personal_revision,
+    patch:{},records:[record],retract_ids:request.replaces ? [request.replaces] : [],reason:"User corrected rewatch",
+    ...(before.type!=="film" ? { viewing_context:{ snapshot_id:context.snapshot_id,mapping_snapshot_id:context.mapping_snapshot_id } } : {}) });
+}
+export async function removeRewatch(id: string, expectedRevision?: number): Promise<WatchingMedia> {
+  const db=createClient().schema("watching");
+  const {data:record,error}=await db.from("viewing_records").select("media_item_id").eq("id",id).eq("kind","REWATCH").maybeSingle();
+  if (error) throw error;
+  const legacy=record ? null : await db.from("rewatches").select("media_item_id").eq("id",id).single();
+  if (legacy?.error) throw legacy.error;
+  const mid=record?.media_item_id ?? legacy?.data?.media_item_id;
+  const before=mid ? await getMediaItemById(mid) : null;
+  if (!before) throw new Error("Media unavailable");
+  return runPersonalCommand({mode:record ? "update" : "remove_rewatch",media_id:before.id,operation_key:crypto.randomUUID(),expected_revision:expectedRevision ?? before.personal_revision,
+    patch:{},records:[],rewatch_id:id,retract_ids:record ? [id] : [],reason:"User removed rewatch"});
 }
 
 // All rewatch events for the user (Stats). Joined to items in computeStats by
 // media_item_id — each event adds the title's full runtime to Hours Watched.
-export interface RewatchStatItem { media_item_id: string; watched_on: string; }
+export interface RewatchStatItem { id?: string; media_item_id: string; watched_on: string; }
 export async function getRewatchStats(userId: string): Promise<RewatchStatItem[]> {
   const supabase = createClient();
   const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching").from("rewatches")
-    .select("media_item_id, watched_on")
+    .select("id, media_item_id, watched_on")
     .eq("user_id", userId)
     .order("id").range(from, to));
   return (data ?? []) as RewatchStatItem[];
@@ -2164,4 +2193,50 @@ export async function getWatchlistPage(userId: string, type: MediaType, options:
   const { data, count, error } = await query.range(offset, offset + 49);
   if (error) throw error;
   return { items: (data ?? []) as unknown as WatchingMedia[], total: count ?? 0 };
+}
+
+
+export async function getScopeRatingContext(mediaId: string): Promise<import("./lib/scope-ratings").ScopeRatingContext[]> {
+  const { data, error } = await createClient().schema("watching").rpc("scope_rating_context", { mid: mediaId });
+  if (error) throw error;
+  return data ?? [];
+}
+export async function saveScopeRating(command: {
+  media_id: string; expected_revision: number; scope_kind: "SEASON" | "COUR"; scope_number: number;
+  score: number | null; action: import("./lib/scope-ratings").RatingAction; previous_rating_id: string | null;
+  expected_scope_key: string; expected_snapshot_id: string | null; expected_mapping_snapshot_id: string | null;
+}): Promise<WatchingMedia> {
+  const frozen = { ...command, operation_key: crypto.randomUUID() };
+  const db = createClient().schema("watching");
+  const first = await db.rpc("scope_rating_command", { command: frozen });
+  const result = first.error && !first.error.code ? await db.rpc("scope_rating_command", { command: frozen }) : first;
+  if (result.error) throw result.error;
+  if (!result.data?.media) throw new Error("This title is no longer in your library.");
+  return result.data.media as WatchingMedia;
+}
+
+/** Owner-scoped page reads: no per-card/history-row queries and no silent 1000-row cap. */
+export async function getHistoryAnalytics(userId: string): Promise<HistoryAnalytics> {
+  const db=createClient().schema("watching");
+  const [records,ranges,ratings]=await Promise.all([
+    fetchAllRows<HistoricalViewing>((from,to) => db.from("viewing_records").select("*").eq("user_id",userId).order("id").range(from,to)),
+    fetchAllRows<import("./lib/viewing-history").ViewingRange & { viewing_record_id:string }>((from,to) => db.from("viewing_ranges")
+      .select("*, record:viewing_records!inner(user_id)").eq("record.user_id",userId).order("id").range(from,to)),
+    fetchAllRows<HistoricalRating>((from,to) => db.from("scope_ratings").select("*").eq("user_id",userId).order("id").range(from,to)),
+  ]);
+  const grouped=new Map<string,typeof ranges>();
+  for (const range of ranges) { const group=grouped.get(range.viewing_record_id) ?? []; group.push(range);grouped.set(range.viewing_record_id,group); }
+  return {records:records.map(r => ({...r,ranges:grouped.get(r.id) ?? []})),ratings};
+}
+function includeRetainedHistory(items:StatsRawItem[],history:HistoryAnalytics):StatsRawItem[] {
+  const result=[...items],seen=new Set(items.map(i => i.tmdb_id ? `${i.type==="film" ? "movie" : "tv"}:${i.tmdb_id}` : `local:${i.id}`));
+  for (const r of history.records) {
+    if (seen.has(r.work_key)) continue;
+    seen.add(r.work_key);
+    result.push({id:r.media_item_id ?? `history:${r.work_key}`,tmdb_id:r.work_key.startsWith("tv:") || r.work_key.startsWith("movie:") ? Number(r.work_key.split(":")[1]) : null,
+      type:r.media_type_snapshot,title:r.title_snapshot,original_title:null,poster_url:null,backdrop_url:null,year:0,runtime:null,season_episodes:null,season_aired:null,episodes:null,
+      user_rating:null,favorite:false,watched_at:null,tags:null,directors:null,watched:false,in_progress:false,paused:false,dropped:false,current_season:null,current_episode:null,
+      updated_at:null,season_years:null,season_ratings:null,season_posters:null,cour_years:null,cour_ratings:null,season_end_dates:null,status:null,caught_up_at:null});
+  }
+  return result;
 }

@@ -10,6 +10,7 @@ interface WrappedModalProps {
   films: number;
   seriesAnime: number;
   hours: number;
+  unknownDurationEvents?: number;
   topGenre: string | null;
   topPosters: StatsRawItem[];
   total: number;

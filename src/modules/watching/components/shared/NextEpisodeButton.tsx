@@ -36,7 +36,7 @@ export function NextEpisodeButton({ item, view }: { item: WatchingMedia; view?: 
   const actions = useWatchActions(item, view);
 
   const step = nextStep(item);
-  if (!step) return null;
+  if (!step || !actions.canConsume) return null;
 
   // Everything aired, and it's over → finishing a SHOW is not the same gesture as finishing an
   // episode. It stamps every season, ripples into Goals and Habits, and deserves the rating you

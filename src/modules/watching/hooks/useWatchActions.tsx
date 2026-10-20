@@ -1,5 +1,6 @@
 "use client";
 
+import { isWatchableNow, type WatchableFacts } from "../lib/watchable";
 import { useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateMedia } from "./useUpdateMedia";
@@ -33,7 +34,7 @@ import { reportError } from "@/shared/utils/report-error";
  * lets the overlay be adopted surface by surface without a flag day.
  */
 type Target =
-  | (StatusFacts & {
+  | (StatusFacts & WatchableFacts & {
       id: string;
       personal_revision?: number;
       tmdb_id?: number;
@@ -149,33 +150,36 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
   // caught-up paths must refuse it: you can neither finish nor be caught up on a film that doesn't
   // exist. This is the backstop; the surfaces also hide the buttons (see `canMark`).
   const notOutYet = () => {
-    toast.error(media?.type === "film" ? "This film isn't out yet." : "This isn't over yet.");
+    toast.error(media?.type === "film" ? "This film isn't out yet." : "No released content is available for this action yet.");
     return Promise.resolve(null);
   };
 
+  const watchable = !!media && isWatchableNow(media);
+
   return {
+    canConsume: watchable,
     isPending: updateMedia.isPending,
 
     /** The lens this surface is writing through — so it can SAY the position the way it wrote it. */
     view,
 
     /** True when calling `markWatched` would be an honest claim. Film: released. Series: over. */
-    canComplete: !!media && canComplete(media),
+    canComplete: watchable && !!media && canComplete(media),
 
     /** Whether to OFFER a completion affordance at all. An unreleased film gets none — there is
      *  nothing to mark. A series always does (watched, or caught up). */
-    canMark: !!media && (canComplete(media) || media.type !== "film"),
+    canMark: watchable && !!media && (canComplete(media) || media.type !== "film"),
 
     markWatched: () => {
       if (!media) return Promise.resolve(null);
-      if (!canComplete(media)) return notOutYet();
+      if (!watchable || !canComplete(media)) return notOutYet();
       return write(markWatchedPatch(media, view), "");
     },
 
     markCaughtUp: async () => {
       if (!media) return null;
       // A film is never "caught up" — it's watched or it isn't. An unreleased one isn't even that.
-      if (media.type === "film") return notOutYet();
+      if (!watchable || media.type === "film") return notOutYet();
       const patch = markCaughtUpPatch(media, view);
       if (!patch) {
         toast.error("We don't know what has aired for this title yet.");
@@ -190,11 +194,11 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
         ? write({ favorite: !media.favorite }, media.favorite ? "Removed from favorites." : "Added to favorites.")
         : Promise.resolve(null),
 
-    startWatching: () => write(startWatchingPatch(), "Started watching."),
+    startWatching: () => watchable ? write(startWatchingPatch(), "Started watching.") : notOutYet(),
     wantToWatch: () => write(wantToWatchPatch(), "Added to Want to Watch."),
     pause: () => write(pausePatch(), "Paused."),
     drop: (reason: string | null) => write(dropPatch(reason), "Marked as dropped."),
-    resume: () => write(resumePatch(), "Back to watching."),
+    resume: () => watchable ? write(resumePatch(), "Back to watching.") : notOutYet(),
 
     /**
      * `kind` is the fact only the caller knows: "+1" and the steppers are a VIEWING (they date it,
@@ -203,7 +207,7 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
      * false claim for another.
      */
     setPosition: (season: number, episode: number, kind: "viewing" | "correction", message = "") =>
-      media ? write(positionPatch(media, season, episode, kind, view), message, kind) : Promise.resolve(null),
+      media && (kind === "correction" || watchable) ? write(positionPatch(media, season, episode, kind, view), message, kind) : Promise.resolve(null),
 
     /**
      * UNDO IS NOT A CORRECTION — and the toast is the only caller that can tell them apart.

@@ -10,6 +10,7 @@ import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useSearchTmdbForList } from "../../hooks/useMediaLists";
 import { useOwnedMediaIds } from "../../hooks/useOwnedTmdbIds";
+import { isWatchableNow } from "../../lib/watchable";
 import { useQuickAdd } from "../../hooks/useQuickAdd";
 import { ownedRowFor } from "../../lib/possession";
 import { tmdbResultType } from "../../service";
@@ -219,7 +220,7 @@ export function QuickAddPanel({
                   <li key={`${r.media_type}-${r.id}`}>
                     <MediaRow
                       onClick={() => onPick(r)}
-                      disabled={isAdding}
+                      disabled={isAdding || (!navigate && !mine && dest !== "wantToWatch" && !isWatchableNow({ ...r, type }))}
                       posterUrl={r.poster_path ? `https://image.tmdb.org/t/p/w500${r.poster_path}` : null}
                       title={r.title}
                       meta={

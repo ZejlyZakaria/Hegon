@@ -261,7 +261,7 @@ describe("breakdown — the working behind each slice", () => {
     ] as RewatchStatItem[];
     const s = computeStats(lib, rws, null);
     expect(s.breakdown.rewatches.map((e) => e.watchedOn)).toEqual(["2026-08-08", "2026-05-05", "2026-02-02"]);
-    expect(HOURS(s.breakdown.rewatches.reduce((a, e) => a + e.minutes, 0))).toBe(s.hours.rewatches);
+    expect(HOURS(s.breakdown.rewatches.reduce((a, e) => a + (e.minutes ?? 0), 0))).toBe(s.hours.rewatches);
   });
 });
 

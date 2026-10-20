@@ -264,13 +264,13 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
                  started returning cour posters. */
               posterUrl={seasonPoster ?? item.poster_url}
               title={displayTitle(item)}
-              onClick={() => router.push(`/perso/watching/${item.id}`)}
+              onClick={item.id.startsWith("history:") ? undefined : () => router.push(`/perso/watching/${item.id}`)}
               meta={
                 <>
                   {rating != null && (
                     <div className="flex items-center gap-0.5">
                       <Star size={9} className="fill-amber-400 text-amber-400" />
-                      <span className="text-micro tabular-nums font-medium text-amber-400">{rating}</span>
+                      <span className="text-micro tabular-nums font-medium text-amber-400">{Number(rating.toFixed(2)).toString()}</span>
                     </div>
                   )}
                   {seasonLabel ? (
@@ -287,7 +287,7 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
       )}
       <SlidingPanel open={open} onClose={() => setOpen(false)} title="Top Picks" icon={<Trophy size={15} />}>
         <div className="p-4">
-          {items.map(({ item, seasonLabel, rating, seasonPoster }) => <MediaRow key={item.id} href={`/perso/watching/${item.id}`} posterUrl={seasonPoster ?? item.poster_url} title={displayTitle(item)} meta={<span className="text-micro text-text-tertiary">{[seasonLabel ?? item.year, rating != null ? Number(rating.toFixed(2)).toString() : null].filter((v) => v != null).join(" / ")}</span>} right={item.favorite ? <Heart size={10} className="fill-red-400 text-red-400" /> : undefined} />)}
+          {items.map(({ item, seasonLabel, rating, seasonPoster }) => <MediaRow key={item.id} href={item.id.startsWith("history:") ? undefined : `/perso/watching/${item.id}`} posterUrl={seasonPoster ?? item.poster_url} title={displayTitle(item)} meta={<span className="text-micro text-text-tertiary">{[seasonLabel ?? item.year, rating != null ? Number(rating.toFixed(2)).toString() : null].filter((v) => v != null).join(" / ")}</span>} right={item.favorite ? <Heart size={10} className="fill-red-400 text-red-400" /> : undefined} />)}
         </div>
       </SlidingPanel>
     </div>
@@ -439,11 +439,12 @@ function ActivityCard({ activity, selectedYear }: {
       </div>
 
       {activity.length === 0 ? (
-        <p className="text-sm text-text-tertiary/50">No activity yet</p>
+        <p className="text-sm text-text-tertiary/50">{selectedYear ? "No month-level activity recorded" : "No activity yet"}</p>
       ) : (
         <div className="flex flex-1 items-end gap-1 min-h-0">
           {activity.map((a) => {
-            const isSel = selectedYear != null && a.label === String(selectedYear);
+            const isSel = selectedYear != null && a.label.startsWith(String(selectedYear));
+            const monthLabel = a.label.length === 7 ? ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(a.label.slice(5))-1] : null;
             return (
               // min-w-0 is what stops the clipping: without it a flex item won't shrink below its
               // label's intrinsic width, so on a narrow phone the 14 four-digit labels overflowed
@@ -461,8 +462,8 @@ function ActivityCard({ activity, selectedYear }: {
                 {/* Two-digit on a phone ('13…'26), four on desktop: half the width, so every year
                     still has a readable label where the full one would collide with its neighbour. */}
                 <span className={`text-[9px] tabular-nums leading-none ${isSel ? "font-semibold text-text-secondary" : "text-text-tertiary/70"}`}>
-                  <span className="sm:hidden">&apos;{a.label.slice(2)}</span>
-                  <span className="hidden sm:inline">{a.label}</span>
+                  <span className="sm:hidden">{monthLabel ?? `’${a.label.slice(2)}`}</span>
+                  <span className="hidden sm:inline">{monthLabel ?? a.label}</span>
                 </span>
               </div>
             );
@@ -496,13 +497,13 @@ export function StatsPage() {
   const [openSlice, setOpenSlice] = useState<{ key: SliceKey; color: string; label: string } | null>(null);
 
   const stats = useMemo(
-    () => computeStats(data?.items ?? [], data?.rewatches ?? [], selectedYear, data?.cours),
+    () => computeStats(data?.items ?? [], data?.rewatches ?? [], selectedYear, data?.cours, data?.history),
     [data, selectedYear],
   );
   // Achievements are ALL-TIME, so the Marathoner tier reads the same total hours the donut shows on
   // "All time" — computed here with year=null rather than the page's selected year.
   const allTime = useMemo(
-    () => computeStats(data?.items ?? [], data?.rewatches ?? [], null, data?.cours),
+    () => computeStats(data?.items ?? [], data?.rewatches ?? [], null, data?.cours, data?.history),
     [data],
   );
   // The "why" panel: which badge is open. The badge object is kept across the close animation.
@@ -542,6 +543,7 @@ export function StatsPage() {
           films={stats.counts.film}
           seriesAnime={stats.counts.serie + stats.counts.anime}
           hours={stats.hours.total}
+          unknownDurationEvents={stats.unknownDurationEvents}
           topGenre={stats.topGenres[0]?.name ?? null}
           topPosters={stats.wrappedPosters}
           total={stats.counts.total}
@@ -634,7 +636,7 @@ export function StatsPage() {
         />
         <MetricCard
           label="Avg rating"
-          value={stats.avgRating ?? "—"}
+          value={stats.avgRating == null ? "—" : Number(stats.avgRating.toFixed(2)).toString()}
           sub={stats.avgRating && stats.ratedCount > 0 ? `(${stats.ratedCount})` : undefined}
           icon={<Star size={14} className="fill-amber-400 text-amber-400" />}
         />
@@ -688,6 +690,7 @@ export function StatsPage() {
           hours={stats.hours}
           onOpen={(key, color, label) => setOpenSlice({ key, color, label })}
         />
+        {(stats.unknownDurationEvents ?? 0)>0 && <p className="text-xs text-text-tertiary">Hours include known duration only. {stats.unknownDurationEvents} viewing records have unknown duration.</p>}
         <ActivityCard activity={stats.activity} selectedYear={selectedYear} />
         <div className="lg:col-span-2 xl:col-span-1">
           <RatingDistributionCard distribution={stats.ratingDistribution} />
