@@ -66,3 +66,9 @@ export function tmdbImage(url: string | null | undefined, size: TmdbSize): strin
 export function tmdbImageFor(url: string | null | undefined, cssPx: number, dpr = 2): string | null {
   return tmdbImage(url, tmdbSizeFor(cssPx, dpr));
 }
+
+/** Native density selection for compact posters; custom/AniList assets pass through. */
+export function tmdbPosterSrcSet(url:string|null|undefined,cssPx:number):string|undefined {
+  if(!url || !tmdbPathFromUrl(url)) return undefined;
+  return [1,2,3].map(dpr=>`${tmdbImageFor(url,cssPx,dpr)} ${dpr}x`).join(", ");
+}

@@ -175,17 +175,18 @@ export function AchievementPanel({ a, open, onClose }: { a: WatchingAchievement 
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
             <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: c }} />
           </div>
+          <p className="mt-2 text-xs text-text-secondary">Current progress: {n(d.value)} / {n(d.goal)}</p>
           <p className="mt-2 flex items-center gap-1.5 text-xs">
             {a.unlocked ? (
               <>
                 <Check size={13} style={{ color: c }} />
-                <span className="font-medium text-text-primary">Unlocked</span>
+                <span className="font-medium text-text-primary">{d.receiptObserved ? "Unlocked / first observed satisfied" : "Currently satisfied"}</span>
                 {d.unlockedAt && <span className="text-text-tertiary">· {fmtDate(d.unlockedAt)}</span>}
               </>
             ) : (
               <>
                 <Lock size={12} className="text-text-tertiary" />
-                <span className="text-text-secondary">{qty(d.remaining, d.unit)} to go</span>
+                <span className="text-text-secondary">{d.remaining>0 ? `${qty(d.remaining, d.unit)} to go` : "Threshold reached; permanent unlock awaiting verification"}</span>
                 <span className="text-text-tertiary">· {pct}%</span>
               </>
             )}

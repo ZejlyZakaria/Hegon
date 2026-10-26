@@ -139,7 +139,7 @@ export function useUpdateMedia() {
         queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "library"], refetchType: "all" });
         // Cross-module: a watched-status change can move a Goal's progress and
         // auto-tick a Watching-linked habit.
-        void syncWatchingGoals(queryClient);
+
         void syncWatchingHabits(queryClient);
       }
 
@@ -155,7 +155,8 @@ export function useUpdateMedia() {
       // any of those change (prefix-match invalidates the per-user stats key). Keeps
       // Stats honest after a rating or Watch-History edit, not only after the
       // optimistic patch. Notes-only saves are skipped.
-      if (hasAnyField(input, ANALYTICAL_FIELDS)) {
+      if (isStatusChange || hasAnyField(input, ANALYTICAL_FIELDS)) {
+        void syncWatchingGoals(queryClient);
         queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "stats"] });
         queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "library"] });
       }

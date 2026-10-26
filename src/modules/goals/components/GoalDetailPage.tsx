@@ -1,4 +1,5 @@
 "use client";
+import { WatchingCompletionStatus } from "./WatchingCompletionStatus";
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -910,6 +911,7 @@ export function GoalDetailPage({ id }: Props) {
                 </span>
               </div>
 
+              {contributingMedia && <WatchingCompletionStatus goal={goal} current={contributingMedia.count}/>}
               {goal.completed_at && (
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-text-tertiary">Completed</span>

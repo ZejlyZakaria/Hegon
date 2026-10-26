@@ -40,6 +40,7 @@ async function tmdb(path: string): Promise<any> {
   throw new Error(`TMDB rate-limited on ${path}`);
 }
 
+interface ProviderHead { work_key:string; accepted_snapshot_id:string|null; checked_at:string }
 interface SeasonFacts { evidence: SeasonEvidence; poster: string | null; airDate: string | null }
 
 // Full membership reads also discover removals with unchanged counts. Never reuse bare totals.
@@ -49,9 +50,11 @@ async function seasonFacts(
 ): Promise<SeasonFacts[]> {
   const out: SeasonFacts[] = [];
   const TODAY = today();
+  let precedingEpisodes=0;
 
   for (let i = 0; i < seasons.length; i++) {
     const s = seasons[i];
+    if(s.season_number!==i+1) throw new Error("Noncontiguous season identities");
     // The poster and the start date come free with the show payload — no season call needed. They
     // are why `useSeasonRefresh` existed, firing a TMDB request on every detail-page open to write
     // the ANNOUNCED counts and never the aired ones. This job already knows everything that hook
@@ -60,7 +63,9 @@ async function seasonFacts(
 
     const detail = await tmdb(`tv/${tmdbId}/season/${s.season_number}`);
     if (!Array.isArray(detail.episodes)) throw new Error("Incomplete season response");
-    const evidence = compactSeason(s, detail.episodes, TODAY);
+    if(detail.id!=null && detail.id!==s.id || detail.season_number!=null && detail.season_number!==s.season_number) throw new Error("Season identity mismatch");
+    const evidence = compactSeason(s, detail.episodes, TODAY,precedingEpisodes);
+    precedingEpisodes+=s.episode_count;
     const airDate = evidence.episodes.filter((e) => e.aired === true && e.air_date).map((e) => e.air_date!).sort()[0] ?? s.air_date ?? null;
     out.push({ evidence, poster, airDate });
     await sleep(60);   // TMDB is generous, not infinite
@@ -78,6 +83,7 @@ const ROW_COLUMNS =
 
 /** How stale a title has to be before it's worth asking TMDB again. */
 const ONGOING_STALE_MS = 6 * 60 * 60 * 1000;        // a show that's airing: a few times a day
+const BOOTSTRAP_RETRY_MS = 10 * 60 * 1000; // A corrected initial observation can retry without a six-hour lockout.
 const FINISHED_STALE_MS = 7 * 24 * 60 * 60 * 1000;  // a show that's over: once a week, for revivals
 
 const staleness = (rows: any[]) => {
@@ -140,16 +146,37 @@ async function selectBatch(supabase: any) {
     return (data ?? []) as any[];
   };
 
-  const eligible = (rows: any[], maxAge: number) =>
-    [...groupByShow(rows).entries()]
-      .filter(([, g]) => staleness(g) >= maxAge)
-      .sort((a, b) => staleness(b[1]) - staleness(a[1]));   // stalest first
-
-  const batch = eligible(await pick(false), ONGOING_STALE_MS).slice(0, BATCH);
-  if (batch.length < BATCH) {
-    // Room left → top up with finished shows that haven't been looked at in a week.
-    batch.push(...eligible(await pick(true), FINISHED_STALE_MS).slice(0, BATCH - batch.length));
+  const [ongoing,finished,heads,rewatches]=await Promise.all([
+    pick(false),pick(true),
+    fetchAllRows<ProviderHead>((from,to)=>supabase.from("provider_heads").select("work_key,accepted_snapshot_id,checked_at").eq("provider","tmdb").order("work_key").range(from,to)),
+    fetchAllRows<{media_item_id:string}>((from,to)=>supabase.from("rewatches").select("media_item_id").order("id").range(from,to)),
+  ]);
+  const byWork=new Map<string,ProviderHead>(heads.map((head):[string,ProviderHead]=>[head.work_key,head]));
+  const rewatchIds=new Set(rewatches.map(r=>r.media_item_id));
+  const ready=(id:number)=>{
+    const head=byWork.get(`tv:${id}`);
+    return !head || !!head.accepted_snapshot_id || Date.now()-new Date(head.checked_at).getTime()>=BOOTSTRAP_RETRY_MS;
+  };
+  const all=[...groupByShow([...ongoing,...finished]).entries()];
+  // A fresh legacy cache is not an accepted episode catalogue. Seed missing evidence
+  // independently of the weekly finished-show timer; preserve room for normal airing work.
+  const bootstrap=all.filter(([id])=>!byWork.get(`tv:${id}`)?.accepted_snapshot_id && ready(id))
+    .sort((a,b)=>Number(b[1].some(r=>rewatchIds.has(r.id)))-Number(a[1].some(r=>rewatchIds.has(r.id))) || staleness(b[1])-staleness(a[1]))
+    .slice(0,Math.ceil(BATCH/2));
+  const selected=new Set(bootstrap.map(([id])=>id));
+  const eligible=(rows:any[],maxAge:number)=>[...groupByShow(rows).entries()]
+    .filter(([id,g])=>!selected.has(id) && ready(id) && staleness(g)>=maxAge)
+    .sort((a,b)=>staleness(b[1])-staleness(a[1]));
+  const batch=bootstrap;
+  for(const group of eligible(ongoing,ONGOING_STALE_MS)) {
+    if(batch.length>=BATCH) break;
+    selected.add(group[0]);batch.push(group);
   }
+  for(const group of eligible(finished,FINISHED_STALE_MS)) {
+    if(batch.length>=BATCH) break;
+    selected.add(group[0]);batch.push(group);
+  }
+
   return batch;
 }
 

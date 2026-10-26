@@ -60,13 +60,16 @@
     "✅ 2026-09-17 (bis) — migration 20260917000100 : person_upcoming.season_number. colonnes +1.",
     "",
     "✅ 2026-09-17 (ter) — migration 20260917000200 : contrainte check media_items_cour_only_anime remplace media_items_cour_columns_series_only (une contrainte n'est pas comptée). Chiffres inchangés.",
-    "2026-10-12 Wave 2A: viewing_records (28 columns), viewing_ranges (9), media_items +5; tables +2, columns +42, policies +2, functions +3, indexes +7. Deltas measured by isolated PostgreSQL 16 rehearsal; production application remains owner-only."
+    "2026-10-12 Wave 2A: viewing_records (28 columns), viewing_ranges (9), media_items +5; tables +2, columns +42, policies +2, functions +3, indexes +7. Deltas measured by isolated PostgreSQL 16 rehearsal; production application remains owner-only.",
+    "2026-10-21: 20261021010000 applies 85 owner-approved INFERRED legacy date estimates; data only, object counts unchanged.",
+    "2026-10-21: 20261021020000 accepts optional bounded episode runtimes in provider facts for frozen rewatches; function replacement only, object counts unchanged.",
+    "2026-10-22: accepted legacy consumption snapshot +1 column; existing guard/command/receipt functions replaced, no new tables/policies/functions/indexes/crons. Local rehearsal required before owner push."
   ],
-  "_migrations_through": "20261018000000",
-  "tables": 79,
-  "colonnes": 836,
-  "policies": 223,
-  "fonctions": 44,
-  "index": 274,
+  "_migrations_through": "20261022000000",
+  "tables": 81,
+  "colonnes": 857,
+  "policies": 225,
+  "fonctions": 49,
+  "index": 277,
   "crons": 20
 }

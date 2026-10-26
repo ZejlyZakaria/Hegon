@@ -92,22 +92,23 @@ describe("Wave2C canonical service boundaries",()=>{
     setup();const calls:Record<string,number>={};
     for (const table of ["viewing_records","viewing_ranges","scope_ratings"]) server.use(http.get(`https://watching-test.supabase.co/rest/v1/${table}`,({request})=>{
       const q=new URL(request.url).searchParams;expect(q.get(table==="viewing_ranges" ? "record.user_id" : "user_id")).toBe("eq.owner");
+      expect(q.get(table==="viewing_ranges" ? "record.org_id" : "org_id")).toBe("eq.org");
       const offset=Number(q.get("offset") ?? 0),limit=Number(q.get("limit") ?? 1000);calls[table]=(calls[table] ?? 0)+1;
       const rows=Array.from({length:Math.max(0,Math.min(limit,1105-offset))},(_,i)=>({id:String(offset+i),viewing_record_id:String(offset+i)}));
       return HttpResponse.json(rows);
     }));
-    const result=await getHistoryAnalytics("owner");expect(result.records).toHaveLength(1105);expect(result.ratings).toHaveLength(1105);expect(result.records[1104].ranges).toHaveLength(1);
+    const result=await getHistoryAnalytics("owner","org");expect(result.records).toHaveLength(1105);expect(result.ratings).toHaveLength(1105);expect(result.records[1104].ranges).toHaveLength(1);
     expect(Object.values(calls)).toEqual([2,2,2]);
   });
   it("reads only rewatch history, hides compatibility duplicates and preserves legacy uncertainty",async()=>{
-    setup();server.use(http.get("https://watching-test.supabase.co/rest/v1/rewatches",()=>HttpResponse.json([
+    setup();server.use(http.get("https://watching-test.supabase.co/rest/v1/viewing_ranges",()=>HttpResponse.json([])),http.get("https://watching-test.supabase.co/rest/v1/rewatches",()=>HttpResponse.json([
       {id:"new",watched_on:"2026-01-01",created_at:"2026-10-18"},{id:"removed",watched_on:"2026-01-01",created_at:"2026-10-18"},{id:"legacy",watched_on:"2022-01-01",created_at:"2022-01-01"},
     ])),http.get("https://watching-test.supabase.co/rest/v1/viewing_records",({request})=>{
       const q=new URL(request.url).searchParams;expect(q.get("kind")).toBe("eq.REWATCH");expect(q.get("media_item_id")).toBe("eq.movie");
       return HttpResponse.json([{id:"new",kind:"REWATCH",scope_kind:"WHOLE_TITLE",year:2026,month:null,day:null,date_precision:"YEAR",retracted_at:null,recorded_at:"2026-10-18"},
         {id:"removed",kind:"REWATCH",scope_kind:"UNKNOWN",retracted_at:"2026-10-18"}]);
     }));
-    const rows=await getRewatches("movie");expect(rows).toHaveLength(2);expect(rows[0].watched_on).toBe("2026");expect(rows[1]).toMatchObject({id:"legacy",watched_on:"Date unknown",scope_known:false});
+    const rows=await getRewatches("movie");expect(rows).toHaveLength(2);expect(rows[0].watched_on).toBe("2026");expect(rows[1]).toMatchObject({id:"legacy",watched_on:"2022-01-01",scope_known:false,canonical:false});
   });
   it("records an explicit whole-film scope and retries the same frozen operation",async()=>{
     setup();const requests:Record<string,unknown>[]=[];
@@ -132,5 +133,29 @@ describe("Wave2C ambiguous cour write boundary",()=>{
     await expect(addRewatch("anime",{date:null,scope:{kind:"COUR",number:1,courId:501}},4,
       {snapshot_id:null,mapping_snapshot_id:null,seasons:[],cours:[{id:501,number:1,start:13,end:24}]})).rejects.toThrow("Refresh season details before recording this rewatch");
     expect(writes).toBe(0);
+  });
+});
+
+
+describe("Rewatch period and legacy correction commands",()=>{
+  it("freezes accepted per-episode durations and historical membership without browser cache",async()=>{
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL","https://watching-test.supabase.co");vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY","test-anon-key");
+    let saved:Record<string,unknown>|undefined;
+    server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>HttpResponse.json({id:"tv",tmdb_id:42,type:"serie",runtime:999,season_aired:[2,1],personal_revision:4})),
+      http.post("https://watching-test.supabase.co/rest/v1/rpc/personal_history_command",async({request})=>{saved=(await request.json() as {command:Record<string,unknown>}).command;return HttpResponse.json({id:"tv",personal_revision:5});}));
+    const catalogue={snapshot_id:"accepted",mapping_snapshot_id:null,cours:[],seasons:[
+      {id:201,number:1,announced:2,aired:2,episodes:[{id:101,number:1,aired:true,air_date:"2021-01-01",runtime:23},{id:102,number:2,aired:true,air_date:"2022-01-01",runtime:25}]},
+      {id:202,number:2,announced:1,aired:1,episodes:[{id:201,number:1,aired:true,air_date:"2026-01-01",runtime:30}]},
+    ]};
+    await addRewatch("tv",{date:{year:2022,month:null,day:null},scope:{kind:"WHOLE_TITLE"}},4,catalogue);
+    expect(saved).toMatchObject({patch:{},viewing_context:{snapshot_id:"accepted",mapping_snapshot_id:null},records:[{date_precision:"YEAR",scope_kind:"WHOLE_TITLE",ranges:[{episode_ids:[101,102],minutes:48}]}]});
+  });
+  it("completes a legacy event using one transactional replacement command",async()=>{
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL","https://watching-test.supabase.co");vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY","test-anon-key");
+    let saved:Record<string,unknown>|undefined;
+    server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>HttpResponse.json({id:"movie",type:"film",runtime:169,personal_revision:4})),
+      http.post("https://watching-test.supabase.co/rest/v1/rpc/personal_history_command",async({request})=>{saved=(await request.json() as {command:Record<string,unknown>}).command;return HttpResponse.json({id:"movie",personal_revision:5});}));
+    await addRewatch("movie",{date:{year:2022,month:3,day:1},scope:{kind:"WHOLE_TITLE"},legacyId:"legacy"},4);
+    expect(saved).toMatchObject({mode:"remove_rewatch",rewatch_id:"legacy",patch:{},retract_ids:[],records:[{kind:"REWATCH",origin:"USER_CORRECTION",ranges:[{minutes:169}]}]});
   });
 });

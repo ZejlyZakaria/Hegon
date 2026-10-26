@@ -79,9 +79,10 @@ describe("Wave2C mixed history and calendar attribution",()=>{
     if(y==null) expect(result.availableYears).toEqual([]);
     expect(periodMatches(y==null ? viewingDate():date(y,m,d),2026,10,18)).toBe(d===18);
   });
-  it("counts unknown duration as unknown; legacy rewatches gain no scope/calendar/duration",()=>{
+  it("accepts legacy rewatch calendar dates without inventing scope or duration",()=>{
     const result=computeStats([item()], [{id:"legacy",media_item_id:"item",watched_on:"2026-10-01"}],null,new Map(),history([record("1",[range(1,13,1,null)],null)]));
-    expect(result.rewatches).toBe(1);expect(result.breakdown.rewatches[0].minutes).toBeNull();expect(result.unknownDurationEvents).toBe(2);expect(result.availableYears).toEqual([]);
+    expect(result.rewatches).toBe(1);expect(result.breakdown.rewatches[0].minutes).toBeNull();expect(result.unknownDurationEvents).toBe(2);expect(result.availableYears).toEqual([2026]);
+    expect(result.monthlyStats?.[0]).toMatchObject({label:"2026-10",rewatches:1,knownMinutes:0});
   });
   it("keeps legacy-only annual fallback and suppresses retracted first watches",()=>{
     expect(stats(item(),history([]),2022).episodes).toBe(13);
@@ -208,4 +209,118 @@ describe("Wave2C blocker regressions",()=>{
     c.seasons[0].aired=24;c.seasons[0].episodes=[];
     expect(()=>buildRewatch({type:"anime",runtime:null},request,c)).toThrow("Refresh season details");
   });
+});
+
+describe("Accepted stored legacy calendar dates",()=>{
+  it.each(["2022-03-14","2023-03-14","2024-03-14","2025-08-10"])("uses %s for annual, monthly and daily analytics without a cutoff",stored=>{
+    const [year,month,day]=stored.split("-").map(Number);
+    const result=stats(item({type:"film",watched_at:stored}),history([]),year);
+    expect(result.counts.total).toBe(1);
+    expect(result.activity).toEqual([{label:stored.slice(0,7),count:1}]);
+    expect(result.monthlyStats?.[0]).toMatchObject({label:stored.slice(0,7),titles:1});
+    expect(result.dailyActivity).toEqual([{label:stored,count:1}]);
+    expect(result.dailyStats?.[0].label).toBe(`${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`);
+  });
+  it("keeps unrelated legacy calendar coverage after partial history adoption, replacing only overlap",()=>{
+    const i={...item({season_aired:[13,10],season_episodes:[13,10],season_years:{1:2022,2:2026},watched_at:"2022-03-14"}),history_version:1};
+    const h=history([record("1",[range(4,8)],2026,"FIRST_WATCH",10,21)]);
+    const old=stats(i,h,2022),fresh=stats(i,h,2026),all=stats(i,h,null);
+    expect(old.activity).toEqual([{label:"2022-03",count:1}]);
+    expect(old.monthlyStats?.[0]).toMatchObject({episodes:8,titles:1});
+    expect(old.dailyStats?.[0]).toMatchObject({label:"2022-03-14",episodes:8});
+    expect(fresh.monthlyStats?.[0]).toMatchObject({label:"2026-10",episodes:5});
+    expect(fresh.episodes).toBe(15); // S2 retains its explicit year, without a made-up month.
+    expect(all.episodes).toBe(23);
+    expect(all.monthlyStats?.reduce((n,row)=>n+row.episodes,0)).toBe(13);
+  });
+  it("does not duplicate a fully replaced legacy movie date",()=>{
+    const r={...record("1",[{...range(1,1,0,120),season_key:"movie"}],2025,"FIRST_WATCH",8,10),work_key:"movie:42",media_type_snapshot:"film"};
+    const i={...item({type:"film",watched_at:"2022-03-14"}),history_version:1};
+    expect(stats(i,history([r]),2022).activity).toEqual([]);
+    expect(stats(i,history([r]),2025).monthlyStats?.[0]).toMatchObject({titles:1,knownMinutes:120});
+    expect(stats(i,history([r]),null).hours.total).toBe(2);
+  });
+  it("preserves explicitly partial dates rather than decoding their sorting projection",()=>{
+    const i=item({type:"film",watched_at:"2022-12-31T12:00:00Z",viewing_date:{year:2022,month:null,day:null}});
+    expect(stats(i,history([]),2022).activity).toEqual([]);
+    expect(stats(i,history([]),2022).counts.total).toBe(1);
+    i.viewing_date={year:2022,month:3,day:null};
+    expect(stats(i,history([]),2022).activity).toEqual([{label:"2022-03",count:1}]);
+    expect(stats(i,history([]),2022).dailyStats).toEqual([]);
+  });
+  it("accepts a pre-2024 legacy rewatch date but never duplicates its canonical replacement",()=>{
+    const r={...record("rw",[{...range(1,1,0,120),season_key:"movie"}],2022,"REWATCH",3,14),work_key:"movie:42",media_type_snapshot:"film"};
+    const i=item({type:"film",watched:false});
+    const legacy=[{id:"rw",media_item_id:i.id,watched_on:"2022-03-14"}];
+    const before=computeStats([i],legacy,2022,new Map(),history([]));
+    expect(before.activity).toEqual([{label:"2022-03",count:1}]);
+    expect(before.dailyActivity).toEqual([{label:"2022-03-14",count:1}]);
+    expect(before.hours.total).toBe(0);expect(before.unknownScopeEvents).toBe(1);
+    const after=computeStats([i],legacy,2022,new Map(),history([r]));
+    expect(after.rewatches).toBe(1);expect(after.hours.total).toBe(2);
+    expect(after.activity).toEqual([{label:"2022-03",count:1}]);
+  });
+});
+
+describe("Monthly activity preserves stored dates independently of annual scope stamps",()=>{
+  it("keeps Bleach-like legacy2023 dates when partial history introduces a2026 viewing_date",()=>{
+    const i={...item({season_episodes:[13,10],season_aired:[13,10],season_years:{1:2023,2:2026},watched_at:"2023-12-31",viewing_date:{year:2026,month:10,day:20}}),history_version:1};
+    const h=history([record("1",[range(1,2,2)],2026,"FIRST_WATCH",10,20)]);
+    const old=stats(i,h,2023),fresh=stats(i,h,2026),all=stats(i,h,null);
+    expect(old.activity).toEqual([{label:"2023-12",count:1}]);
+    expect(old.dailyActivity).toEqual([{label:"2023-12-31",count:1}]);
+    expect(old.monthlyStats?.[0]).toMatchObject({episodes:13,knownMinutes:650});
+    expect(fresh.activity).toEqual([{label:"2026-10",count:1}]);
+    expect(fresh.monthlyStats?.[0]).toMatchObject({episodes:2,knownMinutes:40});
+    expect(fresh.episodes).toBe(10);expect(all.episodes).toBe(23);
+    expect(all.hours.total).toBe((21*50+40)/60);
+  });
+  it("retains a Dexter-like stored April2026 event despite annual season stamps2023",()=>{
+    const i=item({watched_at:"2026-04-05",season_years:{1:2023}});
+    expect(stats(i,history([]),2026).activity).toEqual([{label:"2026-04",count:1}]);
+    expect(stats(i,history([]),2026).monthlyStats?.[0]).toMatchObject({titles:1,episodes:0,knownMinutes:0,unknownDurationEvents:1});
+    expect(stats(i,history([]),2023).episodes).toBe(13); // No annual hours/episodes moved to2026.
+    expect(stats(i,history([]),2026).episodes).toBe(0);
+    expect(stats(i,history([]),null).hours.total).toBe(650/60);
+  });
+  it("does not resurrect a stored calendar date after all corresponding legacy coverage is replaced",()=>{
+    const i=item({watched_at:"2023-12-31",season_years:{1:2023}});
+    const h=history([record("1",[range(1,13)],2026,"FIRST_WATCH",10,20)]);
+    expect(stats(i,h,2023).activity).toEqual([]);
+    expect(stats(i,h,2026).activity).toEqual([{label:"2026-10",count:1}]);
+  });
+});
+
+it("unscoped history with only a year cannot mask dated legacy coverage",()=>{
+  const i=item({watched_at:"2022-03-14"});
+  const result=stats(i,history([record("unknown",[],2022)]),2022);
+  expect(result.activity).toEqual([{label:"2022-03",count:1}]);
+  expect(result.episodes).toBe(13);expect(result.hours.total).toBe(650/60);
+});
+
+describe("Same-year scoped date adoption",()=>{
+  it.each([viewingDate({year:2026,month:10,day:20}),viewingDate({year:2026,month:10,day:null})])("preserves March legacy while newer scoped history uses $date_precision in October",d=>{
+    const i={...item({season_aired:[13,10],season_episodes:[13,10],season_years:{1:2026,2:2026},watched_at:"2026-03-14",viewing_date:{year:d.year!,month:d.month,day:d.day}}),history_version:1};
+    const h=history([{...record("1",[range(1,2,2)],2026),...d}]);
+    const result=stats(i,h,2026);
+    expect(result.activity).toEqual([{label:"2026-03",count:1},{label:"2026-10",count:1}]);
+    expect(result.monthlyStats?.map(m=>[m.label,m.episodes])).toEqual([["2026-03",21],["2026-10",2]]);
+    expect(result.dailyActivity).toContainEqual({label:"2026-03-14",count:1});
+    expect(result.dailyActivity?.some(a=>a.label==="2026-10-20")).toBe(d.day===20);
+    expect(result.episodes).toBe(23);expect(result.hours.total).toBe((21*50+40)/60);
+  });
+  it("does not resurrect the old month when every legacy episode is explicitly replaced",()=>{
+    const d=viewingDate({year:2026,month:10,day:20});
+    const i=item({watched_at:"2026-03-14",season_years:{1:2026},viewing_date:{year:2026,month:10,day:20}});
+    const result=stats(i,history([{...record("1",[range(1,13)],2026),...d}]),2026);
+    expect(result.activity).toEqual([{label:"2026-10",count:1}]);expect(result.episodes).toBe(13);
+  });
+});
+
+it("a scoped YEAR assertion cannot erase the legacy month of unrelated coverage",()=>{
+  const i=item({season_aired:[13,10],season_episodes:[13,10],season_years:{1:2026,2:2026},watched_at:"2026-03-14",viewing_date:{year:2026,month:null,day:null}});
+  const result=stats(i,history([record("1",[range(1,2,2)],2026)]),2026);
+  expect(result.activity).toEqual([{label:"2026-03",count:1}]);
+  expect(result.monthlyStats?.[0]).toMatchObject({label:"2026-03",episodes:21});
+  expect(result.episodes).toBe(23);
 });

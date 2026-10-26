@@ -2,7 +2,8 @@ import { episodeCountsForTime } from "../../lib/episode-counts";
 import { isDirectorCredit } from "../../lib/credit-roles";
 import type { Achievement } from "@/shared/components/achievements/types";
 import type { StatsRawItem } from "../../service";
-import type { HoursEntry, RewatchEntry } from "./computeStats";
+import { recordsFor, type HistoryAnalytics } from "../../lib/history-analytics";
+import { computeStats, type ComputedStats, type HoursEntry, type RewatchEntry } from "./computeStats";
 
 /**
  * THE TWELVE, AS RULES — a SHAPE with PARAMETERS, not twelve hand-written counters.
@@ -24,12 +25,27 @@ import type { HoursEntry, RewatchEntry } from "./computeStats";
 
 type Base = Pick<Achievement, "key" | "name" | "icon" | "color" | "description">;
 type Bucket = { key: string; label: string };
+export interface AchievementContext { stats: ComputedStats; history: HistoryAnalytics }
+const datedBuckets=(i:StatsRawItem,context:AchievementContext|undefined,precision:"MONTH"|"YEAR"):Bucket[]|null => {
+  const rows=precision==="MONTH" ? context?.stats.monthlyStats : context?.stats.yearlyStats;
+  return rows ? rows.filter(r=>r.itemIds.includes(i.id)).map(r=>({key:r.label,label:r.label})):null;
+};
+function finishedEpisodes(i:StatsRawItem,context?:AchievementContext):number {
+  if(i.type==="film") return 0;
+  const completions=context ? recordsFor(i,context.history).filter(r=>!r.retracted_at && r.kind==="COMPLETION" && r.completion_basis==="FINISHED_TITLE") : [];
+  const episodes=new Set<string>();
+  for(const r of completions) for(const range of r.ranges)
+    for(let ep=range.episode_from;ep<=range.episode_to;ep++) episodes.add(`${range.season_number_at_recording}:${ep}`);
+  // Explicit finished-scope evidence wins over today's changing provider metadata.
+  if(completions.length) return episodes.size;
+  return i.legacy_consumption ? i.legacy_consumption.counts.reduce((n,c)=>n+c,0) : episodeCountsForTime(i).reduce((n,c)=>n+c,0);
+}
 
 export type Rule = Base & { goal: number } & (
   | { shape: "count"; of: (i: StatsRawItem) => boolean; /** What would count once finished — the carrot. */ candidate?: (i: StatsRawItem) => boolean }
-  | { shape: "distinct"; by: (i: StatsRawItem) => Bucket[]; unit: string }
-  | { shape: "max_group"; by: (i: StatsRawItem) => Bucket[]; unit: string }
-  | { shape: "max"; of: (i: StatsRawItem) => number; unit: string }
+  | { shape: "distinct"; by: (i: StatsRawItem, context?:AchievementContext) => Bucket[]; unit: string }
+  | { shape: "max_group"; by: (i: StatsRawItem, context?:AchievementContext) => Bucket[]; unit: string }
+  | { shape: "max"; of: (i: StatsRawItem, context?:AchievementContext) => number; unit: string }
   | { shape: "sum"; unit: string }
 );
 
@@ -53,6 +69,7 @@ export interface AchievementDetail {
   groups: DetailGroup[];
   /** When the bar was cleared — the finish date of the title that tipped it. Null when unknown. */
   unlockedAt: string | null;
+  receiptObserved?: boolean;
   /** Still to go, and — when the rule can say — what would count once finished. */
   remaining: number;
   candidates: StatsRawItem[];
@@ -64,21 +81,12 @@ export interface WatchingAchievement extends Achievement {
 
 const decadeOf = (i: StatsRawItem) => (i.year ? [{ key: String(Math.floor(i.year / 10) * 10), label: `${Math.floor(i.year / 10) * 10}s` }] : []);
 const genresOf = (i: StatsRawItem) => (i.tags ?? []).map((t) => ({ key: t, label: t }));
-const monthOf = (i: StatsRawItem) => {
-  if (!i.watched_at) return [];
-  const d = new Date(i.watched_at);
-  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  return [{ key, label: d.toLocaleDateString("en-GB", { month: "short", year: "numeric" }) }];
-};
-const yearOf = (i: StatsRawItem) => (i.watched_at ? [{ key: String(new Date(i.watched_at).getFullYear()), label: String(new Date(i.watched_at).getFullYear()) }] : []);
+const monthOf=(i:StatsRawItem,context?:AchievementContext)=>datedBuckets(i,context,"MONTH") ?? [];
+const yearOf=(i:StatsRawItem,context?:AchievementContext)=>datedBuckets(i,context,"YEAR") ?? [];
 const directorsOf = (i: StatsRawItem) => {
   const seen = new Set<number>();
   return (i.directors ?? []).filter((p) => isDirectorCredit(p, i.type)).filter((p) => p?.id && !seen.has(p.id) && seen.add(p.id)).map((p) => ({ key: String(p.id), label: p.name }));
 };
-/** Episodes of a show, AIRED over announced — the same ruler Quick Stats uses. */
-const episodesOf = (i: StatsRawItem) =>
-  i.type === "film" ? 0 : episodeCountsForTime(i).reduce((sum, n) => sum + n, 0);
-
 // Harmonised jewel tones — one cohesive set on graphite, told apart by icon + colour at a glance.
 // Thresholds are calibrated against a real, heavy library (≈270 films, ≈2,800 h) so the set stays
 // *a bit hard*: a few earned, several near 90 %, always a carrot just ahead.
@@ -93,7 +101,7 @@ export const RULES: Rule[] = [
   { key: "genre_nomad",    name: "Genre Nomad",    icon: "globe",         color: "#a98bf0", description: "Explore 25 genres",            goal: 25,   shape: "distinct", by: genresOf, unit: "genres" },
   { key: "auteur",         name: "Auteur",         icon: "medal",         color: "#e5776b", description: "Watch 12 by one director",     goal: 12,   shape: "max_group", by: directorsOf, unit: "titles" },
   { key: "big_year",       name: "Big Year",       icon: "flame",         color: "#db8f5a", description: "Watch 50 in one year",         goal: 50,   shape: "max_group", by: yearOf, unit: "titles" },
-  { key: "long_hauler",    name: "Long Hauler",    icon: "layers",        color: "#6f9ce0", description: "Finish a 100-episode series",  goal: 100,  shape: "max", of: episodesOf, unit: "episodes" },
+  { key: "long_hauler",    name: "Long Hauler",    icon: "layers",        color: "#6f9ce0", description: "Finish a 100-episode series",  goal: 100,  shape: "max", of: finishedEpisodes, unit: "episodes" },
   { key: "ever_present",   name: "Ever-Present",   icon: "calendarCheck", color: "#b98fd4", description: "Active across 120 months",     goal: 120,  shape: "distinct", by: monthOf, unit: "months" },
 ];
 
@@ -104,8 +112,11 @@ const byDateDesc = (a: StatsRawItem, b: StatsRawItem) => (b.watched_at ?? "").lo
  * Evaluate one rule — the number AND its working. `hours` is the all-time itemised breakdown the
  * Hours donut sums (the same pass, so Marathoner can never disagree with it).
  */
-export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[], totalHours: number, rewatches: RewatchEntry[] = []): WatchingAchievement {
-  const completed = items.filter((i) => i.watched);
+export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[], totalHours: number, rewatches: RewatchEntry[] = [], context?:AchievementContext): WatchingAchievement {
+  context ??= {stats:computeStats(items,rewatches.map(r=>({media_item_id:r.item.id,watched_on:r.watchedOn})),null),history:{records:[],ratings:[]}};
+  const completed = items.filter(i=>i.watched ||
+    !!(i.legacy_consumption?.completed && (i.in_progress || i.paused || i.dropped)) ||
+    !!context && recordsFor(i,context.history).some(r=>!r.retracted_at && r.kind==="COMPLETION" && r.completion_basis==="FINISHED_TITLE"));
   let value = 0;
   let groups: DetailGroup[] = [];
   let unlockedAt: string | null = null;
@@ -128,8 +139,8 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
     case "distinct": {
       unit = rule.unit;
       const buckets = new Map<string, DetailGroup & { first: string | null }>();
-      for (const i of [...completed].sort(byDateAsc)) {
-        for (const b of rule.by(i)) {
+      for (const i of [...(rule.key==="ever_present" ? items:completed)].sort(byDateAsc)) {
+        for (const b of rule.by(i,context)) {
           const g = buckets.get(b.key) ?? { label: b.label, items: [], value: 0, first: i.watched_at };
           g.items.push(i); g.value = g.items.length;
           buckets.set(b.key, g);
@@ -145,14 +156,14 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
       // The goal-th DIFFERENT value to appear, in the order you finished things.
       const firsts = [...buckets.values()].map((g) => g.first).filter((d): d is string => !!d).sort();
       unlockedAt = value >= rule.goal && firsts.length >= rule.goal ? firsts[rule.goal - 1] : null;
-      formula = `${value} different ${rule.unit} across your finished titles — ${rule.description.toLowerCase()}.`;
+      formula = `${value} different ${rule.unit} across your ${rule.key==="ever_present" ? "viewing activity":"finished titles"} — ${rule.description.toLowerCase()}.`;
       break;
     }
     case "max_group": {
       unit = rule.unit;
       const buckets = new Map<string, DetailGroup>();
       for (const i of completed) {
-        for (const b of rule.by(i)) {
+        for (const b of rule.by(i,context)) {
           const g = buckets.get(b.key) ?? { label: b.label, items: [], value: 0 };
           g.items.push(i); g.value = g.items.length;
           buckets.set(b.key, g);
@@ -172,7 +183,7 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
     }
     case "max": {
       unit = rule.unit;
-      const ranked = completed.map((i) => ({ i, v: rule.of(i) })).filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
+      const ranked = completed.map((i) => ({ i, v: rule.of(i,context) })).filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
       value = ranked[0]?.v ?? 0;
       groups = ranked.slice(0, 10).map(({ i, v }) => ({ label: i.title, items: [i], value: v }));
       unlockedAt = value >= rule.goal ? (ranked[0]?.i.watched_at ?? null) : null;
@@ -223,6 +234,7 @@ export function evaluate(rule: Rule, items: StatsRawItem[], hours: HoursEntry[],
  * `totalHours` and `hours` come from ONE all-time `computeStats` pass — the same figure the Hours
  * donut shows, so Marathoner can never disagree with it.
  */
-export function computeWatchingAchievements(items: StatsRawItem[], totalHours: number, hours: HoursEntry[], rewatches: RewatchEntry[] = []): WatchingAchievement[] {
-  return RULES.map((r) => evaluate(r, items, hours, totalHours, rewatches));
+export function computeWatchingAchievements(items: StatsRawItem[], totalHours: number, hours: HoursEntry[], rewatches: RewatchEntry[] = [], context?:AchievementContext): WatchingAchievement[] {
+  context ??= {stats:computeStats(items,rewatches.map(r=>({media_item_id:r.item.id,watched_on:r.watchedOn})),null),history:{records:[],ratings:[]}};
+  return RULES.map((r) => evaluate(r, items, hours, totalHours, rewatches, context));
 }

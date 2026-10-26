@@ -1,7 +1,9 @@
-import type { StoredViewingAssertion, ViewingRange, ViewingDate } from "./viewing-history";
+import { legacyRuntime, legacyCoordinates } from "./legacy-consumption";
+import { parseViewingInput, viewingDate, type StoredViewingAssertion, type ViewingRange, type ViewingDate } from "./viewing-history";
 import type { StatsRawItem } from "../service";
 import type { MediaView } from "./media-view";
-export interface HistoricalViewing extends StoredViewingAssertion {
+export interface HistoricalViewing extends Omit<StoredViewingAssertion,"origin"> {
+  origin: StoredViewingAssertion["origin"] | "LEGACY_IMPORT" | "EXPLICIT_REPAIR";
   media_item_id: string | null; work_key: string; title_snapshot: string; media_type_snapshot: string;
   recorded_at: string; retracted_at: string | null; supersedes_id?: string;
 }
@@ -13,7 +15,10 @@ export interface HistoricalRating {
 export interface HistoryAnalytics { records: HistoricalViewing[]; ratings: HistoricalRating[] }
 export interface WatchContribution extends ViewingDate {
   id: string; itemId: string; episodes: number | null; minutes: number | null; rewatch: boolean;
-  source: "HISTORY" | "LEGACY"; scope: string; durationUnknown?: boolean;
+  source: "HISTORY" | "LEGACY"; scope: string;
+  displaySeasons?: number[]; durationUnknown?: boolean;
+  /** Stored title calendar fact, independent of a conflicting annual season attribution. */
+  calendarDate?: ViewingDate;
 }
 export function periodMatches(date: ViewingDate, year: number | null, month?: number | null, day?: number | null): boolean {
   return (year==null || date.year===year) && (month==null || date.month===month) && (day==null || date.day===day);
@@ -33,20 +38,64 @@ export function frozenKnownMinutes(ranges:ViewingRange[]):number|null {
   const known=ranges.filter(r=>r.minutes!=null && r.duration_basis==="RUNTIME_SNAPSHOT");
   return known.length ? known.reduce((n,r)=>n+r.minutes!,0) : null;
 }
-function workOf(item: StatsRawItem): string { return item.tmdb_id ? `${item.type==="film" ? "movie" : "tv"}:${item.tmdb_id}` : `local:${item.id}`; }
+export function workKeyOf(item: Pick<StatsRawItem,"id"|"tmdb_id"|"type">):string {
+  if (item.id.startsWith("history:")) return item.id.slice("history:".length);
+  return item.tmdb_id ? `${item.type==="film" ? "movie" : "tv"}:${item.tmdb_id}` : `local:${item.id}`;
+}
 export function recordsFor(item: StatsRawItem, history: HistoryAnalytics): HistoricalViewing[] {
-  return history.records.filter(r => r.work_key===workOf(item));
+  return history.records.filter(r => r.work_key===workKeyOf(item));
+}
+/** Shared receipt/Stats guard: first consumption is counted once; rewatches remain separate events. */
+export function deduplicateFirstViewing(records:HistoricalViewing[]):HistoricalViewing[] {
+  const firstSeen=new Set<string>();
+  return [...new Map(records.map(r=>[r.id,r])).values()]
+    .sort((a,b)=>a.recorded_at.localeCompare(b.recorded_at)||a.id.localeCompare(b.id)).flatMap(r=>{
+      if(r.kind!=="FIRST_WATCH" || r.retracted_at || !r.ranges.length) return [r];
+      const ranges=r.ranges.flatMap(range=>{
+        const coordinates=Array.from({length:range.episode_to-range.episode_from+1},(_,i)=>range.episode_from+i);
+        const fresh=coordinates.filter(ep=>!firstSeen.has(`${r.work_key}:${range.season_number_at_recording}:${ep}`));
+        for(const ep of fresh) firstSeen.add(`${r.work_key}:${range.season_number_at_recording}:${ep}`);
+        if(fresh.length===coordinates.length) return [range];
+        // An aggregate runtime cannot safely be apportioned to a partially overlapping range.
+        return fresh.map(ep=>({...range,episode_from:ep,episode_to:ep,episode_ids:null,minutes:null,duration_basis:"UNKNOWN" as const}));
+      });
+      return ranges.length ? [{...r,ranges}]:[];
+    });
+}
+/** Owner accepts stored legacy calendar dates as-is, including pre-2024 dates. No timezone conversion. */
+export function legacyViewingDate(value:string|null|undefined):ViewingDate {
+  if (!value) return viewingDate();
+  try { return viewingDate(parseViewingInput(value.slice(0,10))); }
+  catch { return viewingDate(); }
+}
+/** A stable recorded cour identity wins over later catalogue offsets. */
+function displaySeasonsFor(record:HistoricalViewing,view:MediaView):number[] {
+  if(record.scope_kind==="COUR" && record.scope_key?.startsWith("anilist-cour:")) {
+    const cour=view.cours?.find(c=>c.anilist_id===Number(record.scope_key!.slice("anilist-cour:".length)));
+    return view.overlaid && cour ? [cour.season]:[];
+  }
+  return [...new Set(record.ranges.flatMap(range=>Array.from({length:range.episode_to-range.episode_from+1},(_,n)=>
+    view.fromStorage(range.season_number_at_recording,range.episode_from+n).season)))];
 }
 /** History overrides only overlapping first-view coverage; version1 is never lifetime completeness. */
 export function historicalContributions(item: StatsRawItem, view: MediaView, history: HistoryAnalytics,
   legacy: { episodes: number; year: number | null }[]): WatchContribution[] {
+  const coordinates=legacyCoordinates(item,view),runtime=legacyRuntime(item);
   const records=recordsFor(item,history), first=records.filter(r => r.kind==="FIRST_WATCH");
   const out: WatchContribution[]=records.filter(r => !r.retracted_at && r.kind!=="COMPLETION").map(r => ({ ...r,
-    id:r.id,itemId:item.id,episodes:rangeCount(r.ranges),minutes:frozenKnownMinutes(r.ranges),durationUnknown:frozenMinutes(r.ranges)==null,rewatch:r.kind==="REWATCH",source:"HISTORY",scope:r.scope_kind }));
+    id:r.id,itemId:item.id,episodes:rangeCount(r.ranges),minutes:frozenKnownMinutes(r.ranges),durationUnknown:frozenMinutes(r.ranges)==null,rewatch:r.kind==="REWATCH",source:"HISTORY",scope:r.scope_kind,displaySeasons:displaySeasonsFor(r,view) }));
   const addLegacy=(episodes:number, year:number|null, index:number) => {
     if (episodes<=0) return;
-    out.push({ id:`legacy:${item.id}:${index}`,itemId:item.id,year,month:null,day:null,date_precision:year==null ? "UNKNOWN" : "YEAR",
-      episodes,minutes:item.runtime!=null && item.runtime>0 ? episodes*item.runtime : null,rewatch:false,source:"LEGACY",scope:"Legacy scope" });
+    const legacyDate=legacyViewingDate(item.watched_at);
+    // A date belonging to scoped history cannot redate the unrelated legacy remainder,
+    // even within the same year. Standalone explicit parts still describe their own projection.
+    const parts=item.viewing_date;
+    const belongsToHistory=parts && records.some(r=>r.year===parts.year && r.month===parts.month && r.day===parts.day);
+    const stored=parts && !belongsToHistory && (legacyDate.year==null || parts.year===legacyDate.year)
+      ? viewingDate(parts) : legacyDate;
+    const date=stored.year===year ? stored : year==null ? viewingDate() : viewingDate({year,month:null,day:null});
+    out.push({ id:`legacy:${item.id}:${index}`,itemId:item.id,...date,calendarDate:stored,
+      episodes,minutes:runtime!=null && runtime>0 ? episodes*runtime : null,rewatch:false,source:"LEGACY",scope:"Legacy scope",displaySeasons:item.type==="film" ? []:[index+1] });
   };
   const represented=new Set<string>();
   const coordinate=(season:number,episode:number) => `${season}:${episode}`;
@@ -64,13 +113,12 @@ export function historicalContributions(item: StatsRawItem, view: MediaView, his
     const coarse=first.filter(r=>!r.ranges.length);
     const shadowed=coarse.some(r=>r.scope_kind==="WHOLE_TITLE" ||
       r.scope_kind==="SEASON" && !view.overlaid && r.scope_key===`tmdb-season:${index+1}` ||
-      r.scope_kind==="COUR" && view.overlaid && (r.scope_key===`cour:${index+1}` || r.scope_key===`anilist-cour:${view.cours?.[index]?.anilist_id}`) ||
-      r.scope_kind==="UNKNOWN" && r.year!=null && r.year===bucket.year);
+      r.scope_kind==="COUR" && view.overlaid && (r.scope_key===`cour:${index+1}` || r.scope_key===`anilist-cour:${view.cours?.[index]?.anilist_id}`));
     if (shadowed) return;
     // Convert display contributions back to storage before matching frozen ranges.
     let count=0;
     for (let ep=1;ep<=bucket.episodes;ep++) {
-      const position=view.toStorage(index+1,ep);
+      const position=coordinates.toStorage(index+1,ep);
       if (!firstCovers(position.season,position.episode)) {
         count++;
         represented.add(coordinate(position.season,position.episode));
@@ -100,13 +148,13 @@ export function historicalContributions(item: StatsRawItem, view: MediaView, his
     if (!episodes && !uncertain) continue;
     coarseSeen.add(coarseKey);
     out.push({...r,id:r.id,itemId:item.id,episodes:episodes || null,minutes:null,durationUnknown:true,
-      rewatch:false,source:"HISTORY",scope:r.scope_kind});
+      rewatch:false,source:"HISTORY",scope:r.scope_kind,displaySeasons:displaySeasonsFor(r,view)});
   }
   return out;
 }
 /** Latest assertion per scope and viewing-period context; previous assertions are history, not votes. */
 export function historicalRating(item: StatsRawItem, history: HistoryAnalytics, year: number, fallback: number | null, legacyVotes: {kind:string; number:number; score:number}[] = [], month?:number, day?:number): number | null {
-  const ratings=history.ratings.filter(r => r.work_key===workOf(item));
+  const ratings=history.ratings.filter(r => r.work_key===workKeyOf(item));
   if (!ratings.length) return fallback;
   const records=recordsFor(item,history), byId=new Map(records.map(r => [r.id,r]));
   const votes=new Map<string,HistoricalRating>(), lineage=new Map(ratings.map(r=>[r.id,r]));
@@ -130,33 +178,26 @@ export function historicalRating(item: StatsRawItem, history: HistoryAnalytics, 
   return scores.length ? scores.reduce((a,b) => a+b,0)/scores.length : null;
 }
 
-/** Period labels describe recorded scope, never a later provider remapping. */
-export function historicalSeasonLabel(item:StatsRawItem,history:HistoryAnalytics,year:number|null):string|null {
-  if (year==null || item.type==="film") return null;
-  const records=recordsFor(item,history).filter(r=>!r.retracted_at && r.kind!=="COMPLETION" && r.year===year);
-  if (!records.length) return null;
-  if (records.some(r=>r.scope_kind==="COUR")) return "Recorded cour";
-  const seasons=[...new Set(records.flatMap(r=>r.ranges.map(range=>range.season_number_at_recording)))].sort((a,b)=>a-b);
-  return seasons.length===1 ? `Season ${seasons[0]}` : seasons.length>1 ? `Seasons ${seasons.join(", ")}` : "Recorded viewing";
-}
-
 export interface CalendarStats {
-  label:string; titles:number; rewatches:number; episodes:number; knownMinutes:number;
+  label:string; itemIds:string[]; events:number; titles:number; rewatches:number; episodes:number; knownMinutes:number;
   unknownDurationEvents:number; avgRating:number|null; ratedTitles:number;
 }
 /** Full calendar totals require actual components: YEAR never enters monthly/daily buckets. */
-export function calendarStats(ledger:WatchContribution[],items:StatsRawItem[],history:HistoryAnalytics,precision:"MONTH"|"DAY",year:number|null):CalendarStats[] {
+export function calendarStats(ledger:WatchContribution[],items:StatsRawItem[],history:HistoryAnalytics,precision:"YEAR"|"MONTH"|"DAY",year:number|null):CalendarStats[] {
   const groups=new Map<string,WatchContribution[]>(),byId=new Map(items.map(i=>[i.id,i]));
-  for(const c of ledger){
-    if(c.year==null || c.month==null || precision==="DAY" && c.day==null || year!=null && c.year!==year)continue;
-    const key=`${c.year}-${String(c.month).padStart(2,"0")}${precision==="DAY" ? `-${String(c.day).padStart(2,"0")}` : ""}`;
+  for(const contribution of ledger){
+    const date=precision==="YEAR" ? contribution : contribution.calendarDate ?? contribution;
+    // Keep the stored calendar event, without relocating season-year episodes/hours to it.
+    const c=date.year===contribution.year ? {...contribution,...date} : {...contribution,...date,episodes:null,minutes:null,durationUnknown:true};
+    if(c.year==null || precision!=="YEAR" && c.month==null || precision==="DAY" && c.day==null || year!=null && c.year!==year)continue;
+    const key=precision==="YEAR" ? String(c.year) : `${c.year}-${String(c.month).padStart(2,"0")}${precision==="DAY" ? `-${String(c.day).padStart(2,"0")}` : ""}`;
     const values=groups.get(key) ?? [];values.push(c);groups.set(key,values);
   }
   return [...groups].sort(([a],[b])=>a.localeCompare(b)).map(([label,rows])=>{
     const ids=new Set(rows.map(r=>r.itemId)),parts=label.split("-").map(Number);
     const ratings=[...ids].flatMap(id=>{const item=byId.get(id);if(!item || item.type==="film")return [];
       const score=historicalRating(item,history,parts[0],null,[],parts[1],parts[2]);return score==null ? []:[score];});
-    return {label,titles:ids.size,rewatches:rows.filter(c=>c.rewatch).length,
+    return {label,itemIds:[...ids],events:new Set(rows.map(r=>r.rewatch ? r.id:r.itemId)).size,titles:ids.size,rewatches:rows.filter(c=>c.rewatch).length,
       episodes:rows.filter(c=>byId.get(c.itemId)?.type!=="film").reduce((n,c)=>n+(c.episodes ?? 0),0),
       knownMinutes:rows.reduce((n,c)=>n+(c.minutes ?? 0),0),unknownDurationEvents:rows.filter(c=>c.minutes==null || c.durationUnknown).length,
       avgRating:ratings.length ? ratings.reduce((a,b)=>a+b,0)/ratings.length : null,ratedTitles:ratings.length};

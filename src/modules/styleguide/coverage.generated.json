@@ -148,7 +148,7 @@
       }
     },
     "goals": {
-      "files": 31,
+      "files": 35,
       "uses": [
         "badge",
         "button",
@@ -335,7 +335,7 @@
       }
     },
     "watching": {
-      "files": 185,
+      "files": 196,
       "uses": [
         "badge",
         "button",

@@ -53,8 +53,8 @@ export const WATCHING_KEYS = {
 
 
   // Stats
-  stats: (userId: string) =>
-    [...WATCHING_KEYS.all, 'stats', userId] as const,
+  stats: (userId: string, orgId:string|null) =>
+    [...WATCHING_KEYS.all, 'stats', userId, orgId] as const,
 
   // Lists
   lists: (userId: string) =>

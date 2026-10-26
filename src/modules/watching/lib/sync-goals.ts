@@ -1,3 +1,4 @@
+import { WATCHING_KEYS } from "../hooks/query-keys";
 import type { QueryClient } from "@tanstack/react-query";
 import { reportError } from "@/shared/utils/report-error";
 import { recalcWatchingGoals, type WatchingGoalDelta } from "@/modules/goals/service";
@@ -15,6 +16,7 @@ export async function syncWatchingGoals(queryClient: QueryClient): Promise<Watch
   } catch (e) {
     reportError(e, { bridge: "watching→goals" });
   }
+  queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all,"receipts"] });
   queryClient.invalidateQueries({ queryKey: GOAL_KEYS.all });
   return deltas;
 }

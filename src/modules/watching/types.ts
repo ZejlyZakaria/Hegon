@@ -231,6 +231,10 @@ export interface Rewatch {
   media_item_id: string;
   scope_label?: string;
   scope_known?: boolean;
+  canonical?: boolean;
+  scope?: import("./lib/rewatch").RewatchScope;
+  episodes?: number | null;
+  minutes?: number | null;
   watched_on: string;  // UI: YYYY / YYYY-MM / YYYY-MM-DD; legacy rows retain their date projection.
   created_at: string;
 }

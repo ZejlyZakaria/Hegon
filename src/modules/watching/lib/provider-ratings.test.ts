@@ -66,3 +66,43 @@ describe("rating context versus displayed scope", () => {
     expect(scopeMatchesView({ ...current, range_start: 11, range_end: 23 },overlaid,1)).toBe(false);
   });
 });
+
+
+describe("Durable episode runtime evidence",()=>{
+  it("keeps an optional bounded episode runtime and excludes provider transport noise",()=>{
+    const season={id:201,season_number:1,episode_count:1};
+    const episode={id:101,episode_number:1,air_date:"2022-01-01",runtime:24,overview:"transport only"};
+    expect(compactSeason(season,[episode],"2026-10-21").episodes[0]).toEqual({id:101,number:1,air_date:"2022-01-01",aired:true,runtime:24});
+    for(const runtime of [0,-1,Infinity,1441]) expect(compactSeason(season,[{...episode,runtime}],"2026-10-21").episodes[0].runtime).toBeNull();
+  });
+});
+
+
+describe("Proven absolute anime episode numbering",()=>{
+  const season={id:54606,season_number:2,episode_count:74};
+  const episodes=Array.from({length:74},(_,i)=>({id:1000+i,episode_number:63+i,air_date:"2014-01-01",runtime:24}));
+  it("normalizes Hunter x Hunter S2 63..136 to1..74 while retaining identity/date/runtime",()=>{
+    const result=compactSeason(season,episodes,"2026-10-22",62);
+    expect(result.announced).toBe(74);expect(result.aired).toBe(74);
+    expect(result.episodes[0]).toEqual({id:1000,number:1,air_date:"2014-01-01",aired:true,runtime:24});
+    expect(result.episodes.at(-1)?.number).toBe(74);
+    expect(result.episodes.map(e=>e.id)).toEqual(episodes.map(e=>e.id));
+    expect(episodes[0].episode_number).toBe(63);
+  });
+  it("normalizes Hunter x Hunter S3 137..148 using the cumulative136 boundary",()=>{
+    const result=compactSeason({id:77711,season_number:3,episode_count:12},Array.from({length:12},(_,i)=>({id:2000+i,episode_number:137+i,air_date:"2014-09-23"})),"2026-10-22",136);
+    expect(result.episodes.map(e=>e.number)).toEqual(Array.from({length:12},(_,i)=>i+1));
+  });
+  it("leaves normal season-local numbering unchanged even with an absolute offset",()=>{
+    const local=episodes.map((e,i)=>({...e,episode_number:i+1}));
+    expect(compactSeason(season,local,"2026-10-22",62).episodes.map(e=>e.number)).toEqual(local.map(e=>e.episode_number));
+  });
+  it("rejects missing proof, wrong offsets, incomplete blocks, gaps and duplicates",()=>{
+    expect(()=>compactSeason(season,episodes,"2026-10-22")).toThrow();
+    expect(()=>compactSeason(season,episodes,"2026-10-22",61)).toThrow();
+    expect(()=>compactSeason(season,episodes.slice(1),"2026-10-22",62)).toThrow();
+    expect(()=>compactSeason(season,episodes.map((e,i)=>i===0 ? {...e,episode_number:64}:e),"2026-10-22",62)).toThrow();
+    expect(()=>compactSeason(season,episodes.map((e,i)=>i===0 ? {...e,id:1001}:e),"2026-10-22",62)).toThrow();
+    expect(()=>compactSeason({...season,season_number:1},episodes,"2026-10-22",62)).toThrow();
+  });
+});

@@ -33,7 +33,7 @@ import { WhereToWatch } from "../shared/WhereToWatch";
 import { PRIORITY, WATCHLIST_COLOR } from "../shared/Marks";
 import { watchlistLevel } from "../shared/StatusBadge";
 import { type WatchDateParts } from "../../lib/watched-date";
-import type { WatchingMedia, WatchStatus } from "../../types";
+import type { WatchingMedia, WatchStatus, Rewatch } from "../../types";
 import type { WatchProviderInfo } from "../../hooks/useWatchProviders";
 
 // Design-system §9.1 — physical, not linear.
@@ -455,7 +455,7 @@ export function StatusCard({
 
 
   const [rewatchDate,setRewatchDate]=useState("");
-  const [editingRewatch,setEditingRewatch]=useState<string|undefined>();
+  const [editingRewatch,setEditingRewatch]=useState<Rewatch|undefined>();
   const logRewatch=(on:string) => {setRewatchDate(on);setEditingRewatch(undefined);setBackdating(true);};
   const saveRewatch=async (request:RewatchRequest,catalogue:RewatchCatalogue) => {
     await addRewatch.mutateAsync({request,catalogue});setBackdating(false);toast("Rewatch logged.");
@@ -496,7 +496,7 @@ export function StatusCard({
                     <ChevronDown size={11} className="text-white/40 transition-colors group-hover:text-white/70" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-52 border-border-strong bg-surface-3 p-1.5">
+                <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2rem))] border-border-strong bg-surface-3 p-1.5">
                   {rewatches.map((r) => (
                     <div
                       key={r.id}
@@ -504,13 +504,13 @@ export function StatusCard({
                     >
                       <span className="inline-flex items-center gap-2 text-xs text-text-secondary">
                         <Repeat size={11} className="text-accent-watching-vivid" />
-                        {r.watched_on} / {r.scope_label ?? "Legacy scope unknown"}
+                        <span>{r.watched_on}<span className="mt-0.5 block text-text-tertiary">{r.scope_label ?? "Scope unknown"}{r.episodes!=null ? ` · ${r.episodes} episodes`:""}{r.minutes!=null ? ` · ${Math.floor(r.minutes/60)}h ${r.minutes%60}m`:""}</span></span>
                       </span>
                       {/* Always visible — an `opacity-0 … group-hover` delete is unreachable on
                           touch, where there is no hover to reveal it. No tooltip: an ✕ on a dated
                           row already reads as "remove", and a Hint that only appears on hover would
                           be the same desktop-only crutch. */}
-                      {r.scope_known && <button type="button" className="text-xs text-text-tertiary" onClick={()=>{setEditingRewatch(r.id);setRewatchDate(r.watched_on==="Date unknown" ? "" : r.watched_on);setBackdating(true);}}>Correct</button>}
+                      <button type="button" className="min-h-11 shrink-0 px-2 text-xs text-text-secondary" onClick={()=>{setEditingRewatch(r);setRewatchDate(r.watched_on==="Date unknown" ? "" : r.watched_on);setBackdating(true);}}>{r.canonical ? "Correct":"Complete"}</button>
                       <button
                         type="button"
                         aria-label="Remove this rewatch"
@@ -897,7 +897,7 @@ export function StatusCard({
         )}
       </AnimatePresence>
       {canRewatch && !media.watched && !caughtUp && <button type="button" className="mt-2 text-xs text-white/70" onClick={()=>logRewatch(todayISO())}>Record scoped rewatch</button>}
-      {backdating && view && <RewatchForm key={`${rewatchDate}:${editingRewatch ?? "new"}`} media={media} view={view} date={rewatchDate} replaces={editingRewatch} pending={addRewatch.isPending} onSave={saveRewatch} onClose={()=>setBackdating(false)}/>}
+      {backdating && view && <RewatchForm key={`${rewatchDate}:${editingRewatch?.id ?? "new"}`} media={media} view={view} date={rewatchDate} initial={editingRewatch} pending={addRewatch.isPending} onSave={saveRewatch} onClose={()=>setBackdating(false)}/>}
       <ViewingHistory mediaId={media.id}/>
 
 

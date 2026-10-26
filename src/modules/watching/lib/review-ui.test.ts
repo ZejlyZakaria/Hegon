@@ -1,4 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import * as rewatchHelpers from "./rewatch";
+import * as historyHelpers from "./history-analytics";
 import { parseViewingInput } from "./viewing-history";
 import * as seriesFacts from "./series-state";
 import { isWatchableNow } from "./watchable";
@@ -23,6 +25,8 @@ function component(path: string, extra: Record<string, unknown>, expose?: string
   const exports: Record<string, unknown> = {};
   const deps: Record<string, unknown> = {
     "react/jsx-runtime": jsx,
+    "../../lib/rewatch": rewatchHelpers,
+    "../../lib/history-analytics": historyHelpers,
     react: { useState: (value: unknown) => [value, () => {}], useEffect() {}, useMemo: (fn: () => unknown) => fn(), useRef: () => ({ current: null }) },
     "@/modules/watching/lib/possession": { mediaIdentity },
     "@/modules/watching/lib/person-experience": { experienceSummary },
@@ -32,7 +36,7 @@ function component(path: string, extra: Record<string, unknown>, expose?: string
     ...extra,
   };
   const placeholder = () => null;
-  runInNewContext(compiled, { exports, require: (id: string) => deps[id] ?? new Proxy({ __esModule: true, default: placeholder }, { get: (target, key) => key in target ? target[key as keyof typeof target] : placeholder }) });
+  runInNewContext(compiled, { exports, Error, require: (id: string) => deps[id] ?? new Proxy({ __esModule: true, default: placeholder }, { get: (target, key) => key in target ? target[key as keyof typeof target] : placeholder }) });
   return exports;
 }
 function elements(node: unknown): ReactElement<Record<string, unknown>>[] {
@@ -93,7 +97,7 @@ describe("Actual review UI regressions", () => {
 
 describe("Wave2C explicit rewatch form",()=>{
   it.each(["2022","2022-08","2022-08-12"])("preserves exact user precision %s",(input)=>{
-    const values=[input,"WHOLE_TITLE",1,"",""];let call=0;let submitted:unknown;
+    const values=[input,"WHOLE_TITLE",[],""];let call=0;let submitted:unknown;
     const loaded=component("src/modules/watching/components/detail/RewatchForm.tsx",{
       react:{useState:()=>[values[call++],()=>{}]},
       "@tanstack/react-query":{useQuery:()=>({data:{seasons:[],cours:[]}}),useQueryClient:()=>({})},
@@ -108,14 +112,14 @@ describe("Wave2C explicit rewatch form",()=>{
   it("blocks stale cour mapping until the displayed identity/range matches",()=>{
     let writes=0;
     const render=(id:number)=>{
-      const values=["2022","COUR",1,"",""];let call=0;
+      const values=["2022","SEASONS",[1],""];let call=0;
       const loaded=component("src/modules/watching/components/detail/RewatchForm.tsx",{
         react:{useState:()=>[values[call++],()=>{}]},
-        "@tanstack/react-query":{useQuery:()=>({data:{seasons:[],cours:[{id:502,number:1,start:1,end:13}]}}),useQueryClient:()=>({})},
+        "@tanstack/react-query":{useQuery:()=>({data:{snapshot_id:"snapshot",seasons:[{id:200,number:1,announced:13,aired:13,episodes:Array.from({length:13},(_,i)=>({id:100+i,number:i+1,aired:true,air_date:"2020-01-01"}))}],cours:[{id:502,number:1,start:1,end:13}]}}),useQueryClient:()=>({})},
         "../../lib/viewing-history":{parseViewingInput},
       "../../hooks/query-keys":{WATCHING_KEYS:{all:["watching"]}},
       });
-      return elements((loaded.RewatchForm as (props:unknown)=>unknown)({media:{id:"anime",type:"anime"},view:{pending:false,overlaid:true,cours:[{anilist_id:id,season:1,start_episode:1,end_episode:13}]},date:"2022",pending:false,onClose(){},onSave(){writes++;}})).find(e=>e.type==="button" && e.props.children==="Record rewatch")!;
+      return elements((loaded.RewatchForm as (props:unknown)=>unknown)({media:{id:"anime",type:"anime"},view:{pending:false,overlaid:true,seasons:[{season:1}],cours:[{anilist_id:id,season:1,start_episode:1,end_episode:13}]},date:"2022",pending:false,onClose(){},onSave(){writes++;}})).find(e=>e.type==="button" && e.props.children==="Record rewatch")!;
     };
     const stale=render(501);expect(stale.props.disabled).toBe(true);(stale.props.onClick as ()=>void)();expect(writes).toBe(0);
     const refreshed=render(502);expect(refreshed.props.disabled).toBe(false);(refreshed.props.onClick as ()=>void)();expect(writes).toBe(1);
@@ -217,5 +221,44 @@ describe("discover availability outside the library", () => {
     expect(text).not.toContain("Mark as watched");
     expect(text).not.toContain("Start watching");
     expect(text).not.toContain("I'm caught up");
+  });
+});
+
+
+describe("Stats duration notice layout",()=>{
+  it.each([0,1,4])("keeps %s incomplete durations in the Hours grid column",(count)=>{
+    const source=ts.createSourceFile("StatsPage.tsx",readFileSync(resolve("src/modules/watching/components/stats/StatsPage.tsx"),"utf8"),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+    let grid:ts.JsxElement|undefined;
+    const visit=(node:ts.Node)=>{
+      if(ts.isJsxElement(node) && node.openingElement.attributes.properties.some(p=>ts.isJsxAttribute(p) && p.name.getText(source)==="className" && p.initializer && ts.isStringLiteral(p.initializer) && p.initializer.text==="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3")) grid=node;
+      ts.forEachChild(node,visit);
+    };
+    visit(source);expect(grid).toBeDefined();
+    const code=`exports.render=stats=>{const selectedYear=2026,setOpenSlice=()=>{};return (${grid!.getText(source)});}`;
+    const exports:{render?:(stats:unknown)=>ReactElement<Record<string,unknown>>}={};
+    runInNewContext(ts.transpileModule(code,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,require:()=>jsx,HoursCard:()=>null,ActivityCard:()=>null,RatingDistributionCard:()=>null});
+    const tree=exports.render!({unknownDurationEvents:count,hours:{},activity:[],ratingDistribution:[]});
+    const columns=(tree.props.children as unknown[]).filter(isValidElement);
+    expect(columns).toHaveLength(3);
+    const paragraphs=elements(columns[0]).filter(e=>e.type==="p");
+    expect(paragraphs).toHaveLength(count>0 ? 1:0);
+    if(count>0) expect(renderToStaticMarkup(paragraphs[0])).toContain(`${count} viewing ${count===1 ? "event has":"events have"} incomplete duration.`);
+    expect(renderToStaticMarkup(tree)).not.toContain("Hours include known duration only.");
+  });
+});
+
+
+describe("Uninitialized episode catalogue feedback",()=>{
+  it("explains missing robot data without implying a refresh reconstructs historical scope",()=>{
+    const loaded=component("src/modules/watching/components/detail/RewatchForm.tsx",{
+      "@tanstack/react-query":{useQuery:()=>({data:rewatchHelpers.emptyCatalogue()}),useQueryClient:()=>({invalidateQueries:async()=>{}})},
+      "../../lib/viewing-history":{parseViewingInput},
+      "../../hooks/query-keys":{WATCHING_KEYS:{all:["watching"]}},
+    });
+    const tree=(loaded.RewatchForm as (p:unknown)=>ReactElement)({media:{id:"legacy-tv",type:"serie",season_aired:[63],runtime:56},view:{pending:false,overlaid:false,seasons:[]},date:"2022",pending:false,onSave(){},onClose(){}});
+    expect(renderToStaticMarkup(tree)).toContain("Episode history has not been synced for this title yet.");
+    const buttons=elements(tree).filter(e=>e.type==="button");
+    expect(buttons.find(e=>e.props.children==="Record rewatch")?.props.disabled).toBe(true);
+    expect(buttons.some(e=>e.props.children==="Check sync status")).toBe(true);
   });
 });

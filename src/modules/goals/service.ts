@@ -1,4 +1,4 @@
-import { watchingTargetReached } from "./lib/watching-target";
+import { observeWatchingReceipts, readWatchingGoalMetric, readWatchingGoalMetrics } from "@/modules/watching/receipt-actions";
 import { createClient } from "@/infrastructure/supabase/client";
 import { getCurrentOrgId } from "@/shared/utils/getOrgId";
 import type {
@@ -85,7 +85,7 @@ export async function createGoal(input: CreateGoalInput): Promise<Goal> {
     const p = await recalculateProgress(data.id);
     if (p >= 0) data.progress = p;
   }
-  return data;
+  return data.metric_module==="watching" ? getGoal(data.id):data;
 }
 
 export async function updateGoal(input: UpdateGoalInput): Promise<Goal> {
@@ -110,7 +110,7 @@ export async function updateGoal(input: UpdateGoalInput): Promise<Goal> {
     const p = await recalculateProgress(data.id);
     if (p >= 0) data.progress = p;
   }
-  return data;
+  return data.metric_module==="watching" ? getGoal(data.id):data;
 }
 
 export async function deleteGoal(id: string): Promise<void> {
@@ -143,6 +143,12 @@ export async function getGoalProgressHistory(goalId: string): Promise<GoalProgre
 // Caller can use -1 to skip cache invalidation. (audit §3.2 v2)
 export async function recalculateProgress(goalId: string): Promise<number> {
   const supabase = createClient();
+  const {data:definition,error:definitionError}=await supabase.from("goals").select("metric_module").eq("id",goalId).single();
+  if(definitionError) throw definitionError;
+  if(definition?.metric_module==="watching") {
+    const result=await observeWatchingReceipts(await getCurrentOrgId());
+    return result.deltas.find(g=>g.id===goalId)?.newProgress ?? -1;
+  }
   const { data, error } = await supabase.rpc("recalc_goal_progress", { p_goal_id: goalId });
   if (error) throw error;
   return (data as number) ?? -1;
@@ -161,42 +167,7 @@ export interface WatchingGoalDelta {
 // watch change in the Watching module). Returns per-goal deltas so the caller can
 // surface a "+1" ripple.
 export async function recalcWatchingGoals(): Promise<WatchingGoalDelta[]> {
-  const supabase = createClient();
-  const orgId = await getCurrentOrgId();
-
-  const { data: goals, error } = await supabase
-    .from("goals")
-    .select("id, user_id, title, progress, metric_key, metric_target, metric_period, metric_year")
-    .eq("org_id", orgId)
-    .eq("status", "active")
-    .eq("progress_mode", "auto")
-    .eq("metric_module", "watching");
-  if (error) throw error;
-  if (!goals || goals.length === 0) return [];
-
-  type GoalRow = { id: string; user_id: string; title: string; progress: number; metric_key: string | null; metric_target: number | null; metric_period: string | null; metric_year: number | null };
-  return Promise.all(
-    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — une requête par objectif (mesuré : vague 4 de /movies). Correction = 1 requête agrégée. → audit Goals, phase 3 axe 3.
-    (goals as GoalRow[]).map(async (g) => {
-      const next = await recalculateProgress(g.id);
-      // Auto-complete the moment the target is reached (manual control still available).
-      if (watchingTargetReached(await countWatchingMedia(supabase, g.user_id, g.metric_key, g.metric_period, g.metric_year), g.metric_target)) {
-        const { error: completionError } = await supabase
-          .from("goals")
-          .update({ status: "completed", completed_at: new Date().toISOString() })
-          .eq("id", g.id);
-        if (completionError) throw completionError;
-      }
-      return {
-        id:            g.id,
-        title:         g.title,
-        metric_key:    g.metric_key,
-        metric_target: g.metric_target,
-        oldProgress:   g.progress,
-        newProgress:   next >= 0 ? next : g.progress,
-      };
-    }),
-  );
+  return (await observeWatchingReceipts(await getCurrentOrgId())).deltas;
 }
 
 // Active watching-metric goals for the current org — used by the Watching module
@@ -215,9 +186,12 @@ export interface WatchingGoalSummary {
 export async function getActiveWatchingGoals(): Promise<WatchingGoalSummary[]> {
   const supabase = createClient();
   const orgId = await getCurrentOrgId();
+  const {data:identity,error:identityError}=await supabase.auth.getClaims();
+  if(identityError || !identity?.claims.sub) throw new Error("Authentication required");
   const { data, error } = await supabase
     .from("goals")
     .select("id, title, user_id, progress, metric_key, metric_period, metric_year, metric_target")
+    .eq("user_id",identity.claims.sub)
     .eq("org_id", orgId)
     .eq("status", "active")
     .eq("progress_mode", "auto")
@@ -226,16 +200,9 @@ export async function getActiveWatchingGoals(): Promise<WatchingGoalSummary[]> {
   if (error) throw error;
 
   type Row = Omit<WatchingGoalSummary, "metric_current"> & { user_id: string };
-  // Resolve the exact current count per goal (count-only query, no rows fetched).
-  // Reconstructing it from the rounded progress % freezes between integer ticks on
-  // large targets (e.g. each title is 0.2% of a 500-target).
-  return Promise.all(
-    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — une requête par objectif (mesuré : vague 4 de /movies). Correction = 1 requête agrégée. → audit Goals, phase 3 axe 3.
-    ((data ?? []) as Row[]).map(async ({ user_id, ...g }) => ({
-      ...g,
-      metric_current: await countWatchingMedia(supabase, user_id, g.metric_key, g.metric_period, g.metric_year),
-    })),
-  );
+  const rows=(data ?? []) as Row[];
+  const values=await readWatchingGoalMetrics(orgId,rows.map(g=>({metricKey:g.metric_key,year:g.metric_period==="year" ? g.metric_year:null})));
+  return rows.map(({user_id:owner,...g},index)=>{void owner;return {...g,metric_current:values[index]};});
 }
 
 // =====================================================
@@ -255,35 +222,6 @@ const METRIC_KEY_TO_TYPE: Record<string, string> = {
   anime:  "anime",
 };
 
-// Exact count of watched media matching a watching-metric goal (type + period).
-// Count-only (`head: true`) — Postgres returns the count without transferring rows.
-// `metric_key` of "titles"/null counts every type; a year period bounds by watched_at.
-async function countWatchingMedia(
-  supabase: ReturnType<typeof createClient>,
-  userId: string,
-  metricKey: string | null,
-  metricPeriod: string | null,
-  metricYear: number | null,
-): Promise<number> {
-  const type      = metricKey ? METRIC_KEY_TO_TYPE[metricKey] : undefined;
-  const yearStart = metricPeriod === "year" && metricYear ? `${metricYear}-01-01` : null;
-  const yearEnd   = metricPeriod === "year" && metricYear ? `${metricYear + 1}-01-01` : null;
-
-  let q = supabase
-    .schema("watching")
-    .from("media_items")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("watched", true)
-    .neq("is_reference", true);
-  if (type) q = q.eq("type", type);
-  if (yearStart && yearEnd) q = q.gte("watched_at", yearStart).lt("watched_at", yearEnd);
-
-  const { count, error } = await q;
-  if (error) throw error;
-  return count ?? 0;
-}
-
 // Collapse a binged saga ("Harry Potter and the…", "LOTR: …") to one entry so the
 // poster wall shows DIFFERENT films, not 7 of the same. Heuristic on the title.
 function franchiseKey(title: string): string {
@@ -297,6 +235,8 @@ export async function getGoalContributingMedia(
 ): Promise<{ count: number; items: ContributingMedia[] }> {
   if (goal.metric_module !== "watching") return { count: 0, items: [] };
   const supabase = createClient();
+  const {data:identity,error:identityError}=await supabase.auth.getClaims();
+  if(identityError || identity?.claims.sub!==goal.user_id) throw new Error("Viewing metrics are private to the Goal owner");
 
   const type = goal.metric_key ? METRIC_KEY_TO_TYPE[goal.metric_key] : undefined;
   const yearStart = goal.metric_period === "year" && goal.metric_year ? `${goal.metric_year}-01-01` : null;
@@ -314,7 +254,7 @@ export async function getGoalContributingMedia(
   if (yearStart && yearEnd) q = q.gte("watched_at", yearStart).lt("watched_at", yearEnd);
 
   // Over-fetch, then keep one per franchise (most recent) up to 18 distinct.
-  const { data, count, error } = await q.order("watched_at", { ascending: false }).limit(60);
+  const { data, error } = await q.order("watched_at", { ascending: false }).limit(60);
   if (error) throw error;
 
   const seen = new Set<string>();
@@ -326,7 +266,7 @@ export async function getGoalContributingMedia(
     items.push(m);
     if (items.length >= 18) break;
   }
-  return { count: count ?? 0, items };
+  return { count: await readWatchingGoalMetric(await getCurrentOrgId(),goal.metric_key,goal.metric_period==="year" ? goal.metric_year:null), items };
 }
 
 // Cumulative daily progress curve from a list of event timestamps. Each event adds

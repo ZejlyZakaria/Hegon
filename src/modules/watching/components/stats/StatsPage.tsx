@@ -15,6 +15,9 @@ import type { StatsRawItem } from "../../service";
 import { displayTitle } from "../../utils";
 import { WrappedModal } from "./WrappedModal";
 import { computeStats } from "./computeStats";
+import { activitySlots, ratingDistributionPlot } from "../../lib/stats-charts";
+import { useAchievementReceipts } from "../../hooks/useAchievementReceipts";
+import { withUnlockReceipts } from "../../lib/milestone-receipts";
 import { computeWatchingAchievements, type WatchingAchievement } from "./achievements";
 import { AchievementPanel } from "./AchievementPanel";
 import { HoursBreakdownPanel, type SliceKey } from "./HoursBreakdownPanel";
@@ -338,39 +341,7 @@ function TopGenresCard({ genres }: { genres: ReturnType<typeof computeStats>["to
 // ── Rating Distribution ───────────────────────────────────────────────────────
 
 function RatingDistributionCard({ distribution }: { distribution: ReturnType<typeof computeStats>["ratingDistribution"] }) {
-  const total = distribution.reduce((s, d) => s + d.count, 0);
-
-  const rated = distribution.filter((d) => d.count > 0);
-  const minScore = rated[0]?.score ?? 1;
-  const maxScore = rated[rated.length - 1]?.score ?? 10;
-  const visible = distribution.filter((d) => d.score >= minScore && d.score <= maxScore);
-
-  const max = Math.max(...visible.map((d) => d.count), 1);
-
-  const W = 200, H = 72;
-  const PAD_X = 2, PAD_Y = 6;
-  const plotW = W - PAD_X * 2;
-  const plotH = H - PAD_Y * 2;
-
-  const pts = visible.map((d, i) => ({
-    x: visible.length > 1
-      ? PAD_X + (i / (visible.length - 1)) * plotW
-      : W / 2,
-    y: PAD_Y + plotH - (d.count / max) * plotH,
-    score: d.score,
-    count: d.count,
-  }));
-
-  const linePath = pts.reduce((acc, p, i) => {
-    if (i === 0) return `M ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
-    const prev = pts[i - 1];
-    const cpX = ((prev.x + p.x) / 2).toFixed(1);
-    return `${acc} C ${cpX} ${prev.y.toFixed(1)}, ${cpX} ${p.y.toFixed(1)}, ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
-  }, "");
-
-  const areaPath = pts.length > 0
-    ? `${linePath} L ${pts[pts.length - 1].x.toFixed(1)} ${H} L ${pts[0].x.toFixed(1)} ${H} Z`
-    : "";
+  const {total,width:W,height:H,points:pts,linePath,areaPath,labels}=ratingDistributionPlot(distribution);
 
   return (
     <div className="rounded-card surface-card p-5 h-60 w-full flex flex-col overflow-hidden">
@@ -387,7 +358,7 @@ function RatingDistributionCard({ distribution }: { distribution: ReturnType<typ
       ) : (
         <div className="flex flex-1 flex-col min-h-0 gap-2">
           <div className="flex-1 min-h-0">
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none">
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none" role="img" aria-label={`Rating distribution: ${pts.filter(p=>p.count>0).map(p=>`${p.score}: ${p.count}`).join(", ")}`}>
               <defs>
                 <linearGradient id="ratingAreaGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%"   style={{ stopColor: TEAL, stopOpacity: 0.20 }} />
@@ -397,15 +368,13 @@ function RatingDistributionCard({ distribution }: { distribution: ReturnType<typ
               <path d={areaPath} fill="url(#ratingAreaGrad)" />
               <path d={linePath} fill="none" style={{ stroke: TEAL }} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
               {pts.filter((p) => p.count > 0).map((p) => (
-                <circle key={p.score} cx={p.x} cy={p.y} r="1.6" style={{ fill: TEAL }} />
+                <circle key={p.score} cx={p.x} cy={p.y} r="1.6" style={{ fill: TEAL }}><title>{`${p.score}: ${p.count} rated`}</title></circle>
               ))}
             </svg>
           </div>
-          <div className="flex shrink-0">
-            {visible.map((d) => (
-              <div key={d.score} className="flex flex-1 justify-center">
-                <span className="text-[9px] tabular-nums text-text-tertiary/70">{d.score}</span>
-              </div>
+          <div className="relative h-3 shrink-0" aria-hidden="true">
+            {labels.map((p) => (
+              <span key={p.score} className="absolute -translate-x-1/2 text-[9px] tabular-nums text-text-tertiary/70" style={{left:`${p.x/W*100}%`}}>{Number(p.score.toFixed(2))}</span>
             ))}
           </div>
         </div>
@@ -420,7 +389,8 @@ function ActivityCard({ activity, selectedYear }: {
   activity: ReturnType<typeof computeStats>["activity"];
   selectedYear: number | null;
 }) {
-  const max = Math.max(...activity.map((a) => a.count), 1);
+  const slots=activitySlots(activity,selectedYear);
+  const max = Math.max(...slots.map((a) => a.count), 1);
   const best = activity.reduce<{ label: string; count: number } | null>(
     (b, a) => (a.count > (b?.count ?? 0) ? a : b), null);
 
@@ -442,7 +412,7 @@ function ActivityCard({ activity, selectedYear }: {
         <p className="text-sm text-text-tertiary/50">{selectedYear ? "No month-level activity recorded" : "No activity yet"}</p>
       ) : (
         <div className="flex flex-1 items-end gap-1 min-h-0">
-          {activity.map((a) => {
+          {slots.map((a) => {
             const isSel = selectedYear != null && a.label.startsWith(String(selectedYear));
             const monthLabel = a.label.length === 7 ? ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(a.label.slice(5))-1] : null;
             return (
@@ -450,13 +420,13 @@ function ActivityCard({ activity, selectedYear }: {
               // label's intrinsic width, so on a narrow phone the 14 four-digit labels overflowed
               // the card and `overflow-hidden` ate the most RECENT years off the right edge. With
               // it, the bars always distribute evenly across whatever width there is.
-              <div key={a.label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+              <div key={a.label} className="flex min-w-0 flex-1 flex-col items-center gap-1" aria-label={`${a.label}: ${a.count} activities`}>
                 <div
                   className="w-full rounded-t-sm transition-[height] duration-500"
                   style={{
                     height: a.count > 0 ? `${Math.max(6, (a.count / max) * 130)}px` : 3,
                     backgroundColor: TEAL,
-                    opacity: isSel ? 1 : (a.count > 0 ? Math.max(0.25, (a.count / max) * 0.65) : 0.12),
+                    opacity: a.count===0 ? 0.12 : isSel ? 1 : Math.max(0.25, (a.count / max) * 0.65),
                   }}
                 />
                 {/* Two-digit on a phone ('13…'26), four on desktop: half the width, so every year
@@ -481,6 +451,7 @@ export function StatsPage() {
   const userId = useCurrentUserId();
   const { data, isLoading } = useWatchingStatsData(userId ?? "");
   const rawData = data?.items ?? [];
+  const receiptQuery = useAchievementReceipts(userId ?? "");
   const { data: watchingGoals = [] } = useWatchingGoals();
   // Year filter lives in the UI store (not local state) so navigating into a
   // media detail and pressing Back restores the year you were on instead of
@@ -510,13 +481,14 @@ export function StatsPage() {
   const [openAchievement, setOpenAchievement] = useState<WatchingAchievement | null>(null);
   const [achievementOpen, setAchievementOpen] = useState(false);
   const achievements = useMemo(
-    () => computeWatchingAchievements(
+    () => withUnlockReceipts(computeWatchingAchievements(
       data?.items ?? [],
       allTime.hours.total,
       [...allTime.breakdown.film, ...allTime.breakdown.serie, ...allTime.breakdown.anime],
       allTime.breakdown.rewatches,
-    ),
-    [data, allTime],
+      {stats:allTime,history:data?.history ?? {records:[],ratings:[]}},
+    ),receiptQuery.data?.receipts ?? []),
+    [data, allTime,receiptQuery.data],
   );
 
   if (!userId || isLoading) return <StatsSkeleton />;
@@ -686,11 +658,13 @@ export function StatsPage() {
           a phone, TWO up on an iPad (~540px, roomy) with the rating line spanning the full width
           below, and three only once a desktop gives each column real room. */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
-        <HoursCard
-          hours={stats.hours}
-          onOpen={(key, color, label) => setOpenSlice({ key, color, label })}
-        />
-        {(stats.unknownDurationEvents ?? 0)>0 && <p className="text-xs text-text-tertiary">Hours include known duration only. {stats.unknownDurationEvents} viewing records have unknown duration.</p>}
+        <div className="space-y-2">
+          <HoursCard
+            hours={stats.hours}
+            onOpen={(key, color, label) => setOpenSlice({ key, color, label })}
+          />
+          {(stats.unknownDurationEvents ?? 0)>0 && <p className="px-1 text-xs text-text-tertiary">Only known durations are included. {stats.unknownDurationEvents} viewing {stats.unknownDurationEvents===1 ? "event has":"events have"} incomplete duration.</p>}
+        </div>
         <ActivityCard activity={stats.activity} selectedYear={selectedYear} />
         <div className="lg:col-span-2 xl:col-span-1">
           <RatingDistributionCard distribution={stats.ratingDistribution} />
@@ -709,7 +683,8 @@ export function StatsPage() {
         accent={TEAL}
         onSelect={(a) => { setOpenAchievement(a as WatchingAchievement); setAchievementOpen(true); }}
       />
-      <AchievementPanel a={openAchievement} open={achievementOpen} onClose={() => setAchievementOpen(false)} />
+      {receiptQuery.error && <p role="status" className="text-xs text-text-tertiary">Permanent unlocks could not be verified. Current progress is still shown.</p>}
+      <AchievementPanel a={openAchievement ? achievements.find(a=>a.key===openAchievement.key) ?? openAchievement:null} open={achievementOpen} onClose={() => setAchievementOpen(false)} />
 
     </div>
   );

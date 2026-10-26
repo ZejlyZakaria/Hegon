@@ -226,3 +226,61 @@ describe("series sync actual provenance boundary", () => {
     expect(commands[0].facts).toBeUndefined();
   });
 });
+
+
+describe("Series catalogue initialization",()=>{
+  const transport=(url:string)=>url.includes("/season/") ? json({episodes:[{id:101,episode_number:1,air_date:"2020-01-01",runtime:24}]}) : json({id:Number(/\/tv\/(\d+)/.exec(url)?.[1]),status:"Ended",seasons:[{id:201,season_number:1,episode_count:1}]});
+  it("initializes fresh finished legacy titles missing accepted episode evidence",async()=>{
+    const commands:Row[]=[];
+    const db=database(q=>({data:q.table==="media_items" && q.finished ? [{id:"legacy",tmdb_id:42,title:"Ended fixture",last_synced_at:new Date().toISOString()}]:q.table==="rewatches" ? [{media_item_id:"legacy"}]:[],error:null}),({command})=>{commands.push(command);return {data:{classification:"BASELINE",accepted:true,growth:false},error:null};});
+    const response=await handler("watching-series-sync",db,transport)();
+    expect(response.status).toBe(200);expect(response.body.shows).toBe(1);
+    expect(commands[0]).toMatchObject({work_key:"tv:42",facts:{seasons:[{episodes:[{id:101,number:1,air_date:"2020-01-01",runtime:24}]}]}});
+  });
+  it("keeps fresh finished titles with accepted evidence on the weekly cadence",async()=>{
+    let calls=0;
+    const db=database(q=>({data:q.table==="media_items" && q.finished ? [{id:"cached",tmdb_id:42,last_synced_at:new Date().toISOString()}]:q.table==="provider_heads" ? [{work_key:"tv:42",accepted_snapshot_id:"accepted",checked_at:new Date().toISOString()}]:[],error:null}));
+    const response=await handler("watching-series-sync",db,async url=>{calls++;return transport(url);})();
+    expect(response.body.shows).toBe(0);expect(calls).toBe(0);
+  });
+  it("prioritizes legacy rewatches, remains bounded and preserves room for airing shows",async()=>{
+    const finished=Array.from({length:30},(_,i)=>({id:`old-${i}`,tmdb_id:100+i,title:`Ended ${i}`,last_synced_at:new Date().toISOString()}));
+    const ongoing=Array.from({length:20},(_,i)=>({id:`air-${i}`,tmdb_id:200+i,title:`Airing ${i}`,last_synced_at:"2020-01-01"}));
+    const works:string[]=[];
+    const db=database(q=>({data:q.table==="media_items" ? q.finished ? finished:ongoing:q.table==="provider_heads" ? ongoing.map(r=>({work_key:`tv:${r.tmdb_id}`,accepted_snapshot_id:"accepted",checked_at:new Date().toISOString()})):q.table==="rewatches" ? [{media_item_id:"old-29"}]:[],error:null}),({command})=>{works.push(command.work_key);return {data:{classification:"BASELINE",accepted:true,growth:false},error:null};});
+    const response=await handler("watching-series-sync",db,transport)();
+    expect(response.body.shows).toBe(25);expect(works[0]).toBe("tv:129");expect(new Set(works).size).toBe(25);expect(works.filter(w=>Number(w.slice(3))>=200)).toHaveLength(12);
+  });
+  it("does not immediately hammer a failed initial catalogue check",async()=>{
+    let calls=0;
+    const db=database(q=>({data:q.table==="media_items" && q.finished ? [{id:"missing",tmdb_id:42,last_synced_at:"2020-01-01"}]:q.table==="provider_heads" ? [{work_key:"tv:42",accepted_snapshot_id:null,checked_at:new Date().toISOString()}]:[],error:null}));
+    const response=await handler("watching-series-sync",db,async url=>{calls++;return transport(url);})();
+    expect(response.body.shows).toBe(0);expect(calls).toBe(0);
+  });
+});
+
+
+describe("Actual series worker absolute-numbering repair",()=>{
+  it("accepts the full148-episode Hunter x Hunter catalogue with per-season local coordinates",async()=>{
+    const commands:Row[]=[];const counts=[62,74,12],offsets=[0,62,136];
+    const db=database(q=>({data:q.table==="media_items" && q.finished ? [{id:"hxh",tmdb_id:46298,title:"Hunter x Hunter",last_synced_at:new Date().toISOString()}]:q.table==="rewatches" ? [{media_item_id:"hxh"}]:[],error:null}),({command})=>{commands.push(command);return {data:{classification:"BASELINE",accepted:true,growth:false},error:null};});
+    const run=handler("watching-series-sync",db,url=>{
+      const match=/\/season\/(\d+)/.exec(url);
+      if(match){const number=Number(match[1]);return json({id:200+number,season_number:number,episodes:Array.from({length:counts[number-1]},(_,i)=>({id:1000+offsets[number-1]+i,episode_number:offsets[number-1]+i+1,air_date:"2014-09-23",runtime:24}))});}
+      return json({id:46298,status:"Ended",seasons:[3,1,2].map(number=>({id:200+number,season_number:number,episode_count:counts[number-1]}))});
+    });
+    const result=await run();expect(result.status).toBe(200);expect(result.body.failed).toBe(0);
+    const facts=commands[0].facts as {seasons:{announced:number;episodes:{id:number;number:number;runtime:number}[]}[]};
+    const seasons=facts.seasons;
+    expect(seasons.map(s=>s.announced)).toEqual(counts);
+    expect(seasons.map(s=>[s.episodes[0].number,s.episodes.at(-1)!.number])).toEqual([[1,62],[1,74],[1,12]]);
+    expect(seasons.flatMap(s=>s.episodes)).toHaveLength(148);
+    expect(seasons[1].episodes[0]).toMatchObject({id:1062,number:1,runtime:24});
+  });
+  it("retries an initial failure after ten minutes, independently of the six-hour airing cadence",async()=>{
+    let calls=0;
+    const db=database(q=>({data:q.table==="media_items" && q.finished ? [{id:"retry",tmdb_id:42,last_synced_at:new Date().toISOString()}]:q.table==="provider_heads" ? [{work_key:"tv:42",accepted_snapshot_id:null,checked_at:new Date(Date.now()-11*60*1000).toISOString()}]:[],error:null}));
+    const result=await handler("watching-series-sync",db,async url=>{calls++;return url.includes("/season/") ? json({episodes:[{id:101,episode_number:1,air_date:"2020-01-01"}]}):json({id:42,status:"Ended",seasons:[{id:201,season_number:1,episode_count:1}]});})();
+    expect(result.status).toBe(200);expect(result.body.shows).toBe(1);expect(calls).toBe(2);
+  });
+});

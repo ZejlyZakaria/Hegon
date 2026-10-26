@@ -122,16 +122,18 @@ describe("Rewatches — re-watching a running show means re-watching what EXISTS
    * above had already been fixed to read `season_aired`. So the rewatch slice of the donut billed
    * five episodes nobody has seen, and disagreed with the per-type slice computed beside it.
    */
-  it("bills the aired episodes, not the announced ones", () => {
+  it("keeps an unconfirmed legacy rewatch visible without billing today's episode catalogue", () => {
     const s = computeStats([airing], rw, null);
-    expect(s.hours.rewatches).toBe(HOURS((10 + 8 + 3) * 50));
+    expect(s.hours.rewatches).toBe(0);
+    expect(s.unknownScopeEvents).toBe(1);
     expect(s.rewatches).toBe(1);
   });
 
-  it("a film rewatch is one runtime", () => {
+  it("a legacy film rewatch needs a frozen runtime before contributing hours", () => {
     const f = item({ id: "f", type: "film", watched: true, watched_at: "2026-02-02", runtime: 148 });
     const s = computeStats([f], [{ media_item_id: "f", watched_on: "2026-02-03" } as RewatchStatItem], null);
-    expect(s.hours.rewatches).toBe(HOURS(148));
+    expect(s.hours.rewatches).toBe(0);
+    expect(s.unknownDurationEvents).toBe(1);
   });
 
   it("does not inflate the unique-title count", () => {
@@ -397,7 +399,7 @@ describe("Wave 1 analytical contracts", () => {
   it.each([[0, 0], [4, 4], [10, 10]])("counts %i known aired episodes without announced fallback", (aired, expected) => {
     const row = item({ watched: true, watched_at: "2024-01-01", episodes: 10, season_episodes: [10], season_aired: [aired] });
     expect(computeStats([row], [], null).hours.serie).toBe(expected);
-    expect(computeStats([row], [{ media_item_id: row.id, watched_on: "2024-02-01" }], null).hours.rewatches).toBe(expected);
+    expect(computeStats([row], [{ media_item_id: row.id, watched_on: "2024-02-01" }], null).hours.rewatches).toBe(0); // legacy row carries no duration snapshot
   });
   it("keeps the legacy estimate only for unknown aired metadata", () => {
     const row = item({ watched: true, watched_at: "2024-01-01", season_episodes: [10], season_aired: null });
@@ -470,5 +472,16 @@ describe("Annual rating attribution regression", () => {
     expect(computeStats([row], [], 2026, cours)).toMatchObject({ avgRating: null, ratedCount: 0, topFavorites: [] });
     expect(computeStats([{ ...row, cour_ratings: { 1: 9, 2: 7 } }], [], 2026, cours).avgRating).toBe(7);
     expect(computeStats([row], [], null, cours).avgRating).toBe(9);
+  });
+});
+
+describe("Rating distribution preserves real decimal bounds",()=>{
+  it.each([[6.5,8.75],[8.5,9.5],[9.5,10]])("retains exact ratings %s to%s without inventing higher integer scores",(min,max)=>{
+    const rows=[min,max].map((score,index)=>item({id:`rating${index}`,type:"film",watched:true,watched_at:"2026-04-01",user_rating:score}));
+    const stats=computeStats(rows,[],2026,new Map(),{records:[],ratings:[]});
+    expect(stats.ratingDistribution[0].score).toBe(min);
+    expect(stats.ratingDistribution.at(-1)?.score).toBe(max);
+    expect(stats.ratingDistribution.reduce((n,d)=>n+d.count,0)).toBe(2);
+    expect(stats.ratingDistribution.find(d=>d.score===max)?.count).toBe(1);
   });
 });
