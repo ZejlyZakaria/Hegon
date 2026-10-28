@@ -138,7 +138,7 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
       if (saved.personal_revision !== undefined) ownRevision.current = { id: media.id, value: saved.personal_revision };
       if (patch.watched === true) rippleWatched(await goalsP);
       else if (message) toast(message);
-      return { ...patch, personal_revision: saved.personal_revision };
+      return { ...patch, ...(patch.watched ? {watched_at:saved.watched_at}:{}), personal_revision: saved.personal_revision };
     } catch (err) {
       // The demo guard toasts on its own; useUpdateMedia rolls the optimistic update back.
       if (!isDemoReadOnlyError(err)) toast.error("Failed to update.");

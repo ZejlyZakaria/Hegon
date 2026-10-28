@@ -1,8 +1,9 @@
 import { describe,it,expect } from "vitest";
 import { buildRewatch,emptyCatalogue,parseEpisodeRanges,type RewatchCatalogue } from "./rewatch";
 import { assertion,viewingDate,type ViewingRange } from "./viewing-history";
+import { buildMediaView } from "./media-view";
 import { computeStats } from "../components/stats/computeStats";
-import { periodMatches,type HistoricalViewing,type HistoryAnalytics,type HistoricalRating } from "./history-analytics";
+import { historicalContributions,periodMatches,type HistoricalViewing,type HistoryAnalytics,type HistoricalRating } from "./history-analytics";
 import type { StatsRawItem } from "../service";
 const date=(y:number,m:number|null=null,d:number|null=null)=>viewingDate({year:y,month:m,day:d});
 function item(overrides:Partial<StatsRawItem>={}):StatsRawItem {
@@ -116,7 +117,7 @@ describe("Wave2C rating context and lineage",()=>{
     const records=[record("1",[range(1,13)],2026),record("2",[range(1,13,2)],2026),record("3",[range(1,13)],null,"COMPLETION"),record("4",[range(1,13,2)],null,"COMPLETION")];
     const ratings=[rating("1","3",8.5),rating("2","4",9,2),rating("3","4",9,2,"2")];
     const result=stats(item({season_aired:[13,13],season_episodes:[13,13]}),history(records,ratings),2026);
-    expect(result.topFavorites[0].rating).toBe(8.75);expect(result.avgRating).toBe(8.75);expect(result.ratedCount).toBe(1);
+    expect(result.topFavorites[0]).toMatchObject({rating:8.75,seasonLabel:"S1–S2"});expect(result.avgRating).toBe(8.75);expect(result.ratedCount).toBe(1);
   });
   it("follows lineage even if assertion timestamps tie or arrive out of order",()=>{
     const records=[record("1",[range(1,13)],2026),record("2",[range(1,13)],null,"COMPLETION")];
@@ -323,4 +324,97 @@ it("a scoped YEAR assertion cannot erase the legacy month of unrelated coverage"
   expect(result.activity).toEqual([{label:"2026-03",count:1}]);
   expect(result.monthlyStats?.[0]).toMatchObject({label:"2026-03",episodes:21});
   expect(result.episodes).toBe(23);
+});
+
+describe("Viewing time across New Year",()=>{
+  it("keeps December and January hours in their viewing years after Finish and later catalogue growth",()=>{
+    const i=item({season_episodes:[20],season_aired:[20],current_episode:20,season_years:{1:2027},watched_at:"2027-01-10",
+      legacy_consumption:{version:1,captured_at:"2026-12-01",counts:[0],runtime:24,fallback_year:null,completed:false}});
+    const first=record("dec",[range(1,10)],2026,"FIRST_WATCH",12,30);
+    const second=record("jan",[range(11,20)],2027,"FIRST_WATCH",1,10);
+    const finish=record("finish",[range(1,20)],2027,"COMPLETION",1,10);
+    const h=history([first,second,finish]);
+    const before=[2026,2027].map(y=>computeStats([i],[],y,new Map(),h));
+    expect(before.map(s=>s.hours.total)).toEqual([200/60,200/60]);
+    expect(before.map(s=>s.episodes)).toEqual([10,10]);
+    expect(before[0].breakdown.serie[0].seasonLabel).toBe("Season 1 · EP1–10");
+    expect(before[0].monthlyStats.find(m=>m.label==="2026-12")?.knownMinutes).toBe(200);
+    const grown={...i,watched:false,in_progress:true,season_episodes:[20,10],season_aired:[20,4],runtime:99};
+    expect([2026,2027].map(y=>computeStats([grown],[],y,new Map(),h).hours.total)).toEqual(before.map(s=>s.hours.total));
+    expect(computeStats([i],[],null,new Map(),h).hours.total).toBe(400/60);
+  });
+});
+
+describe("Part opinions do not double vote with their enclosing season",()=>{
+  it("keeps the part score and its historical year independent of later season growth",()=>{
+    const first=record("watch",[range(1,13)],2023);
+    const complete=record("complete",[range(1,13)],2023,"COMPLETION");
+    const whole=rating("1","complete",8),part={...rating("2","complete",9),scope_kind:"COUR" as const,scope_key:"anilist-cour:501"};
+    const h=history([first,complete],[whole,part]);
+    expect(stats(item({season_years:{1:2023}}),h,2023).avgRating).toBe(9);
+    expect(stats(item({season_years:{1:2023}}),h,2026).ratedCount).toBe(0);
+  });
+});
+
+describe("Part history retains storage-season artwork",()=>{
+  it("uses frozen S2 ranges for a cour rewatch on a multi-season anime",()=>{
+    const i=item({type:"anime",season_episodes:[3,6],season_aired:[3,6],current_season:2,current_episode:6,season_years:{1:2020,2:2023},season_posters:["/s1.jpg","/s2.jpg"]});
+    const rw={...record("part-rewatch",[range(3,6,2)],2026,"REWATCH"),scope_kind:"COUR" as const,scope_key:"anilist-cour:990103"};
+    const result=stats(i,history([rw]),2026);
+    expect(result.hours.rewatches).toBe(80/60);
+    expect(historicalContributions(i,buildMediaView({type:"anime",season_episodes:[3,6],season_aired:[3,6],current_season:2,current_episode:6},null),history([rw]),[])[0].displaySeasons).toEqual([2]);
+  });
+});
+
+
+describe("Top Picks exclude frozen rewatch-only years",()=>{
+  it.each(["film","serie","anime"] as const)("keeps %s rewatch hours/activity without admitting it to annual picks",type=>{
+    const media=item({type,watched_at:"2022-06-01",favorite:true,season_years:{1:2022}});
+    const rewatch={...record("rewatch",[range(1,type==="film" ? 1:13,type==="film" ? 0:1,120)],2026,"REWATCH",4,7),
+      work_key:type==="film" ? "movie:42":"tv:42",media_type_snapshot:type};
+    const h=history([rewatch]),annual=stats(media,h,2026);
+    expect(annual.topFavorites).toEqual([]);
+    expect(annual.hours.rewatches).toBe(2);
+    expect(annual.rewatches).toBe(1);
+    expect(annual.counts.total).toBe(1);
+    expect(annual.activity).toEqual([{label:"2026-04",count:1}]);
+    expect(stats(media,h,2022).topFavorites[0].item.id).toBe(media.id);
+    expect(stats(media,h,null).topFavorites[0].item.id).toBe(media.id);
+  });
+  it("keeps a title eligible when its first viewing and rewatch are both in the selected year",()=>{
+    const media=item({type:"film",watched_at:"2026-02-01",favorite:true});
+    const first={...record("first",[range(1,1,0,120)],2026,"FIRST_WATCH",2,1),work_key:"movie:42",media_type_snapshot:"film"};
+    const rewatch={...first,id:"rewatch",kind:"REWATCH" as const,month:4,day:7};
+    const annual=stats(media,history([first,rewatch]),2026);
+    expect(annual.topFavorites.map(e=>e.item.id)).toEqual([media.id]);
+    expect(annual.hours.film).toBe(2);expect(annual.hours.rewatches).toBe(2);
+    expect(annual.counts.total).toBe(1);
+  });
+  it("does not assign an undated first viewing to its dated rewatch year",()=>{
+    const media=item({type:"film",watched_at:null,favorite:true});
+    const first={...record("first",[range(1,1,0,120)],null),work_key:"movie:42",media_type_snapshot:"film"};
+    const rewatch={...first,id:"rewatch",kind:"REWATCH" as const,...date(2026,4,7)};
+    const h=history([first,rewatch]);
+    expect(stats(media,h,2026).topFavorites).toEqual([]);
+    expect(stats(media,h,null).topFavorites.map(e=>e.item.id)).toEqual([media.id]);
+    expect(stats(media,h,2026).hours.rewatches).toBe(2);
+  });
+});
+
+
+it("a confirmed year-only part correction replaces only its legacy overlap, preserving total and precise later dates",()=>{
+  const media=item({type:"anime",season_aired:[366,50],season_episodes:[366,50],current_season:2,current_episode:50,
+    season_years:{1:2020,2:2023},runtime:24,watched_at:"2026-10-28",
+    legacy_consumption:{version:1,captured_at:"2026-10-22",counts:[366,49],runtime:24,fallback_year:2026,completed:false,storage_sizes:[366,50],calendar_date:"2023-12-31"}});
+  const existing=[record("49",[range(49,49,2,24)],2026,"FIRST_WATCH",10,20),record("50",[range(50,50,2,24)],2026,"FIRST_WATCH",10,28)];
+  const before=history(existing),after=history([...existing,{...record("part4",[range(41,48,2,192)],2026),origin:"USER_CORRECTION" as const}]);
+  expect(stats(media,before,2023).hours.anime).toBe(19.2);
+  expect(stats(media,after,2023).hours.anime).toBe(16);
+  expect(stats(media,before,2026).hours.anime).toBe(0.8);
+  expect(stats(media,after,2026).hours.anime).toBe(4);
+  expect(stats(media,after,null).hours).toEqual(stats(media,before,null).hours);
+  expect(stats(media,after,2026).activity).toEqual(stats(media,before,2026).activity);
+  expect(stats(media,after,2026).dailyActivity).toEqual(stats(media,before,2026).dailyActivity);
+  expect(existing.map(r=>[r.month,r.day])).toEqual([[10,20],[10,28]]);
+  expect(media.season_years).toEqual({1:2020,2:2023});
 });

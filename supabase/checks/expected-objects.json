@@ -63,9 +63,10 @@
     "2026-10-12 Wave 2A: viewing_records (28 columns), viewing_ranges (9), media_items +5; tables +2, columns +42, policies +2, functions +3, indexes +7. Deltas measured by isolated PostgreSQL 16 rehearsal; production application remains owner-only.",
     "2026-10-21: 20261021010000 applies 85 owner-approved INFERRED legacy date estimates; data only, object counts unchanged.",
     "2026-10-21: 20261021020000 accepts optional bounded episode runtimes in provider facts for frozen rewatches; function replacement only, object counts unchanged.",
-    "2026-10-22: accepted legacy consumption snapshot +1 column; existing guard/command/receipt functions replaced, no new tables/policies/functions/indexes/crons. Local rehearsal required before owner push."
+    "2026-10-22: accepted legacy consumption snapshot +1 column; existing guard/command/receipt functions replaced, no new tables/policies/functions/indexes/crons. Local rehearsal required before owner push.",
+    "2026-10-28: preserve legacy calendar on guarded date changes (existing function replacement) and one owner-authorized Bleach completion-date correction; all schema object counts unchanged."
   ],
-  "_migrations_through": "20261022000000",
+  "_migrations_through": "20261028000000",
   "tables": 81,
   "colonnes": 857,
   "policies": 225,

@@ -197,11 +197,9 @@ export function markWatchedPatch(m: StatusFacts, view?: MediaView | null): Statu
       ? stampSeasons(sp.map, stampable, new Date().getFullYear(), staleStamp(sp.facts))
       : undefined;
 
-  // WHEN did you watch it — and for a series that is NOT the moment you clicked. The truth is the
-  // year you finished the last season (`season_years`), so `watched_at` follows it: a show you
-  // finished in 2014 gets a 2014 timestamp, not "now", and it no longer sits atop Recently Watched
-  // with a "2 weeks ago" badge. `buildWatchedAtProjection` maps the current year back to `now`, so finishing
-  // something today still stamps today. A film keeps `now` (the date picker refines it).
+  // Coarse legacy fallback only. The atomic personal-command boundary resolves a dated
+  // canonical terminal viewing before storing completion; an old aggregate-season stamp
+  // must not override that evidence. Undated historical claims retain their legacy year.
   const watchedAt = isSeries ? dateFromFinishYear(maxYear(seasonYears ?? sp.map)) : new Date().toISOString();
 
   return {
@@ -427,18 +425,9 @@ export function addStatusPatch(
 }
 
 /**
- * YOU EDITED THE YEARS — SO THE DATE MUST FOLLOW.
- *
- * `watched_at` is not an independent fact for a series: it IS the year you finished, and the year
- * you finished is the latest stamp in the year map. But it was only ever computed at the moment you
- * pressed "Mark as watched" — so the sequence "mark it watched, then correct the years to 2023/2024"
- * left the date at today, and Last Watched announced a show you finished in 2024 as watched TODAY.
- *
- * A derived value that is stored must be RE-DERIVED whenever its source moves. That is the whole of
- * `derive don't store`; storing it is a cache, and a cache that is not invalidated is a lie.
- *
- * Returns the year-map write plus the date it implies. The caller does not need to know which
- * column the map lives in — the lens already decided that.
+ * Legacy year corrections update their coarse sorting projection. The atomic command keeps
+ * a dated canonical full-title completion when editing unrelated old season years.
+ * Films retain the explicit day/month projection owned by their date picker.
  */
 export function yearsPatch(
   m: Pick<StatusFacts, "type" | "watched">,

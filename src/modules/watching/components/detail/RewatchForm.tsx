@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { STALE } from "@/shared/lib/stale";
 import { WATCHING_KEYS } from "../../hooks/query-keys";
-import { getRewatchCatalogue, getMediaHistory } from "../../service";
+import { useMediaHistory } from "../../hooks/useMediaHistory";
+import { getRewatchCatalogue } from "../../service";
 import { parseViewingInput } from "../../lib/viewing-history";
 import { formatHistoryDate, rangeCount, frozenMinutes, frozenKnownMinutes } from "../../lib/history-analytics";
 import { buildRewatch, emptyCatalogue, type RewatchRequest, type RewatchCatalogue, type RewatchScope } from "../../lib/rewatch";
@@ -88,7 +89,7 @@ export function RewatchForm({media,view,date,initial,pending,onSave,onClose}: {
 }
 export function ViewingHistory({mediaId}:{mediaId:string}) {
   const [open,setOpen]=useState(false);
-  const {data,error}=useQuery({queryKey:[...WATCHING_KEYS.all,"viewing-history",mediaId],queryFn:()=>getMediaHistory(mediaId),enabled:open,staleTime:STALE.MINUTE,gcTime:STALE.HOUR});
+  const {data,error}=useMediaHistory(mediaId,open);
   return <div className="mt-3"><button type="button" className="text-xs text-white/70" aria-expanded={open} onClick={()=>setOpen(!open)}>Viewing history</button>
     {open && <div className="mt-2 max-h-64 space-y-2 overflow-y-auto text-xs text-white/70">{error ? <p>Could not load history.</p> : !data ? <p>Loading history...</p> : !data.records.length ? <p>No recorded viewing events. Legacy dates and scope have not been reconstructed.</p> : data.records.map(r => <div key={r.id} className="rounded-control bg-white/5 p-2">
       <p>{r.kind.replaceAll("_"," ")} / {formatHistoryDate(r)}{r.retracted_at ? " / Retracted" : ""}</p><p>{r.scope_kind} / {rangeCount(r.ranges) ?? "Unknown"} episodes / {r.kind==="COMPLETION" ? "Completion milestone (no additional time)" : frozenMinutes(r.ranges)==null ? frozenKnownMinutes(r.ranges)==null ? "Duration unknown" : `${frozenKnownMinutes(r.ranges)} known min; total duration unknown` : `${frozenMinutes(r.ranges)} min`}</p>

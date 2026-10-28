@@ -130,7 +130,7 @@ describe("Wave2C rating history visibility",()=>{
   it("shows old9 and revised8.5 as separate assertions without claiming viewing dates",()=>{
     const loaded=component("src/modules/watching/components/detail/RewatchForm.tsx",{
       react:{useState:()=>[true,()=>{}]},
-      "@tanstack/react-query":{useQuery:()=>({data:{records:[],ratings:[{id:"old",score:9,scope_kind:"COUR",scope_number_at_recording:1,episode_ids:[1,2],recorded_at:"2026-10-18"},{id:"new",score:8.5,scope_kind:"COUR",scope_number_at_recording:2,episode_ids:[1,2,3],recorded_at:"2026-10-18"}]}})},
+      "../../hooks/useMediaHistory":{useMediaHistory:()=>({data:{records:[],ratings:[{id:"old",score:9,scope_kind:"COUR",scope_number_at_recording:1,episode_ids:[1,2],recorded_at:"2026-10-18"},{id:"new",score:8.5,scope_kind:"COUR",scope_number_at_recording:2,episode_ids:[1,2,3],recorded_at:"2026-10-18"}]}})},
       "../../hooks/query-keys":{WATCHING_KEYS:{all:["watching"]}},
     });
     const html=renderToStaticMarkup((loaded.ViewingHistory as (props:unknown)=>ReactElement)({mediaId:"fixture"}));

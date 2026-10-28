@@ -5,7 +5,7 @@ import type { MediaView } from "./media-view";
 /** An accepted estimate, not a confirmed viewing assertion or provider catalogue. */
 export interface LegacyConsumption {
   version:1; captured_at:string; counts:number[]; runtime:number|null;
-  fallback_year:number|null; completed:boolean; storage_sizes?:number[];
+  fallback_year:number|null; completed:boolean; storage_sizes?:number[]; calendar_date?:string|null;
 }
 export const legacyRuntime=(item:StatsRawItem):number|null =>
   item.legacy_consumption ? item.legacy_consumption.runtime : item.runtime;

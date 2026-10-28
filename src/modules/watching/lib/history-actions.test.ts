@@ -1,3 +1,6 @@
+import { QueryClient } from "@tanstack/react-query";
+import { WATCHING_KEYS, PEOPLE_KEYS } from "../hooks/query-keys";
+import * as dependencies from "./mutation-dependencies";
 import { isWatchableNow } from "./watchable";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -58,5 +61,50 @@ describe("history action revision propagation", () => {
     const { actions,externalWrite } = actionsHarness();
     externalWrite();
     expect(await actions.setPosition(1,2,"viewing")).toBeNull();
+  });
+});
+
+
+describe("personal history mutation cache coherence",()=>{
+  function harness() {
+    const cache=new QueryClient();
+    const js=ts.transpileModule(readFileSync("src/modules/watching/hooks/useUpdateMedia.ts","utf8"),{
+      compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+    const exports:Record<string,()=>{onSuccess:(saved:unknown,input:Record<string,unknown>)=>void}>={};
+    const require=(id:string)=>{
+      if(id==="@tanstack/react-query") return {useMutation:(options:unknown)=>options,useQueryClient:()=>cache};
+      if(id==="./query-keys") return {WATCHING_KEYS,PEOPLE_KEYS};
+      if(id==="../lib/mutation-dependencies") return dependencies;
+      if(id==="@/modules/settings/hooks/useSettings") return {useIsDemo:()=>false};
+      if(id==="../lib/sync-goals") return {syncWatchingGoals:async()=>[]};
+      if(id==="../lib/sync-habits") return {syncWatchingHabits:async()=>{}};
+      return {};
+    };
+    runInNewContext(js,{exports,require});
+    const history=WATCHING_KEYS.history("show"),ratings=[...WATCHING_KEYS.all,"scope-ratings","show"];
+    cache.setQueryData(history,{records:[{year:2023}]});
+    cache.setQueryData(ratings,[{available_seen:false}]);
+    return {cache,history,ratings,success:exports.useUpdateMedia().onSuccess};
+  }
+  it.each([
+    {current_season:2,current_episode:50},
+    {watched:true},
+    {season_years:{"2":2026}},
+    {history_date:{year:2026,month:10,day:28}},
+  ])("refreshes shared periods and rating eligibility after %j",patch=>{
+    const {cache,history,ratings,success}=harness();
+    try {
+      success({id:"show",...patch},{id:"show",type:"anime",...patch});
+      expect(cache.getQueryState(history)?.isInvalidated).toBe(true);
+      expect(cache.getQueryState(ratings)?.isInvalidated).toBe(true);
+    } finally {cache.clear();}
+  });
+  it("leaves history and membership fresh for a notes-only edit",()=>{
+    const {cache,history,ratings,success}=harness();
+    try {
+      success({id:"show"},{id:"show",type:"anime",notes:"Personal note"});
+      expect(cache.getQueryState(history)?.isInvalidated).toBe(false);
+      expect(cache.getQueryState(ratings)?.isInvalidated).toBe(false);
+    } finally {cache.clear();}
   });
 });

@@ -46,6 +46,15 @@ const QUERY =
   `startDate{year month day} endDate{year} title{romaji english} coverImage{extraLarge large} } } }`;
 
 async function anilistByIds(ids: number[]): Promise<any[]> {
+  // AniList Page is capped at50; every requested identity must be present before accepting a map.
+  if(ids.length>50) {
+    const media:any[]=[];
+    for(let from=0;from<ids.length;from+=50) {
+      if(from>0) await sleep(700);
+      media.push(...await anilistByIds(ids.slice(from,from+50)));
+    }
+    return media;
+  }
   const res = await fetchWithRetry(ANILIST, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -69,6 +78,11 @@ async function anilistByIds(ids: number[]): Promise<any[]> {
     || !(m.coverImage === null || object(m.coverImage)))) {
     throw new Error("AniList invalid media record");
   }
+  // An incomplete response must not shift every later part's episode offsets.
+  const returned=new Set(media.map((m:any)=>m.id));
+  if(returned.size!==ids.length || media.length!==ids.length || ids.some(id=>!returned.has(id))) {
+    throw new Error("AniList incomplete or unexpected media membership");
+  }
   return media;
 }
 
@@ -80,6 +94,8 @@ function buildCours(media: any[]) {
   for (let i = 0; i < media.length; i++) {
     const m = media[i];
     const eps = m.episodes ?? null;
+    if(!Number.isInteger(m.startDate?.year) || (i>0 && dateKey(m.startDate)===dateKey(media[i-1].startDate)) ||
+      (eps===null && i<media.length-1)) throw new Error("AniList ambiguous part ordering or episode boundary");
     const start = cursor + 1;
     const end = eps ? cursor + eps : null;
     if (eps) cursor += eps;
@@ -187,7 +203,12 @@ Deno.serve(async () => {
       }
       await sleep(700);   // AniList is polite, not infinite
 
-      const cours = buildCours(media);
+      let cours:ReturnType<typeof buildCours>;
+      try {cours=buildCours(media);}
+      catch(e) {
+        await supabase.rpc("observe_provider",{command:{provider:"anilist",work_key:`tv:${tmdbId}`,error_code:"INVALID_PART_BOUNDARIES"}});
+        failed++;log.push(`${info.title}: ${errMsg(e)}; accepted cache preserved`);continue;
+      }
       const sum = cours.reduce((a, c) => a + (c.episodes ?? 0), 0);
       // The boundaries only line up if AniList and TMDB agree on the total. When they don't (One
       // Piece is ongoing with no AniList count; JoJo's TMDB carries arcs AniList doesn't map), the

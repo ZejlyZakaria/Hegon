@@ -27,7 +27,7 @@ describe("Accepted legacy, frozen scope and annual presentation",()=>{
     const s=snapshot();s.history.records=[record("FIRST_WATCH",2,2026,10)];
     const old=stats(s,2022),now=stats(s,2026);
     expect(old.hours.total).toBe(68);
-    expect(old.topFavorites[0]).toMatchObject({rating:8.5,seasonLabel:"Season 1",seasonPoster:"https://image.tmdb.org/t/p/w500/s1.jpg"});
+    expect(old.topFavorites[0]).toMatchObject({rating:8.5,seasonLabel:"S1",seasonPoster:"https://image.tmdb.org/t/p/w500/s1.jpg"});
     expect(now.breakdown.anime[0]).toMatchObject({seasonLabel:"Season 2",seasonPoster:"https://image.tmdb.org/t/p/w500/s2.jpg"});
     expect(now.ratedCount).toBe(0);expect(now.topFavorites).toHaveLength(0);
   });
@@ -58,15 +58,15 @@ describe("Accepted legacy, frozen scope and annual presentation",()=>{
     expect(after.hours).toEqual(before.hours);expect(after.hours.anime).toBe(9.6);
     expect(after.breakdown.anime[0]).toMatchObject({seasonLabel:"Season 1",seasonPoster:"https://anilist.co/1.jpg"});
   });
-  it("uses a recorded cour identity for its poster rather than a later shifted episode boundary",()=>{
+  it("does not label an unrated favorite with the cour it only consumed",()=>{
     const s=snapshot([item({in_progress:false,season_aired:[36],season_episodes:[36]})]);
-    s.history.records=[{...record("REWATCH",1,2023,6),scope_kind:"COUR",scope_key:"anilist-cour:102"}];
+    s.history.records=[{...record("FIRST_WATCH",1,2023,6),scope_kind:"COUR",scope_key:"anilist-cour:102"}];
     const cours=new Map([[73223,{tmdb_id:73223,source:"anilist" as const,cours:[
       {season:1,anilist_id:101,title:"Cour1",episodes:24,start_episode:1,end_episode:24,year:2021,end_year:2021,poster_url:"https://anilist.co/1.jpg"},
       {season:2,anilist_id:102,title:"Cour2",episodes:12,start_episode:25,end_episode:36,year:2023,end_year:2023,poster_url:"https://anilist.co/2.jpg"}],updated_at:"2026-10-22"}]]);
     s.items[0].favorite=true;
     const pick=computeStats(s.items,[],2023,cours,s.history).topFavorites[0];
-    expect(pick).toMatchObject({seasonLabel:"Season 2",seasonPoster:"https://anilist.co/2.jpg"});
+    expect(pick).toMatchObject({rating:null,seasonLabel:null,seasonPoster:null});
   });
   it("keeps Hannibal annual mean at8.75",()=>{
     const s=snapshot([item({title:"Hannibal",type:"serie",watched:true,in_progress:false,season_aired:[13,13],season_episodes:[13,13],season_years:{"1":2026,"2":2026},season_ratings:{"1":8.5,"2":9}})]);

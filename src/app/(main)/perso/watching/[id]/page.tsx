@@ -32,7 +32,9 @@ import { SeasonHistoryStrip } from "@/modules/watching/components/detail/SeasonH
 import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import { SeasonPanel } from "@/modules/watching/components/detail/SeasonPanel";
 import { useScopeRatings } from "@/modules/watching/hooks/useScopeRatings";
-import { ratingAction, scopeMatchesView, scopeDisplayScores } from "@/modules/watching/lib/scope-ratings";
+import { useMediaHistory } from "@/modules/watching/hooks/useMediaHistory";
+import { seasonViewingPeriods, type SeasonPart } from "@/modules/watching/lib/season-history";
+import { partMatchesView, ratingAction, scopeMatchesView, scopeDisplayScores } from "@/modules/watching/lib/scope-ratings";
 import { useMediaView } from "@/modules/watching/hooks/useMediaView";
 import { yearsPatch, type StatusPatch } from "@/modules/watching/lib/watch-status";
 import type { WatchingMedia } from "@/modules/watching/types";
@@ -115,6 +117,8 @@ export default function MediaDetailPage() {
   // THE LENS — the one object that knows which coordinate space this title lives in. It fetches the
   // AniList cours itself when they matter, and hands back everything in DISPLAY space.
   const view = useMediaView(media);
+  const personalHistory = useMediaHistory(id, !!media && media.type !== "film");
+  const seasonPeriods = useMemo(() => view ? seasonViewingPeriods(view, personalHistory.data?.records ?? []) : {}, [view, personalHistory.data]);
   const scopedRatings = useScopeRatings(id, !!media && media.type !== "film", media?.tmdb_id ?? 0);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [imagesOpen, setImagesOpen] = useState(false);
@@ -275,25 +279,26 @@ export default function MediaDetailPage() {
     await handleYearsChange({ ...(view.yearMap ?? {}), [String(season)]: year });
   };
 
-  const handleSeasonRating = async (season: number, value: number | null) => {
-    if (!media || !view) return;
-    try {
-      const kind = view.overlaid ? "COUR" : "SEASON";
-      const previous = scopedRatings.data?.find((r) => r.kind === kind && r.number === season);
-      if (!previous || !scopeMatchesView(previous, view, season)) {
-        void scopedRatings.refresh();
-        toast.error("Season details changed. Review them before rating.");
-        return;
-      }
-      await scopedRatings.save({ media_id: media.id, expected_revision: media.personal_revision ?? 0,
-        scope_kind: kind, scope_number: season, score: value, action: ratingAction(previous, value),
-        previous_rating_id: previous?.rating_id ?? null,
-        expected_scope_key: previous.scope_key, expected_snapshot_id: previous?.provider_snapshot_id ?? null, expected_mapping_snapshot_id: previous?.mapping_snapshot_id ?? null });
-    } catch (err) {
-      if (isDemoReadOnlyError(err)) return;
-      toast.error("Failed to update.");
-    }
+  // Both doors submit the same snapshot/revision-bound rating command.
+  const saveRating = async (previous: NonNullable<typeof scopedRatings.data>[number], value:number|null) => {
+    if(!media) return;
+    await scopedRatings.save({media_id:media.id,expected_revision:media.personal_revision ?? 0,
+      scope_kind:previous.kind,scope_number:previous.number,score:value,action:ratingAction(previous,value),
+      previous_rating_id:previous.rating_id,expected_scope_key:previous.scope_key,
+      expected_snapshot_id:previous.provider_snapshot_id,expected_mapping_snapshot_id:previous.mapping_snapshot_id});
   };
+  const handleRating = async (value:number|null, season?:number, part?:SeasonPart) => {
+    if(!view) return;
+    const kind=part || view.overlaid ? "COUR":"SEASON";
+    const previous=scopedRatings.data?.find(r=>r.kind===kind && r.number===(part?.scopeNumber ?? season));
+    if(!previous || !(part ? partMatchesView(previous,view,part):scopeMatchesView(previous,view,season!))) {
+      void scopedRatings.refresh();toast.error("Season details changed. Review them before rating.");return;
+    }
+    try {await saveRating(previous,value);}
+    catch(err) {if(!isDemoReadOnlyError(err)) toast.error("Failed to update.");}
+  };
+  const handleSeasonRating = (season:number,value:number|null) => handleRating(value,season);
+  const handlePartRating = (part:SeasonPart,value:number|null) => handleRating(value,undefined,part);
 
   // The watchlist urgency — the one fact of a want-to-watch entry, now editable where you read it.
   const handlePriorityChange = async (level: "high" | "medium" | "low" | null) => {
@@ -459,6 +464,7 @@ export default function MediaDetailPage() {
               seasonAirDates={view?.overlaid ? undefined : media.season_air_dates}
               seasonEndDates={view?.seasons.map((s) => s.endDate)}
               seasonYears={view?.yearMap}
+              seasonPeriods={seasonPeriods}
               // Scoped opinions remain independent of the global title rating.
               seasonRatings={scopeDisplayScores(scopedRatings.data, view)}
               showPoster={media.poster_url}
@@ -557,6 +563,8 @@ export default function MediaDetailPage() {
           onYearChange={handleSeasonYear}
           onRefreshRatings={() => { void scopedRatings.refresh(); }}
           ratingContexts={scopedRatings.data}
+          seasonPeriod={seasonPeriods[String(panelSeason)]}
+          onPartRatingChange={handlePartRating}
           ratingSaving={scopedRatings.isSaving || scopedRatings.isPending}
           onRatingChange={handleSeasonRating}
           onSetPosition={handleSetPosition}

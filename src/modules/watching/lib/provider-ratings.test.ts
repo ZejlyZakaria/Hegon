@@ -1,7 +1,7 @@
 import { buildMediaView } from "./media-view";
 import { describe, expect, it } from "vitest";
 import { compactSeason } from "../../../../supabase/functions/_shared/provider-evidence";
-import { ratingValidity, ratingAction, scopeMatchesView, scopeDisplayScores } from "./scope-ratings";
+import { ratingValidity, ratingAction, scopeMatchesView, scopeDisplayScore, scopeDisplayScores } from "./scope-ratings";
 
 describe("compact provider evidence", () => {
   const season = { id: 2002, season_number: 2, episode_count: 2 };
@@ -53,6 +53,8 @@ describe("rating context versus displayed scope", () => {
   const context = { kind: "SEASON" as const, number: 2, scope_key: "tmdb-season:2002", rating_id: "old", score: 9, validity: "NEEDS_RECONFIRMATION" as const, covered_episodes: 13, provider_snapshot_id: "snapshot", mapping_snapshot_id: null, available_episodes: 23, range_start: 1, range_end: null };
   it("rejects stale episode ceilings and pending coordinate lenses", () => {
     expect(scopeMatchesView(context,view,2)).toBe(true);
+    expect(scopeMatchesView({...context,available_episodes:null},view,2)).toBe(false);
+    expect(scopeMatchesView(context,{...view,seasons:view.seasons.map(s=>({...s,airedKnown:false}))},2)).toBe(false);
     expect(scopeMatchesView({ ...context, available_episodes: 24 },view,2)).toBe(false);
     expect(scopeMatchesView(context,{ ...view, pending: true },2)).toBe(false);
     expect(scopeDisplayScores([{ ...context, available_episodes: 24 }],view)).toEqual({});
@@ -104,5 +106,31 @@ describe("Proven absolute anime episode numbering",()=>{
     expect(()=>compactSeason(season,episodes.map((e,i)=>i===0 ? {...e,episode_number:64}:e),"2026-10-22",62)).toThrow();
     expect(()=>compactSeason(season,episodes.map((e,i)=>i===0 ? {...e,id:1001}:e),"2026-10-22",62)).toThrow();
     expect(()=>compactSeason({...season,season_number:1},episodes,"2026-10-22",62)).toThrow();
+  });
+});
+
+describe("Saved season opinions are not erased by missing membership evidence",()=>{
+  const view=buildMediaView({type:"serie",season_episodes:[12],season_aired:[12],current_season:1,current_episode:12},null);
+  const legacy={kind:"SEASON" as const,number:1,scope_key:"unverified-season:1",rating_id:null,score:9.5,
+    validity:"SCOPE_UNVERIFIED" as const,covered_episodes:null,provider_snapshot_id:null,mapping_snapshot_id:null,
+    available_episodes:null,range_start:null,range_end:null};
+  it("restores the poster and panel score while keeping writes blocked without episode evidence",()=>{
+    expect(scopeDisplayScore(legacy,view,1)).toBe(9.5);
+    expect(scopeDisplayScores([legacy],view)).toEqual({1:9.5});
+    expect(scopeDisplayScores([{...legacy,available_episodes:10}],view)).toEqual({1:9.5});
+    expect(scopeMatchesView(legacy,view,1)).toBe(false);
+    expect(legacy.validity).toBe("SCOPE_UNVERIFIED");expect(legacy.covered_episodes).toBeNull();
+    expect(scopeDisplayScores([{...legacy,validity:"NEEDS_RECONFIRMATION"}],view)).toEqual({});
+    expect(scopeDisplayScores([{...legacy,validity:"UNRATED",score:null}],view)).toEqual({});
+  });
+  it("restores an unbound legacy anime slot, but never rebinds a known different cour identity",()=>{
+    const cours=[{season:1,anilist_id:501,title:"Cour",poster_url:null,year:2026,end_year:2026,episodes:12,start_episode:1,end_episode:12}];
+    const anime=buildMediaView({type:"anime",season_episodes:[12],season_aired:[12],cour_ratings:{1:9.5}}, {tmdb_id:1,source:"anilist",cours});
+    const context={...legacy,kind:"COUR" as const,scope_key:"unverified-cour:1"};
+    expect(scopeDisplayScores([context],anime)).toEqual({1:9.5});
+    expect(scopeMatchesView(context,anime,1)).toBe(false);
+    expect(scopeDisplayScores([{...context,scope_key:"anilist-cour:999",rating_id:"old",range_start:1,range_end:12}],anime)).toEqual({});
+    expect(scopeDisplayScores([{...context,score:8}],anime)).toEqual({});
+    expect(scopeDisplayScores([context],{...anime,pending:true})).toEqual({});
   });
 });

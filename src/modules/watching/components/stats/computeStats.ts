@@ -1,5 +1,6 @@
 import { legacyDisplayCounts } from "../../lib/legacy-consumption";
-import { deduplicateFirstViewing, legacyViewingDate, calendarStats, type CalendarStats, historicalContributions, historicalRating, periodMatches, recordsFor, formatHistoryDate, type HistoryAnalytics, type WatchContribution } from "../../lib/history-analytics";
+import { periodEpisodeLabel, ratedScopePresentation } from "../../lib/season-history";
+import { deduplicateFirstViewing, rangeCount, legacyViewingDate, calendarStats, type CalendarStats, historicalContributions, historicalRatingResult, periodMatches, recordsFor, formatHistoryDate, type HistoryAnalytics, type WatchContribution } from "../../lib/history-analytics";
 import { episodeCountsForTime } from "../../lib/episode-counts";
 import type { StatsRawItem, RewatchStatItem } from "../../service";
 import { buildMediaView, type MediaView } from "../../lib/media-view";
@@ -252,6 +253,7 @@ export function computeStats(
         episodes:null,minutes:null,rewatch:true,source:"LEGACY",scope:"Legacy scope unknown"});
     }
   }
+  const recordById=new Map(history.records.map(r=>[r.id,r]));
   // Presentation follows actual period consumption, not the number of dated years.
   const presentation=(i:StatsRawItem) => {
     const v=viewOf(i);
@@ -260,22 +262,24 @@ export function computeStats(
     const seasons=[...new Set(rows.flatMap(c=>c.displaySeasons ?? []))].sort((a,b)=>a-b);
     // An unscoped legacy rewatch cannot prove a single season.
     if (!seasons.length || rows.some(c=>!c.displaySeasons?.length)) return {seasonLabel:null,seasonPoster:null};
-    const seasonLabel=seasons.length===1 ? `Season ${seasons[0]}` : `${seasons.length} seasons`;
+    const scoped=rows.every(c=>c.source==="HISTORY" && !c.rewatch && c.episodes===rangeCount(recordById.get(c.id)?.ranges ?? []));
+    const episodeLabel=scoped && seasons.length===1 ? periodEpisodeLabel(v,seasons[0],rows.map(c=>recordById.get(c.id)!)):null;
+    const seasonLabel=seasons.length===1 ? `Season ${seasons[0]}${episodeLabel ? ` · ${episodeLabel}`:""}` : `${seasons.length} seasons`;
     const poster=seasons.length===1 ? v.seasons[seasons[0]-1]?.poster : null;
     return {seasonLabel,seasonPoster:poster ? poster.startsWith("http") ? poster : `https://image.tmdb.org/t/p/w500${poster}` : null};
   };
   const inPeriod=(i:StatsRawItem) => ledger.some(c => c.itemId===i.id && periodMatches(c,year));
-  const ratingOf=(i:StatsRawItem):number|null => {
+  const ratingContextOf=(i:StatsRawItem) => {
     const fallback=effectiveRating(viewOf(i),i,year);
-    if (!year) return fallback;
-    if (i.type==="film") return recordsFor(i,history).some(r => r.kind==="FIRST_WATCH") ? null : fallback;
+    if (!year || i.type==="film") return {score:year && recordsFor(i,history).some(r=>r.kind==="FIRST_WATCH") ? null:fallback,scopes:[]};
     const v=viewOf(i);
     const votes=watchedSeasonYears(v,i).filter(([,y]) => y===year).flatMap(([number]) => {
       const score=v.ratingMap?.[String(number)];
       return score==null ? [] : [{kind:v.overlaid ? "COUR" : "SEASON",number,score}];
     });
-    return historicalRating(i,history,year,fallback,votes);
+    return historicalRatingResult(i,history,year,fallback,votes);
   };
+  const ratingOf=(i:StatsRawItem):number|null=>ratingContextOf(i).score;
   const frozenEntries=(type:string):HoursEntry[] => items.filter(i => i.type===type).flatMap(i => {
     const contributions=ledger.filter(c => !c.rewatch && c.itemId===i.id && periodMatches(c,year));
     if (!contributions.length) return [];
@@ -385,18 +389,16 @@ export function computeStats(
     .filter(score=>scores.length && score>=scores[0] && score<=scores[scores.length-1])])]
     .sort((a,b)=>a-b).map(score=>({score,count:dist[score] ?? 0}));
 
-  // Top Picks — season-aware: a show appears in the year it had a season watched,
-  // labelled with that season (e.g. JJK in 2026 → "Season 3"), ranked by the
-  // season's own rating when set, else the title rating.
+  // Annual Top Picks require first-view consumption in that year. Rewatch-only
+  // activity still contributes to counts/hours/calendar, but cannot qualify a pick.
+  // All-time eligibility and the existing favorite/rating rules remain unchanged.
+  const topPickIds=new Set(ledger.filter(c=>periodMatches(c,year) && (year==null || !c.rewatch)).map(c=>c.itemId));
   const topFavorites = items
     .map((item) => {
-      return {
-        item,
-        rating: ratingOf(item),
-        ...presentation(item),
-      };
+      const rating=ratingContextOf(item);
+      return {item,rating:rating.score,...ratedScopePresentation(viewOf(item),rating.scopes)};
     })
-    .filter((x) => inPeriod(x.item) && (x.item.favorite || (x.rating ?? 0) >= 8))
+    .filter((x) => topPickIds.has(x.item.id) && (x.item.favorite || (x.rating ?? 0) >= 8))
     .sort((a, b) => {
       // Rank by YOUR rating first — a 9.0 must beat a 7.5 even if the 7.5 is a
       // favorite. Favorite is only a tiebreaker between equal ratings.

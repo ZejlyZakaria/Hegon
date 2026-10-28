@@ -1,4 +1,6 @@
 "use client";
+
+import { watchedPeriodLabel } from "../../lib/completion-date";
 import { RewatchForm, ViewingHistory } from "./RewatchForm";
 import type { RewatchRequest, RewatchCatalogue } from "../../lib/rewatch";
 
@@ -59,20 +61,6 @@ const CARD_STATUS: Record<WatchStatus, CardStatus> = {
   completed: "watched",
   watching: "in_progress",
 };
-
-// "Watched" label: films → the watched_at year; series → the season-year range.
-// The year map comes from the LENS, never from the row: on an overlaid anime the years live in
-// `cour_years` and `season_years` is empty, so reading the column made Blue Lock — dated 2023 and
-// 2024 by hand — fall back to its `watched_at` year instead of showing the span.
-function watchedLabel(media: WatchingMedia, yearMap: Record<string, number> | null | undefined): string | null {
-  if (media.type === "film") {
-    return media.watched_at ? String(new Date(media.watched_at).getFullYear()) : null;
-  }
-  const years = Object.values(yearMap ?? {}).map(Number).filter((y) => !Number.isNaN(y));
-  if (!years.length) return media.watched_at ? String(new Date(media.watched_at).getFullYear()) : null;
-  const min = Math.min(...years), max = Math.max(...years);
-  return min === max ? String(min) : `${min} – ${max}`;
-}
 
 function watchedYearOf(media: WatchingMedia, yearMap: Record<string, number> | null | undefined): number | null {
   if (media.type === "film") return media.watched_at ? new Date(media.watched_at).getFullYear() : null;
@@ -439,7 +427,7 @@ export function StatusCard({
   // OR merely caught up (a running show you've fully seen still has a year worth recording).
   const yearEditable = media.type === "film" ? media.watched : (media.watched || caughtUp) && singleSeason;
   // eslint-disable-next-line no-restricted-syntax -- explicit `view ? lens : raw` fallback for the label.
-  const yearLabel = watchedLabel(media, view ? view.yearMap : media.season_years);
+  const yearLabel = watchedPeriodLabel(media, view ? view.yearMap : media.season_years);
   // eslint-disable-next-line no-restricted-syntax -- same fallback for the selected value.
   const selectedYear = watchedYearOf(media, view ? view.yearMap : media.season_years);
   const currentYear = new Date().getFullYear();

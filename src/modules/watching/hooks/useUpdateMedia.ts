@@ -159,6 +159,9 @@ export function useUpdateMedia() {
         void syncWatchingGoals(queryClient);
         queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "stats"] });
         queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "library"] });
+        // Period labels and rating eligibility read the same newly recorded consumption.
+        queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.history(id) });
+        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "scope-ratings", id] });
       }
 
       if (!isStatusChange && hasAnyField(input, WATCHLIST_FIELDS)) {

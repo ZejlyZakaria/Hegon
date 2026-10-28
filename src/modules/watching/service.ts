@@ -1,3 +1,4 @@
+import { completionDatePatch } from "./lib/completion-date";
 import { buildRewatch, emptyCatalogue, type RewatchRequest, type RewatchCatalogue } from "./lib/rewatch";
 import { workKeyOf, rangeCount, frozenMinutes, formatHistoryDate, type HistoricalViewing, type HistoricalRating, type HistoryAnalytics } from "./lib/history-analytics";
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -346,7 +347,7 @@ async function runPersonalCommand(command: Record<string, unknown>): Promise<Wat
 async function activeViewingRecords(mediaId: string): Promise<StoredViewingAssertion[]> {
   const db = createClient().schema("watching");
   return fetchAllRows<StoredViewingAssertion>((from, to) => db.from("viewing_records")
-    .select("id, kind, scope_kind, scope_key, completion_basis, year, month, day, date_precision, date_confidence, scope_confidence, origin, ranges:viewing_ranges(season_key, season_number_at_recording, episode_from, episode_to, episode_ids, minutes, duration_basis)").eq("media_item_id",mediaId).is("retracted_at",null)
+    .select("id, recorded_at, kind, scope_kind, scope_key, completion_basis, year, month, day, date_precision, date_confidence, scope_confidence, origin, ranges:viewing_ranges(season_key, season_number_at_recording, episode_from, episode_to, episode_ids, minutes, duration_basis)").eq("media_item_id",mediaId).is("retracted_at",null)
     .order("id").range(from,to));
 }
 
@@ -366,14 +367,16 @@ export async function updateMediaItem(id: string, data: Record<string, any>): Pr
   // A supplied UI token must win over this fresh read: never silently rebase a stale gesture.
   const revision = expected_revision ?? before.personal_revision;
   if (revision !== before.personal_revision) throw new Error("This title changed. Reload before editing.");
-  const meta: HistoryMetadata = { history_date, history_intent };
+  let meta: HistoryMetadata = { history_date, history_intent };
   const captures = ["watched", "current_season", "current_episode", "season_years", "cour_years", "watched_at"].some(k => k in patch) || history_date !== undefined;
   const active = captures ? await activeViewingRecords(id) : [];
+  const completion=completionDatePatch(before,patch,meta,active);
+  Object.assign(patch,completion.patch);meta=completion.meta;
   const history = captures ? captureHistory(before,patch,meta,active) : { records: [], retract_ids: [] };
-  if (history_date !== undefined) {
-    viewingDate(history_date);
-    patch.viewing_date = history_date;
-    if (before.type === "film") patch.watched_at = history_date ? buildWatchedAtProjection(history_date) : null;
+  if (meta.history_date !== undefined) {
+    viewingDate(meta.history_date);
+    patch.viewing_date = meta.history_date;
+    if (before.type === "film") patch.watched_at = meta.history_date ? buildWatchedAtProjection(meta.history_date) : null;
   }
   return runPersonalCommand({ mode: "update", media_id: id, operation_key: crypto.randomUUID(),
     expected_revision: revision, patch, ...history, reason: "User corrected viewing history" });

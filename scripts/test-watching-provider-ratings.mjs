@@ -74,6 +74,7 @@ try {
   console.log('After Wave 2B:',sql(db,counts).trim());
   if (before !== sql(db,legacy)) throw new Error('Migration changed existing data');
   console.log(sql(db,readFileSync('supabase/tests/watching-provider-ratings.sql','utf8')).trim());
+  console.log(sql(db,readFileSync('supabase/tests/watching-nested-parts.sql','utf8')).trim().split('\n').at(-1));
   const frozenRating = JSON.parse(sql(db,`SELECT public.test_rating_command('40000000-0000-0000-0000-000000000001',9,'CONFIRM')::text;`).trim());
   const rating = `BEGIN; SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
     SELECT watching.scope_rating_command('${JSON.stringify(frozenRating).replaceAll("'","''")}'); SELECT pg_sleep(0.2); COMMIT;`;

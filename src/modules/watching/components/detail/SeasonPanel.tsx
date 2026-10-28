@@ -10,7 +10,8 @@ import { Badge } from "@/shared/components/ui/badge";
 import { cn } from "@/shared/utils/utils";
 import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
-import { scopeMatchesView, type ScopeRatingContext } from "../../lib/scope-ratings";
+import type { SeasonPart } from "../../lib/season-history";
+import { partDisplayScore, partMatchesView, scopeDisplayScore, scopeMatchesView, type ScopeRatingContext } from "../../lib/scope-ratings";
 import { StarRating } from "../shared/StarRating";
 import { ScoreMark } from "../shared/Marks";
 import { tmdbImage, tmdbImageFor } from "../../lib/tmdb-image";
@@ -53,8 +54,6 @@ const TEAL = "var(--color-accent-watching-vivid)";
 const GOLD = "var(--color-gold)";
 const MAX_HIGHLIGHTS = 20;
 // The header poster: between the strip card and a cover — the card takes its height from it.
-const POSTER_W = 112;
-const POSTER_H = 168;
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (d: string) =>
@@ -119,6 +118,8 @@ interface Props {
   readOnly: boolean;
   onYearChange: (season: number, year: number) => void;
   ratingContexts?: ScopeRatingContext[];
+  seasonPeriod?: string;
+  onPartRatingChange?: (part:SeasonPart,value:number|null)=>void;
   ratingSaving?: boolean;
   onRefreshRatings?: () => void;
   onRatingChange: (season: number, value: number | null) => void;
@@ -128,7 +129,7 @@ interface Props {
 
 export function SeasonPanel({
   open, onClose, media, view, season: s, position, readOnly,
-  onYearChange, onRatingChange, ratingContexts, ratingSaving, onRefreshRatings, onSetPosition,
+  onYearChange, onRatingChange, ratingContexts, ratingSaving, onRefreshRatings, onSetPosition, seasonPeriod, onPartRatingChange,
 }: Props) {
   const idx = s - 1;
   const info = view.seasons[idx];
@@ -226,8 +227,7 @@ export function SeasonPanel({
   const reachedSeason = media.watched || s <= position.season;
   const candidateContext = ratingContexts?.find((r) => r.kind === (view.overlaid ? "COUR" : "SEASON") && r.number === s);
   const matchingScope = scopeMatchesView(candidateContext, view, s);
-  const ratingContext = matchingScope ? candidateContext : undefined;
-  const rating = ratingContext ? (ratingContext.score ?? 0) : (reachedSeason ? (view.ratingMap?.[String(s)] ?? 0) : 0);
+  const rating = reachedSeason ? scopeDisplayScore(candidateContext,view,s) ?? 0:0;
 
   // Year options — never before the season finished airing, never after now.
   const currentYear = new Date().getFullYear();
@@ -278,12 +278,8 @@ export function SeasonPanel({
     <>
       <Badge variant="flag" size="md" color={status.color}>
         {status.label}
-        {status.label === "Watched" && year ? ` · ${year}` : ""}
+
       </Badge>
-      {/* A score the season carries but cannot edit here (not fully aired, stepped back into it,
-          or an incomplete available scope) is still YOUR fact — the strip
-          shows it, so the panel does too. Read-only: the claim is not open, the memory is. */}
-      {(!availableSeen || !matchingScope) && rating > 0 && <ScoreMark value={rating} source="mine" onArtwork />}
       {bestHere > 0 && (
         <span className="flex items-center gap-1 text-micro text-white/70 tabular-nums">
           <Star size={11} style={{ color: GOLD, fill: GOLD }} />
@@ -294,10 +290,10 @@ export function SeasonPanel({
   ) : null;
   // THE YEAR, edited the way the StatusCard edits "Finished": the value with a pen, a small menu.
   const yearEdit = datable ? (
-    <YearPen value={year ?? null} years={years} onChange={(y) => onYearChange(s, y)} />
+    <YearPen value={year ?? null} label={seasonPeriod} years={years} onChange={(y) => onYearChange(s, y)} />
   ) : null;
   const stars = availableSeen && matchingScope && !ratingSaving ? (
-    <StarRating size="sm" onArtwork value={rating} onChange={(v) => onRatingChange(s, v)} />
+    <StarRating size="sm" value={rating} onChange={(v) => onRatingChange(s, v)} />
   ) : null;
   const jump = canJump && !behind ? (
     <button
@@ -321,7 +317,7 @@ export function SeasonPanel({
         <button
           type="button"
           aria-label="More"
-          className="on-artwork absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full text-white/85 transition-colors hover:text-white"
+          className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-control text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary"
         >
           <MoreHorizontal size={14} />
         </button>
@@ -357,57 +353,39 @@ export function SeasonPanel({
     >
       <div className="space-y-5 px-4 py-4">
 
-        {/* ── THE SEASON, AND YOU — built like the Trending card on the main page. The poster
-            sits flush on the card's left edge at its natural 2:3; its own artwork, blurred into a
-            glow, fills the card behind it, and a gradient melts the sharp poster into that glow
-            toward the text. One frame holds the facts, the status and your record. ── */}
-        <div className="relative -mx-1 overflow-hidden rounded-card bg-surface-0" style={{ minHeight: POSTER_H }}>
-          {/* ambient — w92 is indistinguishable once blurred and ~2 KB */}
-          {poster && (
-            <div className="absolute inset-0">
-              {/* Saturated on purpose: a blur averages a poster into grey, and a grey halo says
-                  nothing. Pushed back up, the glow is the poster's own colour. Lightly darkened
-                  only so white text stays legible. */}
-              <img src={tmdbImage(poster, "w92") ?? poster} alt="" aria-hidden className="h-full w-full scale-[1.7] object-cover blur-3xl saturate-150" />
-              <div className="absolute inset-0 bg-black/20" />
-            </div>
-          )}
-          {/* darken toward the info side; the sharp poster melts into its own blurred art */}
-          <div className="absolute inset-0 bg-linear-to-r from-transparent via-black/25 to-black/45" />
-
-          {/* the poster — left-anchored, FIXED width, full card height. The text column decides
-              how tall the card is; the poster fills that height by cropping (top-anchored, where
-              the faces are), never by widening under the text. */}
-          <div className="absolute bottom-0 left-0 top-0 bg-surface-2" style={{ width: POSTER_W }}>
-            {poster ? (
-              <img src={tmdbImageFor(poster, POSTER_W) ?? poster} alt={`Season ${s}`} className="h-full w-full object-cover object-top" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center"><Tv size={18} className="text-text-tertiary" /></div>
-            )}
+        {/* Catalogue facts stay beside a fixed-ratio poster. Personal controls have their own space. */}
+        <div className="relative isolate grid grid-cols-[96px_minmax(0,1fr)] items-start gap-4 overflow-hidden rounded-card border border-border-subtle bg-surface-1 p-3 sm:grid-cols-[120px_minmax(0,1fr)] sm:p-4">
+          {poster && <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+            <img src={tmdbImage(poster,"w92") ?? poster} alt="" className="h-full w-full scale-150 object-cover opacity-50 blur-3xl"/>
+            <div className="absolute inset-0 bg-black/45"/>
+          </div>}
+          <div className="aspect-2/3 w-full self-start overflow-hidden rounded-tile bg-surface-2" data-season-poster>
+            {poster ? <img src={tmdbImageFor(poster,120) ?? poster} alt={`Season ${s}`} className="h-full w-full object-cover"/>:
+              <div className="flex h-full w-full items-center justify-center"><Tv size={22} className="text-text-tertiary"/></div>}
           </div>
-
-          {/* the facts, the status, your record — on artwork, so white carries the text */}
-          <div className="relative flex min-w-0 flex-col py-3 pr-4" style={{ marginLeft: POSTER_W, paddingLeft: 16 }}>
-            <p className="pr-8 text-sm font-semibold text-white tabular-nums">{factsLine}</p>
-            {span && <p className="mt-0.5 text-xs text-white/60">{span}</p>}
-            {statusRow && <div className="mt-2 flex flex-wrap items-center gap-2">{statusRow}</div>}
-            {!readOnly && <ScopeRatingReceipt context={ratingContext} score={rating} canConfirm={availableSeen && matchingScope} saving={ratingSaving} onConfirm={() => onRatingChange(s, rating)} />}
-            {!readOnly && !ratingSaving && !matchingScope && onRefreshRatings && (
-              <button type="button" className="mt-2 self-start rounded-control bg-white/10 px-2 py-1 text-xs text-white" onClick={onRefreshRatings}>Refresh season details before rating</button>
-            )}
-            {(datable || canJump || availableSeen) && (
-              <div className="mt-auto flex flex-col gap-1.5 pt-3">
-                {datable && <div className="flex h-6 items-center justify-between gap-3"><span className="whitespace-nowrap text-xs text-white/70">Year watched</span>{yearEdit}</div>}
-                {/* On a phone the column beside the poster is ~230 px: label + ten stars + number do not
-                    fit, and the number was the thing that got clipped. The stars say what they are;
-                    the label is the part that can go. */}
-                {stars && <div className="flex items-center justify-end gap-3 sm:justify-between"><span className="hidden whitespace-nowrap text-xs text-white/70 sm:inline">Your rating</span>{stars}</div>}
-                {jump}
-              </div>
-            )}
+          <div className="min-w-0 py-1">
+            <p className="pr-6 text-sm font-semibold text-text-primary tabular-nums">{factsLine}</p>
+            {span && <p className="mt-1 text-xs leading-relaxed text-text-secondary">Aired {span}</p>}
+            {statusRow && <div className="mt-3 flex flex-wrap items-center gap-2">{statusRow}</div>}
           </div>
           {menu}
         </div>
+
+        {!readOnly && <section aria-label="Your season record" className="rounded-card border border-border-subtle bg-surface-1 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <h4 className="text-xs font-medium text-text-secondary">Your rating</h4>
+            {stars ?? (rating>0 ? <ScoreMark value={rating} source="mine" size="md"/>:
+              <span className="text-xs text-text-tertiary">{candidateContext?.validity==="NEEDS_RECONFIRMATION" ? "Rate the updated season":"Not rated"}</span>)}
+          </div>
+          <ScopeRatingReceipt context={candidateContext} score={candidateContext?.score ?? 0} canConfirm={availableSeen && matchingScope}
+            saving={ratingSaving} onConfirm={()=>onRatingChange(s,candidateContext?.score ?? null)}
+            onRefresh={!matchingScope && !ratingSaving ? onRefreshRatings:undefined}/>
+          {(datable || seasonPeriod || year) && <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-3">
+            <span className="text-xs text-text-secondary">Watched in</span>
+            {yearEdit ?? <span className="text-xs font-medium text-text-primary tabular-nums">{seasonPeriod ?? year}</span>}
+          </div>}
+          {jump && <div className="mt-3">{jump}</div>}
+        </section>}
 
         {/* ── Next to air — two lines on their own ground. Read, never written: this is the
             Watching half of the "new episode" notification. Weekday and distance (what you want
@@ -426,6 +404,9 @@ export function SeasonPanel({
             </p>
           </div>
         )}
+
+        {(info?.parts?.length ?? 0)>1 && <SeasonParts parts={info!.parts!} view={view} season={s}
+          contexts={ratingContexts} readOnly={readOnly} saving={ratingSaving} onRate={onPartRatingChange}/>}
 
         {/* ── Episodes ── */}
         <section>
@@ -599,16 +580,17 @@ function Overview({ text }: { text: string }) {
  * the pen says it can change, the menu holds the picker. A dropdown sitting in the row would make
  * the record read as a form; this reads as a fact you may correct.
  */
-function YearPen({ value, years, onChange }: { value: number | null; years: number[]; onChange: (y: number) => void }) {
+function YearPen({ value, label, years, onChange }: { value: number | null; label?:string; years: number[]; onChange: (y: number) => void }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="group inline-flex items-center gap-1.5 text-xs font-semibold text-white tabular-nums transition-colors hover:text-white/90"
+          aria-label="Change viewing year"
+          className="group inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-text-primary tabular-nums transition-colors hover:text-text-secondary"
         >
-          {value ?? <span className="font-medium text-white/60">Set year</span>}
-          <Pencil size={11} className="text-white/45 transition-colors group-hover:text-white/75" />
+          {label ?? value ?? <span className="font-medium text-text-tertiary">Set year</span>}
+          <Pencil size={11} className="text-text-tertiary transition-colors group-hover:text-text-secondary" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-44 border-border-strong bg-surface-3 p-3">
@@ -629,20 +611,48 @@ function YearPen({ value, years, onChange }: { value: number | null; years: numb
 }
 
 
-/** A historical score remains visible while its current coverage needs explicit confirmation. */
-export function ScopeRatingReceipt({ context, score, canConfirm, saving, onConfirm }: {
-  context?: ScopeRatingContext; score: number; canConfirm: boolean; saving?: boolean; onConfirm: () => void;
+/** Saved opinions remain visible; only demonstrated growth makes a rating historical. */
+export function ScopeRatingReceipt({context,score,canConfirm,saving,onConfirm,onRefresh}:{
+  context?:ScopeRatingContext;score:number;canConfirm:boolean;saving?:boolean;onConfirm:()=>void;onRefresh?:()=>void;
 }) {
-  if (score <= 0) return null;
-  return (
-    <div className="mt-2 text-xs text-white/70">
-      {context?.covered_episodes != null && <p>{context.kind === "COUR" ? <>Originally rated {context.covered_episodes} {context.covered_episodes === 1 ? "episode" : "episodes"}</> : <>Rated through episode {context.covered_episodes}</>}</p>}
-      {(context?.validity ?? "SCOPE_UNVERIFIED") === "SCOPE_UNVERIFIED" && <p>Rating scope unverified</p>}
-      {context?.validity === "NEEDS_RECONFIRMATION" && (
-        <><p>Needs reconfirmation</p>{canConfirm && !saving && (
-          <button type="button" className="mt-1 rounded-control bg-white/10 px-2 py-1 text-xs text-white" onClick={onConfirm}>Confirm {score}</button>
-        )}</>
-      )}
+  if(context?.validity==="CURRENT" && !onRefresh) return null;
+  if(score<=0 && !onRefresh) return null;
+  const grown=context?.validity==="NEEDS_RECONFIRMATION";
+  return <details className="mt-3 text-xs text-text-secondary">
+    <summary className="w-fit cursor-pointer py-1 transition-colors hover:text-text-primary">{grown ? "Previous rating":"About this rating"}</summary>
+    <div className="mt-1 space-y-2 leading-relaxed">
+      {grown ? <>
+        <p>{score} / 10{context?.covered_episodes!=null ? ` · ${context.covered_episodes} episodes`:""}</p>
+        <p>New episodes are outside this rating.</p>
+        {canConfirm && !saving && <button type="button" className="min-h-11 rounded-control bg-surface-3 px-3 py-2 font-medium text-text-primary hover:bg-surface-4" onClick={onConfirm}>Keep {score} for the updated season</button>}
+      </>:<p>{score>0 ? "Your saved rating is kept. Its original episode coverage is not available.":"Episode details are needed before you can rate this season."}</p>}
+      {onRefresh && <button type="button" className="min-h-9 rounded-control px-2 py-1 font-medium text-text-primary hover:bg-surface-2" onClick={onRefresh}>Refresh details</button>}
     </div>
-  );
+  </details>;
+}
+
+function SeasonParts({parts,view,season,contexts,readOnly,saving,onRate}:{
+  parts:SeasonPart[];view:MediaView;season:number;contexts?:ScopeRatingContext[];readOnly:boolean;saving?:boolean;
+  onRate?: (part:SeasonPart,value:number|null)=>void;
+}) {
+  return <section aria-label="Season parts" className="space-y-2">
+    <h4 className="text-caption font-semibold uppercase tracking-wide text-text-tertiary">Parts</h4>
+    {parts.map(part=>{
+      const context=contexts?.find(r=>r.kind==="COUR" && r.number===part.scopeNumber);
+      const matches=partMatchesView(context,view,part);
+      const seen=view.position.season>season || view.position.season===season && view.position.episode>=part.to;
+      const released=(view.seasons[season-1]?.aired ?? 0)>=part.to;
+      const canRate=!readOnly && !!onRate && matches && seen && released;
+      const score=partDisplayScore(context,view,part) ?? 0;
+      return <div key={part.id} className="rounded-card bg-surface-2 p-3">
+        <p className="text-xs font-medium text-text-primary">Part {part.number} · EP{part.from}–{part.to}</p>
+        <p className="mt-1 text-xs text-text-secondary">{part.title}</p>
+        {!readOnly && <div className="mt-2">
+          {canRate && !saving ? <StarRating size="sm" value={score} onChange={v=>onRate!(part,v)}/>:
+            score>0 ? <ScoreMark value={score} source="mine"/>:<p className="text-xs text-text-tertiary">{released ? seen ? "Rating details unavailable":"Watch this part to rate it":"Not fully released"}</p>}
+          <ScopeRatingReceipt context={context} score={context?.score ?? 0} canConfirm={canRate} saving={saving} onConfirm={()=>onRate?.(part,context!.score)}/>
+        </div>}
+      </div>;
+    })}
+  </section>;
 }

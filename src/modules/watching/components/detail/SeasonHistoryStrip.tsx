@@ -21,6 +21,7 @@ interface Props {
   /** Last aired episode's date per season — null while a season is still coming out. */
   seasonEndDates: (string | null)[] | null | undefined;
   seasonYears: Record<string, number> | null | undefined;
+  seasonPeriods?: Record<string,string>;
   seasonRatings: Record<string, number> | null | undefined;
   showPoster: string | null;        // fallback when a season has no poster
   releaseYear: number | null;
@@ -54,7 +55,7 @@ const fmtDate = (d: string) =>
 export function SeasonHistoryStrip({
   seasonEpisodes, seasonAired, seasonPosters, seasonAirDates, seasonEndDates, seasonYears, seasonRatings,
   showPoster, releaseYear, currentSeason, currentEpisode, inProgress, incomplete, unwatched = false,
-  onYearChange, onOpenSeason,
+  onYearChange, onOpenSeason, seasonPeriods,
 }: Props) {
   const airedIn = (idx: number) => (seasonAired ?? [])[idx] ?? 0;
 
@@ -200,7 +201,7 @@ export function SeasonHistoryStrip({
                     color={year ? "#ffffff" : "rgba(255,255,255,0.7)"}
                     className="absolute left-2 top-2 tabular-nums"
                   >
-                    {year ?? "Year"}
+                    {seasonPeriods?.[String(s)] ?? year ?? "Year"}
                   </Badge>
                 )}
 

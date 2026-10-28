@@ -39,7 +39,7 @@ export interface ViewingAssertion extends ViewingDate {
   origin: "USER_ACTION" | "USER_CORRECTION";
   supersedes_id?: string; ranges: ViewingRange[];
 }
-export interface StoredViewingAssertion extends ViewingAssertion { id: string; }
+export interface StoredViewingAssertion extends ViewingAssertion { id: string; recorded_at?: string; }
 export interface HistoryFacts {
   type: string; watched?: boolean; current_season?: number | null; current_episode?: number | null;
   season_aired?: number[] | null; runtime?: number | null;
@@ -123,7 +123,7 @@ export function captureHistory(before: HistoryFacts | null, patch: Partial<Histo
     }
     const forward = (after.current_season ?? 1) > (before?.current_season ?? 1) ||
       ((after.current_season ?? 1) === (before?.current_season ?? 1) && (after.current_episode ?? 0) > (before?.current_episode ?? 0));
-    if (!added.length && (forward || (after.watched && !before?.watched))) records.push(assertion("FIRST_WATCH",date,[],correction));
+    if (!added.length && forward && !(after.watched && !before?.watched)) records.push(assertion("FIRST_WATCH",date,[],correction));
   }
   // Explicit year-map edits carry YEAR precision. Automatic status stamping is not an input date.
   if (!meta.history_intent) {

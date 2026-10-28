@@ -6,6 +6,7 @@ import type { MediaType, WatchStatus } from "../types";
 
 export const WATCHING_KEYS = {
   all: ['watching'] as const,
+  history: (id: string) => [...WATCHING_KEYS.all, "viewing-history", id] as const,
   
   // Par type
   movies: () => [...WATCHING_KEYS.all, 'movies'] as const,

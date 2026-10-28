@@ -29,6 +29,7 @@
  */
 
 import { buildOverlay, courToFlat, flatEpisode, flatToCour, shouldOverlay, tmdbFromFlat } from "./anime-overlay";
+import { seasonParts, type SeasonPart } from "./season-history";
 import type { SeriesFacts } from "./series-state";
 import type { UpdateMediaInput } from "../schemas/media.schema";
 import type { AnimeCour, AnimeCoursRow, WatchingMedia } from "../types";
@@ -37,6 +38,8 @@ import type { AnimeCour, AnimeCoursRow, WatchingMedia } from "../types";
 export interface ViewSeason {
   /** 1-based, in DISPLAY space. */
   season: number;
+  /** Verified provider parts nested within this storage season, without renumbering it. */
+  parts?: SeasonPart[];
   /** Announced episodes. */
   episodes: number;
   /** Episodes that have actually AIRED — the only source for progress decisions. */
@@ -200,9 +203,11 @@ export function buildMediaView(
   // seasons — and a caller that trusts the lens (stats does now) would then count nothing at all.
   // The announcement still wins when present: it is the fuller list.
   const announced = Array.from({ length: Math.max(media.season_episodes?.length ?? 0, media.season_aired?.length ?? 0) }, (_, i) => media.season_episodes?.[i] ?? media.season_aired?.[i] ?? 0);
+  const parts=media.type==="anime" && coursRow?.source==="anilist" ? seasonParts(announced,coursRow.cours):new Map<number,SeasonPart[]>();
   const seasons: ViewSeason[] = announced.map((episodes, i) => ({
     season: i + 1,
     episodes: episodes ?? 0,
+    parts: parts.get(i+1),
     aired: (media.season_aired ?? [])[i] ?? 0,
     airedKnown: media.season_aired?.[i] != null,
     poster: (media.season_posters ?? [])[i] ?? null,

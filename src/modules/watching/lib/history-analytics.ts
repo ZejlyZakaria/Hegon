@@ -68,11 +68,11 @@ export function legacyViewingDate(value:string|null|undefined):ViewingDate {
   try { return viewingDate(parseViewingInput(value.slice(0,10))); }
   catch { return viewingDate(); }
 }
-/** A stable recorded cour identity wins over later catalogue offsets. */
+/** Overlay ordinals follow stable cour identities; ordinary seasons follow frozen storage ranges. */
 function displaySeasonsFor(record:HistoricalViewing,view:MediaView):number[] {
-  if(record.scope_kind==="COUR" && record.scope_key?.startsWith("anilist-cour:")) {
+  if(view.overlaid && record.scope_kind==="COUR" && record.scope_key?.startsWith("anilist-cour:")) {
     const cour=view.cours?.find(c=>c.anilist_id===Number(record.scope_key!.slice("anilist-cour:".length)));
-    return view.overlaid && cour ? [cour.season]:[];
+    return cour ? [cour.season]:[];
   }
   return [...new Set(record.ranges.flatMap(range=>Array.from({length:range.episode_to-range.episode_from+1},(_,n)=>
     view.fromStorage(range.season_number_at_recording,range.episode_from+n).season)))];
@@ -86,7 +86,8 @@ export function historicalContributions(item: StatsRawItem, view: MediaView, his
     id:r.id,itemId:item.id,episodes:rangeCount(r.ranges),minutes:frozenKnownMinutes(r.ranges),durationUnknown:frozenMinutes(r.ranges)==null,rewatch:r.kind==="REWATCH",source:"HISTORY",scope:r.scope_kind,displaySeasons:displaySeasonsFor(r,view) }));
   const addLegacy=(episodes:number, year:number|null, index:number) => {
     if (episodes<=0) return;
-    const legacyDate=legacyViewingDate(item.watched_at);
+    const snapshot=item.legacy_consumption;
+    const legacyDate=legacyViewingDate(snapshot && "calendar_date" in snapshot ? snapshot.calendar_date:item.watched_at);
     // A date belonging to scoped history cannot redate the unrelated legacy remainder,
     // even within the same year. Standalone explicit parts still describe their own projection.
     const parts=item.viewing_date;
@@ -152,11 +153,14 @@ export function historicalContributions(item: StatsRawItem, view: MediaView, his
   }
   return out;
 }
+export interface RatingScope { kind:string; number:number; scopeKey?:string; }
+export interface HistoricalRatingResult { score:number|null; scopes:RatingScope[]; }
 /** Latest assertion per scope and viewing-period context; previous assertions are history, not votes. */
-export function historicalRating(item: StatsRawItem, history: HistoryAnalytics, year: number, fallback: number | null, legacyVotes: {kind:string; number:number; score:number}[] = [], month?:number, day?:number): number | null {
+export function historicalRatingResult(item: StatsRawItem, history: HistoryAnalytics, year: number, fallback: number | null, legacyVotes: {kind:string; number:number; score:number}[] = [], month?:number, day?:number): HistoricalRatingResult {
   const ratings=history.ratings.filter(r => r.work_key===workKeyOf(item));
-  if (!ratings.length) return fallback;
+  if (!ratings.length) return {score:fallback,scopes:fallback==null ? []:legacyVotes.map(v=>({kind:v.kind,number:v.number}))};
   const records=recordsFor(item,history), byId=new Map(records.map(r => [r.id,r]));
+  const voteSeasons=new Map<string,number[]>();
   const votes=new Map<string,HistoricalRating>(), lineage=new Map(ratings.map(r=>[r.id,r]));
   const depth=(r:HistoricalRating) => {const seen=new Set<string>();let n=0;while(r.previous_rating_id && !seen.has(r.id)){seen.add(r.id);const previous=lineage.get(r.previous_rating_id);if(!previous)break;n++;r=previous;}return n;};
   for (const rating of [...ratings].sort((a,b) => depth(a)-depth(b)||a.recorded_at.localeCompare(b.recorded_at)||a.id.localeCompare(b.id))) {
@@ -171,11 +175,25 @@ export function historicalRating(item: StatsRawItem, history: HistoryAnalytics, 
     const dated=completion.year!=null ? completion : records.filter(r => !r.retracted_at && r.kind==="FIRST_WATCH" && r.year!=null && r.ranges.some(range =>
       terminal && range.season_number_at_recording===terminal.season_number_at_recording && range.episode_from<=terminal.episode_to && range.episode_to>=terminal.episode_to
       && (!range.episode_ids || range.episode_ids.includes(linked.episode_ids!.at(-1)!)))).sort((a,b) => b.recorded_at.localeCompare(a.recorded_at))[0];
-    if (dated && periodMatches(dated,year,month,day)) votes.set(rating.scope_key,rating);
+    if (dated && periodMatches(dated,year,month,day)) {
+      votes.set(rating.scope_key,rating);
+      voteSeasons.set(rating.id,[...new Set(completion.ranges.map(r=>r.season_number_at_recording))]);
+    }
   }
-  const scores=[...votes.values()].flatMap(r => r.score==null ? [] : [r.score]);
-  scores.push(...legacyVotes.filter(v => !ratings.some(r => r.scope_kind===v.kind && r.scope_number_at_recording===v.number)).map(v => v.score));
-  return scores.length ? scores.reduce((a,b) => a+b,0)/scores.length : null;
+  const parts=[...votes.values()].filter(r=>r.scope_kind==="COUR" && r.score!=null);
+  // A season-wide opinion and its constituent parts cannot both vote for the same episodes.
+  const selected=[...votes.values()].filter(r=>r.scope_kind!=="SEASON" || !parts.some(p=>p.episode_ids?.some(id=>r.episode_ids?.includes(id))));
+  const legacySelected=legacyVotes.filter(v => !ratings.some(r => r.scope_kind===v.kind && r.scope_number_at_recording===v.number)
+    && !(v.kind==="SEASON" && parts.some(p=>voteSeasons.get(p.id)?.includes(v.number))));
+  const scored=selected.filter(r=>r.score!=null);
+  const scores=[...scored.map(r=>r.score!),...legacySelected.map(v=>v.score)];
+  return {score:scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length:null,
+    scopes:[...scored.map(r=>({kind:r.scope_kind,number:r.scope_number_at_recording,scopeKey:r.scope_key})),
+      ...legacySelected.map(v=>({kind:v.kind,number:v.number}))]};
+}
+/** Numeric consumers and Top Picks use the same selected votes. */
+export function historicalRating(...args:Parameters<typeof historicalRatingResult>):number|null {
+  return historicalRatingResult(...args).score;
 }
 
 export interface CalendarStats {

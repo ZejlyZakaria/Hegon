@@ -356,8 +356,8 @@ describe("the lens — an anime TMDB lumps into one season", () => {
    * this the only page speaking it, and split the vocabulary between two kinds of anime.
    */
   it("labels a cour a SEASON like the rest of the app, and hands back its own artwork", () => {
-    const s = computeStats([{ ...jjk, favorite: true }], [], 2024, cours);
-    expect(s.topFavorites[0].seasonLabel).toBe("Season 2");
+    const s = computeStats([{ ...jjk, favorite: true, cour_ratings: {2:9} }], [], 2024, cours);
+    expect(s.topFavorites[0].seasonLabel).toBe("S2");
     expect(s.topFavorites[0].seasonPoster).toBe("https://anilist/2.jpg");
   });
 
@@ -367,8 +367,8 @@ describe("the lens — an anime TMDB lumps into one season", () => {
       season_aired: [10, 10], season_years: { "1": 2023, "2": 2024 },
       season_posters: ["/s1.jpg", "/s2.jpg"], runtime: 50,
     });
-    const s = computeStats([plain], [], 2024);
-    expect(s.topFavorites[0].seasonLabel).toBe("Season 2");
+    const s = computeStats([{...plain,season_ratings:{2:9}}], [], 2024);
+    expect(s.topFavorites[0].seasonLabel).toBe("S2");
     expect(s.topFavorites[0].seasonPoster).toBe("https://image.tmdb.org/t/p/w500/s2.jpg");
   });
 });
@@ -484,4 +484,32 @@ describe("Rating distribution preserves real decimal bounds",()=>{
     expect(stats.ratingDistribution.reduce((n,d)=>n+d.count,0)).toBe(2);
     expect(stats.ratingDistribution.find(d=>d.score===max)?.count).toBe(1);
   });
+});
+
+
+describe("Annual Top Picks distinguish first viewing from rewatch activity",()=>{
+  it.each([true,false])("a legacy rewatch alone cannot qualify a film, favorite=%s",favorite=>{
+    const film=item({id:"film",type:"film",title:"Earlier film",watched:true,watched_at:"2019-08-04",
+      runtime:120,user_rating:favorite ? 7.5:9,favorite});
+    const rewatches=[{media_item_id:film.id,watched_on:"2026-04-07"}];
+    const annual=computeStats([film],rewatches,2026);
+    expect(annual.topFavorites).toEqual([]);
+    expect(annual.counts.film).toBe(1);
+    expect(annual.rewatches).toBe(1);
+    expect(annual.activity).toEqual([{label:"2026-04",count:1}]);
+    expect(computeStats([film],rewatches,2019).topFavorites[0].item.id).toBe(film.id);
+    expect(computeStats([film],rewatches,null).topFavorites[0].item.id).toBe(film.id);
+    expect(film.user_rating).toBe(favorite ? 7.5:9);
+  });
+});
+
+
+it("Hannibal Top Picks describe only the two scored seasons, excluding unrated S3 progress",()=>{
+  const row=item({title:"Hannibal",type:"serie",in_progress:true,current_season:3,current_episode:1,
+    updated_at:"2026-10-28",season_aired:[13,13,13],season_episodes:[13,13,13],season_years:{1:2026,2:2026,3:2026},
+    season_ratings:{1:8.5,2:9},season_posters:["/s1.jpg","/s2.jpg","/s3.jpg"],user_rating:9});
+  const result=computeStats([row],[],2026);
+  expect(result.topFavorites[0]).toMatchObject({rating:8.75,seasonLabel:"S1–S2",seasonPoster:null});
+  expect(result.breakdown.serie[0].episodes).toBe(27);
+  expect(result.avgRating).toBe(8.75);
 });

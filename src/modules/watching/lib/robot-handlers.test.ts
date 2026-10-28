@@ -103,6 +103,30 @@ describe("AniList actual handler", () => {
     expect(h.cache.get(1)).toEqual(oldCour);
     expect(h.providerCalls()).toBe(0);
   });
+  it.each([
+    {data:{Page:{media:[{...valid.data.Page.media[0],id:999}]}}},
+    {data:{Page:{media:[valid.data.Page.media[0],valid.data.Page.media[0]]}}},
+    {data:{Page:{media:[{...valid.data.Page.media[0],startDate:{year:null}}]}}},
+  ])("preserves accepted part boundaries on incomplete, duplicate or undated membership",async reply=>{
+    const h=anime([reply]);expect((await h.run()).status).toBe(500);
+    expect(h.writes).toHaveLength(0);expect(h.cache.get(1)).toEqual(oldCour);
+  });
+  it("collects every part beyond the AniList50-item page limit before accepting a map",async()=>{
+    const requested:number[][]=[],writes:Query[]=[];
+    const db=database(q=>{
+      if(q.op==="upsert") {writes.push(q);return {data:null,error:null};}
+      return {data:q.table==="media_items" ? [{tmdb_id:1,title:"Many parts",status:"ongoing",episodes:51}]:[],error:null};
+    });
+    const run=handler("watching-anime-cours-sync",db,(url,init)=>{
+      if(url.includes("githubusercontent")) return json(Array.from({length:51},(_,i)=>({type:"TV",themoviedb_id:{tv:1},anilist_id:101+i})));
+      const ids=JSON.parse(String(init?.body)).variables.ids as number[];requested.push(ids);
+      return json({data:{Page:{media:ids.map(id=>({...valid.data.Page.media[0],id,episodes:1,startDate:{year:1900+id},endDate:{year:1900+id}}))}}});
+    });
+    expect((await run()).body).toMatchObject({resolved:1,failed:0});
+    expect(requested.map(ids=>ids.length)).toEqual([50,1]);
+    expect(Array.isArray((writes[0].values as Row).cours)).toBe(true);
+    expect((writes[0].values as Row).cours).toHaveLength(51);
+  });
   it("writes validated provider data", async () => {
     const h = anime([valid]);
     expect(await h.run()).toMatchObject({ status: 200, body: { resolved: 1, failed: 0, ok: true } });
