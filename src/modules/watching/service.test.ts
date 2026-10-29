@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/tests/mocks/server";
-import { getPersonBundle, getWatchlistPage, getAnimeCoursMany, saveScopeRating, getHistoryAnalytics, addRewatch, getRewatches } from "./service";
+import { updateMediaItem, getPersonBundle, getWatchlistPage, getAnimeCoursMany, saveScopeRating, getHistoryAnalytics, addRewatch, getRewatches } from "./service";
 import { mapCredits } from "./hooks/useMediaCredits";
 afterEach(() => vi.unstubAllEnvs());
 describe("Watching provider service contracts", () => {
@@ -157,5 +157,26 @@ describe("Rewatch period and legacy correction commands",()=>{
       http.post("https://watching-test.supabase.co/rest/v1/rpc/personal_history_command",async({request})=>{saved=(await request.json() as {command:Record<string,unknown>}).command;return HttpResponse.json({id:"movie",personal_revision:5});}));
     await addRewatch("movie",{date:{year:2022,month:3,day:1},scope:{kind:"WHOLE_TITLE"},legacyId:"legacy"},4);
     expect(saved).toMatchObject({mode:"remove_rewatch",rewatch_id:"legacy",patch:{},retract_ids:[],records:[{kind:"REWATCH",origin:"USER_CORRECTION",ranges:[{minutes:169}]}]});
+  });
+});
+
+
+describe("transactional backwards correction transport",()=>{
+  it("passes the explicit correction intent to the existing RPC without inventing retractions",async()=>{
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL","https://watching-test.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY","test-anon-key");
+    let sent:Record<string,unknown>|undefined;
+    server.use(
+      http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>HttpResponse.json({id:"show",type:"anime",personal_revision:4,current_season:3,current_episode:12,season_aired:[12,12,12],watched:false})),
+      http.get("https://watching-test.supabase.co/rest/v1/viewing_records",()=>HttpResponse.json([],{headers:{"content-range":"*/0"}})),
+      http.post("https://watching-test.supabase.co/rest/v1/rpc/personal_history_command",async({request})=>{
+        sent=(await request.json() as {command:Record<string,unknown>}).command;
+        return HttpResponse.json({id:"show",current_season:2,current_episode:12,season_years:{},season_ratings:{}});
+      }),
+    );
+    const saved=await updateMediaItem("show",{current_season:2,current_episode:12,caught_up_at:null,expected_revision:4,history_intent:"correction"});
+    expect(sent).toMatchObject({mode:"update",history_intent:"correction",expected_revision:4,patch:{current_season:2,current_episode:12},records:[],retract_ids:[]});
+    expect((sent?.patch as Record<string,unknown>).history_intent).toBeUndefined();
+    expect(saved.season_ratings).toEqual({});
   });
 });

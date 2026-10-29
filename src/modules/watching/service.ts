@@ -379,7 +379,7 @@ export async function updateMediaItem(id: string, data: Record<string, any>): Pr
     if (before.type === "film") patch.watched_at = meta.history_date ? buildWatchedAtProjection(meta.history_date) : null;
   }
   return runPersonalCommand({ mode: "update", media_id: id, operation_key: crypto.randomUUID(),
-    expected_revision: revision, patch, ...history, reason: "User corrected viewing history" });
+    expected_revision: revision, history_intent: meta.history_intent, patch, ...history, reason: "User corrected viewing history" });
 }
 
 export async function deleteMediaItem(id: string): Promise<void> {

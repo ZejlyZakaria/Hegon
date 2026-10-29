@@ -94,13 +94,17 @@ try {
   if(snapshot!==sql(db,allHash) || objectCount!==sql(db,counts)) throw new Error('Rewatch migration changed media data or object counts');
   console.log(sql(db,readFileSync('supabase/tests/watching-rewatch.sql','utf8')).trim());
  }
- if(process.argv.includes('--accepted-consumption') || process.argv.includes('--bleach-completion')) {
+ if(process.argv.includes('--accepted-consumption') || process.argv.includes('--bleach-completion') || process.argv.includes('--backward-correction')) {
   const {runAcceptedConsumptionChecks}=await import('./test-watching-accepted-consumption.mjs');
   runAcceptedConsumptionChecks({sql,db,counts});
  }
  if(process.argv.includes('--bleach-completion')) {
   const {runCompletionDateChecks}=await import('./test-watching-completion-date.mjs');
   runCompletionDateChecks({sql,db,counts});
+ }
+ if(process.argv.includes('--backward-correction')) {
+  const {runBackwardCorrectionChecks}=await import('./test-watching-backward-correction.mjs');
+  runBackwardCorrectionChecks({sql,db,counts});
  }
  if(process.argv.includes('--estimated-dates')) {
   const {runEstimatedDateChecks}=await import('./test-watching-estimated-dates.mjs');

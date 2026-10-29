@@ -1,5 +1,6 @@
 {
   "_comment": [
+    "2026-10-29: backwards correction schema applied and verified (82/867/226/50/279/20); 20261029010000 applied and verified: only the three explicitly owner-approved residual corrections with exact before/after audit; object counts unchanged.",
     "Valeurs de RÉFÉRENCE du schéma HEGON, comparées par .github/workflows/watchdog.yml",
     "à la sortie de schema-drift.sql. Un écart = un objet créé ou supprimé HORS migration",
     "(règle R10 de hq/rules/system-design.md).",
@@ -64,13 +65,14 @@
     "2026-10-21: 20261021010000 applies 85 owner-approved INFERRED legacy date estimates; data only, object counts unchanged.",
     "2026-10-21: 20261021020000 accepts optional bounded episode runtimes in provider facts for frozen rewatches; function replacement only, object counts unchanged.",
     "2026-10-22: accepted legacy consumption snapshot +1 column; existing guard/command/receipt functions replaced, no new tables/policies/functions/indexes/crons. Local rehearsal required before owner push.",
-    "2026-10-28: preserve legacy calendar on guarded date changes (existing function replacement) and one owner-authorized Bleach completion-date correction; all schema object counts unchanged."
+    "2026-10-28: preserve legacy calendar on guarded date changes (existing function replacement) and one owner-authorized Bleach completion-date correction; all schema object counts unchanged.",
+    "2026-10-29: restored exact archived 20261028010000 Bleach Part4 migration, already recorded remotely; data only, schema counts unchanged, no remote replay or history repair."
   ],
-  "_migrations_through": "20261028000000",
-  "tables": 81,
-  "colonnes": 857,
-  "policies": 225,
-  "fonctions": 49,
-  "index": 277,
+  "_migrations_through": "20261029010000",
+  "tables": 82,
+  "colonnes": 867,
+  "policies": 226,
+  "fonctions": 50,
+  "index": 279,
   "crons": 20
 }

@@ -86,27 +86,12 @@ export function captureHistory(before: HistoryFacts | null, patch: Partial<Histo
     retract_ids.push(old.id);
     if (replacement) records.push({ ...replacement, supersedes_id: old.id, origin: "USER_CORRECTION" });
   };
-  // A current posture change/provider count is not a retraction. Only a deliberate backwards
-  // correction clips assertions, against the user's storage cursor, NEVER today's aired counts.
-  const backwards = (after.current_season ?? 1) < (before?.current_season ?? 1) ||
-    ((after.current_season ?? 1) === (before?.current_season ?? 1) && (after.current_episode ?? 0) < (before?.current_episode ?? 0));
-  if (correction && (backwards || (after.type === "film" && patch.watched === false))) {
-    for (const old of active.filter(r => r.kind !== "REWATCH")) {
-      const clipped = old.ranges.flatMap(r => {
-        const season = after.current_season ?? 1;
-        const limit = after.type === "film" ? (after.watched ? 1 : 0)
-          : r.season_number_at_recording < season ? r.episode_to
-          : r.season_number_at_recording === season ? (after.current_episode ?? 0) : 0;
-        const end = Math.min(r.episode_to, limit);
-        if (end < r.episode_from) return [];
-        const count = end - r.episode_from + 1;
-        return [{ ...r, episode_to: end, episode_ids: r.episode_ids?.slice(0,count) ?? null,
-          minutes: r.minutes === null ? null : r.minutes * count / (r.episode_to - r.episode_from + 1) }];
-      });
-      if (old.kind === "COMPLETION" && JSON.stringify(clipped) !== JSON.stringify(old.ranges)) replace(old,null);
-      else if (JSON.stringify(clipped) !== JSON.stringify(old.ranges)) replace(old, clipped.length ? { ...old, ranges: clipped } : null);
-    }
+  // Film removal has no season/cour scopes; retain its existing explicit retraction contract.
+  if (correction && after.type === "film" && patch.watched === false) {
+    for (const old of active.filter(r => r.kind !== "REWATCH")) replace(old,null);
   }
+  // Backwards scope invalidation is owned by the transactional personal command.
+  // It resolves frozen membership, opinions and coarse completions under the same lock.
   if (meta.history_date !== undefined && after.type === "film") {
     const originals = active.filter(r => r.kind !== "REWATCH" && !retract_ids.includes(r.id));
     for (const old of originals) replace(old,{ ...old, ...date, date_confidence: date.date_precision === "UNKNOWN" ? "UNKNOWN" : "CONFIRMED" });

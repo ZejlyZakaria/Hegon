@@ -15,8 +15,8 @@
  *   · behind your position → you claim it → the year is yours, and it is protected.
  *   · ahead of your position → you claim nothing → its year is a leftover, and a NEW claim re-dates it.
  *
- * Nothing is ever deleted, so a position moved back by mistake and moved forward again by a
- * CORRECTION still finds its years intact (a correction stamps nothing at all).
+ * Explicit backwards corrections now retire invalid scope years transactionally in
+ * personal_history_command. This helper only stamps forward claims; it cannot restore retired years.
  */
 export function stampSeasons(
   existing: Record<string, number> | null | undefined,

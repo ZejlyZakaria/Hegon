@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ScopeRatingReceipt } from "../components/detail/SeasonPanel";
-import type { ScopeRatingContext } from "./scope-ratings";
+import { scopeDisplayScores, type ScopeRatingContext } from "./scope-ratings";
+import { buildMediaView } from "./media-view";
 const pending: ScopeRatingContext = { kind: "SEASON", number: 2, scope_key: "tmdb-season:2002", rating_id: "old", score: 9, validity: "NEEDS_RECONFIRMATION", covered_episodes: 13, provider_snapshot_id: "snapshot", mapping_snapshot_id: null, available_episodes: 23, range_start: 1, range_end: null };
 describe("scoped rating reconfirmation UI", () => {
   it.each([1, 13])("describes frozen cour membership of %s episodes without a current endpoint", (count) => {
@@ -35,5 +36,15 @@ describe("scoped rating reconfirmation UI", () => {
     expect(html).not.toContain("Previous rating");
     expect(html).not.toContain("Rated through episode");
     expect(html).not.toContain("Confirm 9");
+  });
+});
+
+
+describe("corrected opinion display",()=>{
+  it("does not offer or display the cleared false rating after a later return to its season",()=>{
+    const cleared:ScopeRatingContext={...pending,number:3,scope_key:"tmdb-season:3003",rating_id:"clear",score:null,validity:"UNRATED"};
+    const view=buildMediaView({type:"anime",current_season:3,current_episode:1,season_episodes:[12,12,12],season_aired:[12,12,12],season_ratings:{}},null);
+    expect(scopeDisplayScores([cleared],view)).toEqual({});
+    expect(renderToStaticMarkup(ScopeRatingReceipt({context:cleared,score:0,canConfirm:false,onConfirm(){}}))).toBe("");
   });
 });

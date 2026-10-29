@@ -97,7 +97,9 @@ export function useUpdateMedia() {
       queryClient.setQueryData(WATCHING_KEYS.detail(rawInput.id), saved);
       const input = rawInput;
       const { id } = input;
-      const isStatusChange = hasAnyField(input, STATUS_FIELDS);
+      // A server correction can also retire dates and ratings absent from the cursor patch.
+      const isStatusChange = hasAnyField(input, STATUS_FIELDS) ||
+        input.history_intent === "correction" && hasAnyField(input, ["current_season", "current_episode"]);
 
       // Only the type that actually moved. A caller that doesn't say falls back to all three —
       // correct, just wasteful, so nothing breaks while surfaces adopt it.

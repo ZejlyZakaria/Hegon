@@ -99,6 +99,19 @@ describe("personal history mutation cache coherence",()=>{
       expect(cache.getQueryState(ratings)?.isInvalidated).toBe(true);
     } finally {cache.clear();}
   });
+  it("refreshes Last Watched and rating rails after a server-side cursor correction",()=>{
+    const {cache,success}=harness();
+    const recent=WATCHING_KEYS.recentlyWatched("anime"),top=WATCHING_KEYS.topRated("anime");
+    cache.setQueryData(recent,[{id:"show",watched_at:"2019-12-31"}]);
+    cache.setQueryData(top,[{id:"show",season_ratings:{"3":7.5}}]);
+    try {
+      success({id:"show",watched_at:null,season_ratings:{}},
+        {id:"show",type:"anime",current_season:2,current_episode:12,history_intent:"correction"});
+      expect(cache.getQueryState(recent)?.isInvalidated).toBe(true);
+      expect(cache.getQueryState(top)?.isInvalidated).toBe(true);
+      expect(cache.getQueryData(WATCHING_KEYS.detail("show"))).toEqual({id:"show",watched_at:null,season_ratings:{}});
+    } finally {cache.clear();}
+  });
   it("leaves history and membership fresh for a notes-only edit",()=>{
     const {cache,history,ratings,success}=harness();
     try {

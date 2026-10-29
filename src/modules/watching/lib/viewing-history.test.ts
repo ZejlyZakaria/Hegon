@@ -55,15 +55,16 @@ describe("prospective history capture", () => {
     expect(result.records).toHaveLength(1);
     expect(result.records[0]).toMatchObject({ supersedes_id: "record-1", year: 2024, month: null, day: null, date_precision: "YEAR", ranges: original.ranges });
   });
-  it("Undo retracts the new episode, never invents a replacement date", () => {
+  it("delegates episode Undo to the server without inventing a replacement date", () => {
     const original = captureHistory(before,{ current_episode: 13 },{ history_intent: "viewing", history_date: today }).records[0];
     const result = captureHistory({ ...before, current_episode: 13 },{ current_episode: 12 },{ history_intent: "correction" },[{ ...original, id: "record-1" }]);
-    expect(result).toEqual({ records: [], retract_ids: ["record-1"] });
+    expect(result).toEqual({ records: [], retract_ids: [] });
   });
-  it("partial backwards correction preserves original precision and proportional frozen duration", () => {
+  it("delegates partial backwards membership to the atomic server correction", () => {
     const original = captureHistory({ ...before, current_episode: 0 },{ current_episode: 13 },{ history_intent: "viewing", history_date: today }).records[0];
     const result = captureHistory({ ...before, current_episode: 13 },{ current_episode: 10 },{ history_intent: "correction" },[{ ...original, id: "record-1" }]);
-    expect(result.records[0]).toMatchObject({ supersedes_id: "record-1", year: 2026, month: 10, day: 12, ranges: [{ episode_from: 1, episode_to: 10, minutes: 450 }] });
+    // Precision/duration/retraction regressions execute against real PostgreSQL in the backward correction rehearsal.
+    expect(result).toEqual({records:[],retract_ids:[]});
   });
   it("film year correction retains its original assertion and uses no fabricated day", () => {
     const original = captureHistory(null,{ type: "film", watched: true, runtime: 90 },{ history_intent: "claim" }).records[0];
