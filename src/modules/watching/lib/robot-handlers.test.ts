@@ -1,3 +1,4 @@
+import { needsProviderBootstrap } from "../../../../supabase/functions/_shared/provider-refresh";
 import { compactSeason } from "../../../../supabase/functions/_shared/provider-evidence";
 import { providerRefreshSucceeded } from "../../../../supabase/functions/_shared/provider-progress";
 import { readFileSync } from "node:fs";
@@ -49,6 +50,7 @@ function handler(name: string, db: ReturnType<typeof database>, fetcher: (url: s
     "../_shared/credit-roles.ts": { creditRole },
     "../_shared/provider-progress.ts": { providerRefreshSucceeded },
     "../_shared/provider-evidence.ts": { compactSeason },
+    "../_shared/provider-refresh.ts": { needsProviderBootstrap },
     // Unreleased-title refresh is a separate job, outside these person-cache regressions.
     "./unreleased.ts": { refreshUnreleased: async () => ({ scanned: 0, updated: 0, failed: 0 }) },
   };
@@ -71,7 +73,7 @@ function anime(responses: unknown[], mapped = true, mappingFailure?: "http" | "s
   let providerCalls = 0;
   const db = database((q) => {
     if (q.op === "upsert") { writes.push(q); const row = q.values as typeof oldCour; cache.set(row.tmdb_id, row); return { data: null, error: null }; }
-    const rows = q.table === "media_items" ? responses.map((_, i) => ({ tmdb_id: i + 1, title: `Anime ${i}`, status: "ongoing", episodes: 10 })) : [...cache.values()];
+    const rows = q.table === "provider_heads" ? [] : q.table === "media_items" ? responses.map((_, i) => ({ tmdb_id: i + 1, title: `Anime ${i}`, status: "ongoing", episodes: 10 })) : [...cache.values()];
     return { data: rows.slice(q.from, q.to + 1), error: null };
   }, (params) => {
     const tmdbId = Number(params.command.work_key.split(":")[1]);
