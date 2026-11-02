@@ -15,6 +15,7 @@ export type ListType =
   | "library";
 
 export interface WatchingMedia {
+  legacy_consumption?: import("./lib/legacy-consumption").LegacyConsumption | null;
   org_id: string;
   id: string;
   type: MediaType;

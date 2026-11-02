@@ -19,9 +19,18 @@ function terminalEvidence(after:HistoryFacts,active:StoredViewingAssertion[],kin
 }
 
 /** One date projection at the existing atomic command boundary; no new status writer. */
-export function completionDatePatch(before:HistoryFacts,patch:Record<string,unknown>,meta:HistoryMetadata,active:StoredViewingAssertion[]) {
+export function completionDatePatch(before:HistoryFacts|null,patch:Record<string,unknown>,meta:HistoryMetadata,active:StoredViewingAssertion[]) {
   const after={...before,...patch} as HistoryFacts;
-  if(after.type==="film" || !after.watched) return {patch,meta};
+  if(after.type==="film") {
+    // Marking a film watched means today by default. Explicit past/unknown dates always win.
+    // Historical corrections and edits of an already watched film never acquire today's date.
+    if(after.watched && !before?.watched && meta.history_date===undefined && meta.history_intent!=="correction") {
+      const now=new Date(),date={year:now.getFullYear(),month:now.getMonth()+1,day:now.getDate()};
+      return {patch:{...patch,watched_at:buildWatchedAtProjection(date)},meta:{...meta,history_date:date}};
+    }
+    return {patch,meta};
+  }
+  if(!after.watched || !before) return {patch,meta};
   const finishing=patch.watched===true && !before.watched;
   let date:WatchDateParts|null|undefined;
   if(finishing) {

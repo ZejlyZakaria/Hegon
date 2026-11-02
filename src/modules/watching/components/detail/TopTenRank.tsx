@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { Trophy } from "lucide-react";
+import { ListOrdered } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/shared/components/ui/button";
 import { Panel } from "@/shared/components/ui/panel";
 import { cn } from "@/shared/utils/utils";
 import { toast } from "@/shared/utils/toast";
@@ -14,19 +16,7 @@ import type { WatchingMedia } from "@/modules/watching/types";
 
 const SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-/**
- * RANKING, ON THE PAGE THAT OWNS THE TITLE.
- *
- * Until now the only way to rank something was the ADD modal — you re-added a title you already
- * owned, because the modal was the only surface with a rank picker. `AddMediaModal` even carries a
- * comment saying so, and calls itself an exception waiting to be retired. This is that retirement.
- *
- * The picker shows WHO HOLDS EACH PLACE, not just which numbers are free (that is all the modal
- * could tell you, so a full Top 10 was simply unrankable). Picking an occupied place SWAPS the two
- * titles. A cascade — "everything below shifts down" — reads as the more natural ranking gesture,
- * and it is: it also silently drops whatever was tenth off the list. A swap moves exactly the two
- * titles you can see, and taking the same action twice puts them back.
- */
+/** Personal rank is independent of favorite. The editor opens only when requested. */
 export function TopTenRank({ media }: { media: WatchingMedia }) {
   const { data: ranked = [] } = useMediaItems({
     userId: media.user_id,
@@ -35,6 +25,7 @@ export function TopTenRank({ media }: { media: WatchingMedia }) {
   });
   const updateMedia = useUpdateMedia();
 
+  const [editing,setEditing] = useState(false);
   const current = media.priority ?? null;
   const holderOf = (slot: number) => ranked.find((r) => r.priority === slot && r.id !== media.id);
 
@@ -45,22 +36,19 @@ export function TopTenRank({ media }: { media: WatchingMedia }) {
       // Naming the type scopes the cache invalidation to the rail that actually moved.
       type: media.type,
       priority,
-      // A rank IS a claim of affection — the Top 10 rail reads `favorite: true` alongside the
-      // number, so unranking has to let go of both or the title lingers in a rail it left.
-      favorite: priority !== null,
     });
 
-  const pick = async (slot: number) => {
+  const pick = async (slot: number | null) => {
     if (updateMedia.isPending) return;
-    const holder = holderOf(slot);
+    const holder = slot == null ? null : holderOf(slot);
     try {
-      if (slot === current) {
+      if (slot === null) {
         await write(media.id, null);
         toast.success("Removed from your Top 10.");
         return;
       }
-      // The swap is two writes, and the OTHER title moves first: if the second write fails, the
-      // worst case is a title left unranked — never two titles claiming the same place.
+      // Existing revision-guarded swap: update the holder, then this title. A failed
+      // second request is reported; no success is announced for a partial result.
       if (holder) await write(holder.id, current);
       await write(media.id, slot);
       toast.success(holder ? `Swapped with ${holder.title}.` : `Ranked #${slot} in your Top 10.`);
@@ -72,27 +60,22 @@ export function TopTenRank({ media }: { media: WatchingMedia }) {
 
   return (
     <Panel
-      title={
-        <span className="flex items-center gap-1.5">
-          {/* Teal, not the amber the add modal uses: colour names the SOURCE in this module, gold
-              is the world's and teal is yours — and a Top 10 is entirely yours. Same teal as the
-              rank on the rail's cards and in the hero. */}
-          <Trophy size={12} style={{ color: MINE }} />
-          Top 10
-        </span>
-      }
-      subtitle={current ? `This is your #${current}` : "Not ranked yet"}
+      title="Top 10"
+      actions={<Button variant="quiet" size="sm" onClick={()=>setEditing(v=>!v)} aria-expanded={editing}>{editing ? "Done" : current ? "Change" : "Rank title"}</Button>}
     >
-      <div className="flex gap-1.5">
+      <p className="text-sm text-text-secondary">{current ? <>Your rank <span className="ml-1 font-semibold tabular-nums text-accent-watching-vivid">#{current}</span></> : <span className="flex items-center gap-3"><ListOrdered size={18} className="shrink-0 text-text-tertiary"/><span className="text-xs leading-relaxed text-text-secondary">Keep your standout titles here.</span></span>}</p>
+      {editing && <>
+      <p className="mb-3 mt-3 text-xs leading-relaxed text-text-tertiary">Choose a place. An occupied place swaps the two titles.</p>
+      <div className="grid grid-cols-5 gap-2">
         {SLOTS.map((slot) => {
-          const holder = holderOf(slot);
+          const holder = slot == null ? null : holderOf(slot);
           const isMine = slot === current;
           return (
             <button
               key={slot}
               type="button"
               onClick={() => pick(slot)}
-              disabled={updateMedia.isPending}
+              disabled={updateMedia.isPending || isMine}
               aria-label={
                 isMine
                   ? `Remove from your Top 10 (currently #${slot})`
@@ -135,6 +118,8 @@ export function TopTenRank({ media }: { media: WatchingMedia }) {
           );
         })}
       </div>
+      {current != null && <Button variant="quiet" size="sm" className="mt-3" disabled={updateMedia.isPending} onClick={()=>pick(null)}>Remove from Top 10</Button>}
+      </>}
     </Panel>
   );
 }

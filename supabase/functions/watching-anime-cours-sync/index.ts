@@ -1,4 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
+import { needsProviderBootstrap } from "../_shared/provider-refresh.ts";
 import { providerRefreshSucceeded } from "../_shared/provider-progress.ts";
 import { fetchAllRows } from "../_shared/pagination.ts";
 import { batchOutcome } from "../_shared/batch-outcome.ts";
@@ -139,6 +140,10 @@ Deno.serve(async () => {
       if (!shows.has(r.tmdb_id)) shows.set(r.tmdb_id, { title: r.title, status: r.status, episodes: r.episodes });
     }
 
+    const heads=await fetchAllRows<{work_key:string;accepted_snapshot_id:string|null;checked_at:string|null}>((from,to)=>supabase
+      .from("provider_heads").select("work_key,accepted_snapshot_id,checked_at").eq("provider","anilist").order("work_key").range(from,to));
+    const byWork=new Map(heads.map(head=>[head.work_key,head]));
+    const now=Date.now();
     const existing = await fetchAllRows<any>((from, to) => supabase
       .from("anime_cours").select("tmdb_id,resolved_at").order("tmdb_id").range(from, to));
     const resolvedAt = new Map<number, number>();
@@ -149,12 +154,13 @@ Deno.serve(async () => {
     // Stalest first; never resolved = infinitely stale, so a newly added anime is picked immediately.
     const batch = [...shows.entries()]
       .map(([tmdbId, info]) => {
-        const age = Date.now() - (resolvedAt.get(tmdbId) ?? 0);
+        const age = now - (resolvedAt.get(tmdbId) ?? 0);
+        const bootstrap=needsProviderBootstrap(byWork.get(`tv:${tmdbId}`),now,ONGOING_STALE_MS);
         const maxAge = isFinished(info.status) ? FINISHED_STALE_MS : ONGOING_STALE_MS;
-        return { tmdbId, info, age, due: age >= maxAge };
+        return { tmdbId, info, age, bootstrap, due: bootstrap || !!byWork.get(`tv:${tmdbId}`)?.accepted_snapshot_id && age >= maxAge };
       })
       .filter((c) => c.due)
-      .sort((a, b) => b.age - a.age)
+      .sort((a, b) => Number(b.bootstrap)-Number(a.bootstrap) || b.age - a.age)
       .slice(0, BATCH);
 
     if (batch.length === 0) {

@@ -225,6 +225,13 @@ export default function MediaDetailPage() {
     }, 500);
   };
 
+  const correctPosition = (displaySeason:number,displayEpisode:number) => {
+    if(progressTimerRef.current) clearTimeout(progressTimerRef.current);
+    const to=view ? view.toStorage(displaySeason,displayEpisode):{season:displaySeason,episode:displayEpisode};
+    setCurrentSeason(to.season);setCurrentEpisode(to.episode);
+    void actions.setPosition(to.season,to.episode,"correction");
+  };
+
   /**
    * "I watched through season 3." — the edit the app never had, from the Watch History strip.
    *
@@ -290,7 +297,7 @@ export default function MediaDetailPage() {
   const handleRating = async (value:number|null, season?:number, part?:SeasonPart) => {
     if(!view) return;
     const kind=part || view.overlaid ? "COUR":"SEASON";
-    const previous=scopedRatings.data?.find(r=>r.kind===kind && r.number===(part?.scopeNumber ?? season));
+    const previous=scopedRatings.data?.find(r=>r.kind===kind && (part ? r.scope_key===`anilist-cour:${part.id}`:r.number===season));
     if(!previous || !(part ? partMatchesView(previous,view,part):scopeMatchesView(previous,view,season!))) {
       void scopedRatings.refresh();toast.error("Season details changed. Review them before rating.");return;
     }
@@ -407,6 +414,7 @@ export default function MediaDetailPage() {
       currentEpisode={shown.episode}
       view={view}
       onUpdateProgress={updateProgress}
+      onCorrectPosition={correctPosition}
       favorite={favorite}
       onFavoriteToggle={toggleFavorite}
       onMarkWatched={() => actions.markWatched().then(follow)}
@@ -507,14 +515,7 @@ export default function MediaDetailPage() {
               {statusCard}
             </div>
 
-            {/* Your numbers first, the world's numbers (Details) after — except the world's VERDICT:
-                seven Oscars outrank a budget line, so Accolades leads the rail right under the card. */}
-            <Accolades media={media} />
             <QuickStats media={media} view={view} />
-
-            <AnimeThemes media={media} />
-
-            <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
 
             {/* Ranking sits beside the lists because it IS one — the one list that is ordered.
                 Shown for anything you've spent real watch time on: RANKING IS NOT WATCHING, so a show
@@ -527,9 +528,13 @@ export default function MediaDetailPage() {
 
             <InList mediaItemId={media.id} userId={media.user_id} />
 
+            <Accolades media={media} />
+            <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
+            <AnimeThemes media={media} />
+
             {/* The link out to another module closes the rail — it's the least "about this
                 title" thing here, so it earns the last slot, not a middle one. */}
-            <ContributingToGoals media={media} />
+            <ContributingToGoals media={media} view={view} />
 
           </div>
         </div>

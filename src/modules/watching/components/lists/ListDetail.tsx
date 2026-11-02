@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { tmdbImageFor } from "../../lib/tmdb-image";
+import { tmdbImageFor, tmdbImageSrcSet } from "../../lib/tmdb-image";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Bookmark, Check, Eye, EyeOff, FileText, Film, LayoutGrid, List,
@@ -509,20 +509,23 @@ function TableRow({
 
         {/* Poster — the xs rung: `rounded-thumb` + a hairline ring like every other xs poster
             (this is a table row, not a MediaRow, so only the frame is shared). */}
-        <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 cursor-pointer overflow-hidden rounded-thumb ring-1 ring-border-subtle" onClick={onOpen}>
+        <button type="button" aria-label={`Open ${displayTitle(item.media)}`} className="relative aspect-2/3 w-(--poster-xs) shrink-0 cursor-pointer overflow-hidden rounded-thumb ring-1 ring-border-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-watching-vivid" onClick={onOpen}>
           {item.media.poster_url
-            ? <Image src={tmdbImageFor(item.media.poster_url, 28) || item.media.poster_url} alt="" fill loading="lazy" className="object-cover" sizes="28px" />
+            ? <picture>
+                {tmdbImageSrcSet(item.media.poster_url, 40) && <source srcSet={tmdbImageSrcSet(item.media.poster_url, 40)} />}
+                <Image src={tmdbImageFor(item.media.poster_url, 40) || item.media.poster_url} alt="" fill loading="lazy" className="object-cover" sizes="40px" />
+              </picture>
             : <div className="h-full w-full bg-zinc-800" />
           }
-        </div>
+        </button>
 
         {/* Title */}
-        <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpen}>
-          <p className="truncate text-sm font-medium leading-tight text-text-primary">{displayTitle(item.media)}</p>
+        <button type="button" className="min-w-0 flex-1 cursor-pointer rounded-control text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-watching-vivid" onClick={onOpen}>
+          <span className="block truncate text-sm font-medium leading-tight text-text-primary">{displayTitle(item.media)}</span>
           {item.note && !noteOpen && (
-            <p className="mt-0.5 truncate text-micro italic text-text-tertiary">&quot;{item.note}&quot;</p>
+            <span className="mt-0.5 block truncate text-micro italic text-text-tertiary">&quot;{item.note}&quot;</span>
           )}
-        </div>
+        </button>
 
         {/* Year */}
         <div className="hidden w-12 shrink-0 text-sm tabular-nums text-text-tertiary sm:block">

@@ -22,9 +22,9 @@ import { tmdbPathFromUrl } from "../service";
  * Storage URL for a poster the owner uploaded himself, and those must pass through untouched.
  */
 
-/** TMDB's published widths. Anything else 404s, so the type keeps callers honest. */
+/** CDN variants used by Watching; native detail still depends on the original asset. */
 export type TmdbSize =
-  | "w92" | "w154" | "w185" | "w342" | "w500" | "w780" | "w1280" | "original";
+  | "w92" | "w154" | "w185" | "w300" | "w342" | "w500" | "w780" | "w1280" | "original";
 
 /**
  * The variant to request for an image that will be displayed `cssPx` wide.
@@ -34,11 +34,9 @@ export type TmdbSize =
  * which is simply blurry). Then rounded UP to a real TMDB width, never down: too small is a visible
  * defect, too big is only bytes.
  *
- * ⚠️ `dpr` DEFAULTS TO 2, AND MOST CALLERS MUST LEAVE IT THERE. A rail carries dozens of images, so
- * ×2 is the ceiling before the download weight becomes the "stampede" the size ladder exists to
- * prevent. Pass `dpr = 3` ONLY on a LOW-COUNT surface — a hero poster, a fiche's one profile — where
- * a single sharper image costs nothing at the page level but visibly helps on a ×3 phone (a flagship
- * screen the ×2 assumption under-serves: a 160px poster wants ~480px there, and ×2 only asks 320).
+ * Deterministic fallbacks default to DPR2. Responsive consumers use tmdbImageSrcSet so the
+ * browser chooses one density candidate. Long poster rails cap their source at500px; low-count
+ * heroes can still request DPR3 explicitly. Neither path can add detail absent from the original.
  */
 export function tmdbSizeFor(cssPx: number, dpr = 2): TmdbSize {
   const needed = cssPx * dpr;
@@ -67,8 +65,11 @@ export function tmdbImageFor(url: string | null | undefined, cssPx: number, dpr 
   return tmdbImage(url, tmdbSizeFor(cssPx, dpr));
 }
 
-/** Native density selection for compact posters; custom/AniList assets pass through. */
-export function tmdbPosterSrcSet(url:string|null|undefined,cssPx:number):string|undefined {
+/** Native source selection without the Next optimizer. Omit cssPx for fluid frames with sizes.
+ * A caller can cap a long rail source width; custom/AniList assets stay untouched. */
+export function tmdbImageSrcSet(url:string|null|undefined,cssPx?:number,maxWidth=1280):string|undefined {
   if(!url || !tmdbPathFromUrl(url)) return undefined;
-  return [1,2,3].map(dpr=>`${tmdbImageFor(url,cssPx,dpr)} ${dpr}x`).join(", ");
+  if(cssPx!=null) return [1,2,3].map(dpr=>tmdbImage(url,tmdbSizeFor(Math.min(cssPx*dpr,maxWidth),1))+" "+dpr+"x").join(", ");
+  return ([92,154,185,342,500,780,1280] as const).filter(width=>width<=maxWidth)
+    .map(width=>tmdbImage(url,("w"+width) as TmdbSize)+" "+width+"w").join(", ");
 }

@@ -513,3 +513,40 @@ it("Hannibal Top Picks describe only the two scored seasons, excluding unrated S
   expect(result.breakdown.serie[0].episodes).toBe(27);
   expect(result.avgRating).toBe(8.75);
 });
+
+
+describe("Whole-work Top Picks presentation",()=>{
+  const whole=()=>item({title:"Kuroko",type:"anime",watched:true,status:"ended",current_season:3,current_episode:25,
+    season_aired:[25,25,25],season_episodes:[25,25,25],season_years:{1:2018,2:2018,3:2018},
+    season_ratings:{1:8.5,2:8.5,3:8.5},user_rating:8.5,watched_at:"2018-04-21",runtime:24});
+  it("omits redundant season identifiers for all seasons viewed and rated in one year",()=>{
+    const row=whole(),s=computeStats([row],[],2018);
+    expect(s.topFavorites[0]).toMatchObject({rating:8.5,seasonLabel:null,seasonPoster:null});
+    expect(s.hours.total).toBe(30);expect(s.episodes).toBe(75);
+    expect(row.season_ratings).toEqual({1:8.5,2:8.5,3:8.5});
+  });
+  it("keeps the scored scope if a watched season is not rated",()=>{
+    const row={...whole(),season_ratings:{1:8.5,2:9}};
+    expect(computeStats([row],[],2018).topFavorites[0]).toMatchObject({rating:8.75,seasonLabel:"S1–S2"});
+  });
+  it("keeps scopes for multi-year first viewing, including a single selected season",()=>{
+    const row={...whole(),season_years:{1:2018,2:2018,3:2019}};
+    expect(computeStats([row],[],2018).topFavorites[0].seasonLabel).toBe("S1–S2");
+    expect(computeStats([row],[],2019).topFavorites[0].seasonLabel).toBe("S3");
+  });
+  it("does not turn a partial or unknown catalogue into an entire-work claim",()=>{
+    const row={...whole(),season_episodes:[25,25,25,12],season_aired:[25,25,25,0]};
+    expect(computeStats([row],[],2018).topFavorites[0].seasonLabel).toBe("S1–S3");
+  });
+});
+
+
+it("classifies Knight as completed without changing its recorded consumption", () => {
+  const knight = item({ title: "A Knight of the Seven Kingdoms", status: "ended",
+    in_progress: true, watched: false, current_season: 1, current_episode: 6,
+    season_aired: [6], season_episodes: [6], watched_at: "2026-04-06", runtime: 34 });
+  const stats = computeStats([knight], [], null);
+  expect(stats.statusCounts.serie).toMatchObject({ watched: 1, inProgress: 0, caughtUp: 0 });
+  expect(stats.hours.total).toBe(204 / 60);
+  expect(knight).toMatchObject({ in_progress: true, watched: false, watched_at: "2026-04-06" });
+});

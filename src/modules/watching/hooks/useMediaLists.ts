@@ -54,8 +54,10 @@ export function useAddToList(mediaItemId: string, userId: string) {
       if (isDemo) throw new DemoReadOnlyError();
       return addMediaToList(listId, mediaItemId, userId);
     },
-    onSuccess: () => {
+    onSuccess: (_data, listId) => {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.listsForMedia(mediaItemId) });
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.listItems(listId) });
+      queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "lists"] });
     },
     onError: handledDemoError,
   });
@@ -69,8 +71,10 @@ export function useRemoveFromList(mediaItemId: string) {
       if (isDemo) throw new DemoReadOnlyError();
       return removeMediaFromList(listId, mediaItemId);
     },
-    onSuccess: () => {
+    onSuccess: (_data, listId) => {
       queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.listsForMedia(mediaItemId) });
+      queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.listItems(listId) });
+      queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "lists"] });
     },
     onError: handledDemoError,
   });

@@ -1,165 +1,33 @@
 "use client";
 
+import { useMemo } from "react";
+import { Clock, Layers, RotateCcw } from "lucide-react";
 import { Panel } from "@/shared/components/ui/panel";
 import { useRewatches } from "../../hooks/useRewatches";
-import { useRatingStanding } from "../../hooks/useRatingPercentile";
-import { episodeCountsForTime, hasEstimatedEpisodeCounts } from "../../lib/episode-counts";
-import { lastWatched, reachedEntries, seriesState, watchedCount } from "../../lib/series-state";
+import { useMediaHistory } from "../../hooks/useMediaHistory";
+import { buildViewingSummary, timelineDuration, viewingMetrics } from "../../lib/viewing-timeline";
 import type { MediaView } from "../../lib/media-view";
 import type { WatchingMedia } from "../../types";
 
-const TYPE_WORD: Record<string, string> = { film: "films", serie: "series", anime: "animes" };
-
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-border-subtle py-2.5 last:border-0">
-      <span className="shrink-0 text-xs text-text-tertiary">{label}</span>
-      <span className="text-right text-xs font-medium tabular-nums text-text-secondary">{value}</span>
-    </div>
-  );
-}
-
-function hours(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`;
-  const h = Math.round(minutes / 60);
-  return `~${h}h`;
-}
-
-/**
- * Your numbers on a SERIES — the counterpart of Details, which holds the world's numbers.
- * Series only, on purpose: on a film every row here would be a duplicate (the runtime is in
- * the hero, the year is in the StatusCard, and the rank is already in My Take). A panel that
- * only repeats what's on screen is noise wearing the costume of information.
- * Everything is derived from what you actually logged; a row with no answer doesn't appear.
- */
+/** Personal consumption only, from the same frozen ledger as viewing details. */
 export function QuickStats({ media, view }: { media: WatchingMedia; view?: MediaView | null }) {
-  const { data: rewatches = [] } = useRewatches(media.id);
-  /**
-   * THE YEARS AND SCORES LIVE IN THE SPACE THE TITLE IS DISPLAYED IN.
-   *
-   * This panel read `media.season_years` / `media.season_ratings` directly — both EMPTY for an
-   * overlaid anime, whose stamps live in `cour_years`/`cour_ratings`. So Blue Lock, dated 2023 and
-   * 2024 by hand, showed no "Started", no mean score and a wrong "Last watched".
-   *
-   * And swapping the map alone is not enough: `reachedEntries` filters with `hasReachedSeason`,
-   * which compares a map KEY against the current position. Cour keys against a TMDB position is a
-   * category error — so the facts have to come from the lens too, not just the map.
-   */
-  const facts = { ...(view ? view.seriesFacts : media), watched: media.watched };
-  // The raw branches are the no-lens fallback: for a plain series the columns ARE the display
-  // space, and the two are the same object. Only an overlaid anime needs the translation.
-  // eslint-disable-next-line no-restricted-syntax -- explicit `view ? lens : raw` fallback, raw side only for titles with no overlay.
-  const yearMap = view ? view.yearMap : media.season_years;
-  // eslint-disable-next-line no-restricted-syntax -- same fallback, ratings side.
-  const ratingMap = view ? view.ratingMap : media.season_ratings;
-  const standing = useRatingStanding(media.user_id ?? null, media.type, media.user_rating ?? 0);
-
-  const isSeries = media.type !== "film";
-  // TWO numbers, TWO jobs.
-  //   airedEps → what you could have watched. It's the ceiling on `watchedEps` and on watch time:
-  //              you cannot have spent hours on episodes that don't exist.
-  //   totalEps → what the show IS. It's the DENOMINATOR, and it has to stay honest: "22 / 22"
-  //              reads as finished on a series that's a third of the way through its season.
-  //              "22 / 26" says the true thing — you're up to date, and more is coming.
-  //
-  // Both come from series-state.ts. This component used to carry its own copy of the counting —
-  // a third implementation of it, next to the canonical one and the Stats page's (which counted
-  // the announced). Three copies of "how many episodes have I watched" is how one screen ends up
-  // disagreeing with the next about the same title.
-  const timeCounts = episodeCountsForTime(media);
-  const airedEps = timeCounts.reduce((sum, n) => sum + n, 0);
-  const estimated = hasEstimatedEpisodeCounts(media);
-  // A TOTAL, and totals are invariant across the two spaces: cutting one flat season of 59 into
-  // three cours does not change how many episodes exist. This is the same reason components/stats
-  // is exempt from the guard entirely — it counts, it does not locate.
-  // eslint-disable-next-line no-restricted-syntax -- summing episodes, not reading a position; the sum is identical in either space.
-  const announcedList = media.season_episodes ?? [];
-  const totalEps = announcedList.reduce((a, b) => a + b, 0) || media.episodes || airedEps;
-
-  const engaged = media.in_progress || media.paused || media.dropped;
-  const watchedEps = !isSeries ? 0 : media.watched ? airedEps : engaged ? watchedCount({ ...media, season_aired: timeCounts }) : 0;
-
-  // Runtime on a series is PER EPISODE — multiplying it by the whole show would be nonsense.
-  // A rewatch replays what EXISTS, not what's been announced: you can't rewatch episode 8 of a
-  // season that has four.
-  const runtime = media.runtime ?? 0;
-  const firstPass = isSeries ? watchedEps * runtime : media.watched ? runtime : 0;
-  const perRewatch = isSeries ? airedEps * runtime : runtime;
-  const minutes = firstPass + rewatches.length * perRewatch;
-
-  // `season_years` and `season_ratings` only ever GROW. Step your position back — a correction,
-  // an un-drop — and the stamps for seasons you no longer claim just sit there. One-Punch Man
-  // kept reporting 2019 (season 2) after you moved back to season 1. The data isn't wrong and
-  // isn't deleted; it simply must not be READ for a season you haven't reached.
-  const seasonScores = reachedEntries(facts, ratingMap);
-  const meanSeason = seasonScores.length
-    ? seasonScores.reduce((a, b) => a + b, 0) / seasonScores.length
-    : null;
-
-  const years = reachedEntries(facts, yearMap);
-  const watchedYear = media.watched_at ? new Date(media.watched_at).getFullYear() : null;
-  const firstYear = years.length ? Math.min(...years) : watchedYear;
-
-  // "FINISHED" BELONGS TO EXACTLY ONE STATE — completed. On House of the Dragon this row read
-  // "Finished 2024" — the year you finished SEASON 2, on a series that is still running. The
-  // number was right; the word was a lie.
-  const finished = seriesState({ ...media }) === "completed" || (media.type === "film" && media.watched);
-
-  // "Last watched" has TWO possible sources, and which one is true depends on where you stand —
-  // see lastWatched() in series-state.ts. In short: the year of a season you finished always
-  // beats a timestamp (a timestamp only records when you CLICKED, and correcting a position with
-  // the stepper is a forward move, so it dates itself "today"). The timestamp only speaks when
-  // you're mid-season, where no year exists yet.
-  const last = lastWatched({ ...facts, last_watched_at: media.last_watched_at, season_years: yearMap });
-  const lastValue =
-    last?.kind === "date"
-      ? new Date(last.value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-      : last?.kind === "year"
-        ? String(last.value)
-        : null;
-
-  // "Started" is only a fact when there's a SPAN. A show you watched inside a single year reduces
-  // it to a lone "Started 2019" — which repeats the year the StatusCard already gives you, and
-  // implies an ongoing stretch that ended the same year. One number, one row, no echo.
-  const spansYears = !!lastValue && lastValue !== String(firstYear);
-
-  const rows = [
-    totalEps > 0 && (watchedEps > 0 || media.watched)
-      ? { label: estimated ? "Estimated episodes watched" : "Episodes watched", value: `${watchedEps} / ${totalEps}` }
-      : null,
-    minutes > 0 ? { label: estimated ? "Estimated watch time" : "Watch time", value: hours(minutes) } : null,
-    rewatches.length > 0 ? { label: "Rewatches", value: rewatches.length } : null,
-    firstYear && spansYears ? { label: "Started", value: firstYear } : null,
-    spansYears
-      ? { label: finished ? "Finished" : "Last watched", value: lastValue }
-      : null,
-    meanSeason != null ? { label: "Mean season score", value: `${meanSeason.toFixed(1)} / 10` } : null,
-    standing
-      ? {
-          label: "Your rank",
-          value: (
-            <>
-              #{standing.rank}{" "}
-              <span className="font-normal text-text-tertiary">
-                of your {TYPE_WORD[media.type] ?? "titles"}
-              </span>
-            </>
-          ),
-        }
-      : null,
-  ].filter(Boolean) as { label: string; value: React.ReactNode }[];
-
-  // Films: every row would echo the hero, the StatusCard or My Take. Nothing logged yet:
-  // an empty stats card is worse than no stats card. Either way — no panel.
-  if (!isSeries || rows.length === 0) return null;
-
-  return (
-    <Panel title="Quick Stats" bleed>
-      <div className="px-4 sm:px-5">
-        {rows.map((r) => (
-          <Row key={r.label} label={r.label} value={r.value} />
-        ))}
-      </div>
-    </Panel>
-  );
+  const engaged = !!(media.watched || media.in_progress || media.paused || media.dropped);
+  const history = useMediaHistory(media.id, engaged);
+  const rewatches = useRewatches(media.id);
+  const summary = useMemo(() => buildViewingSummary(media, history.data?.records ?? [], rewatches.data ?? [], view),
+    [media, history.data, rewatches.data, view]);
+  const metrics = viewingMetrics(summary);
+  if (media.type === "film" || !engaged) return null;
+  if (history.isPending || rewatches.isPending) return <Panel title="Quick Stats"><p role="status" className="text-xs text-text-tertiary">Loading viewing totals...</p></Panel>;
+  if (history.error || rewatches.error) return <Panel title="Quick Stats"><p role="alert" className="text-xs text-text-secondary">Viewing totals are unavailable.</p></Panel>;
+  if (!summary.first && !summary.rewatches.length) return null;
+  return <Panel title="Quick Stats">
+    <dl className="space-y-4">
+      <div className="flex items-center justify-between gap-4"><dt className="flex items-center gap-2 text-xs text-text-secondary"><Layers size={14} className="text-text-tertiary"/>First-view episodes</dt><dd className="text-sm font-medium tabular-nums text-text-primary">{metrics.episodes ?? "Not confirmed"}</dd></div>
+      <div className="flex items-center justify-between gap-4"><dt className="flex items-center gap-2 text-xs text-text-secondary"><Clock size={14} className="text-text-tertiary"/>{metrics.incomplete ? "Known watch time" : "Watch time"}</dt><dd className="text-sm font-medium tabular-nums text-text-primary">{metrics.minutes == null ? "Not confirmed" : timelineDuration(metrics.minutes)}</dd></div>
+      {summary.rewatches.length > 0 && <div className="flex items-center justify-between gap-4"><dt className="flex items-center gap-2 text-xs text-text-secondary"><RotateCcw size={14} className="text-text-tertiary"/>Rewatches</dt><dd className="text-sm font-medium tabular-nums text-text-primary">{summary.rewatches.length}</dd></div>}
+    </dl>
+    {metrics.incomplete && <p className="mt-4 text-xs leading-relaxed text-text-tertiary">Some viewing durations are not confirmed.</p>}
+    {!metrics.incomplete && summary.rewatches.length > 0 && <p className="mt-4 text-xs text-text-tertiary">Watch time includes recorded rewatches.</p>}
+  </Panel>;
 }

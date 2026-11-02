@@ -95,7 +95,7 @@ export function captureHistory(before: HistoryFacts | null, patch: Partial<Histo
   if (meta.history_date !== undefined && after.type === "film") {
     const originals = active.filter(r => r.kind !== "REWATCH" && !retract_ids.includes(r.id));
     for (const old of originals) replace(old,{ ...old, ...date, date_confidence: date.date_precision === "UNKNOWN" ? "UNKNOWN" : "CONFIRMED" });
-    if (!originals.length && after.watched) records.push(assertion("FIRST_WATCH",date,current,true));
+    if (!originals.length && after.watched) records.push({...assertion("FIRST_WATCH",date,current,correction),scope_kind:"WHOLE_TITLE",scope_key:"movie"});
   } else {
     const added = current.flatMap(r => {
       const oldEnd = previous.find(p => p.season_key === r.season_key)?.episode_to ?? 0;

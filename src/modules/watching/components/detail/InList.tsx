@@ -8,9 +8,10 @@ import { Check, List, Loader2, Plus, X } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Button } from "@/shared/components/ui/button";
+import { useAlignedRail } from "../../hooks/useAlignedRail";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
+import { Panel } from "@/shared/components/ui/panel";
 import { Hint } from "@/shared/components/ui/tooltip";
-import { SectionHeader } from "@/shared/components/ui/section-header";
 import {
   useListsForMedia,
   useListsWithThumbnails,
@@ -28,68 +29,20 @@ interface Props {
   userId: string;
 }
 
-// A list this title belongs to, shown as a fanned poster stack: the first poster fully
-// visible, each next one tucked ~30% behind (70% shown) with its own shadow casting onto
-// the one below — the "deck of cards" depth. Click → open the list; hover → remove.
-function ListCard({ list, onOpen, onRemove }: {
-  list: MediaListWithThumbnails;
-  onOpen: () => void;
-  onRemove: () => void;
-}) {
-  const posters = list.thumbnails.slice(0, 5);
-  const n = Math.max(posters.length, 1);
-  const w = 100 / (1 + 0.7 * (n - 1)); // fill the width whatever the count
-  const ov = 0.3 * w;                  // 30% of each poster tucks under the previous
-
-  return (
-    <div
-      onClick={onOpen}
-      className="group relative w-2/3 shrink-0 snap-start cursor-pointer overflow-hidden rounded-tile border border-border-subtle bg-surface-1 transition-colors hover:bg-surface-2"
-    >
-      <div className="relative flex h-32 items-stretch bg-black p-2">
-        {posters.length === 0 ? (
-          <div className="flex h-full w-full items-center justify-center text-text-tertiary/20">
-            <List size={26} />
-          </div>
-        ) : (
-          posters.map((t, i) => (
-            <div
-              key={i}
-              className="relative h-full shrink-0 overflow-hidden rounded-sm"
-              style={{
-                width: `${w}%`,
-                marginLeft: i === 0 ? 0 : `-${ov}%`,
-                zIndex: posters.length - i,
-                // Every poster but the last casts a shadow to its right → it reads as
-                // sitting on top of the one behind it.
-                boxShadow: i < posters.length - 1 ? "4px 0 10px 0 rgba(0,0,0,.8)" : undefined,
-              }}
-            >
-              {t?.poster_url ? (
-                <Image src={tmdbImageFor(t.poster_url, 140) || t.poster_url} alt="" fill loading="lazy" className="object-cover" sizes="140px" />
-              ) : (
-                <div className="h-full w-full bg-zinc-900" />
-              )}
-            </div>
-          ))
-        )}
-        <Hint label="Remove from list">
-          <Button
-            variant="overlay"
-            size="icon-xs"
-            aria-label="Remove from list"
-            onClick={(e) => { e.stopPropagation(); onRemove(); }}
-            className="absolute right-2 top-2 z-10 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
-          >
-            <X />
-          </Button>
-        </Hint>
-      </div>
-      <div className="p-2.5">
-        <p className="truncate text-xs font-semibold text-text-primary">{list.name}</p>
-      </div>
-    </div>
-  );
+/** One door per list. Membership is edited only through Manage. */
+function ListCard({ list, onOpen }: { list: MediaListWithThumbnails; onOpen: () => void }) {
+  const posters=list.thumbnails.filter(t=>t?.poster_url).slice(0,3);
+  return <li className="w-[65%] min-w-0 shrink-0">
+    <button type="button" onClick={onOpen} aria-label={`Open list ${list.name}`} className="group relative block aspect-2/1 w-full overflow-hidden rounded-control bg-surface-2 text-left outline-offset-2 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-watching-vivid">
+      <span aria-hidden="true" className="absolute inset-0 flex gap-0.5">
+        {posters.length ? Array.from({length:3},(_,i)=>{const poster=posters[i];return <span key={i} className="relative min-w-0 flex-1 overflow-hidden">
+          {poster && <Image src={tmdbImageFor(poster.poster_url,120) || poster.poster_url!} alt="" fill sizes="(min-width: 1024px) 7vw, 22vw" loading="lazy" className="object-contain"/>}
+        </span>}) : <span className="flex h-full w-full items-center justify-center bg-surface-2 text-text-tertiary"><List size={28}/></span>}
+      </span>
+      <span aria-hidden="true" className="absolute inset-0 bg-linear-to-t from-black/90 via-black/15 to-transparent"/>
+      <span className="absolute inset-x-0 bottom-0 flex items-center gap-2 p-2 text-white"><List size={15} className="shrink-0"/><span className="min-w-0 line-clamp-2 text-xs font-semibold leading-snug">{list.name}</span></span>
+    </button>
+  </li>;
 }
 
 export function InList({ mediaItemId, userId }: Props) {
@@ -104,7 +57,6 @@ export function InList({ mediaItemId, userId }: Props) {
    */
   const { data: allLists = [], isLoading: listsLoading } = useListsWithThumbnails(userId);
   const { data: mediaLists = [], isLoading: mediaListsLoading } = useListsForMedia(mediaItemId);
-  const withThumbs = allLists;
 
   const createList = useCreateMediaList(userId);
   const addToList = useAddToList(mediaItemId, userId);
@@ -114,19 +66,17 @@ export function InList({ mediaItemId, userId }: Props) {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const mediaListIds = new Set(mediaLists.map((l) => l.id));
-  const cards = withThumbs.filter((l) => mediaListIds.has(l.id));
+  const cards = allLists.filter((l) => mediaListIds.has(l.id));
   const isLoading = listsLoading || mediaListsLoading;
-  const showNav = cards.length > 1;
+  const {ref:railRef,scroll,canPrev,canNext}=useAlignedRail<HTMLUListElement>(cards.length);
 
   const openList = (id: string) => { setSelectedListId(id); router.push("/perso/watching/lists"); };
   const seeAll = () => { setSelectedListId(null); router.push("/perso/watching/lists"); };
-  const scroll = (dir: number) =>
-    scrollRef.current?.scrollBy({ left: dir * scrollRef.current.clientWidth * 0.66, behavior: "smooth" });
 
   const handleToggle = async (listId: string) => {
+    if(addToList.isPending || removeFromList.isPending) return;
     try {
       if (mediaListIds.has(listId)) await removeFromList.mutateAsync(listId);
       else await addToList.mutateAsync(listId);
@@ -137,6 +87,7 @@ export function InList({ mediaItemId, userId }: Props) {
   };
 
   const handleCreate = async () => {
+    if(createList.isPending || addToList.isPending) return;
     const name = newName.trim();
     if (!name) return;
     try {
@@ -152,12 +103,11 @@ export function InList({ mediaItemId, userId }: Props) {
   };
 
   return (
-    <div>
-      <SectionHeader
-        title="In List"
+    <Panel
+        title="In Lists"
         actions={
           <>
-          {showNav && <CarouselNav size="sm" onPrev={() => scroll(-1)} onNext={() => scroll(1)} />}
+          {(canPrev || canNext) && <CarouselNav size="sm" canPrev={canPrev} canNext={canNext} onPrev={()=>scroll(-1)} onNext={()=>scroll(1)}/>}
           {/* See all first, then the primary action — the toolbar reads left→right, and the
               button you press most sits at the end, next to nothing that can steal the click. */}
           {cards.length > 0 && (
@@ -168,16 +118,15 @@ export function InList({ mediaItemId, userId }: Props) {
           <Popover open={open} onOpenChange={setOpen}>
             {/* Hint wraps the trigger (not the reverse): PopoverTrigger forwards its ref,
                 a plain wrapper component would swallow it and the popover would never open. */}
-            <Hint label="Add to a list">
+            <Hint label="Manage list membership">
               <PopoverTrigger asChild>
                 <Button variant="quiet" size="sm">
-                  <Plus />
-                  Add
+                  {cards.length ? "Manage" : "Add to list"}
                 </Button>
               </PopoverTrigger>
             </Hint>
             <PopoverContent align="end" sideOffset={6} className="w-56 border-border-subtle bg-surface-3 p-0 shadow-md">
-              <div className="p-1.5">
+              <div className="max-h-64 overflow-y-auto p-1.5">
                 {isLoading && (
                   <div className="flex items-center justify-center py-4">
                     <Loader2 size={14} className="animate-spin text-text-tertiary" />
@@ -192,6 +141,7 @@ export function InList({ mediaItemId, userId }: Props) {
                     <button
                       key={list.id}
                       type="button"
+                      disabled={addToList.isPending || removeFromList.isPending}
                       onClick={() => handleToggle(list.id)}
                       className="flex w-full items-center gap-2.5 rounded-chip px-2.5 py-2 text-left text-sm transition-colors hover:bg-surface-2"
                     >
@@ -224,6 +174,7 @@ export function InList({ mediaItemId, userId }: Props) {
                     />
                     <button
                       type="button"
+                      aria-label="Create list"
                       onClick={handleCreate}
                       disabled={!newName.trim() || createList.isPending}
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-chip bg-accent-watching text-white disabled:opacity-40"
@@ -232,6 +183,7 @@ export function InList({ mediaItemId, userId }: Props) {
                     </button>
                     <button
                       type="button"
+                      aria-label="Cancel new list"
                       onClick={() => { setIsCreating(false); setNewName(""); }}
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-chip text-text-tertiary hover:text-text-primary"
                     >
@@ -254,27 +206,26 @@ export function InList({ mediaItemId, userId }: Props) {
 
           </>
         }
-      />
+      >
 
       {isLoading ? (
-        <div className="h-44 w-2/3 animate-pulse rounded-tile bg-surface-2" />
+        <div className="h-12 w-full animate-pulse rounded-tile bg-surface-2" />
       ) : cards.length === 0 ? (
-        <div className="flex items-center gap-2.5 py-0.5">
-          <List size={14} className="shrink-0 text-text-tertiary/50" />
-          <p className="text-xs text-text-tertiary">Not in any list yet</p>
+        <div className="flex items-center gap-3">
+          <List size={18} className="shrink-0 text-text-tertiary" />
+          <p className="text-xs leading-relaxed text-text-secondary">Keep related titles together.</p>
         </div>
       ) : (
-        <div ref={scrollRef} className="-mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto scrollbar-hide px-1 pb-1">
+        <ul ref={railRef} className="flex gap-3 overflow-x-auto py-1 scrollbar-hide">
           {cards.map((list) => (
             <ListCard
               key={list.id}
               list={list}
               onOpen={() => openList(list.id)}
-              onRemove={() => handleToggle(list.id)}
             />
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+    </Panel>
   );
 }

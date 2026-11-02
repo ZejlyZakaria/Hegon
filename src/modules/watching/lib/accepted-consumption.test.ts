@@ -3,7 +3,7 @@ import { computeStats } from "../components/stats/computeStats";
 import { computeWatchingAchievements } from "../components/stats/achievements";
 import { receiptMetrics,withUnlockReceipts,type ReceiptSnapshot } from "./milestone-receipts";
 import { assertion,viewingDate } from "./viewing-history";
-import { tmdbPosterSrcSet } from "./tmdb-image";
+import { tmdbImageSrcSet } from "./tmdb-image";
 import type { StatsRawItem } from "../service";
 
 const item=(override:Partial<StatsRawItem>={}):StatsRawItem=>({
@@ -103,11 +103,11 @@ describe("One achievement metric for UI, explanation and server eligibility",()=
 });
 describe("Compact poster density",()=>{
   it("selects w92 for1x/2x and w154 for3x without requesting w500",()=>{
-    expect(tmdbPosterSrcSet("https://image.tmdb.org/t/p/w500/poster.jpg",40)).toBe(
+    expect(tmdbImageSrcSet("https://image.tmdb.org/t/p/w500/poster.jpg",40)).toBe(
       "https://image.tmdb.org/t/p/w92/poster.jpg 1x, https://image.tmdb.org/t/p/w92/poster.jpg 2x, https://image.tmdb.org/t/p/w154/poster.jpg 3x");
   });
   it("leaves uploaded and AniList artwork untouched",()=>{
-    expect(tmdbPosterSrcSet("https://s4.anilist.co/a.jpg",40)).toBeUndefined();
-    expect(tmdbPosterSrcSet("https://hegon.supabase.co/storage/poster.jpg",40)).toBeUndefined();
+    expect(tmdbImageSrcSet("https://s4.anilist.co/a.jpg",40)).toBeUndefined();
+    expect(tmdbImageSrcSet("https://hegon.supabase.co/storage/poster.jpg",40)).toBeUndefined();
   });
 });

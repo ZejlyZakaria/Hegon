@@ -1,10 +1,13 @@
 "use client";
+import { detailRailHover } from "../../lib/detail-rail-hover";
 
-import { useRef } from "react";
+
+import { tmdbImageFor, tmdbImageSrcSet } from "../../lib/tmdb-image";
 import { Tv, Lock, Clock, EyeOff } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
+import { useAlignedRail } from "../../hooks/useAlignedRail";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { Badge } from "@/shared/components/ui/badge";
@@ -73,7 +76,8 @@ export function SeasonHistoryStrip({
   const now = new Date();
   const currentYear = now.getFullYear();
   const nowMs = now.getTime();
-  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { ref: scrollRef, scroll, canPrev, canNext } = useAlignedRail(seasonEpisodes.length);
 
   if (seasonEpisodes.length < 1) return null;
 
@@ -116,12 +120,12 @@ export function SeasonHistoryStrip({
     onYearChange(next);
   };
 
-  const scroll = (dir: number) => scrollRef.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
 
   // A scrolling rail — no panel, same rule as Episodes / Cast / More Like This.
   return (
     <section>
       <SectionHeader
+        className="min-h-9"
         title="Seasons"
         actions={
           <>
@@ -140,8 +144,8 @@ export function SeasonHistoryStrip({
                 </SelectContent>
               </Select>
             )}
-            {seasonEpisodes.length > 6 && (
-              <CarouselNav size="md" onPrev={() => scroll(-1)} onNext={() => scroll(1)} />
+            {(canPrev || canNext) && (
+              <CarouselNav size="md" canPrev={canPrev} canNext={canNext} onPrev={() => scroll(-1)} onNext={() => scroll(1)} />
             )}
           </>
         }
@@ -151,7 +155,8 @@ export function SeasonHistoryStrip({
           the screen's right edge instead of stopping short of it. */}
       <div
         ref={scrollRef}
-        className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5"
+        {...detailRailHover}
+        className="watching-detail-rail -mx-4 flex items-start gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5"
       >
         {seasonEpisodes.map((_, idx) => {
           const s = idx + 1;
@@ -162,7 +167,7 @@ export function SeasonHistoryStrip({
           // series-state.ts with the rest of them.
           const current = !unwatched && inProgress && isSeasonLive(facts, s);
           // A stamp on a season you haven't reached is a claim you're no longer making. The data
-          // stays (it comes back when you advance again) — we just stop reading it.
+          // may be retained in the correction audit; unreached claims are never shown here.
           const reached = !unwatched && (!incomplete || s <= currentSeason);
           const year = reached ? seasonYears?.[String(s)] : undefined;
           const rating = reached ? seasonRatings?.[String(s)] : undefined;
@@ -181,10 +186,10 @@ export function SeasonHistoryStrip({
               aria-label={`Season ${s}`}
               className="group w-(--rail-peek) shrink-0 cursor-pointer text-left sm:w-(--poster-lg)"
             >
-              <div className="relative aspect-2/3 w-full overflow-hidden rounded-tile border border-border-subtle bg-surface-1 transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
+              <div className="relative aspect-2/3 w-full overflow-hidden rounded-tile ring-1 ring-inset ring-border-subtle bg-surface-1 transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
                 {poster ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={poster} alt="" loading="lazy" className="h-full w-full object-cover" />
+                  <img src={tmdbImageFor(poster,144) ?? poster} srcSet={tmdbImageSrcSet(poster,undefined,780)} sizes="(min-width: 640px) 144px, calc((100vw - 56px) / 2.6)" alt="" loading="lazy" className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-surface-2">
                     <Tv size={20} className="text-text-tertiary" />

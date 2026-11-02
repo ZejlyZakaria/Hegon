@@ -111,3 +111,12 @@ describe("Top Picks labels describe scored subjects",()=>{
     expect(ratedScopePresentation(view,[{kind:"SEASON",number:2}]).seasonLabel).toBe("S2");
   });
 });
+
+
+it("hides a full rated work only when the period caller also proves full first viewing",()=>{
+  const view=buildMediaView({type:"serie",season_episodes:[10,10,10],season_aired:[10,10,10]},null);
+  const scopes=[1,2,3].map(number=>({kind:"SEASON",number}));
+  expect(ratedScopePresentation(view,scopes).seasonLabel).toBe("S1–S3");
+  expect(ratedScopePresentation(view,scopes,true)).toEqual({seasonLabel:null,seasonPoster:null});
+  expect(ratedScopePresentation(view,scopes.slice(0,2),true).seasonLabel).toBe("S1–S2");
+});

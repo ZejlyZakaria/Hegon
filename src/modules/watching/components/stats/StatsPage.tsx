@@ -278,9 +278,7 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
                   )}
                   {seasonLabel ? (
                     <span className="truncate text-micro font-medium" style={{ color: TEAL }}>{seasonLabel}</span>
-                  ) : (
-                    <span className="text-micro text-text-tertiary/50">{item.year}</span>
-                  )}
+                  ) : null}
                 </>
               }
               right={item.favorite ? <Heart size={10} className="fill-red-400 text-red-400 opacity-70" /> : undefined}
@@ -290,7 +288,7 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
       )}
       <SlidingPanel open={open} onClose={() => setOpen(false)} title="Top Picks" icon={<Trophy size={15} />}>
         <div className="p-4">
-          {items.map(({ item, seasonLabel, rating, seasonPoster }) => <MediaRow key={item.id} href={item.id.startsWith("history:") ? undefined : `/perso/watching/${item.id}`} posterUrl={seasonPoster ?? item.poster_url} title={displayTitle(item)} meta={<span className="text-micro text-text-tertiary">{[seasonLabel ?? item.year, rating != null ? Number(rating.toFixed(2)).toString() : null].filter((v) => v != null).join(" / ")}</span>} right={item.favorite ? <Heart size={10} className="fill-red-400 text-red-400" /> : undefined} />)}
+          {items.map(({ item, seasonLabel, rating, seasonPoster }) => <MediaRow key={item.id} href={item.id.startsWith("history:") ? undefined : `/perso/watching/${item.id}`} posterUrl={seasonPoster ?? item.poster_url} title={displayTitle(item)} meta={<span className="text-micro text-text-tertiary">{[seasonLabel, rating != null ? Number(rating.toFixed(2)).toString() : null].filter((v) => v != null).join(" / ")}</span>} right={item.favorite ? <Heart size={10} className="fill-red-400 text-red-400" /> : undefined} />)}
         </div>
       </SlidingPanel>
     </div>
@@ -467,15 +465,14 @@ export function StatsPage() {
   // binds to the segment you came from without re-deriving the donut's palette.
   const [openSlice, setOpenSlice] = useState<{ key: SliceKey; color: string; label: string } | null>(null);
 
-  const stats = useMemo(
-    () => computeStats(data?.items ?? [], data?.rewatches ?? [], selectedYear, data?.cours, data?.history),
-    [data, selectedYear],
-  );
-  // Achievements are ALL-TIME, so the Marathoner tier reads the same total hours the donut shows on
-  // "All time" — computed here with year=null rather than the page's selected year.
+  // The all-time ledger also feeds achievements; share it with the unfiltered view.
   const allTime = useMemo(
     () => computeStats(data?.items ?? [], data?.rewatches ?? [], null, data?.cours, data?.history),
     [data],
+  );
+  const stats = useMemo(
+    () => selectedYear == null ? allTime : computeStats(data?.items ?? [], data?.rewatches ?? [], selectedYear, data?.cours, data?.history),
+    [data, selectedYear, allTime],
   );
   // The "why" panel: which badge is open. The badge object is kept across the close animation.
   const [openAchievement, setOpenAchievement] = useState<WatchingAchievement | null>(null);

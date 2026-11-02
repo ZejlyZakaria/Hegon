@@ -1,16 +1,22 @@
 "use client";
 
+import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
+import { Button } from "@/shared/components/ui/button";
+import { useMediaHistory } from "../../hooks/useMediaHistory";
+import { buildViewingSummary, viewingPanelLabel, timelineDate } from "../../lib/viewing-timeline";
+import { viewingDate } from "../../lib/viewing-history";
 import { watchedPeriodLabel } from "../../lib/completion-date";
-import { RewatchForm, ViewingHistory } from "./RewatchForm";
+import { RewatchForm } from "./RewatchForm";
+import { ViewingHistory } from "./ViewingHistory";
 import type { RewatchRequest, RewatchCatalogue } from "../../lib/rewatch";
 
 import { isWatchableNow } from "../../lib/watchable";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Bookmark, CalendarPlus, Check, CheckCheck, ChevronDown, CircleSlash, Clock, Heart,
-  Minus, MoreHorizontal, PauseCircle, Pencil, Play, Plus, Repeat, RotateCcw, Trash2, X,
+  Bookmark, Check, CheckCheck, ChevronRight, CircleSlash, Clock, Heart, History,
+  Minus, MoreHorizontal, PauseCircle, Pencil, Play, Plus, RotateCcw, Trash2,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -27,7 +33,7 @@ import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { useRewatches, useAddRewatch, useRemoveRewatch } from "../../hooks/useRewatches";
 import { dropReasonLabel } from "../../lib/drop-reasons";
-import { caughtUpOn, hasFullyWatchedSeason, seriesState } from "../../lib/series-state";
+import { caughtUpOn, hasFullyWatchedSeason, nextStep, seriesState } from "../../lib/series-state";
 import type { MediaView } from "../../lib/media-view";
 import { canComplete, deriveWatchStatus } from "../../lib/watch-status";
 import { WatchDatePicker } from "../shared/WatchDatePicker";
@@ -76,7 +82,7 @@ const todayISO = () => {
 
 function StateChip({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-label font-medium text-white">
+    <span className="inline-flex min-w-0 items-center gap-1.5 rounded-chip bg-white/12 px-2.5 py-1 text-label font-medium text-white">
       {icon}
       <span className="truncate">{children}</span>
     </span>
@@ -85,7 +91,7 @@ function StateChip({ icon, children }: { icon: React.ReactNode; children: React.
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-1.5">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-1.5">
       <span className="shrink-0 text-label text-white/45">{label}</span>
       <span className="min-w-0 text-right text-label font-medium text-white">{value}</span>
     </div>
@@ -216,9 +222,10 @@ function StepRow({ label, value, total, max, min = 0, onDelta }: {
       <div className="flex items-center gap-2">
         <button
           type="button"
+          aria-label={`Decrease ${label.toLowerCase()}`}
           onClick={() => onDelta(-1)}
           disabled={value <= min}
-          className="flex h-6 w-6 items-center justify-center rounded-control bg-white/10 text-white/75 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex size-11 sm:size-8 sm:pointer-coarse:size-11 items-center justify-center rounded-control bg-white/10 text-white/75 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
         >
           <Minus size={11} />
         </button>
@@ -229,9 +236,10 @@ function StepRow({ label, value, total, max, min = 0, onDelta }: {
         </span>
         <button
           type="button"
+          aria-label={`Increase ${label.toLowerCase()}`}
           onClick={() => onDelta(1)}
           disabled={ceiling != null && value >= ceiling}
-          className="flex h-6 w-6 items-center justify-center rounded-control bg-white/10 text-white/75 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex size-11 sm:size-8 sm:pointer-coarse:size-11 items-center justify-center rounded-control bg-white/10 text-white/75 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
         >
           <Plus size={11} />
         </button>
@@ -250,7 +258,7 @@ function PrimaryAction({ icon, children, onClick, disabled }: {
       disabled={disabled}
       whileTap={{ scale: 0.98 }}
       transition={SPRING_SNAPPY}
-      className="flex h-8 w-full items-center justify-center gap-1.5 rounded-control bg-white text-label font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+      className="flex min-h-11 w-full items-center justify-center gap-1.5 sm:min-h-9 sm:pointer-coarse:min-h-11 rounded-control bg-white text-label font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
     >
       {icon}
       {children}
@@ -258,6 +266,7 @@ function PrimaryAction({ icon, children, onClick, disabled }: {
   );
 }
 
+const NO_REWATCHES:Rewatch[]=[];
 const menuItemClass = "gap-2.5 px-3 py-2 text-xs text-text-secondary focus:bg-surface-2 focus:text-text-primary";
 
 // ── StatusCard ──────────────────────────────────────────────────────────────────
@@ -273,6 +282,7 @@ interface Props {
   currentSeason: number;
   currentEpisode: number;
   onUpdateProgress: (season: number, episode: number) => void;
+  onCorrectPosition: (season: number, episode: number) => void;
   favorite: boolean;
   onFavoriteToggle: () => void;
   onMarkWatched: () => void;
@@ -304,7 +314,7 @@ interface Props {
 }
 
 export function StatusCard({
-  media, isSeries, providers, currentSeason, currentEpisode, onUpdateProgress, view,
+  media, isSeries, providers, currentSeason, currentEpisode, onUpdateProgress, onCorrectPosition, view,
   favorite, onFavoriteToggle, onMarkWatched, onMarkCaughtUp, onStartWatching, onPause, onDrop,
   onResume, onAddNote, onSeasonYearChange, onWatchedDateChange, onPriorityChange, onDelete, isUpdating,
 }: Props) {
@@ -329,7 +339,6 @@ export function StatusCard({
     poster: null as string | null,
     endDate: null as string | null,
   }));
-  const here = seasons[currentSeason - 1];
 
   const seriesFacts = {
     ...(view ? view.seriesFacts : media),
@@ -341,33 +350,30 @@ export function StatusCard({
   const atLastEpisode = state === "completed";
   const caughtUp = state === "caught-up";
 
-  /**
-   * REWATCHING WAS TIED TO THE WRONG WORD.
-   *
-   * "Log rewatch" lived on `watched`, and only there — so The Last of Us, which you have seen
-   * every episode of and are waiting on, could not be rewatched. Not because rewatching it is
-   * meaningless (you did it last month), but because the app had filed it under "in progress" and
-   * that shelf has no such button. The condition was never `watched`; it was HAVE YOU SEEN IT
-   * ALL. Completed and caught-up both answer yes.
-   */
+  // Eligibility follows actual consumption; posture alone does not imply a rewatch.
   const canRewatch = watchable && (isSeries ? (view?.position.episode ?? 0)>0 || (view?.position.season ?? 1)>1 || atLastEpisode || caughtUp : media.watched);
 
-  const { data: rewatches = [] } = useRewatches(canRewatch ? media.id : "");
+  const { data: rewatches = NO_REWATCHES } = useRewatches(media.id);
   const addRewatch = useAddRewatch(media.id, media.personal_revision);
   const removeRewatch = useRemoveRewatch(media.id, media.personal_revision);
-  const [backdating, setBackdating] = useState(false);
+  const [panel,setPanel]=useState<"viewing"|"rewatch"|null>(null);
+  const [editingPosition,setEditingPosition]=useState(false);
+  const [draftSeason,setDraftSeason]=useState(currentSeason);
+  const [draftEpisode,setDraftEpisode]=useState(currentEpisode);
+  const history=useMediaHistory(media.id,canRewatch || media.watched || rewatches.length>0);
+  const summary=useMemo(()=>buildViewingSummary(media,history.data?.records ?? [],rewatches,view),[media,history.data,rewatches,view]);
+  const historyLabel=viewingPanelLabel(summary);
+  const editPosition=()=>{setDraftSeason(currentSeason);setDraftEpisode(currentEpisode);setEditingPosition(true);};
 
 
-  // THE STEPPERS SHOW THE ANNOUNCED AND STOP AT THE AIRED. Two numbers, two jobs — see StepRow.
-  // "4 / 8" with a dead "+" tells you both truths at once: the season has eight episodes, and
-  // only four of them exist. "4 / 4" told you neither.
+  // Editing uses announced totals and aired ceilings. Forward viewing uses the shared nextStep.
   const announcedSeasons = isSeries ? (seasons.length || media.seasons || null) : null;
-  const announcedInSeason = isSeries ? (here?.episodes ?? null) : null;
+  const next=isSeries ? nextStep(seriesFacts):null;
+  const nextPosition=next?.kind==="episode" || next?.kind==="season" ? next:null;
   // The last season that has aired anything — the ceiling the season stepper may never pass.
   const lastSeasonOut = isSeries
     ? (seasons.reduce((last, s, i) => (s.aired > 0 ? i + 1 : last), 1))
     : null;
-  const airedInThisSeason = isSeries ? (here?.aired ?? 0) : null;
 
   const reason = dropReasonLabel(media.drop_reason);
   // ONE truth for "can this honestly be called watched": a series that is over, or a film that has
@@ -444,9 +450,9 @@ export function StatusCard({
 
   const [rewatchDate,setRewatchDate]=useState("");
   const [editingRewatch,setEditingRewatch]=useState<Rewatch|undefined>();
-  const logRewatch=(on:string) => {setRewatchDate(on);setEditingRewatch(undefined);setBackdating(true);};
+  const logRewatch=(on:string) => {setRewatchDate(on);setEditingRewatch(undefined);setPanel("rewatch");};
   const saveRewatch=async (request:RewatchRequest,catalogue:RewatchCatalogue) => {
-    await addRewatch.mutateAsync({request,catalogue});setBackdating(false);toast("Rewatch logged.");
+    await addRewatch.mutateAsync({request,catalogue});setPanel(null);toast("Rewatch logged.");
   };
 
   const handleRemoveRewatch = async (id: string) => {
@@ -458,69 +464,9 @@ export function StatusCard({
     }
   };
 
-  const lastRewatch = rewatches[0]?.watched_on ?? null;
-
-  // The rewatch record — the same instrument wherever you've seen the whole thing, finished or
-  // merely caught up. It used to be welded into the `watched` body, which is precisely why a
-  // caught-up show couldn't have one.
-  const rewatchRows = (
-    <>
-      {rewatches.length > 0 && (
-        <>
-          <div className="h-px bg-white/10" />
-          <Row
-            label="Rewatches"
-            value={
-              /* The dates live one tap away — a quiet list, removable per entry */
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="group inline-flex items-center gap-1 text-label font-medium text-white transition-colors hover:text-white/90"
-                  >
-                    {rewatches.length === 1 && lastRewatch
-                      ? lastRewatch
-                      : `${rewatches.length} times`}
-                    <ChevronDown size={11} className="text-white/40 transition-colors group-hover:text-white/70" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2rem))] border-border-strong bg-surface-3 p-1.5">
-                  {rewatches.map((r) => (
-                    <div
-                      key={r.id}
-                      className="group flex items-center justify-between gap-2 rounded-chip px-2 py-1.5 transition-colors hover:bg-surface-2"
-                    >
-                      <span className="inline-flex items-center gap-2 text-xs text-text-secondary">
-                        <Repeat size={11} className="text-accent-watching-vivid" />
-                        <span>{r.watched_on}<span className="mt-0.5 block text-text-tertiary">{r.scope_label ?? "Scope unknown"}{r.episodes!=null ? ` · ${r.episodes} episodes`:""}{r.minutes!=null ? ` · ${Math.floor(r.minutes/60)}h ${r.minutes%60}m`:""}</span></span>
-                      </span>
-                      {/* Always visible — an `opacity-0 … group-hover` delete is unreachable on
-                          touch, where there is no hover to reveal it. No tooltip: an ✕ on a dated
-                          row already reads as "remove", and a Hint that only appears on hover would
-                          be the same desktop-only crutch. */}
-                      <button type="button" className="min-h-11 shrink-0 px-2 text-xs text-text-secondary" onClick={()=>{setEditingRewatch(r);setRewatchDate(r.watched_on==="Date unknown" ? "" : r.watched_on);setBackdating(true);}}>{r.canonical ? "Correct":"Complete"}</button>
-                      <button
-                        type="button"
-                        aria-label="Remove this rewatch"
-                        onClick={() => handleRemoveRewatch(r.id)}
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-tertiary transition-colors hover:text-red-400"
-                      >
-                        <X size={11} />
-                      </button>
-                    </div>
-                  ))}
-                </PopoverContent>
-              </Popover>
-            }
-          />
-        </>
-      )}
-
-
-    </>
-  );
 
   return (
+    <>
     <section
       data-status-card
       className="rounded-card bg-accent-watching p-4"
@@ -557,11 +503,11 @@ export function StatusCard({
               <StateChip icon={<CheckCheck size={11} />}>Caught Up</StateChip>
             )}
             {status === "in_progress" && !caughtUp && (
-              <StateChip icon={<span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: TEAL, boxShadow: `0 0 6px ${TEAL}` }} />}>
+              <StateChip icon={<span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: TEAL }} />}>
                 In Progress
               </StateChip>
             )}
-            {status === "watched" && <StateChip icon={<Check size={11} />}>Watched</StateChip>}
+            {status === "watched" && <StateChip icon={<Check size={11} />}>{isSeries ? "Completed":"Watched"}</StateChip>}
             {status === "paused" && <StateChip icon={<PauseCircle size={11} />}>Paused</StateChip>}
             {status === "dropped" && <StateChip icon={<CircleSlash size={11} />}>Dropped</StateChip>}
           </motion.div>
@@ -572,10 +518,9 @@ export function StatusCard({
             <button
               type="button"
               aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
-              title={favorite ? "Remove from favorites" : "Add to favorites"}
-              onClick={onFavoriteToggle}
+                            onClick={onFavoriteToggle}
               className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-control transition-colors active:scale-95",
+                "flex size-11 sm:size-8 sm:pointer-coarse:size-11 items-center justify-center rounded-control transition-colors active:scale-95",
                 favorite ? "bg-white/15 text-white" : "bg-white/10 text-white/70 hover:bg-white/15 hover:text-white",
               )}
             >
@@ -588,7 +533,7 @@ export function StatusCard({
               <button
                 type="button"
                 aria-label="More actions"
-                className="flex h-7 w-7 items-center justify-center rounded-control bg-white/10 text-white/70 transition-colors hover:bg-white/15 hover:text-white data-[state=open]:bg-white/15 data-[state=open]:text-white"
+                className="flex size-11 sm:size-8 sm:pointer-coarse:size-11 items-center justify-center rounded-control bg-white/10 text-white/70 transition-colors hover:bg-white/15 hover:text-white data-[state=open]:bg-white/15 data-[state=open]:text-white"
               >
                 <MoreHorizontal size={14} />
               </button>
@@ -614,24 +559,10 @@ export function StatusCard({
                       "All caught up" two inches below, and a menu item offering to do it again
                       is noise pretending to be an action. */}
                   {!caughtUp && markItem}
-                  {/* Caught up = you've seen every episode that exists. Watching it again is a
-                      thing people do (The Last of Us, while waiting) and the app simply had no
-                      door for it — "Log rewatch" was welded to the word `watched`. The primary
-                      slot is taken by the "All caught up" line, which is the more important
-                      truth, so both rewatch actions live here. */}
-                  {watchable && caughtUp && (
-                    <>
-                      <DropdownMenuItem onClick={() => logRewatch(todayISO())} className={menuItemClass}>
-                        <Repeat size={13} /> Log rewatch
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => logRewatch("")} className={menuItemClass}>
-                        <CalendarPlus size={13} /> Log a past rewatch
-                      </DropdownMenuItem>
-                    </>
-                  )}
                 </>
               )}
-              {status === "paused" && (
+              {isSeries && (status==="paused" || status==="dropped") && <DropdownMenuItem onClick={editPosition} className={menuItemClass}><Pencil size={13}/>Edit position</DropdownMenuItem>}
+          {status === "paused" && (
                 <>
                   <DropdownMenuItem onClick={onDrop} className={menuItemClass}>
                     <CircleSlash size={13} /> Drop
@@ -647,12 +578,8 @@ export function StatusCard({
                   </DropdownMenuItem>
                 </>
               )}
-              {status === "watched" && (
-                <DropdownMenuItem onClick={() => logRewatch("")} className={menuItemClass}>
-                  <CalendarPlus size={13} /> Log a past rewatch
-                </DropdownMenuItem>
-              )}
 
+              {canRewatch && <DropdownMenuItem onClick={() => logRewatch(todayISO())} className={menuItemClass}><RotateCcw size={13}/>Log rewatch</DropdownMenuItem>}
               <DropdownMenuSeparator className="bg-border-default" />
               <DropdownMenuItem
                 onClick={onDelete}
@@ -689,7 +616,7 @@ export function StatusCard({
                       <Popover>
                         <PopoverTrigger asChild>
                           <button type="button" className="group inline-flex items-center gap-1.5 text-label font-medium text-white transition-colors hover:text-white/90">
-                            {yearLabel ?? "Set year"}
+                            {history.data && summary.first ? summary.first.period:media.viewing_date ? timelineDate(viewingDate(media.viewing_date)):yearLabel ?? "Date to confirm"}
                             <Pencil size={10} className="text-white/40 transition-colors group-hover:text-white/70" />
                           </button>
                         </PopoverTrigger>
@@ -716,53 +643,18 @@ export function StatusCard({
                 // here (yearLabel, possibly a range) and edited in its Watch History strip.
                 <SeasonYearPicker label="Finished" prompt="When did you finish it?" selectedYear={selectedYear} years={years} onChange={onSeasonYearChange} />
               ) : (
-                <Row label="Finished" value={yearLabel ?? "—"} />
+                <div className="py-1"><p className="text-xs text-white/60">{summary.finish ? "Finished on":"Viewing period"}</p><p className="mt-1 text-xl font-semibold tabular-nums text-white">{summary.finish ? timelineDate(summary.finish):yearLabel ?? "Date to confirm"}</p>{summary.finish && yearLabel && <p className="mt-1 text-xs text-white/60">{yearLabel}</p>}</div>
               )}
-              {rewatchRows}
             </div>
           )}
 
-          {status === "in_progress" && (
-            <div className="mt-3 space-y-2.5">
-              {(announcedSeasons ?? 1) > 1 && (
-              <StepRow
-                label="Season"
-                value={currentSeason}
-                total={announcedSeasons}
-                max={lastSeasonOut}
-                min={1}
-                onDelta={(d) => {
-                  const next = Math.max(1, Math.min(currentSeason + d, lastSeasonOut ?? Infinity));
-                  if (next !== currentSeason) onUpdateProgress(next, 0);
-                }}
-              />
-              )}
-              <StepRow
-                label="Episode"
-                value={currentEpisode}
-                total={announcedInSeason}
-                max={airedInThisSeason}
-                onDelta={(d) => {
-                  const ceiling = airedInThisSeason ?? Infinity;
-                  const next = Math.max(0, Math.min(currentEpisode + d, ceiling));
-                  if (next !== currentEpisode) onUpdateProgress(currentSeason, next);
-                }}
-              />
-              {/* CAUGHT UP, AND WHEN — but only when there is no Watch History strip to own it (a
-                  single display season, e.g. Black Clover). A multi-cour caught-up title edits each
-                  cour's year in its strip; putting a picker here too would be the very duplication
-                  that let the finish year land on the wrong cour. Same control and same writer as a
-                  finished one-season series: the year lives in `cour_years["1"]`, nowhere else. */}
-              {caughtUp && singleSeason && (
-                <>
-                  <div className="h-px bg-white/10" />
-                  <SeasonYearPicker label="Caught up" prompt="When did you catch up?" selectedYear={selectedYear} years={years} onChange={onSeasonYearChange} />
-                </>
-              )}
-              {/* You've seen it all — so the record of having seen it AGAIN belongs here too. */}
-              {caughtUp && rewatchRows}
-            </div>
-          )}
+          {status === "in_progress" && <div className="mt-3">
+            <p className="text-xs text-white/60">Last watched</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-white">{currentEpisode>0 ? `S${currentSeason} · EP${currentEpisode}`:"No episodes yet"}</p>
+            {media.last_watched_at && <p className="mt-1 text-xs text-white/60">{new Date(media.last_watched_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</p>}
+            <button type="button" onClick={editPosition} className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-xs text-white/75 underline underline-offset-4 sm:min-h-8 sm:pointer-coarse:min-h-11"><Pencil size={11}/>Edit position</button>
+            {caughtUp && singleSeason && <SeasonYearPicker label="Caught up" prompt="When did you catch up?" selectedYear={selectedYear} years={years} onChange={onSeasonYearChange}/>}
+          </div>}
 
           {/* THE ONE FACT OF A WATCHLIST ENTRY — how much you want it. `priority_level` was written
               once, at add time (discover even hard-coded "medium"), and readable nowhere but the
@@ -774,6 +666,7 @@ export function StatusCard({
             </div>
           )}
 
+          {isSeries && (status==="paused" || status==="dropped") && <button type="button" onClick={editPosition} className="mt-2 min-h-11 text-xs text-white/75 underline underline-offset-4 sm:min-h-8 sm:pointer-coarse:min-h-11">Edit position</button>}
           {status === "paused" && (
             <div className="mt-2.5">
               {stoppedAfter && <Row label="Stopped after" value={stoppedAfter} />}
@@ -815,12 +708,21 @@ export function StatusCard({
         </motion.div>
       </AnimatePresence>
 
+      {editingPosition && <div className="mt-4 space-y-4 rounded-control bg-white/5 p-3">
+        <p className="text-xs leading-relaxed text-white/65">Choose the last episode you actually watched. This corrects your progress without logging a new viewing.</p>
+        <div className="space-y-3">
+          {(announcedSeasons ?? 1)>1 && <StepRow label="Season" value={draftSeason} total={announcedSeasons} max={lastSeasonOut} min={1} onDelta={d=>{setDraftSeason(Math.max(1,Math.min(draftSeason+d,lastSeasonOut ?? 1)));setDraftEpisode(0);}}/>}
+          <StepRow label="Episode" value={draftEpisode} total={seasons[draftSeason-1]?.episodes ?? null} max={seasons[draftSeason-1]?.aired ?? 0} onDelta={d=>setDraftEpisode(Math.max(0,Math.min(draftEpisode+d,seasons[draftSeason-1]?.aired ?? 0)))}/>
+        </div>
+        <div className="flex justify-end gap-2"><Button variant="subtle" onClick={()=>setEditingPosition(false)}>Cancel</Button><Button disabled={isUpdating} onClick={()=>{onCorrectPosition(draftSeason,draftEpisode);setEditingPosition(false);}}>Save position</Button></div>
+      </div>}
+
       {/* ── The state's one action — it follows the state's facts. It used to sit BELOW
              "Where to watch", which made the card's primary button read as an action on the
              streaming services rather than on the title. ── */}
       <AnimatePresence mode="popLayout" initial={false}>
         {status === "want_to_watch" && (
-          <motion.div key="f-want" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
+          <motion.div key="f-want" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3">
             {isSeries && watchable ? (
               <PrimaryAction icon={<Play size={13} className="fill-current" />} onClick={onStartWatching} disabled={isUpdating}>
                 Start watching
@@ -832,12 +734,12 @@ export function StatusCard({
             ) : (
               // An unreleased film: there is nothing to mark. Not an error, a fact — so the slot
               // states it plainly, and names the day, instead of offering an action to be refused.
-              <div className="flex h-8 w-full items-center justify-center gap-1.5 rounded-control bg-white/10 text-label font-medium text-white/60">
+              <div className="flex min-h-11 w-full items-center justify-center gap-1.5 sm:min-h-9 sm:pointer-coarse:min-h-11 rounded-control bg-white/10 text-label font-medium text-white/60">
                 <Clock size={13} />
                 Not released yet
                 {media.release_date && (
                   <span className="text-white/50">
-                    · {new Date(media.release_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    · {new Date(media.release_date + "T00:00:00").toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
                 )}
               </div>
@@ -845,8 +747,14 @@ export function StatusCard({
           </motion.div>
         )}
 
+        {!editingPosition && watchable && status==="in_progress" && nextPosition && <div className="mt-3">
+          <PrimaryAction icon={<Check size={13}/>} disabled={isUpdating} onClick={()=>onUpdateProgress(nextPosition.season,nextPosition.episode)}>
+            Mark {nextPosition.season!==currentSeason ? `S${nextPosition.season} · `:""}EP{nextPosition.episode} watched
+          </PrimaryAction>
+        </div>}
+
         {watchable && status === "in_progress" && atLastEpisode && (
-          <motion.div key="f-complete" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
+          <motion.div key="f-complete" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3">
             <PrimaryAction icon={<Check size={13} />} onClick={onMarkWatched} disabled={isUpdating}>
               Mark as completed
             </PrimaryAction>
@@ -858,8 +766,8 @@ export function StatusCard({
             WHAT you're waiting for matters: with 4 of season 3's 8 episodes aired, you're waiting
             a WEEK, not a year. Saying "the next season" there would be plain wrong. */}
         {status === "in_progress" && caughtUp && (
-          <motion.div key="f-caught" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
-            <div className="flex items-center gap-2 rounded-control bg-white/10 px-3 py-2 text-xs font-medium text-white/80">
+          <motion.div key="f-caught" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3">
+            <div className="flex items-start gap-2 py-1 text-xs leading-relaxed text-white/65">
               <CheckCheck size={13} />
               {caughtUpOn(seriesFacts) === "episode"
                 ? "All caught up — the next episode hasn't aired yet."
@@ -869,29 +777,29 @@ export function StatusCard({
         )}
 
         {watchable && (status === "paused" || status === "dropped") && (
-          <motion.div key="f-resume" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
+          <motion.div key="f-resume" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3">
             <PrimaryAction icon={<RotateCcw size={13} />} onClick={onResume} disabled={isUpdating}>
               Resume watching
             </PrimaryAction>
           </motion.div>
         )}
 
-        {watchable && status === "watched" && (
-          <motion.div key="f-rewatch" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3.5">
-            <PrimaryAction icon={<Plus size={13} />} onClick={() => logRewatch(todayISO())} disabled={addRewatch.isPending}>
-              Log rewatch
-            </PrimaryAction>
-          </motion.div>
-        )}
       </AnimatePresence>
-      {canRewatch && !media.watched && !caughtUp && <button type="button" className="mt-2 text-xs text-white/70" onClick={()=>logRewatch(todayISO())}>Record scoped rewatch</button>}
-      {backdating && view && <RewatchForm key={`${rewatchDate}:${editingRewatch?.id ?? "new"}`} media={media} view={view} date={rewatchDate} initial={editingRewatch} pending={addRewatch.isPending} onSave={saveRewatch} onClose={()=>setBackdating(false)}/>}
-      <ViewingHistory mediaId={media.id}/>
-
-
-      {/* ── Footer: where to watch. A quiet, separated strip — it's reference, not an action
-             on this card, so it closes it instead of interrupting it. ── */}
-      <WhereToWatch providers={providers} />
+      {historyLabel && <button type="button" onClick={()=>setPanel("viewing")} className="mt-3 flex min-h-11 w-full items-center justify-between gap-3 border-t border-white/10 pt-2 text-sm text-white/85">
+        <span className="inline-flex items-center gap-2"><History size={15}/>{historyLabel}</span><ChevronRight size={15}/>
+      </button>}
+      <WhereToWatch providers={providers}/>
     </section>
+    <SlidingPanel open={panel!==null} onClose={()=>setPanel(null)} title={panel==="rewatch" ? editingRewatch ? "Edit rewatch":"Log rewatch":historyLabel ?? "Viewing details"}
+      width="wide">
+      <div className="p-4 sm:p-5">
+      {panel==="viewing" && <ViewingHistory mediaType={media.type} title={media.title} poster={media.poster_url} summary={summary} loading={history.isPending} error={!!history.error} removing={removeRewatch.isPending}
+        onEditRewatch={r=>{setEditingRewatch(r);setRewatchDate(r.watched_on==="Date unknown" ? "":r.watched_on);setPanel("rewatch");}}
+        onRemoveRewatch={id=>{void handleRemoveRewatch(id);}}/>}
+      {panel==="rewatch" && view && <RewatchForm key={`${rewatchDate}:${editingRewatch?.id ?? "new"}`} media={media} view={view} date={rewatchDate} initial={editingRewatch} firstCoverage={summary.firstCoverage} pending={addRewatch.isPending} onSave={saveRewatch} onClose={()=>setPanel(null)}/>}
+
+      </div>
+    </SlidingPanel>
+    </>
   );
 }

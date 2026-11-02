@@ -1,7 +1,7 @@
 import { buildMediaView } from "./media-view";
 import { describe, expect, it } from "vitest";
 import { compactSeason } from "../../../../supabase/functions/_shared/provider-evidence";
-import { ratingValidity, ratingAction, scopeMatchesView, scopeDisplayScore, scopeDisplayScores } from "./scope-ratings";
+import { ratingValidity, ratingAction, scopeMatchesView, scopeDisplayScore, scopeDisplayScores, partMatchesView, partDisplayScore } from "./scope-ratings";
 
 describe("compact provider evidence", () => {
   const season = { id: 2002, season_number: 2, episode_count: 2 };
@@ -132,5 +132,25 @@ describe("Saved season opinions are not erased by missing membership evidence",(
     expect(scopeDisplayScores([{...context,scope_key:"anilist-cour:999",rating_id:"old",range_start:1,range_end:12}],anime)).toEqual({});
     expect(scopeDisplayScores([{...context,score:8}],anime)).toEqual({});
     expect(scopeDisplayScores([context],{...anime,pending:true})).toEqual({});
+  });
+});
+
+describe("nested part rating identity",()=>{
+  const sizes=[366,13,13,14,10];let start=1;
+  const cours=sizes.map((episodes,i)=>{const cour={season:i+1,anilist_id:100+i,title:"Part",poster_url:null,year:2020,end_year:2020,episodes,start_episode:start,end_episode:start+episodes-1};start+=episodes;return cour;});
+  const view=buildMediaView({type:"anime",season_episodes:[366,50],season_aired:[366,50],current_season:2,current_episode:50},{tmdb_id:42,source:"anilist",cours});
+  it("permits all four accepted parts with independent frozen ranges",()=>{
+    for(const part of view.seasons[1].parts!) {
+      const context={kind:"COUR" as const,number:part.scopeNumber,scope_key:`anilist-cour:${part.id}`,rating_id:null,score:null,validity:"UNRATED" as const,covered_episodes:null,provider_snapshot_id:"tmdb",mapping_snapshot_id:"anilist",available_episodes:part.to-part.from+1,range_start:part.flatFrom,range_end:part.flatTo};
+      expect(partMatchesView(context,view,part)).toBe(true);
+      expect(partDisplayScore({...context,score:9,validity:"CURRENT"},view,part)).toBe(9);
+      expect(partMatchesView({...context,scope_key:"anilist-cour:999"},view,part)).toBe(false);
+      expect(partMatchesView({...context,range_end:part.flatTo+1},view,part)).toBe(false);
+    }
+  });
+  it("does not bypass missing accepted membership to make the stars editable",()=>{
+    const part=view.seasons[1].parts![3];
+    expect(partMatchesView(undefined,view,part)).toBe(false);
+    expect(partDisplayScore(undefined,view,part)).toBeNull();
   });
 });

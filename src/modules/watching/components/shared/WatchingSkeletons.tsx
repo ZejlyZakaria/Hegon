@@ -543,15 +543,17 @@ export function DetailSkeleton({ isSeries }: { isSeries?: boolean } = {}) {
               whole extra panel appeared for every film's skeleton and then had to vanish the moment
               the row confirmed it was a film — inventing a shift the real page never has. Same
               `isSeries &&` gate as Seasons on the left, same reason. */}
-          {isSeries && <DetailRowsSkeleton titleW="w-24" rows={6} />}
-          <DetailRowsSkeleton titleW="w-16" rows={7} withBadge withAwards />
+          {isSeries && <DetailRowsSkeleton titleW="w-24" rows={3} />}
+          <div className="h-28 animate-pulse rounded-card bg-surface-2" />
           <div>
             <div className="mb-3 h-4 w-14 animate-pulse rounded bg-surface-2" />
             {/* Matches InList's OWN `isLoading` shape (`h-44 w-2/3`) — the full-page skeleton is
                 gone before InList mounts, so the honest target is what InList shows itself while
                 ITS queries are still in flight, not a guess at its (data-dependent) resolved size. */}
-            <div className="h-44 w-2/3 animate-pulse rounded-tile bg-surface-2" />
+            <div className="h-28 w-full animate-pulse rounded-card bg-surface-2" />
           </div>
+          <div className="h-24 animate-pulse rounded-card bg-surface-2" />
+          <DetailRowsSkeleton titleW="w-16" rows={4} withBadge />
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/tests/mocks/server";
-import { updateMediaItem, getPersonBundle, getWatchlistPage, getAnimeCoursMany, saveScopeRating, getHistoryAnalytics, addRewatch, getRewatches } from "./service";
+import { getMediaItems, updateMediaItem, getMediaHistory, getPersonBundle, getWatchlistPage, getAnimeCoursMany, saveScopeRating, getHistoryAnalytics, addRewatch, getRewatches } from "./service";
 import { mapCredits } from "./hooks/useMediaCredits";
 afterEach(() => vi.unstubAllEnvs());
 describe("Watching provider service contracts", () => {
@@ -179,4 +179,61 @@ describe("transactional backwards correction transport",()=>{
     expect((sent?.patch as Record<string,unknown>).history_intent).toBeUndefined();
     expect(saved.season_ratings).toEqual({});
   });
+});
+
+it("loads viewing history without the unused rating audit query",async()=>{
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL","https://watching-test.supabase.co");vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY","test-anon-key");
+  let records=0,ranges=0,ratings=0;
+  server.use(http.get("https://watching-test.supabase.co/rest/v1/viewing_records",()=>{records++;return HttpResponse.json([]);}),
+    http.get("https://watching-test.supabase.co/rest/v1/viewing_ranges",()=>{ranges++;return HttpResponse.json([]);}),
+    http.get("https://watching-test.supabase.co/rest/v1/scope_ratings",()=>{ratings++;return HttpResponse.json([]);}));
+  expect(await getMediaHistory("title")).toEqual({records:[]});expect({records,ranges,ratings}).toEqual({records:1,ranges:1,ratings:0});
+});
+
+
+describe("derived series rails", () => {
+  it("classifies all pages before the ten-item cap and reads no provider or write endpoint", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://watching-test.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
+    const base = { type: "serie", in_progress: true, watched: false, status: "ended",
+      current_season: 1, current_episode: 6, season_aired: [6], season_episodes: [6], watched_at: "2026-04-06" };
+    const rows = [
+      ...Array.from({ length: 1000 }, (_, i) => ({ ...base, id: `watching-${i}`, current_episode: 2 })),
+      { ...base, id: "knight" },
+      { ...base, id: "waiting", status: "returning series", watched_at: "2026-03-01" },
+      { ...base, id: "weekly", status: "returning series", season_episodes: [8] },
+      { ...base, id: "paused", paused: true },
+    ];
+    let calls = 0;
+    server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items", ({ request }) => {
+      calls++;
+      const q = new URL(request.url).searchParams;
+      expect(q.get("user_id")).toBe("eq.owner");
+      expect(q.get("or")).toBe("(watched.eq.true,in_progress.eq.true)");
+      expect(q.has("watched")).toBe(false);
+      expect(q.get("select")).toContain("updated_at");
+      const from = Number(q.get("offset") ?? 0), limit = Number(q.get("limit") ?? 1000);
+      return HttpResponse.json(rows.slice(from, from + limit));
+    }));
+    const last = await getMediaItems("owner", "serie", { recentlyWatched: true, limit: 10 });
+    expect(last.map((m) => m.id)).toEqual(["knight", "waiting"]);
+    const active = await getMediaItems("owner", "serie", { inProgress: true, limit: 2000 });
+    expect(active).toHaveLength(1001);
+    expect(active.some((m) => m.id === "weekly")).toBe(true);
+    expect(active.some((m) => ["knight", "waiting", "paused"].includes(m.id))).toBe(false);
+    expect(calls).toBe(4);
+  });
+});
+
+
+it("keeps ranked titles visible independently of favorite", async () => {
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL","https://watching-test.supabase.co");
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY","test-anon-key");
+  server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",({request})=>{
+    const query=new URL(request.url).searchParams;
+    expect(query.has("favorite")).toBe(false);
+    expect(query.get("priority")).toBe("not.is.null");
+    return HttpResponse.json([{id:"ranked",priority:3,favorite:false}]);
+  }));
+  expect(await getMediaItems("owner","anime",{topRated:true})).toMatchObject([{id:"ranked",priority:3,favorite:false}]);
 });

@@ -5,9 +5,10 @@ import { useImageReveal } from "@/modules/watching/hooks/useImageReveal";
 import { useQueryClient } from "@tanstack/react-query";
 import { TMDB_KEYS } from "@/modules/watching/hooks/query-keys";
 import Image from "next/image";
-import { tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
+import { tmdbImageFor, tmdbImageSrcSet } from "@/modules/watching/lib/tmdb-image";
 import { X } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
+import { AddMark } from "@/modules/watching/components/shared/AddMark";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { Button } from "@/shared/components/ui/button";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
@@ -51,12 +52,14 @@ function ForYouCard({
   item,
   onClick,
   onDismiss,
+  type,
   priority,
   orientation = "backdrop",
 }: {
   item: ForYouItem;
   onClick: () => void;
   onDismiss: () => void;
+  type: MediaType;
   priority?: boolean;
   orientation?: "poster" | "backdrop";
 }) {
@@ -77,19 +80,22 @@ function ForYouCard({
             always-mounted mobile tree — up to 20 forced fetches from one section that sits below the
             fold. `priority` never gated it: that prop only sets the fetchpriority hint. */}
         {imgSrc && (
-          <Image
-            src={(isPoster ? tmdbImageFor(imgSrc, 170) : tmdbImageFor(imgSrc, 360)) || imgSrc}
-            alt={item.title}
-            fill
-            className={cn("object-cover", !imgInstant && "transition-opacity duration-200")}
-            // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
-            style={{ opacity: imgLoaded ? 1 : 0 }}
-            sizes={isPoster ? "(max-width: 1024px) 45vw, 180px" : "(max-width: 1024px) 45vw, 380px"}
-            loading={priority ? "eager" : "lazy"}
-            priority={priority}
-            onLoad={onImgLoad}
-            ref={attachImg}
-          />
+          <picture>
+            <source srcSet={tmdbImageSrcSet(imgSrc,isPoster ? 170:360,isPoster ? 500:item.backdrop_path ? 1280:780)} />
+            <Image
+              src={(isPoster ? tmdbImageFor(imgSrc, 170) : tmdbImageFor(imgSrc, 360)) || imgSrc}
+              alt={item.title}
+              fill
+              className={cn("object-cover", !imgInstant && "transition-opacity duration-200")}
+              // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
+              style={{ opacity: imgLoaded ? 1 : 0 }}
+              sizes={isPoster ? "(max-width: 1024px) 45vw, 180px" : "(max-width: 1024px) 45vw, 380px"}
+              loading={priority ? "eager" : "lazy"}
+              fetchPriority={priority ? "high" : "auto"}
+              onLoad={onImgLoad}
+              ref={attachImg}
+            />
+          </picture>
         )}
         <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
 
@@ -107,6 +113,7 @@ function ForYouCard({
           </Badge>
         )}
 
+        <AddMark tmdbId={item.id} type={type} title={item.title} className="right-14 can-hover:right-10" />
         {/* Dismiss — sits on the artwork, so it's glass, not a page control */}
         <Hint label="Not interested">
           <Button
@@ -114,14 +121,14 @@ function ForYouCard({
             size="icon-xs"
             aria-label="Not interested"
             onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-            className="absolute right-2 top-2 z-10 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+            className="absolute right-2 top-2 z-10 min-h-11 min-w-11 can-hover:min-h-6 can-hover:min-w-6 rounded-full opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100 group-focus-within:opacity-100"
           >
             <X />
           </Button>
         </Hint>
 
         <div className="absolute bottom-0 inset-x-0 p-4">
-          <h4 className="text-sm font-semibold text-white line-clamp-1">{item.title}</h4>
+          <h4 className="text-sm font-semibold text-white line-clamp-1"><button type="button" onClick={e=>{e.stopPropagation();onClick();}} className="max-w-full truncate text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-watching-vivid">{item.title}</button></h4>
           <div className="mt-1.5 flex items-center gap-2">
             {/* TMDB's score → gold. A recommendation is by definition unwatched, so this can
                 never be your rating. */}
@@ -247,6 +254,7 @@ export default function ForYouSectionClient({
           >
             <ForYouCard
               item={item}
+              type={config.type}
               onClick={() => handleAdd(item)}
               onDismiss={() => handleDismiss(item.id)}
               priority={i < 3}
@@ -262,6 +270,7 @@ export default function ForYouSectionClient({
             <ForYouCard
               orientation="poster"
               item={item}
+              type={config.type}
               onClick={() => handleAdd(item)}
               onDismiss={() => handleDismiss(item.id)}
               priority={i < 3}

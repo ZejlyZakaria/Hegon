@@ -14,7 +14,7 @@ import type { SeasonPart } from "../../lib/season-history";
 import { partDisplayScore, partMatchesView, scopeDisplayScore, scopeMatchesView, type ScopeRatingContext } from "../../lib/scope-ratings";
 import { StarRating } from "../shared/StarRating";
 import { ScoreMark } from "../shared/Marks";
-import { tmdbImage, tmdbImageFor } from "../../lib/tmdb-image";
+import { tmdbImage, tmdbImageFor, tmdbImageSrcSet } from "../../lib/tmdb-image";
 import { useSeasonEpisodes, type EpisodeInfo } from "../../hooks/useSeasonEpisodes";
 import {
   useAddEpisodeHighlight,
@@ -360,7 +360,7 @@ export function SeasonPanel({
             <div className="absolute inset-0 bg-black/45"/>
           </div>}
           <div className="aspect-2/3 w-full self-start overflow-hidden rounded-tile bg-surface-2" data-season-poster>
-            {poster ? <img src={tmdbImageFor(poster,120) ?? poster} alt={`Season ${s}`} className="h-full w-full object-cover"/>:
+            {poster ? <img src={tmdbImageFor(poster,120) ?? poster} srcSet={tmdbImageSrcSet(poster,undefined,500)} sizes="(min-width: 640px) 120px, 96px" alt={`Season ${s}`} className="h-full w-full object-cover"/>:
               <div className="flex h-full w-full items-center justify-center"><Tv size={22} className="text-text-tertiary"/></div>}
           </div>
           <div className="min-w-0 py-1">
@@ -638,7 +638,7 @@ function SeasonParts({parts,view,season,contexts,readOnly,saving,onRate}:{
   return <section aria-label="Season parts" className="space-y-2">
     <h4 className="text-caption font-semibold uppercase tracking-wide text-text-tertiary">Parts</h4>
     {parts.map(part=>{
-      const context=contexts?.find(r=>r.kind==="COUR" && r.number===part.scopeNumber);
+      const context=contexts?.find(r=>r.kind==="COUR" && r.scope_key===`anilist-cour:${part.id}`);
       const matches=partMatchesView(context,view,part);
       const seen=view.position.season>season || view.position.season===season && view.position.episode>=part.to;
       const released=(view.seasons[season-1]?.aired ?? 0)>=part.to;
@@ -649,7 +649,7 @@ function SeasonParts({parts,view,season,contexts,readOnly,saving,onRate}:{
         <p className="mt-1 text-xs text-text-secondary">{part.title}</p>
         {!readOnly && <div className="mt-2">
           {canRate && !saving ? <StarRating size="sm" value={score} onChange={v=>onRate!(part,v)}/>:
-            score>0 ? <ScoreMark value={score} source="mine"/>:<p className="text-xs text-text-tertiary">{released ? seen ? "Rating details unavailable":"Watch this part to rate it":"Not fully released"}</p>}
+            score>0 ? <ScoreMark value={score} source="mine"/>:<p className="text-xs text-text-tertiary">{released ? seen ? "Episode mapping awaiting sync":"Watch this part to rate it":"Not fully released"}</p>}
           <ScopeRatingReceipt context={context} score={context?.score ?? 0} canConfirm={canRate} saving={saving} onConfirm={()=>onRate?.(part,context!.score)}/>
         </div>}
       </div>;

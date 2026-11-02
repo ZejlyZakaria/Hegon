@@ -148,3 +148,16 @@ export function parseEpisodeRanges(input: string): NonNullable<RewatchScope["ran
     return { season: Number(match[1]), from: Number(match[2]), to: Number(match[3] ?? match[2]) };
   });
 }
+
+/** Explicit membership, never a status flag: a rewatch cannot include unconsumed episodes. */
+export function rewatchWithinCoverage(ranges:readonly ViewingRange[],first:readonly ViewingRange[]):boolean {
+  return ranges.every(r=>{
+    let next=r.episode_from;
+    for(const prior of first.filter(p=>p.season_number_at_recording===r.season_number_at_recording).sort((a,b)=>a.episode_from-b.episode_from)) {
+      if(prior.episode_from>next) break;
+      if(prior.episode_to>=next) next=prior.episode_to+1;
+      if(next>r.episode_to) return true;
+    }
+    return false;
+  });
+}

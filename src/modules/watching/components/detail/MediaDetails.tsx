@@ -1,6 +1,9 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
+import { catalogueBroadcastYears, catalogueEpisodes, catalogueReleaseDate, catalogueText } from "../../lib/catalogue-facts";
+import { useId, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { Panel } from "@/shared/components/ui/panel";
 import { useImdbId } from "../../hooks/useImdbId";
@@ -61,12 +64,20 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
   const { data: omdb } = useOmdbRatings(imdbId, !!imdbId);
   const { data: ageRating } = useAgeRating(media.tmdb_id ?? 0, media.type, !!media.tmdb_id);
 
+  const [detailsOpen,setDetailsOpen]=useState(false);
+  const moreId=useId();
+  const reducedMotion=useReducedMotion();
   const isFilm = media.type === "film";
+  const broadcastYears = catalogueBroadcastYears(media, omdb?.yearRange);
+  const episodes = catalogueEpisodes(media);
+  const released = catalogueReleaseDate(media.release_date);
+  const hasMore = [omdb?.country, omdb?.language, omdb?.imdbVotes, isFilm ? omdb?.boxOffice : null].some(catalogueText);
 
   return (
     <Panel
       title="Details"
       bleed
+      contentClassName="pb-2 sm:pb-2"
       actions={
         imdbId ? (
           <Hint label="View on IMDb">
@@ -86,15 +97,15 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
       <div className="overflow-hidden">
         {/* Awards live in the Accolades block above (the canon, with OMDb's totals as context). */}
         {/* Reference only — year/runtime/seasons/status live in the hero, never twice. */}
-        <div className="divide-y divide-border-subtle px-4 sm:px-5">
+        <div className="px-4 sm:px-5">
           <DetailRow label="Type" value={typeLabel} />
-          {ageRating ? (
+          {ageRating && catalogueText(ageRating) ? (
             <DetailRow
               label="Age rating"
               value={(() => {
                 const badge = (
                   <span
-                    className={`inline-flex items-center rounded border border-border-default px-1.5 py-0.5 text-micro font-semibold text-text-primary ${AGE_RATING_HINT[ageRating] ? "cursor-help" : ""}`}
+                    className={`inline-flex items-center rounded-chip border border-border-default px-1.5 py-0.5 text-micro font-semibold text-text-primary ${AGE_RATING_HINT[ageRating] ? "cursor-help" : ""}`}
                   >
                     {ageRating}
                   </span>
@@ -105,20 +116,23 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
               })()}
             />
           ) : null}
-          {isSeries && media.episodes ? <DetailRow label="Episodes" value={media.episodes} /> : null}
+          {isSeries && episodes.aired != null ? <DetailRow label="Episodes aired" value={episodes.aired} /> : null}
+          {isSeries && episodes.total != null && episodes.total !== episodes.aired ? <DetailRow label="Episodes announced" value={episodes.total} /> : null}
           {isSeries
-            ? (omdb?.yearRange ? <DetailRow label="Aired" value={omdb.yearRange} /> : null)
+            ? (broadcastYears ? <DetailRow label="Broadcast years" value={broadcastYears} /> : null)
             // Films: one source of truth for the date — our stored TMDB `release_date`, the same value
             // the "Waiting for" rail reads. OMDb no longer supplies it (it kept giving a DIFFERENT day
             // than the rail). OMDb still complements with ratings, awards and box office below.
-            : (media.release_date
-                ? <DetailRow label="Released" value={new Date(media.release_date + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} />
-                : null)}
-          {omdb?.country ? <DetailRow label="Country" value={omdb.country} /> : null}
-          {omdb?.language ? <DetailRow label="Language" value={omdb.language} /> : null}
-          {media.studio ? <DetailRow label="Studio" value={media.studio} /> : null}
-          {isFilm && omdb?.boxOffice ? <DetailRow label="Box office" value={omdb.boxOffice} /> : null}
-          {omdb?.imdbVotes ? <DetailRow label="IMDb votes" value={omdb.imdbVotes} /> : null}
+            : (released ? <DetailRow label="Released" value={released} /> : null)}
+          {catalogueText(media.studio) ? <DetailRow label="Studio" value={media.studio} /> : null}
+          {hasMore && <div className="pt-1"><button type="button" aria-expanded={detailsOpen} aria-controls={moreId} onClick={()=>setDetailsOpen(v=>!v)} className="flex min-h-11 w-full items-center justify-between gap-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-watching-vivid">
+            {detailsOpen ? "Fewer details" : "More details"}<ChevronDown size={14} aria-hidden="true" className={`shrink-0 transition-transform duration-200 motion-reduce:transition-none ${detailsOpen ? "rotate-180":""}`}/>
+          </button><motion.div id={moreId} aria-hidden={!detailsOpen} inert={!detailsOpen} initial={false} animate={{height:detailsOpen ? "auto":0,opacity:detailsOpen ? 1:0}} transition={{duration:reducedMotion ? 0:0.18,ease:"easeOut"}} className="overflow-hidden">
+            {catalogueText(omdb?.country) ? <DetailRow label="Country" value={omdb?.country} /> : null}
+            {catalogueText(omdb?.language) ? <DetailRow label="Language" value={omdb?.language} /> : null}
+            {isFilm && catalogueText(omdb?.boxOffice) ? <DetailRow label="Box office" value={omdb?.boxOffice} /> : null}
+            {catalogueText(omdb?.imdbVotes) ? <DetailRow label="IMDb votes" value={omdb?.imdbVotes} /> : null}
+          </motion.div></div>}
         </div>
       </div>
     </Panel>

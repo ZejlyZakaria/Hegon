@@ -1,24 +1,33 @@
 "use client";
 
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Target, Check } from "lucide-react";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { useWatchingGoals } from "../../hooks/useWatchingGoals";
-import { goalMatchesMedia } from "../../lib/goal-contribution";
+import { createLiveGoalEvaluator } from "../../lib/live-goal-metrics";
+import { useMediaHistory } from "../../hooks/useMediaHistory";
+import type { MediaView } from "../../lib/media-view";
+import type { StatsRawItem } from "../../service";
+import type { AnimeCoursRow } from "../../types";
 import type { WatchingMedia } from "../../types";
 
 // Goals accent (cross-module colour cue — you see this is a Goal, not a Watching thing).
 const GOALS_ACCENT = "var(--color-accent-goals)";
 
-// Shown on a WATCHED film's detail page: the watching-metric goals this title
-// actually counted toward (type + period match). Hidden otherwise. This is the
-// "the threads that connect everything" moment, made tangible per-title.
-export function ContributingToGoals({ media }: { media: WatchingMedia }) {
+// Explain membership in the same live metric as Goals, using accepted consumption periods.
+export function ContributingToGoals({ media, view }: { media: WatchingMedia; view?: MediaView|null }) {
   const router = useRouter();
-  const { data: goals = [] } = useWatchingGoals(!!media.watched);
-
-  if (!media.watched) return null;
-  const matching = goals.filter((g) => goalMatchesMedia(g, { type: media.type, watched_at: media.watched_at ?? null }));
+  const engaged=!!(media.watched || media.in_progress || media.paused || media.dropped);
+  const { data: goals = [] } = useWatchingGoals(engaged);
+  const history=useMediaHistory(media.id,engaged);
+  const contribution=useMemo(()=>{
+    const cours=new Map<number,AnimeCoursRow>();
+    if(media.tmdb_id && view?.cours) cours.set(media.tmdb_id,{tmdb_id:media.tmdb_id,source:"anilist",cours:view.cours});
+    return createLiveGoalEvaluator([media as StatsRawItem],cours,{records:history.data?.records ?? [],ratings:[]});
+  },[media,view,history.data]);
+  if (!engaged || history.isPending || history.error) return null;
+  const matching=goals.filter(g=>contribution(g.metric_key,g.metric_period==="year" ? g.metric_year:null)>0);
   if (matching.length === 0) return null;
 
   // No panel: each goal row is already its own bordered card — a panel around them would be
@@ -30,7 +39,8 @@ export function ContributingToGoals({ media }: { media: WatchingMedia }) {
         {matching.map((g) => {
           const target = g.metric_target ?? 0;
           const count  = g.metric_current;
-          const pct    = target > 0 ? Math.min(100, (count / target) * 100) : g.progress;
+          const pct = target > 0 ? Math.max(0,Math.min(100,(count/target)*100)) : Math.max(0,Math.min(100,g.progress));
+          const complete=target>0 && count>=target;
           return (
             <button
               key={g.id}
@@ -52,7 +62,7 @@ export function ContributingToGoals({ media }: { media: WatchingMedia }) {
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
                 <span className="text-xs tabular-nums text-text-secondary">{count}/{target}</span>
-                <Check size={14} style={{ color: GOALS_ACCENT }} />
+                {complete && <Check size={14} aria-label="Target reached" style={{ color: GOALS_ACCENT }} />}
               </div>
             </button>
           );

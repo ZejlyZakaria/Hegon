@@ -5,7 +5,7 @@ import { useImageReveal } from "@/modules/watching/hooks/useImageReveal";
 import { useRouter } from "next/navigation";
 import { usePrefetchMedia } from "../../hooks/usePrefetchMedia";
 import Image from "next/image";
-import { tmdbImageFor } from "../../lib/tmdb-image";
+import { tmdbImageFor, tmdbImageSrcSet } from "../../lib/tmdb-image";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
@@ -124,30 +124,33 @@ function MovieCard({
          * the stored urls said `w500` and `original` (avg 603 KB, several thousand pixels). That one
          * mismatch was 20.6 of the 22.4 MB this page used to download.
          *
-         * `unoptimized` is gone with it: the same prop was doing two jobs, and dropping it lets Next
-         * serve AVIF/WebP and a DPR-aware srcset on top of the now-correct source size.
+         * The optimizer is disabled globally. Native picture candidates select density at the CDN;
+         * a sizes prop alone cannot make an unoptimized Image responsive.
          */}
-        <Image
-          src={
-            (isPoster
-              ? tmdbImageFor(item.poster_url || item.backdrop_url, 170)
-              : tmdbImageFor(item.backdrop_url || item.poster_url, 360)) || "/placeholder.svg"
-          }
-          alt={item.title}
-          fill
-          // scale-[1.02]: overscan by ~1% each side so the art always covers the container to the
-          // pixel. A `fill` image can fall a sub-pixel short of the rounded edge, letting the
-          // `bg-zinc-800` behind it show as a 1px hairline ("le trait") at the bottom. Overscanning
-          // leaves no gap for it; the overflow-hidden clips the excess so nothing shows.
-          className={cn("object-cover scale-[1.02]", !imgInstant && "transition-opacity duration-200")}
-          // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
-          style={{ opacity: imgLoaded ? 1 : 0 }}
-          sizes={isPoster ? "(max-width: 1024px) 45vw, 180px" : "(max-width: 1024px) 45vw, 380px"}
-          loading={eagerLoad ? "eager" : "lazy"}
-          priority={eagerLoad}
-          onLoad={onImgLoad}
-          ref={attachImg}
-        />
+        <picture>
+          <source srcSet={tmdbImageSrcSet(isPoster ? item.poster_url || item.backdrop_url : item.backdrop_url || item.poster_url,isPoster ? 170:360,isPoster ? 500:item.backdrop_url ? 1280:780)} />
+          <Image
+            src={
+              (isPoster
+                ? tmdbImageFor(item.poster_url || item.backdrop_url, 170)
+                : tmdbImageFor(item.backdrop_url || item.poster_url, 360)) || "/placeholder.svg"
+            }
+            alt={item.title}
+            fill
+            // scale-[1.02]: overscan by ~1% each side so the art always covers the container to the
+            // pixel. A `fill` image can fall a sub-pixel short of the rounded edge, letting the
+            // `bg-zinc-800` behind it show as a 1px hairline ("le trait") at the bottom. Overscanning
+            // leaves no gap for it; the overflow-hidden clips the excess so nothing shows.
+            className={cn("object-cover scale-[1.02]", !imgInstant && "transition-opacity duration-200")}
+            // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
+            style={{ opacity: imgLoaded ? 1 : 0 }}
+            sizes={isPoster ? "(max-width: 1024px) 45vw, 180px" : "(max-width: 1024px) 45vw, 380px"}
+            loading={eagerLoad ? "eager" : "lazy"}
+            fetchPriority={eagerLoad ? "high" : "auto"}
+            onLoad={onImgLoad}
+            ref={attachImg}
+          />
+        </picture>
         <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
 
         {/* THE ONE THING OUTSIDE THE CLUSTERS, and it earns it: a bookmark is a RIBBON, and a ribbon
@@ -200,7 +203,7 @@ function MovieCard({
         <div className="absolute bottom-0 inset-x-0 p-4">
           {caughtUp && <StatusMark status={{ label: "Caught up", tone: "caughtup", level: null }} className="mb-2" />}
           <h4 className="text-sm font-semibold text-white line-clamp-1">
-            {displayTitle(item)}
+            <button type="button" onClick={e=>{e.stopPropagation();onView();}} className="max-w-full truncate text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-watching-vivid">{displayTitle(item)}</button>
           </h4>
 
           {/* Episode progress — and, beside it, the way to move it. The card has always known

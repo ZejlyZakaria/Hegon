@@ -36,6 +36,8 @@ export function MyTake({ media, forceNoteOpen }: Props) {
   const [rating, setRating] = useState(media.user_rating ?? 0);
   const [notes, setNotes] = useState(media.notes ?? "");
   const [editing, setEditing] = useState(false);
+  const [expanded,setExpanded]=useState(false);
+  const [noteOverflow,setNoteOverflow]=useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
   const mediaIdRef = useRef<string | null>(null);
@@ -43,6 +45,7 @@ export function MyTake({ media, forceNoteOpen }: Props) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<{ notes: string; rating: number; expected_revision?: number } | null>(null);
+  const noteRef=useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (media.id !== mediaIdRef.current) {
@@ -51,11 +54,14 @@ export function MyTake({ media, forceNoteOpen }: Props) {
       setRating(media.user_rating ?? 0);
       setNotes(media.notes ?? "");
       setEditing(false);
+      setExpanded(false);
       pendingRef.current = null;
-    } else if (!pendingRef.current && notes === (media.notes ?? "") && rating === (media.user_rating ?? 0)) {
+    } else if (!pendingRef.current) {
+      setRating(media.user_rating ?? 0);
+      setNotes(media.notes ?? "");
       draftRevision.current = media.personal_revision;
     }
-  }, [media, notes, rating]);
+  }, [media]);
 
   // Flush a pending edit if the user leaves before the debounce fires.
   useEffect(() => () => {
@@ -99,6 +105,13 @@ export function MyTake({ media, forceNoteOpen }: Props) {
 
   const hasNote = notes.trim().length > 0;
   const showEditor = editing || (isUnwatched && forceNoteOpen && !hasNote);
+
+  useEffect(()=>{
+    const el=noteRef.current;if(!el) return;
+    const measure=()=>setNoteOverflow(el.scrollHeight>4*parseFloat(getComputedStyle(el).lineHeight)+1);
+    const observer=new ResizeObserver(measure);observer.observe(el);measure();
+    return ()=>observer.disconnect();
+  },[notes,showEditor]);
 
   // Where this score sits among YOUR ratings of the same type (null below a real sample).
   const standing = useRatingStanding(media.user_id ?? null, media.type, rating);
@@ -213,17 +226,19 @@ export function MyTake({ media, forceNoteOpen }: Props) {
             className="w-full resize-none overflow-hidden bg-transparent text-body leading-7 text-text-primary placeholder:text-text-tertiary/60 focus:outline-none"
           />
         ) : hasNote ? (
-          <Hint label="Click to edit">
+          <div><Hint label="Click to edit">
             <div
+              ref={noteRef}
+              id={`take-note-${media.id}`}
               role="button"
               tabIndex={0}
               onClick={() => setEditing(true)}
               onKeyDown={(e) => { if (e.key === "Enter") setEditing(true); }}
-              className="cursor-text whitespace-pre-wrap text-body leading-7 text-text-primary/90 transition-colors hover:text-text-primary"
+              className={`cursor-text whitespace-pre-wrap text-body leading-7 text-text-primary/90 transition-colors hover:text-text-primary ${expanded ? "":"line-clamp-4"}`}
             >
               {notes}
             </div>
-          </Hint>
+          </Hint>{noteOverflow && <button type="button" aria-expanded={expanded} aria-controls={`take-note-${media.id}`} onClick={()=>setExpanded(v=>!v)} className="mt-2 min-h-11 text-xs font-medium text-text-secondary underline-offset-4 hover:text-text-primary hover:underline sm:min-h-8 sm:pointer-coarse:min-h-11">{expanded ? "Read less":"Read more"}</button>}</div>
         ) : (
           <button
             type="button"

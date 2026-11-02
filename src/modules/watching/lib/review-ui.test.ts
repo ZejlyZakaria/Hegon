@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import * as timelineHelpers from "./viewing-timeline";
 import * as rewatchHelpers from "./rewatch";
 import * as historyHelpers from "./history-analytics";
 import { parseViewingInput } from "./viewing-history";
@@ -15,7 +16,7 @@ import { describe, expect, it } from "vitest";
 import { mediaIdentity } from "./possession";
 import { experienceSummary } from "./person-experience";
 import { followDepartment, creditRoleLabel } from "./credit-roles";
-import { tmdbImageFor } from "./tmdb-image";
+import { tmdbImage, tmdbImageFor, tmdbImageSrcSet } from "./tmdb-image";
 import type { StatsRawItem } from "../service";
 
 // Execute the actual page/rail JSX with deterministic hook data; inspect React's own keys/props.
@@ -24,13 +25,17 @@ function component(path: string, extra: Record<string, unknown>, expose?: string
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   const exports: Record<string, unknown> = {};
   const deps: Record<string, unknown> = {
+    "@/shared/components/ui/button": { Button: "button" },
     "react/jsx-runtime": jsx,
     "../../lib/rewatch": rewatchHelpers,
+    "../../lib/viewing-timeline":timelineHelpers,
+    "../../hooks/useMediaHistory":{useMediaHistory:()=>({data:{records:[]},isPending:false})},
     "../../lib/history-analytics": historyHelpers,
     react: { useState: (value: unknown) => [value, () => {}], useEffect() {}, useMemo: (fn: () => unknown) => fn(), useRef: () => ({ current: null }) },
     "@/modules/watching/lib/possession": { mediaIdentity },
     "@/modules/watching/lib/person-experience": { experienceSummary },
-    "@/modules/watching/lib/tmdb-image": { tmdbImageFor },
+    "@/modules/watching/lib/tmdb-image": { tmdbImage, tmdbImageFor, tmdbImageSrcSet },
+    "../../lib/tmdb-image": { tmdbImage, tmdbImageFor, tmdbImageSrcSet },
     "../../lib/credit-roles": { followDepartment, creditRoleLabel },
     "@/modules/watching/components/person/PersonTimelinePanel": { datedCount: () => 0, PersonTimelinePanel: () => null },
     ...extra,
@@ -123,18 +128,6 @@ describe("Wave2C explicit rewatch form",()=>{
     };
     const stale=render(501);expect(stale.props.disabled).toBe(true);(stale.props.onClick as ()=>void)();expect(writes).toBe(0);
     const refreshed=render(502);expect(refreshed.props.disabled).toBe(false);(refreshed.props.onClick as ()=>void)();expect(writes).toBe(1);
-  });
-});
-
-describe("Wave2C rating history visibility",()=>{
-  it("shows old9 and revised8.5 as separate assertions without claiming viewing dates",()=>{
-    const loaded=component("src/modules/watching/components/detail/RewatchForm.tsx",{
-      react:{useState:()=>[true,()=>{}]},
-      "../../hooks/useMediaHistory":{useMediaHistory:()=>({data:{records:[],ratings:[{id:"old",score:9,scope_kind:"COUR",scope_number_at_recording:1,episode_ids:[1,2],recorded_at:"2026-10-18"},{id:"new",score:8.5,scope_kind:"COUR",scope_number_at_recording:2,episode_ids:[1,2,3],recorded_at:"2026-10-18"}]}})},
-      "../../hooks/query-keys":{WATCHING_KEYS:{all:["watching"]}},
-    });
-    const html=renderToStaticMarkup((loaded.ViewingHistory as (props:unknown)=>ReactElement)({mediaId:"fixture"}));
-    expect(html).toContain("Rating: 9 / 10");expect(html).toContain("Rating: 8.5 / 10");expect(html).toContain("recording dates");
   });
 });
 
@@ -260,5 +253,83 @@ describe("Uninitialized episode catalogue feedback",()=>{
     const buttons=elements(tree).filter(e=>e.type==="button");
     expect(buttons.find(e=>e.props.children==="Record rewatch")?.props.disabled).toBe(true);
     expect(buttons.some(e=>e.props.children==="Check sync status")).toBe(true);
+  });
+});
+
+
+it.each(["film","serie","anime"])("omits release-year fallback in both Top Picks surfaces for %s",type=>{
+  const loaded=component("src/modules/watching/components/stats/StatsPage.tsx",{"next/navigation":{useRouter:()=>({push(){}})}},"TopFavoritesCard");
+  const tree=(loaded.TopFavoritesCard as (props:unknown)=>unknown)({items:[{item:{id:"whole",type,title:"Whole work",year:1999},seasonLabel:null,rating:8.75,seasonPoster:null}]});
+  const rows=elements(tree).filter(e=>"meta" in e.props);
+  expect(rows).toHaveLength(2);
+  for(const row of rows){const text=renderToStaticMarkup(row.props.meta as ReactElement);expect(text).toContain("8.75");expect(text).not.toContain("1999");}
+});
+
+describe("rewatch form design-system controls",()=>{
+  it("keeps a compact primary save and secondary cancel without stretching both across the card",()=>{
+    let call=0;const values=["2022-08-12","WHOLE_TITLE",[],""];
+    const loaded=component("src/modules/watching/components/detail/RewatchForm.tsx",{
+      react:{useState:()=>[values[call++],()=>{}]},
+      "@tanstack/react-query":{useQuery:()=>({}),useQueryClient:()=>({})},
+      "../../lib/viewing-history":{parseViewingInput},
+      "../../hooks/query-keys":{WATCHING_KEYS:{all:["watching"]}},
+    });
+    const tree=(loaded.RewatchForm as (props:unknown)=>unknown)({media:{id:"film",type:"film"},view:{pending:false,seasons:[]},date:"2022-08-12",pending:false,onClose(){},onSave(){}});
+    const buttons=elements(tree).filter(e=>e.type==="button");
+    const save=buttons.find(e=>e.props.children==="Record rewatch")!,cancel=buttons.find(e=>e.props.children==="Cancel")!;
+    expect(save.props).toMatchObject({variant:"accent",size:"sm",disabled:false});
+    expect(cancel.props).toMatchObject({variant:"subtle",size:"sm"});
+    expect(save.props.className).not.toContain("flex-1");
+  });
+});
+
+describe("My Take refresh after a scoped edit",()=>{
+  it("adopts the server's revised global projection while preserving an unsaved draft",()=>{
+    const changes:unknown[][]=[[],[]];let state=0,ref=0;
+    const refs=[{current:"title"},{current:1},{current:null},{current:null},{current:null as unknown}];
+    const loaded=component("src/modules/watching/components/detail/MyTake.tsx",{
+      react:{useState:(v:unknown)=>{const i=state++;return [v,(next:unknown)=>{changes[i]?.push(next);}];},useRef:()=>refs[ref++] ?? {current:null},useEffect:(effect:()=>void)=>{effect();}},
+      "../../hooks/useUpdateMedia":{useUpdateMedia:()=>({})},
+      "../../hooks/useRatingPercentile":{useRatingStanding:()=>null},
+    });
+    const render=loaded.MyTake as (props:unknown)=>unknown;
+    render({media:{id:"title",type:"serie",user_rating:9,notes:"Kept",personal_revision:2}});
+    expect(changes[0]).toEqual([9]);expect(changes[1]).toEqual(["Kept"]);
+    state=0;ref=0;refs[4].current={notes:"Draft",rating:8};
+    render({media:{id:"title",type:"serie",user_rating:9.5,notes:"Server",personal_revision:3}});
+    expect(changes[0]).toEqual([9]);expect(changes[1]).toEqual(["Kept"]);
+  });
+});
+
+describe("human viewing history rows",()=>{
+  it("renders one film viewing with duration and no storage coordinates or audit codes",()=>{
+    const loaded=component("src/modules/watching/components/detail/ViewingHistory.tsx",{"../../lib/viewing-timeline":timelineHelpers});
+    const render=loaded.ViewingHistory as (props:unknown)=>ReactElement;
+    const html=renderToStaticMarkup(render({mediaType:"film",summary:{first:{id:"first",label:"First viewing",period:"30 Oct 2026",minutes:156,children:[]},rewatches:[],firstCoverage:[],hasParts:false},onEditRewatch(){},onRemoveRewatch(){}}));
+    expect(html).toContain("First viewing");expect(html).toContain("30 Oct 2026");expect(html).toContain("2h 36m");
+    for(const code of ["Season 0","FIRST_WATCH","COMPLETION","WHOLE_TITLE","milestone","Rating assertions"]) expect(html).not.toContain(code);
+  });
+  it("keeps the GOT rewatch concise and presents frozen duration in hours",()=>{
+    const loaded=component("src/modules/watching/components/detail/ViewingHistory.tsx",{"../../lib/viewing-timeline":timelineHelpers});
+    const html=renderToStaticMarkup((loaded.ViewingHistoryRow as (props:unknown)=>ReactElement)({film:false,entry:{id:"got",kind:"REWATCH",date:{year:2024,month:3,day:22},scope:"Entire series",minutes:4232,ranges:[1,2,3,4,5,6,7,8].map(season=>({season,from:1,to:10}))},onEditRewatch(){},onRemoveRewatch(){}}));
+    expect(html).toContain("22 Mar 2024");expect(html).toContain("70h 32m");expect(html).toContain("Entire series");expect(html).not.toContain("Season 1");
+  });
+});
+
+describe("Best Episodes native still quality",()=>{
+  it("offers the native original on high-density screens without a fabricated upscale",()=>{
+    const loaded=component("src/modules/watching/components/detail/Episodes.tsx",{},"StillCard");
+    const render=loaded.StillCard as (props:unknown)=>unknown;
+    const tree=render({still:"https://image.tmdb.org/t/p/w500/frame.jpg",line1:"S1.E1",line2:"Episode title",overview:null,onRemove(){},backdrop:null});
+    const image=elements(tree).find(e=>e.type==="img")!;
+    expect(image.props).toMatchObject({src:"https://image.tmdb.org/t/p/w500/frame.jpg",srcSet:"https://image.tmdb.org/t/p/w300/frame.jpg 1x, https://image.tmdb.org/t/p/original/frame.jpg 2x",loading:"lazy",decoding:"async",alt:"Episode title"});
+    expect(elements(tree).some(e=>typeof e.props.className==="string" && e.props.className.includes("w-66"))).toBe(true);
+  });
+  it("preserves the blurred fallback when no episode still is available",()=>{
+    const loaded=component("src/modules/watching/components/detail/Episodes.tsx",{},"StillCard");
+    const tree=(loaded.StillCard as (props:unknown)=>unknown)({still:null,line1:"S1.E1",line2:"Episode title",overview:null,onRemove(){},backdrop:"https://image.tmdb.org/t/p/w1280/show.jpg"});
+    const image=elements(tree).find(e=>e.type==="img")!;
+    expect(image.props.src).toBe("https://image.tmdb.org/t/p/w1280/show.jpg");expect(image.props.srcSet).toBeUndefined();
+    expect(image.props.className).toContain("blur");
   });
 });

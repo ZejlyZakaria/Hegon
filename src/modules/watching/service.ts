@@ -18,7 +18,7 @@ import { reportError } from "@/shared/utils/report-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry, OwnedIndexRow, PersonFollow, PersonFollowInput, PersonUpcomingRow, PersonRankRow, RankingKind } from "./types";
 import { deriveWatchStatus } from "./lib/watch-status";
-import { airedFromTmdb } from "./lib/series-state";
+import { activityBucket, airedFromTmdb } from "./lib/series-state";
 import { runtimeFromTmdb } from "./lib/tmdb-runtime";
 import { insertMediaSchema, updateMediaSchema } from "./schemas/media.schema";
 
@@ -101,7 +101,7 @@ export async function uploadCustomPoster(file: File): Promise<string | null> {
 // `tmdb_id`, which the lens needed and this list didn't carry — a surface can't speak about a fact
 // it never selected.)
 const SECTION_COLUMNS =
-  "id, personal_revision, type, tmdb_id, title, original_title, poster_url, backdrop_url, year, release_date, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, last_watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at";
+  "id, personal_revision, updated_at, type, tmdb_id, title, original_title, poster_url, backdrop_url, year, release_date, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, last_watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at, paused, dropped";
 
 export async function getMediaItems(
   userId: string,
@@ -109,6 +109,24 @@ export async function getMediaItems(
   options: GetMediaOptions = {}
 ): Promise<WatchingMedia[]> {
   const supabase = createClient();
+  if (type !== "film" && (options.inProgress || options.recentlyWatched)) {
+    // Fetch every engaged candidate before classification and the display cap. A stale
+    // posture can occur in either direction; filtering/limiting it in SQL loses titles.
+    const candidates = await fetchAllRows<WatchingMedia>((from, to) => supabase
+      .schema("watching").from("media_items").select(SECTION_COLUMNS)
+      .eq("user_id", userId).eq("type", type)
+      .or("watched.eq.true,in_progress.eq.true")
+      .order("id").range(from, to));
+    const bucket = options.inProgress ? "in-progress" : "last-watched";
+    const stamp = (m: WatchingMedia) => {
+      const value = options.inProgress ? m.updated_at : m.watched_at ?? m.last_watched_at ?? m.caught_up_at;
+      const time = value ? Date.parse(value) : NaN;
+      return Number.isFinite(time) ? time : -Infinity;
+    };
+    return candidates.filter((m) => activityBucket(m) === bucket)
+      .sort((a, b) => (stamp(b) - stamp(a) || a.id.localeCompare(b.id)))
+      .slice(0, options.limit ?? 100);
+  }
   let query = supabase
     .schema("watching")
     .from("media_items")
@@ -132,7 +150,6 @@ export async function getMediaItems(
 
   if (options.topRated) {
     query = query
-      .eq("favorite", true)
       .not("priority", "is", null)
       .order("priority", { ascending: true });
   } else if (options.awaiting) {
@@ -417,8 +434,9 @@ export async function insertMediaItem(data: Record<string, any>): Promise<Watchi
   const { history_date, history_intent, ...columns } = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
   delete columns.expected_revision;
   const orgId = await getCurrentOrgId();
-  const patch = { ...columns, org_id: orgId, ...(history_date !== undefined ? { viewing_date: history_date } : {}) };
-  const history = captureHistory(null,patch,{ history_date, history_intent: history_intent ?? "claim" });
+  const completion=completionDatePatch(null,{...columns,org_id:orgId},{history_date,history_intent:history_intent ?? "claim"},[]);
+  const patch={...completion.patch,...(completion.meta.history_date!==undefined ? {viewing_date:completion.meta.history_date}:{})};
+  const history=captureHistory(null,patch,completion.meta);
   return runPersonalCommand({ mode: "insert", media_id: crypto.randomUUID(), operation_key: crypto.randomUUID(), patch, ...history });
 }
 
@@ -1577,12 +1595,9 @@ export async function getViewingHistory(mediaItemId: string, kind?: "REWATCH"): 
   for (const range of ranges) {const group=byId.get(range.viewing_record_id) ?? [];group.push(range);byId.set(range.viewing_record_id,group);}
   return records.map(r => ({...r,ranges:byId.get(r.id) ?? []}));
 }
-export async function getMediaHistory(mediaItemId:string):Promise<{records:HistoricalViewing[];ratings:HistoricalRating[]}> {
-  const [records,ratings]=await Promise.all([
-    getViewingHistory(mediaItemId),
-    fetchAllRows<HistoricalRating>((from,to)=>createClient().schema("watching").from("scope_ratings").select("*").eq("media_item_id",mediaItemId).order("recorded_at",{ascending:false}).order("id").range(from,to)),
-  ]);
-  return {records,ratings};
+/** Viewing timeline and season periods share this read; rating audit is not a viewing event. */
+export async function getMediaHistory(mediaItemId:string):Promise<{records:HistoricalViewing[]}> {
+  return {records:await getViewingHistory(mediaItemId)};
 }
 export async function getRewatches(mediaItemId: string): Promise<Rewatch[]> {
   const db=createClient().schema("watching");

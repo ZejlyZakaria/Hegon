@@ -116,7 +116,7 @@ describe("Wave2C rating context and lineage",()=>{
   it("Hannibal computes8.75 from two legitimate scopes, confirmations add no vote",()=>{
     const records=[record("1",[range(1,13)],2026),record("2",[range(1,13,2)],2026),record("3",[range(1,13)],null,"COMPLETION"),record("4",[range(1,13,2)],null,"COMPLETION")];
     const ratings=[rating("1","3",8.5),rating("2","4",9,2),rating("3","4",9,2,"2")];
-    const result=stats(item({season_aired:[13,13],season_episodes:[13,13]}),history(records,ratings),2026);
+    const result=stats(item({watched:false,in_progress:true,current_season:3,current_episode:1,season_aired:[13,13,13],season_episodes:[13,13,13]}),history(records,ratings),2026);
     expect(result.topFavorites[0]).toMatchObject({rating:8.75,seasonLabel:"S1–S2"});expect(result.avgRating).toBe(8.75);expect(result.ratedCount).toBe(1);
   });
   it("follows lineage even if assertion timestamps tie or arrive out of order",()=>{
@@ -417,4 +417,19 @@ it("a confirmed year-only part correction replaces only its legacy overlap, pres
   expect(stats(media,after,2026).dailyActivity).toEqual(stats(media,before,2026).dailyActivity);
   expect(existing.map(r=>[r.month,r.day])).toEqual([[10,20],[10,28]]);
   expect(media.season_years).toEqual({1:2020,2:2023});
+});
+
+describe("single-scope edits preserve existing legacy annual attribution",()=>{
+  it("keeps a revised score in its stored viewing year without moving any hours",()=>{
+    const completion=record("2",[{...range(1,13),minutes:0,duration_basis:"MILESTONE"}],null,"COMPLETION");
+    const i=item({season_years:{1:2022},season_ratings:{1:8.5},user_rating:8.5});
+    const before=stats(i,history([]),2022);
+    const h=history([completion],[rating("1","2",8.5)]);
+    const after=stats(i,h,2022);
+    expect(after.topFavorites[0].rating).toBe(8.5);
+    expect(after.hours.total).toBe(before.hours.total);
+    expect(after.episodes).toBe(before.episodes);
+    expect(stats(i,h,2026).ratedCount).toBe(0);
+    expect(stats(i,history([completion],[{...rating("2","2",8.5),score:null}]),2022).ratedCount).toBe(0);
+  });
 });

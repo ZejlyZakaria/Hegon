@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Play } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
-import { tmdbImageFor, tmdbPosterSrcSet } from "../../lib/tmdb-image";
+import { tmdbImageFor, tmdbImageSrcSet } from "../../lib/tmdb-image";
 
 /**
  * A COMPACT REFERENCE TO A TITLE — poster, name, one line of context, whatever the surface needs on
@@ -82,7 +82,7 @@ export function MediaRow({
         <div className="relative aspect-2/3 w-(--poster-xs) shrink-0 overflow-hidden rounded-thumb bg-surface-2 ring-1 ring-border-subtle">
           {src ? (
             <picture>
-              {tmdbPosterSrcSet(posterUrl,40) && <source srcSet={tmdbPosterSrcSet(posterUrl,40)} />}
+              {tmdbImageSrcSet(posterUrl,40) && <source srcSet={tmdbImageSrcSet(posterUrl,40)} />}
               <Image src={src} alt={title} fill loading="lazy" className="object-cover" sizes="40px" />
             </picture>
           ) : (

@@ -1,3 +1,4 @@
+import { createLiveGoalEvaluator } from "./live-goal-metrics";
 import { computeStats } from "../components/stats/computeStats";
 import { computeWatchingAchievements, type WatchingAchievement } from "../components/stats/achievements";
 import { workKeyOf, deduplicateFirstViewing, type HistoryAnalytics } from "./history-analytics";
@@ -58,7 +59,7 @@ export function receiptMetrics(snapshot:ReceiptSnapshot) {
       achievement_key:a.key,metric_key:`watching:${a.key}:v1`,target:a.detail.goal,actual_value:a.detail.value,rule_version:1}));
   const matchesType=(i:StatsRawItem,key:string|null)=>key==="films" ? i.type==="film":key==="series" ? i.type==="serie":key==="anime" ? i.type==="anime":true;
   const periodIds=(s:ReturnType<typeof computeStats>)=>new Set([...s.breakdown.film,...s.breakdown.serie,...s.breakdown.anime,...s.breakdown.rewatches].map(e=>e.item.id));
-  const strictPeriods=new Map<number|null,ReturnType<typeof computeStats>>(),livePeriods=new Map<number|null,ReturnType<typeof computeStats>>();
+  const strictPeriods=new Map<number|null,ReturnType<typeof computeStats>>();
   const goalValue=(key:string|null,year:number|null)=>{
     let s=strictPeriods.get(year);
     if(!s){s=year==null ? getStrictStats():computeStats(bare,[],year,cours,history);strictPeriods.set(year,s);}
@@ -67,11 +68,6 @@ export function receiptMetrics(snapshot:ReceiptSnapshot) {
     return getCompleted().filter(i=>matchesType(i,key) && ids.has(i.id) && (year==null || i.type==="film" ||
       confirmed.some(r=>r.work_key===work(i) && !r.retracted_at && r.kind==="COMPLETION" && r.completion_basis==="FINISHED_TITLE" && r.year===year))).length;
   };
-  const liveGoalValue=(key:string|null,year:number|null)=>{
-    let s=livePeriods.get(year);
-    if(!s){s=computeStats(items,[],year,cours,snapshot.history);livePeriods.set(year,s);}
-    const ids=periodIds(s);
-    return items.filter(i=>matchesType(i,key) && ids.has(i.id) && (i.type==="film" || i.watched || finished.has(work(i)))).length;
-  };
+  const liveGoalValue=createLiveGoalEvaluator(items,cours,snapshot.history);
   return {achievements,goalValue,liveGoalValue,get stats(){return getStrictStats();}};
 }

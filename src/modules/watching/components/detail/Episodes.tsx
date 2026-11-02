@@ -1,11 +1,14 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
+import { detailRailHover } from "../../lib/detail-rail-hover";
 
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { Star } from "lucide-react";
+import { useAlignedRail } from "../../hooks/useAlignedRail";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { isEpisodeActionable } from "../../lib/series-state";
 import { flatToCour } from "../../lib/anime-overlay";
+import { tmdbImage } from "../../lib/tmdb-image";
 import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { Hint } from "@/shared/components/ui/tooltip";
@@ -25,7 +28,7 @@ import type { WatchingMedia, AnimeCour, EpisodeHighlight } from "../../types";
  */
 
 const GOLD = "var(--color-gold)";
-// A rail card is 264 px wide — 528 physical on a retina screen; `w300` was visibly soft.
+// Fallback only. The native img chooses a still variant for its actual screen density.
 const TMDB_STILL = "https://image.tmdb.org/t/p/w500";
 const fmtAir = (d: string) =>
   new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -50,9 +53,13 @@ function StillCard({
 }) {
   return (
     <div className="group relative w-66 shrink-0">
-      <div className="relative aspect-video overflow-hidden rounded-card border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.03]">
+      <div className="relative aspect-video overflow-hidden rounded-card ring-1 ring-inset ring-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.03]">
         {still ? (
-          <img src={still} alt={line2} loading="lazy" className="h-full w-full object-cover" />
+          <img src={still}
+            // 264px (272px on hover): w300 covers 1x. Original is TMDB's published
+            // higher-detail still source and never upscales a small native asset.
+            srcSet={`${tmdbImage(still,"w300")} 1x, ${tmdbImage(still,"original")} 2x`}
+            alt={line2} loading="lazy" decoding="async" className="h-full w-full object-cover" />
         ) : (
           <>
             {backdrop ? (
@@ -93,7 +100,6 @@ export function Episodes({ media, readOnly = false, cours }: { media: WatchingMe
   // Anime v2: marks are stored in TMDB coordinates (season 1 + the FLAT episode number) while the
   // cours are what you say out loud. The cours are the lens for this rail.
   const overlayOn = !!cours && cours.length > 0;
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: marks = [] } = useEpisodeHighlights(readOnly ? "" : media.id);
   const removeHighlight = useRemoveEpisodeHighlight(media.id);
@@ -108,6 +114,8 @@ export function Episodes({ media, readOnly = false, cours }: { media: WatchingMe
     [marks, media],
   );
 
+  const { ref: scrollRef, scroll, canPrev, canNext } = useAlignedRail(rows.length);
+
   const remove = async (h: EpisodeHighlight) => {
     try {
       await removeHighlight.mutateAsync(h.id);
@@ -121,15 +129,15 @@ export function Episodes({ media, readOnly = false, cours }: { media: WatchingMe
   // an empty rail with a hint is chrome around nothing, and the star lives in the season panel.
   if (readOnly || !media.tmdb_id || rows.length === 0) return null;
 
-  const scroll = (dir: number) => scrollRef.current?.scrollBy({ left: dir * 560, behavior: "smooth" });
 
   return (
     <section>
       <SectionHeader
+        className="min-h-9"
         title="Best Episodes"
-        actions={rows.length > 3 ? <CarouselNav size="md" onPrev={() => scroll(-1)} onNext={() => scroll(1)} /> : undefined}
+        actions={canPrev || canNext ? <CarouselNav size="md" canPrev={canPrev} canNext={canNext} onPrev={() => scroll(-1)} onNext={() => scroll(1)} /> : undefined}
       />
-      <div ref={scrollRef} className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-2 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5">
+      <div ref={scrollRef} {...detailRailHover} className="watching-detail-rail watching-detail-rail--episodes -mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5">
         {rows.map((h) => {
           // The coordinate people SAY: a cour and its own number under the overlay, else the row.
           const at = overlayOn ? flatToCour(h.episode, cours!) : { season: h.season, episode: h.episode };

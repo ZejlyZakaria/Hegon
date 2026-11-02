@@ -6,32 +6,14 @@ import { ChevronRight, Trophy } from "lucide-react";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { cn } from "@/shared/utils/utils";
-import { AwardRibbon } from "@/modules/watching/components/shared/Marks";
 import { useAwardCategories, useAwardsForWork } from "@/modules/watching/hooks/useAwards";
 import { useImdbId } from "@/modules/watching/hooks/useImdbId";
 import { useOmdbRatings } from "@/modules/watching/hooks/useOmdbRatings";
-import { ceremonyWord } from "@/modules/watching/lib/awards";
+import { externalAwardSummary, featuredAccolade } from "../../lib/accolade-summary";
 import { displayTitle } from "@/modules/watching/utils";
 import type { AwardCategory, AwardEntry, WatchingMedia } from "@/modules/watching/types";
 
-/**
- * ACCOLADES — what the canon says about THIS title (owner, 2026-09-16).
- *
- * The card says the summary, the panel says the detail — the module's own pattern (achievements →
- * "why", watchlist → See all): Game of Thrones has 160 Emmy lines, and a right rail is not where
- * they go. On the fiche: one block, "12 Emmys · 41 nominations", the best wins on one line, and
- * the whole block is the door. OMDb's totals ("59 Emmys in all · 396 wins worldwide" — Creative
- * Arts, Globes, BAFTAs, everything) sit UNDER the canon's line as context, named for what they
- * are, so two Emmy counts never read as a contradiction. Nominations are counted as such: a win
- * is never counted twice.
- *
- * In the panel: a timeline, one stop per ceremony year; under it one HEADER per category
- * (WINNER / NOMINEE) and one line per person, a dot each — no forced wrap, we own the lines
- * (owner). The person opens their page, the category its list, the year its ceremony.
- *
- * The canon does not depend on possession — the discover page shows the same block.
- */
-
+/** Tracked wins and nominations lead; broader external totals remain separate context. */
 const AWARD = "var(--color-award)";
 type Scope = "all" | "won" | "nominee";
 const SCOPES: { value: Scope; label: string }[] = [
@@ -39,26 +21,6 @@ const SCOPES: { value: Scope; label: string }[] = [
   { value: "won", label: "Winners" },
   { value: "nominee", label: "Nominees" },
 ];
-
-/** OMDb's one string — "Won 59 Primetime Emmys. 396 wins & 655 nominations total." — as context. */
-function omdbContext(raw: string): string | null {
-  const wins = raw.match(/(\d+)\s+wins?/i)?.[1];
-  const noms = raw.match(/(\d+)\s+nomination/i)?.[1];
-  // "Won 59 Primetime Emmys" and "Nominated for 53 Primetime Emmys" are two different facts
-  // (Better Call Saul: 53 nominations, not 53 wins — owner, 2026-09-16).
-  const headline = raw.match(/^\s*(Won|Nominated for)\s+(\d+)\s+(Primetime Emmys?|Oscars?|BAFTA[^.]*|Golden Globes?)/i);
-  const parts: string[] = [];
-  if (headline) {
-    const n = Number(headline[2]);
-    const what = headline[3].replace(/^Primetime /, "");
-    parts.push(/^won/i.test(headline[1])
-      ? `${n} ${what} in all`
-      : `${n} ${what.replace(/s$/, "")} ${n === 1 ? "nomination" : "nominations"} in all`);
-  }
-  if (wins) parts.push(`${wins} ${wins === "1" ? "win" : "wins"} worldwide`);
-  else if (noms) parts.push(`${noms} nominations worldwide`);
-  return parts.length ? parts.join(" · ") : null;
-}
 
 export function Accolades({ media }: { media: WatchingMedia }) {
   const kind = media.type === "film" ? "film" : "serie";
@@ -71,60 +33,51 @@ export function Accolades({ media }: { media: WatchingMedia }) {
 
   const cats = useMemo(() => new Map((categoriesQ.data ?? []).map((c) => [c.key, c])), [categoriesQ.data]);
   const entries = useMemo(() => rowsQ.data ?? [], [rowsQ.data]);
-  const wins = useMemo(
-    () => entries.filter((e) => e.won).sort((a, b) => (cats.get(a.category)?.rank ?? 99) - (cats.get(b.category)?.rank ?? 99) || b.year - a.year),
-    [entries, cats],
-  );
-  const nominations = entries.filter((e) => !e.won).length;
-  const context = omdb?.awards ? omdbContext(omdb.awards) : null;
-  if (entries.length === 0 && !context) return null;
-
-  // "12 Emmys · 41 nominations" — per ceremony when both series are present (a TV film).
-  const winsBy = { oscars: wins.filter((e) => e.ceremony === "oscars").length, emmys: wins.filter((e) => e.ceremony === "emmys").length };
-  const summary = [
-    winsBy.oscars > 0 && `${winsBy.oscars} ${ceremonyWord("oscars", winsBy.oscars)}`,
-    winsBy.emmys > 0 && `${winsBy.emmys} ${ceremonyWord("emmys", winsBy.emmys)}`,
-    nominations > 0 && `${nominations} ${nominations === 1 ? "nomination" : "nominations"}`,
-  ].filter(Boolean).join(" · ");
-  const label = (e: AwardEntry) => cats.get(e.category)?.label ?? e.category;
-  // Distinct categories, best first, "×N" when a series won the same one several years.
-  const distinct = (() => {
-    const counts = new Map<string, number>();
-    for (const w of wins) counts.set(label(w), (counts.get(label(w)) ?? 0) + 1);
-    return [...counts.entries()];
-  })();
-  const hasCanon = entries.length > 0;
-
-  const body = (
-    <>
-      <div className="flex items-center gap-2.5">
-        <Trophy size={15} className="shrink-0" style={{ color: AWARD }} />
-        <p className="flex-1 text-sm font-semibold text-text-primary">Accolades</p>
-        {hasCanon && <ChevronRight size={14} className="shrink-0 text-text-tertiary transition-colors group-hover:text-text-primary" />}
-      </div>
-      {hasCanon && <p className="mt-1 text-xs tabular-nums text-text-secondary">{summary}</p>}
-      {wins.length > 0 && (
-        <p className="mt-2 flex min-w-0 items-center gap-1.5 text-micro text-text-tertiary">
-          <AwardRibbon year={wins[0].year} size="card" inline />
-          <span className="truncate">
-            {distinct.slice(0, 3).map(([l, n]) => (n > 1 ? `${l} ×${n}` : l)).join(" · ")}
-            {distinct.length > 3 && <span className="text-text-tertiary/70"> · +{distinct.length - 3}</span>}
-          </span>
-        </p>
-      )}
-      {context && <p className={cn("text-micro tabular-nums text-text-tertiary", hasCanon ? "mt-2" : "mt-1")}>{context}</p>}
-    </>
-  );
+  const wins=entries.filter(e=>e.won);
+  const nominations=entries.length-wins.length;
+  const external=externalAwardSummary(omdb?.awards);
+  const hasCanon=entries.length>0;
+  const featured=featuredAccolade(entries,cats);
+  if(!hasCanon && !external) return null;
+  const counters:{value:number;label:string;won:boolean}[]=[];
+  for(const ceremony of ["oscars","emmys"] as const) {
+    const value=wins.filter(e=>e.ceremony===ceremony).length;
+    if(value) counters.push({value,label:ceremony==="oscars" ? `Oscar ${value===1 ? "win":"wins"}`:`Emmy ${value===1 ? "win":"wins"}`,won:true});
+  }
+  if(nominations) counters.push({value:nominations,label:nominations===1 ? "nomination":"nominations",won:false});
+  if(!hasCanon && external) {
+    if(external.wins!=null && external.wins>0) counters.push({value:external.wins,label:external.additional ? "other award wins":"wins across all awards",won:true});
+    if(external.nominations!=null && external.nominations>0) counters.push({value:external.nominations,label:external.additional ? "other nominations":"nominations across all awards",won:false});
+    if(!counters.length && external.headline && external.headline.count>0) counters.push({value:external.headline.count,label:`${external.headline.name} ${external.headline.won ? "won":"nominations"}`,won:external.headline.won});
+  }
+  if(!counters.length) return null;
+  const broaderContext=hasCanon && external && (external.wins!=null && external.wins>0 ? `${external.wins} ${external.wins===1 ? "win":"wins"}` : external.nominations!=null && external.nominations>0 ? `${external.nominations} ${external.nominations===1 ? "nomination":"nominations"}`:null);
+  const body=<>
+    <div className="flex items-center justify-between gap-3">
+      <span role="heading" aria-level={2} className="text-title text-text-primary">Accolades</span>
+      {hasCanon && <ChevronRight size={14} className="shrink-0 text-text-tertiary transition-colors group-hover:text-text-primary"/>}
+    </div>
+    <dl className={`mt-4 grid gap-4 ${counters.length>2 ? "grid-cols-3":counters.length===2 ? "grid-cols-2":"grid-cols-1"}`}>
+      {counters.map(c=><div key={c.label} className="min-w-0"><dd className="text-3xl font-semibold leading-none tracking-tight tabular-nums" style={c.won ? {color:AWARD}:undefined}>{c.value}</dd><dt className="mt-2 text-xs leading-snug text-text-secondary">{c.label}</dt></div>)}
+    </dl>
+    {hasCanon && <p className="mt-2 text-micro text-text-tertiary">In tracked categories</p>}
+    {featured && <div className="mt-4 flex items-start gap-3 border-t border-border-subtle pt-4">
+      <Trophy size={17} className="mt-0.5 shrink-0" style={{color:AWARD}}/>
+      <div className="min-w-0"><p className="text-sm font-medium leading-snug text-text-primary">{featured.label}</p><p className="mt-1 text-xs leading-relaxed text-text-secondary">{featured.count} {featured.count===1 ? "win":"wins"} {"\u00b7"} {featured.years}</p></div>
+    </div>}
+    {broaderContext && <p className="mt-4 text-micro leading-relaxed text-text-tertiary">{external?.additional ? "Other awards" : "Across all awards"} {"\u00b7"} {broaderContext}<span className="ml-1 text-text-tertiary/70">(IMDb)</span></p>}
+    {!hasCanon && <p className="mt-3 text-micro text-text-tertiary">IMDb awards summary</p>}
+  </>;
 
   // No canon behind it → no door: a plain block with OMDb's line (a Golden Globe, a BAFTA).
-  if (!hasCanon) return <div className="rounded-card border border-border-subtle bg-surface-1 p-4 sm:px-5">{body}</div>;
+  if (!hasCanon) return <div className="surface-quiet rounded-card p-4 sm:px-5">{body}</div>;
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group w-full rounded-card border border-border-subtle bg-surface-1 p-4 text-left transition-colors hover:bg-surface-2 sm:px-5"
+        className="group surface-quiet w-full rounded-card p-4 text-left transition-colors hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-watching-vivid sm:px-5"
       >
         {body}
       </button>

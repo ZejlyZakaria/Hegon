@@ -1,4 +1,5 @@
 "use client";
+import { detailRailHover } from "../../lib/detail-rail-hover";
 
 import { creditRoleLabel, followDepartment } from "../../lib/credit-roles";
 
@@ -41,8 +42,8 @@ function perView(w: number) { return w < 640 ? 4 : w < 1024 ? 6 : 8; }
 export function CastCrewSkeleton() {
   return (
     <section aria-hidden>
-      <SectionHeader title="Cast & Crew" />
-      <div className="-mx-4 overflow-x-hidden px-4 sm:mx-0 sm:px-0">
+      <SectionHeader className="min-h-9" title="Cast & Crew" />
+      <div {...detailRailHover} className="watching-detail-rail -mx-4 overflow-x-hidden px-4 sm:-mx-1.5 sm:px-1.5">
         <FaceCellsSkeleton rail="cast" />
       </div>
     </section>
@@ -91,6 +92,7 @@ export function CastCrew({ cast, directors, type }: Props) {
   return (
     <section>
       <SectionHeader
+        className="min-h-9"
         title="Cast & Crew"
         actions={pages > 1 ? <CarouselNav className="hidden lg:flex" onPrev={() => go(current - 1)} onNext={() => go(current + 1)} canPrev={current > 0} canNext={current < pages - 1} /> : undefined}
       />
@@ -99,7 +101,8 @@ export function CastCrew({ cast, directors, type }: Props) {
           headroom — an overflow-x container clips vertically too. */}
       <div
         ref={railRef}
-        className="-mx-4 flex snap-x gap-4 overflow-x-auto scroll-px-4 px-4 py-1 sm:mx-0 sm:px-0 sm:scroll-px-0"
+        {...detailRailHover}
+        className="watching-detail-rail -mx-4 flex snap-x gap-4 overflow-x-auto scroll-px-4 px-4 py-1.5 sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5"
         style={{ scrollbarWidth: "none" }}
       >
         {people.map((person, i) => (

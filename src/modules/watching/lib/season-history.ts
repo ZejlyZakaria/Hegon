@@ -86,7 +86,7 @@ function ordinalRanges(values:number[],prefix:string):string {
 }
 
 /** Only the subjects that actually supplied the annual score own its label and poster. */
-export function ratedScopePresentation(view:MediaView,scopes:readonly RatingScope[]):{seasonLabel:string|null;seasonPoster:string|null} {
+export function ratedScopePresentation(view:MediaView,scopes:readonly RatingScope[],hideWholeWork=false):{seasonLabel:string|null;seasonPoster:string|null} {
   const subjects=new Map<number,{whole:boolean;parts:number[]}>();
   for(const scope of scopes) {
     let season:number|undefined,part:number|undefined;
@@ -105,6 +105,12 @@ export function ratedScopePresentation(view:MediaView,scopes:readonly RatingScop
   const entries=[...subjects].sort(([a],[b])=>a-b);
   if(!entries.length)return {seasonLabel:null,seasonPoster:null};
   const whole=entries.filter(([,s])=>s.whole).map(([s])=>s);
+  // A whole-work label is redundant only when the caller also proved full first viewing in one year.
+  const allRated=view.seasons.length>0 && entries.length===view.seasons.length && view.seasons.every(season=>{
+    const subject=subjects.get(season.season);
+    return subject?.whole || !!season.parts?.length && season.parts.every(part=>subject?.parts.includes(part.number));
+  });
+  if(hideWholeWork && allRated)return {seasonLabel:null,seasonPoster:null};
   const labels=whole.length ? [ordinalRanges(whole,"S")]:[];
   for(const [season,subject]of entries)if(!subject.whole && subject.parts.length)
     labels.push(`S${season} · ${new Set(subject.parts).size===1 ? "Part":"Parts"} ${ordinalRanges(subject.parts,"")}`);

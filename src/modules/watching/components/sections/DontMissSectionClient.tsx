@@ -11,7 +11,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { ROW_VARS } from "@/modules/watching/lib/dont-miss-layout";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { mapTmdbGenres } from "@/modules/watching/lib/media-utils";
-import { tmdbImage, tmdbImageFor } from "@/modules/watching/lib/tmdb-image";
+import { tmdbImage, tmdbImageFor, tmdbImageSrcSet } from "@/modules/watching/lib/tmdb-image";
 import { useWatchingHero } from "@/modules/watching/hooks/useWatchingHero";
 import {
   useOwnedTmdbIds,
@@ -112,22 +112,25 @@ function DontMissCard({
             earns `eager`. All six were claiming it, which is how this rail alone fired twelve
             immediate fetches that raced the rest of the page. */}
         {posterUrl && (
-          <Image
-            src={tmdbImageFor(posterUrl, 220) || posterUrl}
-            alt={title}
-            fill
-            className={cn(
-              "object-cover",
-              !imgInstant && "transition-opacity duration-200",
-            )}
-            // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
-            style={{ opacity: imgLoaded ? 1 : 0 }}
-            sizes="(max-width: 1024px) 45vw, 240px"
-            loading={isFirst ? "eager" : "lazy"}
-            priority={isFirst}
-            onLoad={onImgLoad}
-            ref={attachImg}
-          />
+          <picture>
+            <source srcSet={tmdbImageSrcSet(posterUrl,220,780)} />
+            <Image
+              src={tmdbImageFor(posterUrl, 220) || posterUrl}
+              alt={title}
+              fill
+              className={cn(
+                "object-cover",
+                !imgInstant && "transition-opacity duration-200",
+              )}
+              // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
+              style={{ opacity: imgLoaded ? 1 : 0 }}
+              sizes="(max-width: 1024px) 45vw, 240px"
+              loading={isFirst ? "eager" : "lazy"}
+              fetchPriority={isFirst ? "high" : "auto"}
+              onLoad={onImgLoad}
+              ref={attachImg}
+            />
+          </picture>
         )}
       </div>
 

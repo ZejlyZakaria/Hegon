@@ -129,6 +129,19 @@ export function isAwaitingNextSeason(m: SeriesFacts): boolean {
   return seriesState(m) === "caught-up" && caughtUpOn(m) === "season";
 }
 
+/** One classification shared by home rails and Stats; aired progress wins over stale posture. */
+export function activityBucket(m: SeriesFacts & {
+  type?: string; watched?: boolean; in_progress?: boolean; paused?: boolean; dropped?: boolean;
+}): "in-progress" | "last-watched" | null {
+  if (m.paused || m.dropped || (!m.watched && !m.in_progress)) return null;
+  if (m.type === "film") return m.watched ? "last-watched" : "in-progress";
+  const state = seriesState(m);
+  if (state === "completed" || isAwaitingNextSeason(m)) return "last-watched";
+  if (state !== null) return "in-progress";
+  // Missing airing evidence must not manufacture completion or undo a stored one.
+  return m.watched ? "last-watched" : "in-progress";
+}
+
 // ── The next step, and what the app will and won't let you do ──────────────────────────────
 
 export type NextStep =

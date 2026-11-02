@@ -52,8 +52,8 @@ export function AddMark({ tmdbId, type, title, className, onAdded }: {
   return (
     <div
       className={cn(
-        OVERLAY_CLUSTER, "right-2",
-        !done && "opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100",
+        OVERLAY_CLUSTER, "right-2 h-11 can-hover:h-6",
+        !done && "opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100 group-focus-within:opacity-100",
         className,
       )}
       onClick={(e) => e.stopPropagation()}
@@ -62,10 +62,12 @@ export function AddMark({ tmdbId, type, title, className, onAdded }: {
         <span
           role="button"
           tabIndex={0}
+          aria-disabled={state.kind === "pending"}
+          aria-busy={state.kind === "pending"}
           aria-label={done ? `${title} is in your library — open it` : `Add ${title} to Want to Watch`}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); void act(); }}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); void act(); } }}
-          className={cn(OVERLAY_CIRCLE, "cursor-pointer text-white/80 transition-colors hover:bg-black/85 hover:text-white", done && "text-accent-watching-vivid hover:text-accent-watching-vivid")}
+          className={cn(OVERLAY_CIRCLE, "min-h-11 min-w-11 can-hover:min-h-6 can-hover:min-w-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-watching-vivid cursor-pointer text-white/80 transition-colors hover:bg-black/85 hover:text-white", done && "text-accent-watching-vivid hover:text-accent-watching-vivid")}
         >
           {state.kind === "pending" ? <Loader2 size={13} className="animate-spin" /> : done ? <Check size={13} /> : <Plus size={13} />}
         </span>

@@ -5,7 +5,7 @@ import { afterEach,describe,it,expect,vi } from "vitest";
 import { completionDatePatch,watchedPeriodLabel } from "./completion-date";
 import { assertion,captureHistory,viewingDate,type HistoryMetadata,type StoredViewingAssertion,type ViewingAssertion } from "./viewing-history";
 import { markWatchedPatch,type StatusFacts } from "./watch-status";
-import { updateMediaItem } from "../service";
+import { updateMediaItem, insertMediaItem } from "../service";
 import { http,HttpResponse } from "msw";
 import { server } from "@/tests/mocks/server";
 
@@ -62,9 +62,9 @@ describe("Dated final consumption outranks an old aggregate season year",()=>{
     const resolved=completionDatePatch(b,{season_years:{"1":2019,"2":2023},watched_at:"2023-12-31"},{},[completion]);
     expect(resolved.patch.watched_at).toBe("2026-10-28T12:00:00.000Z");expect(resolved.meta.history_date).toBeUndefined();
   });
-  it("keeps films and legacy claims on their existing path",()=>{
+  it("preserves an explicit historical film date and the existing legacy series claim",()=>{
     const patch={watched:true,watched_at:"2020-01-01"};
-    expect(completionDatePatch({...before(),type:"film"},patch,{},[first()]).patch).toBe(patch);
+    expect(completionDatePatch({...before(),type:"film"},patch,{history_date:{year:2020,month:1,day:1}},[first()]).patch).toBe(patch);
     expect(finish([]).patch.watched_at).toContain("2023");
   });
   it("shows2020-2026 while keeping both old season stamps untouched",()=>{
@@ -105,5 +105,51 @@ describe("Actual service sends one atomic dated completion",()=>{
     expect(saved.watched_at).toBe("2026-10-28T12:00:00.000Z");
     expect(commands).toHaveLength(1);expect(commands[0]).toMatchObject({expected_revision:6,patch:{viewing_date:{year:2026,month:10,day:28},season_years:{"1":2020,"2":2023}},records:[{kind:"COMPLETION",day:28,month:10,year:2026}]});
     expect(commands[0].records).toHaveLength(1);
+  });
+});
+
+describe("marking a film watched defaults to the local viewing day",()=>{
+  it("captures today in both first viewing and completion, preserving156minutes once",()=>{
+    vi.useFakeTimers();vi.setSystemTime(new Date(2026,9,30,1,24));
+    const before={type:"film",watched:false,runtime:156};
+    const resolved=completionDatePatch(before,{watched:true},{history_intent:"claim"},[]);
+    expect(resolved.meta.history_date).toEqual({year:2026,month:10,day:30});
+    const captured=captureHistory(before,resolved.patch,resolved.meta).records;
+    expect(captured.map(r=>r.kind)).toEqual(["FIRST_WATCH","COMPLETION"]);
+    expect(captured.every(r=>r.year===2026 && r.month===10 && r.day===30)).toBe(true);
+    expect(captured.filter(r=>r.kind==="FIRST_WATCH")[0].ranges[0].minutes).toBe(156);
+    expect(captured.filter(r=>r.kind==="COMPLETION")[0].ranges[0].minutes).toBe(0);
+  });
+  it.each([null,{year:2020,month:null,day:null},{year:2024,month:3,day:22}])("preserves an explicit historical or unknown date%j",date=>{
+    const resolved=completionDatePatch({type:"film",watched:false},{watched:true},{history_date:date},[]);
+    expect(resolved.meta.history_date).toEqual(date);
+  });
+  it("covers initial insertion without redating an existing film or historical correction",()=>{
+    vi.useFakeTimers();vi.setSystemTime(new Date(2026,9,30,1,24));
+    expect(completionDatePatch(null,{type:"film",watched:true},{},[]).meta.history_date).toEqual({year:2026,month:10,day:30});
+    expect(completionDatePatch({type:"film",watched:true},{user_rating:9},{},[]).meta.history_date).toBeUndefined();
+    expect(completionDatePatch({type:"film",watched:false},{watched:true},{history_intent:"correction"},[]).meta.history_date).toBeUndefined();
+  });
+});
+
+describe("film service dates and projections are saved in one command",()=>{
+  it.each(["insert","update"])("dates a new film viewing via%s without a follow-up write",async(mode)=>{
+    vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date(2026,9,30,1,24));
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL","https://watching-test.supabase.co");vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY","test-anon-key");
+    const film={id,type:"film",user_id:"owner",title:"Film fixture",tmdb_id:42,watched:false,in_progress:false,paused:false,dropped:false,favorite:false,runtime:156,personal_revision:1};
+    const commands:{mode:string;patch:Record<string,unknown>;records:ViewingAssertion[]}[]=[];
+    server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>HttpResponse.json(film)),
+      http.get("https://watching-test.supabase.co/rest/v1/viewing_records",()=>HttpResponse.json([])),
+      http.get("https://watching-test.supabase.co/rest/v1/memberships",()=>HttpResponse.json({org_id:"org"})),
+      http.post("https://watching-test.supabase.co/rest/v1/rpc/personal_history_command",async({request})=>{
+        const {command}=await request.json() as {command:typeof commands[number]};commands.push(command);
+        return HttpResponse.json({...film,...command.patch,personal_revision:2});
+      }));
+    if(mode==="update") await updateMediaItem(id,{watched:true,history_intent:"claim",expected_revision:1});
+    else await insertMediaItem({...film,...markWatchedPatch(film as StatusFacts)});
+    expect(commands).toHaveLength(1);expect(commands[0].patch.viewing_date).toEqual({year:2026,month:10,day:30});
+    expect(commands[0].records).toHaveLength(2);
+    expect(commands[0].records.every(r=>r.year===2026 && r.month===10 && r.day===30)).toBe(true);
+    expect(commands[0].records.filter(r=>r.kind==="FIRST_WATCH")[0].ranges[0].minutes).toBe(156);
   });
 });

@@ -1,4 +1,5 @@
 "use client";
+import { detailRailHover } from "../../lib/detail-rail-hover";
 
 import { useState } from "react";
 import Image from "next/image";
@@ -29,8 +30,8 @@ interface SimilarItem {
 export function MoreLikeThisSkeleton() {
   return (
     <section>
-      <SectionHeader title="More Like This" />
-      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5">
+      <SectionHeader className="min-h-9" title="More Like This" />
+      <div {...detailRailHover} className="watching-detail-rail -mx-4 flex gap-3 overflow-x-auto px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="w-(--rail-peek) shrink-0 sm:w-(--poster-lg)">
             <div className="aspect-2/3 w-full animate-pulse rounded-tile bg-surface-2" />
@@ -72,13 +73,13 @@ export function MoreLikeThis({ items, type, loading = false, onAddClick }: Props
 
   return (
     <section>
-      <SectionHeader title="More Like This" />
+      <SectionHeader className="min-h-9" title="More Like This" />
       {/* One scrolling rail at EVERY size — the same shape as Watch History, so the poster is one
           fixed rung (`--poster-lg` past `sm`, `--rail-peek` on mobile) instead of a grid column that
           resizes with the viewport. That keeps the poster identical on iPad portrait, iPad landscape
           and desktop; you scroll for more rather than cramming a different count into each width.
           py-1.5 leaves room for the hover scale the overflow-x container would otherwise clip. */}
-      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5">
+      <div {...detailRailHover} className="watching-detail-rail -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5">
         {items.slice(0, 6).map((sim) => {
           const title = sim.title || sim.name || "";
           // The year earns its place here: in a franchise it's the fastest way to read the order —
@@ -96,7 +97,7 @@ export function MoreLikeThis({ items, type, loading = false, onAddClick }: Props
               onKeyDown={(e) => { if (clickable && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); (e.currentTarget as HTMLDivElement).click(); } }}
               className={cn("group block w-(--rail-peek) shrink-0 snap-start text-left sm:w-(--poster-lg)", clickable && "cursor-pointer")}
             >
-              <div className="relative aspect-2/3 overflow-hidden rounded-tile border border-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
+              <div className="relative aspect-2/3 overflow-hidden rounded-tile ring-1 ring-inset ring-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.04]">
                 <Image
                   src={sim.poster_path ? `https://image.tmdb.org/t/p/w500${sim.poster_path}` : "/placeholder.svg"}
                   alt={title}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tmdbImage, tmdbImageFor, tmdbSizeFor } from "./tmdb-image";
+import { tmdbImage, tmdbImageFor, tmdbSizeFor, tmdbImageSrcSet } from "./tmdb-image";
 
 const BACKDROP = "https://image.tmdb.org/t/p/original/abc123.jpg";
 const POSTER = "https://image.tmdb.org/t/p/w500/xyz789.jpg";
@@ -41,5 +41,29 @@ describe("tmdbSizeFor — rounds UP, because too small is visible and too big is
   it("caps at w1280 — `original` is never a display size", () => {
     expect(tmdbSizeFor(1200)).toBe("w1280");
     expect(tmdbImageFor(BACKDROP, 1200)).toBe("https://image.tmdb.org/t/p/w1280/abc123.jpg");
+  });
+});
+
+
+describe("Native image source candidates",()=>{
+  it("retains compact poster density and offers a bounded high-density rail candidate",()=>{
+    expect(tmdbImageSrcSet(POSTER,40)).toBe([
+      tmdbImage(POSTER,"w92")+" 1x",tmdbImage(POSTER,"w92")+" 2x",tmdbImage(POSTER,"w154")+" 3x",
+    ].join(", "));
+    expect(tmdbImageSrcSet(POSTER,170,500)).toBe([
+      tmdbImage(POSTER,"w185")+" 1x",tmdbImage(POSTER,"w342")+" 2x",tmdbImage(POSTER,"w500")+" 3x",
+    ].join(", "));
+    expect(tmdbImageSrcSet(BACKDROP,360)).toContain(tmdbImage(BACKDROP,"w1280")+" 3x");
+  });
+  it("supplies width descriptors for fluid season frames without exceeding their cap",()=>{
+    const candidates=tmdbImageSrcSet(POSTER,undefined,500)!;
+    expect(candidates).toContain(tmdbImage(POSTER,"w342")+" 342w");
+    expect(candidates).toContain(tmdbImage(POSTER,"w500")+" 500w");
+    expect(candidates).not.toContain("w780");
+    expect(candidates).not.toContain("original");
+  });
+  it("leaves custom uploads and AniList artwork outside the TMDB variant system",()=>{
+    for(const url of [null,undefined,"/placeholder.svg","https://s4.anilist.co/cover.png","https://xyz.supabase.co/poster.jpg"])
+      expect(tmdbImageSrcSet(url,120)).toBeUndefined();
   });
 });

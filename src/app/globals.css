@@ -781,3 +781,40 @@
 .dos-jiggle {
   animation: dos-jiggle 0.34s ease-in-out infinite;
 }
+
+/* Keep detail rails on the same visual column while reserving room for edge-card zoom.
+   Only the hovered edge opens its gutter; the opposite edge stays aligned. */
+.watching-detail-rail {
+  --rail-hover-room: calc(var(--spacing) * 4);
+  clip-path: inset(0 var(--rail-hover-room));
+  transition: clip-path 300ms ease-out;
+}
+@media (min-width: 640px) {
+  .watching-detail-rail { --rail-hover-room: calc(var(--spacing) * 1.5); }
+}
+@media (hover: hover) {
+  .watching-detail-rail[data-hover-edge="start"] {
+    clip-path: inset(0 var(--rail-hover-room) 0 0);
+  }
+  .watching-detail-rail[data-hover-edge="end"] {
+    clip-path: inset(0 0 0 var(--rail-hover-room));
+  }
+  .watching-detail-rail[data-hover-edge="both"] {
+    clip-path: inset(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .watching-detail-rail { transition: none; }
+}
+
+/* Best Episodes: keep a partial trailing card (and its caption) clipped to the
+   content edge. Fully visible cards, including the real final card, still zoom out. */
+.watching-detail-rail--episodes[data-hover-clipped-end] {
+  clip-path: inset(0 var(--rail-hover-room));
+  transition: none;
+}
+@media (hover: hover) {
+  .watching-detail-rail--episodes[data-hover-clipped-end][data-hover-edge="both"] {
+    clip-path: inset(0 var(--rail-hover-room) 0 0);
+  }
+}
