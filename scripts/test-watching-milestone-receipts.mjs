@@ -114,6 +114,10 @@ try {
   const {runCorrectionStanceChecks}=await import('./test-watching-correction-stance.mjs');
   runCorrectionStanceChecks({sql,db,counts});
  }
+ if(process.argv.includes('--animation-studios')) {
+  const {runAnimationStudioChecks}=await import('./test-watching-animation-studios.mjs');
+  runAnimationStudioChecks({sql,db,counts});
+ }
  if(process.argv.includes('--estimated-dates')) {
   const {runEstimatedDateChecks}=await import('./test-watching-estimated-dates.mjs');
   runEstimatedDateChecks({sql,db});

@@ -1,6 +1,6 @@
 "use client";
 
-import { catalogueBroadcastYears, catalogueEpisodes, catalogueReleaseDate, catalogueText } from "../../lib/catalogue-facts";
+import { animationStudioCredits, catalogueBroadcastYears, catalogueEpisodes, catalogueReleaseDate, catalogueText } from "../../lib/catalogue-facts";
 import { useId, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, ExternalLink } from "lucide-react";
@@ -8,6 +8,7 @@ import { Hint } from "@/shared/components/ui/tooltip";
 import { Panel } from "@/shared/components/ui/panel";
 import { useImdbId } from "../../hooks/useImdbId";
 import { useOmdbRatings } from "../../hooks/useOmdbRatings";
+import { useAnimeCours } from "../../hooks/useAnimeCours";
 import { useAgeRating } from "../../hooks/useAgeRating";
 import type { WatchingMedia } from "../../types";
 
@@ -68,6 +69,8 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
   const moreId=useId();
   const reducedMotion=useReducedMotion();
   const isFilm = media.type === "film";
+  const { data: cours } = useAnimeCours(media.tmdb_id ?? 0, media.type === "anime");
+  const animationCredits = media.type === "anime" ? animationStudioCredits(cours) : [];
   const broadcastYears = catalogueBroadcastYears(media, omdb?.yearRange);
   const episodes = catalogueEpisodes(media);
   const released = catalogueReleaseDate(media.release_date);
@@ -124,7 +127,8 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
             // the "Waiting for" rail reads. OMDb no longer supplies it (it kept giving a DIFFERENT day
             // than the rail). OMDb still complements with ratings, awards and box office below.
             : (released ? <DetailRow label="Released" value={released} /> : null)}
-          {catalogueText(media.studio) ? <DetailRow label="Studio" value={media.studio} /> : null}
+          {catalogueText(media.studio) ? <DetailRow label={isFilm ? "Production company" : "Network"} value={media.studio} /> : null}
+          {animationCredits.length > 0 && <DetailRow label="Animation studios" value={<div className="space-y-2">{animationCredits.map(c=><div key={c.title ?? "all"}>{c.title && <p className="text-micro font-normal leading-snug text-text-tertiary">{c.title}</p>}<p className="leading-snug">{c.names.join(", ")}</p></div>)}</div>} />}
           {hasMore && <div className="pt-1"><button type="button" aria-expanded={detailsOpen} aria-controls={moreId} onClick={()=>setDetailsOpen(v=>!v)} className="flex min-h-11 w-full items-center justify-between gap-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-watching-vivid">
             {detailsOpen ? "Fewer details" : "More details"}<ChevronDown size={14} aria-hidden="true" className={`shrink-0 transition-transform duration-200 motion-reduce:transition-none ${detailsOpen ? "rotate-180":""}`}/>
           </button><motion.div id={moreId} aria-hidden={!detailsOpen} inert={!detailsOpen} initial={false} animate={{height:detailsOpen ? "auto":0,opacity:detailsOpen ? 1:0}} transition={{duration:reducedMotion ? 0:0.18,ease:"easeOut"}} className="overflow-hidden">

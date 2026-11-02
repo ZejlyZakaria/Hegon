@@ -1,3 +1,5 @@
+import type { AnimeCoursRow } from "../types";
+
 export function catalogueEpisodes(media: { season_aired?: number[] | null; season_episodes?: number[] | null; episodes?: number | null }) {
   const sum = (values: number[] | null | undefined) => values?.length && values.every(n => Number.isInteger(n) && n >= 0) ? values.reduce((a, b) => a + b, 0) : null;
   const aired = sum(media.season_aired);
@@ -32,4 +34,17 @@ export function catalogueBroadcastYears(media: {year?:number|null; status?:strin
   }
   // A season premiere proves a start, not the final broadcast year.
   return catalogueText(fallback) ?? String(start);
+}
+
+
+/** Credits retain AniList entry titles; never project a broadcaster or guess a TMDB season. */
+export function animationStudioCredits(row: AnimeCoursRow | null | undefined) {
+  if (row?.source !== "anilist") return [];
+  const credits = row.cours.flatMap(c => {
+    const names = [...new Set((c.studios ?? []).map(s=>catalogueText(s.name)).filter((n):n is string=>!!n))];
+    return names.length ? [{title:c.title,names}] : [];
+  });
+  if (!credits.length) return [];
+  const same = credits.length === row.cours.length && credits.every(c=>[...c.names].sort().join("\0") === [...credits[0].names].sort().join("\0"));
+  return same ? [{title:null,names:credits[0].names}] : credits;
 }

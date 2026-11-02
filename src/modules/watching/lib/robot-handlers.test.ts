@@ -66,11 +66,12 @@ function handler(name: string, db: ReturnType<typeof database>, fetcher: (url: s
 }
 const json = (body: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status }));
 const oldCour = { tmdb_id: 1, cours: [{ season: 1, episodes: 10 }], source: "anilist", resolved_at: "2020-01-01" };
-const valid = { data: { Page: { media: [{ id: 101, episodes: 10, startDate: { year: 2022 }, endDate: { year: 2022 }, title: { english: "Anime", romaji: null }, coverImage: null }] } } };
+const valid = { data: { Page: { media: [{ id: 101, episodes: 10, startDate: { year: 2022 }, endDate: { year: 2022 }, title: { english: "Anime", romaji: null }, coverImage: null, studios: {nodes:[]} }] } } };
 function anime(responses: unknown[], mapped = true, mappingFailure?: "http" | "shape", hasCache = true) {
   const cache = new Map<number, Row>((hasCache ? responses : []).map((_, i) => [i + 1, { ...oldCour, tmdb_id: i + 1 }]));
   const writes: Query[] = [];
   let providerCalls = 0;
+  const queries: string[] = [];
   const db = database((q) => {
     if (q.op === "upsert") { writes.push(q); const row = q.values as typeof oldCour; cache.set(row.tmdb_id, row); return { data: null, error: null }; }
     const rows = q.table === "provider_heads" ? [] : q.table === "media_items" ? responses.map((_, i) => ({ tmdb_id: i + 1, title: `Anime ${i}`, status: "ongoing", episodes: 10 })) : [...cache.values()];
@@ -91,11 +92,12 @@ function anime(responses: unknown[], mapped = true, mappingFailure?: "http" | "s
       return json(mapped ? responses.map((_, i) => ({ type: "TV", themoviedb_id: { tv: i + 1 }, anilist_id: 101 + i })) : []);
     }
     providerCalls++;
+    queries.push(JSON.parse(String(init?.body)).query);
     const id = JSON.parse(String(init?.body)).variables.ids[0];
     const body = responses[id - 101];
     return body === "malformed JSON" ? Promise.resolve(new Response("{")) : json(body);
   });
-  return { run, cache, writes, providerCalls: () => providerCalls };
+  return { run, cache, writes, queries, providerCalls: () => providerCalls };
 }
 describe("AniList actual handler", () => {
   it.each(["http", "shape"] as const)("preserves cache on mapping %s failure", async (failure) => {
@@ -128,6 +130,23 @@ describe("AniList actual handler", () => {
     expect(requested.map(ids=>ids.length)).toEqual([50,1]);
     expect(Array.isArray((writes[0].values as Row).cours)).toBe(true);
     expect((writes[0].values as Row).cours).toHaveLength(51);
+  });
+  it("asks for primary studios, retains only animation studios, and rejects malformed credits without cache loss",async()=>{
+    const entry={...valid.data.Page.media[0],studios:{nodes:[{id:1,name:" WIT STUDIO ",isAnimationStudio:true},{id:2,name:"A broadcaster",isAnimationStudio:false}]}};
+    const good=anime([{data:{Page:{media:[entry]}}}]);expect((await good.run()).status).toBe(200);
+    expect(good.queries[0]).toContain("studios(isMain:true)");
+    expect(good.cache.get(1)?.cours).toEqual([expect.objectContaining({studios:[{id:1,name:"WIT STUDIO"}]})]);
+    for(const studios of [null,{nodes:null},{nodes:[{id:1,name:"Unknown"}]},{nodes:[{id:1,name:" ",isAnimationStudio:true}]}]) {
+      const bad=anime([{data:{Page:{media:[{...entry,studios}]}}}]);expect((await bad.run()).status).toBe(500);expect(bad.writes).toHaveLength(0);expect(bad.cache.get(1)).toEqual(oldCour);
+    }
+  });
+  it("refreshes missing studio metadata before the finished-show weekly timer, respecting retry cooldown",async()=>{
+    for(const recent of [false,true]) {
+      let requests=0;
+      const db=database(q=>({data:q.table==="media_items" ? [{tmdb_id:1,title:"Finished anime",status:"ended",episodes:10}] : q.table==="provider_heads" ? [{work_key:"tv:1",accepted_snapshot_id:"accepted",checked_at:recent ? new Date().toISOString():"2020-01-01"}] : q.table==="anime_cours" ? [{...oldCour,resolved_at:new Date().toISOString()}] : [],error:null}));
+      const run=handler("watching-anime-cours-sync",db,url=>{requests++;return url.includes("githubusercontent") ? json([{type:"TV",themoviedb_id:{tv:1},anilist_id:101}]):json(valid);});
+      await run();expect(requests).toBe(recent ? 0:2);
+    }
   });
   it("writes validated provider data", async () => {
     const h = anime([valid]);

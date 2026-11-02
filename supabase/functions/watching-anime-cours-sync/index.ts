@@ -44,7 +44,7 @@ class RateLimited extends Error {}
 
 const QUERY =
   `query($ids:[Int]){ Page(perPage:50){ media(id_in:$ids, type:ANIME){ id episodes ` +
-  `startDate{year month day} endDate{year} title{romaji english} coverImage{extraLarge large} } } }`;
+  `startDate{year month day} endDate{year} title{romaji english} coverImage{extraLarge large} studios(isMain:true){nodes{id name isAnimationStudio}} } } }`;
 
 async function anilistByIds(ids: number[]): Promise<any[]> {
   // AniList Page is capped at50; every requested identity must be present before accepting a map.
@@ -76,7 +76,10 @@ async function anilistByIds(ids: number[]): Promise<any[]> {
     || !(m.episodes === null || (Number.isInteger(m.episodes) && m.episodes > 0))
     || !object(m.startDate) || !(m.endDate === null || object(m.endDate))
     || !object(m.title) || !(typeof m.title.english === "string" || typeof m.title.romaji === "string")
-    || !(m.coverImage === null || object(m.coverImage)))) {
+    || !(m.coverImage === null || object(m.coverImage))
+    || !object(m.studios) || !Array.isArray(m.studios.nodes)
+    || m.studios.nodes.some((s:any)=>!object(s) || !Number.isInteger(s.id) || s.id<=0 || typeof s.name!=="string" || !s.name.trim() || typeof s.isAnimationStudio!=="boolean")
+    || new Set(m.studios.nodes.map((s:any)=>s.id)).size!==m.studios.nodes.length)) {
     throw new Error("AniList invalid media record");
   }
   // An incomplete response must not shift every later part's episode offsets.
@@ -105,6 +108,7 @@ function buildCours(media: any[]) {
       anilist_id: m.id,
       title: m.title.english || m.title.romaji,
       poster_url: m.coverImage?.extraLarge || m.coverImage?.large || null,
+      studios: m.studios.nodes.filter((s:any)=>s.isAnimationStudio).map((s:any)=>({id:s.id,name:s.name.trim()})),
       year: m.startDate?.year ?? null,
       // The year a cour FINISHED airing — floors "year watched". A cour that ran Oct→Mar could not
       // have been finished the year before, and dating it there was the bug this column fixes.
@@ -145,10 +149,12 @@ Deno.serve(async () => {
     const byWork=new Map(heads.map(head=>[head.work_key,head]));
     const now=Date.now();
     const existing = await fetchAllRows<any>((from, to) => supabase
-      .from("anime_cours").select("tmdb_id,resolved_at").order("tmdb_id").range(from, to));
+      .from("anime_cours").select("tmdb_id,resolved_at,cours").order("tmdb_id").range(from, to));
     const resolvedAt = new Map<number, number>();
+    const missingStudioMetadata = new Set<number>();
     for (const c of existing ?? []) {
       resolvedAt.set(c.tmdb_id, c.resolved_at ? new Date(c.resolved_at).getTime() : 0);
+      if (Array.isArray(c.cours) && c.cours.some((part:any)=>!Array.isArray(part.studios))) missingStudioMetadata.add(c.tmdb_id);
     }
 
     // Stalest first; never resolved = infinitely stale, so a newly added anime is picked immediately.
@@ -157,7 +163,9 @@ Deno.serve(async () => {
         const age = now - (resolvedAt.get(tmdbId) ?? 0);
         const bootstrap=needsProviderBootstrap(byWork.get(`tv:${tmdbId}`),now,ONGOING_STALE_MS);
         const maxAge = isFinished(info.status) ? FINISHED_STALE_MS : ONGOING_STALE_MS;
-        return { tmdbId, info, age, bootstrap, due: bootstrap || !!byWork.get(`tv:${tmdbId}`)?.accepted_snapshot_id && age >= maxAge };
+        const checked = Date.parse(byWork.get(`tv:${tmdbId}`)?.checked_at ?? "");
+        const metadataDue = missingStudioMetadata.has(tmdbId) && (!Number.isFinite(checked) || now-checked >= ONGOING_STALE_MS);
+        return { tmdbId, info, age, bootstrap, due: bootstrap || !!byWork.get(`tv:${tmdbId}`)?.accepted_snapshot_id && (age >= maxAge || metadataDue) };
       })
       .filter((c) => c.due)
       .sort((a, b) => Number(b.bootstrap)-Number(a.bootstrap) || b.age - a.age)

@@ -1,5 +1,6 @@
 {
   "_comment": [
+    "2026-11-03: LOCAL/PENDING optional animation-studio cache metadata refresh; existing observer replacement, zero schema-count delta, no backfill.",
     "2026-11-02: LOCAL/PENDING correction-stance guard; replaces existing transaction only, zero object-count delta, no backfill.",
     "2026-10-29: local prospective single-scope rating migration; +1 private helper function, no backfill. Remote application still pending.",
     "2026-10-29: explicit Kuroko S2/S3 active history restoration after accidental rollback; YEAR2018/INFERRED from retained prior data, immutable tombstones retained, no schema count change.",
@@ -54,7 +55,7 @@
     "2026-10-28: preserve legacy calendar on guarded date changes (existing function replacement) and one owner-authorized Bleach completion-date correction; all schema object counts unchanged.",
     "2026-10-29: restored exact archived 20261028010000 Bleach Part4 migration, already recorded remotely; data only, schema counts unchanged, no remote replay or history repair."
   ],
-  "_migrations_through": "20261102000000",
+  "_migrations_through": "20261103000000",
   "tables": 82,
   "colonnes": 867,
   "policies": 226,

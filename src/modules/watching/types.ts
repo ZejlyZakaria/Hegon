@@ -77,6 +77,7 @@ export interface WatchingMedia {
   // Cast cached from TMDB (top ~12) so the detail page renders Cast & Crew from
   // the DB with no extra TMDB call. Matches CastMember from useMediaCredits.
   cast_members?: { id: number; name: string; character: string | null; profile_url: string | null }[];
+  /** Legacy column: TV network for series/anime, production company for films. */
   studio?: string;
   /** TMDB, normalised. "canceled" is FINISHED — no episode is ever coming. */
   status?: "ended" | "ongoing" | "canceled";
@@ -208,6 +209,8 @@ export interface ThemeFavorite {
 // `end_episode` are TMDB FLAT episode numbers (S2 of Jujutsu = ep 25-47). `poster_url` is an
 // absolute AniList URL. `episodes`/`end_episode` are null while a season is still airing.
 export interface AnimeCour {
+  /** Primary animation studios for this AniList entry; absent in older caches. */
+  studios?: { id: number; name: string }[];
   season: number;
   anilist_id: number;
   title: string;

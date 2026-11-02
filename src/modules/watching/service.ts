@@ -986,6 +986,7 @@ export function mapTmdbDetails(d: any, tmdbId: number, type: MediaType): Watchin
     runtime: runtimeFromTmdb(d, isFilm),
     rating: d.vote_average ?? 0,
     tags: Array.isArray(d.genres) ? d.genres.map((g: { name: string }) => g.name) : [],
+    // Legacy studio column stores a TV network, not an animation studio.
     studio: (isFilm ? d.production_companies?.[0]?.name : d.networks?.[0]?.name) ?? undefined,
     // Films keep the raw TMDB status ("released"…); series normalise to ongoing/ended.
     status: (isFilm ? rawStatus : rawStatus === "ended" ? "ended" : "ongoing") as WatchingMedia["status"],
@@ -1092,6 +1093,7 @@ export async function addTmdbItemToList(
   // Films keep the raw TMDB status ("released"…); TV/anime normalize to
   // "ongoing"/"ended" (drives useSeasonRefresh). Matches the Add modal exactly.
   const status: string | null = isFilm ? rawStatus : (rawStatus === "ended" ? "ended" : "ongoing");
+  // The compatibility column keeps its old source; UI names its actual meaning.
   const studio: string | null = isFilm
     ? (details?.production_companies?.[0]?.name ?? null)
     : (details?.networks?.[0]?.name ?? null);
