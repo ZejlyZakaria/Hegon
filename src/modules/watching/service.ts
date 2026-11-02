@@ -17,7 +17,7 @@ import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import { reportError } from "@/shared/utils/report-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry, OwnedIndexRow, PersonFollow, PersonFollowInput, PersonUpcomingRow, PersonRankRow, RankingKind } from "./types";
-import { deriveWatchStatus } from "./lib/watch-status";
+import { preserveCorrectionStance, deriveWatchStatus } from "./lib/watch-status";
 import { activityBucket, airedFromTmdb } from "./lib/series-state";
 import { runtimeFromTmdb } from "./lib/tmdb-runtime";
 import { insertMediaSchema, updateMediaSchema } from "./schemas/media.schema";
@@ -370,7 +370,8 @@ async function activeViewingRecords(mediaId: string): Promise<StoredViewingAsser
 
 export async function updateMediaItem(id: string, data: Record<string, any>): Promise<WatchingMedia> {
   updateMediaSchema.parse({ id, ...data });
-  const { expected_revision, history_date, history_intent, ...patch } = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+  const { expected_revision, history_date, history_intent, ...inputPatch } = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+  let patch = inputPatch;
   const personalFields = ["watched", "in_progress", "want_to_watch", "paused", "dropped", "drop_reason", "favorite", "priority", "priority_level", "is_reference", "notes", "tags", "user_rating", "current_season", "current_episode", "season_years", "cour_years", "season_ratings", "cour_ratings", "watched_at", "last_watched_at", "caught_up_at", "viewing_date"];
   if (history_date === undefined && !personalFields.some(key => key in patch)) {
     // Provider/artwork refresh only: no personal revision or history event.
@@ -384,6 +385,7 @@ export async function updateMediaItem(id: string, data: Record<string, any>): Pr
   // A supplied UI token must win over this fresh read: never silently rebase a stale gesture.
   const revision = expected_revision ?? before.personal_revision;
   if (revision !== before.personal_revision) throw new Error("This title changed. Reload before editing.");
+  patch = preserveCorrectionStance(before, patch, history_intent);
   let meta: HistoryMetadata = { history_date, history_intent };
   const captures = ["watched", "current_season", "current_episode", "season_years", "cour_years", "watched_at"].some(k => k in patch) || history_date !== undefined;
   const active = captures ? await activeViewingRecords(id) : [];

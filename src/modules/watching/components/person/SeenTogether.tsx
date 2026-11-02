@@ -5,7 +5,7 @@ import { collaborators } from "../../lib/person-experience";
 import Link from "next/link";
 import Image from "next/image";
 import { tmdbImageFor } from "../../lib/tmdb-image";
-import { SectionHeader } from "@/shared/components/ui/section-header";
+import { Panel } from "@/shared/components/ui/panel";
 import type { PersonTitle } from "../../service";
 
 interface Props {
@@ -25,9 +25,7 @@ export function SeenTogether({ titles, personId, firstName }: Props) {
   if (people.length === 0) return null;
 
   return (
-    <section>
-      <SectionHeader title={`Seen with ${firstName}`} />
-      <div className="surface-quiet rounded-card p-2">
+    <Panel title={`Seen with ${firstName}`}>
         <div className="grid grid-cols-2 gap-1">
           {people.map((p) => (
             <Link
@@ -55,7 +53,6 @@ export function SeenTogether({ titles, personId, firstName }: Props) {
             </Link>
           ))}
         </div>
-      </div>
-    </section>
+    </Panel>
   );
 }

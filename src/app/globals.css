@@ -21,6 +21,7 @@
    ════════════════════════════════════════════════════════════════════════ */
 
 @theme inline {
+  --radius-pill: calc(infinity * 1px);
   /* ── HEGON surfaces ─────────────────────────────────────────────────── */
   --color-surface-0: var(--color-surface-0);
   --color-surface-1: var(--color-surface-1);
@@ -294,8 +295,8 @@
      RECONCILED 2026-07-25: `xs` is 4px, not 6px — at 40px a 6px corner reads button-ish, 4px reads
      like a printed photo. Books had already reached `rounded-[4px]` for this rung independently;
      now every xs poster does, through the ONE component that draws it (`MediaRow`). */
-  --poster-xs: 2.5rem;    /* 40px  — Top Picks · Hours panel · person timeline/insights · both search lists · all via MediaRow, rounded-[4px] */
-  --poster-sm: 5rem;      /* 80px  — info rows (Books reading) */
+  --poster-xs: 2.5rem;    /* 40px  — Top Picks · Hours panel · person timeline · both search lists · all via MediaRow, rounded-[4px] */
+  --poster-sm: 5rem;      /* 80px  — info rows (Books reading) and Person highlights */
   --poster-md: 7rem;      /* 112px — hero poster on mobile · selected-title preview in the add modal */
   --poster-lg: 9rem;      /* 144px — rail tile on desktop (Watch History) */
   --poster-xl: 10.625rem; /* 170px — hero poster on desktop (media detail AND person) */
@@ -818,3 +819,118 @@
     clip-path: inset(0 var(--rail-hover-room) 0 0);
   }
 }
+
+
+/* Watching status labels: dark tinted pills, shared by posters and the personal card.
+   No blur or hover transition: the accepted card motion owns the interaction. */
+.watching-status {
+  --status-ink: #ff9a52;
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: calc(var(--spacing) * 1);
+  border-radius: var(--radius-pill);
+  padding: calc(var(--spacing) * 0.75) calc(var(--spacing) * 2);
+  color: var(--status-ink);
+  background: color-mix(in srgb, var(--status-ink) 14%, #08090a);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: normal;
+}
+.watching-status[data-tone="caughtup"],
+.watching-status[data-tone="watched"] { --status-ink: #41d985; }
+.watching-status[data-tone="paused"] { --status-ink: #f2c65c; }
+.watching-status[data-tone="dropped"] { --status-ink: #ff7676; }
+.watching-status[data-tone="want"] { --status-ink: #89b8ff; }
+.watching-status svg { flex-shrink: 0; }
+.watching-status-mask {
+  position: absolute;
+  inset: auto 0 0;
+  height: 40%;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.3) 45%, transparent);
+}
+
+/* Same 24px visible circle as the poster menu, with an independent 44px touch target.
+   Adjacent touch actions are spaced by their targets, never by their painted circles. */
+.watching-artwork-action {
+  display: inline-flex;
+  width: calc(var(--spacing) * 11);
+  height: calc(var(--spacing) * 11);
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+}
+.watching-artwork-action::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--spacing) * 2.5);
+  border-radius: inherit;
+  background: rgba(10, 10, 12, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.watching-artwork-action[data-kind="add"] { color: #151515; }
+.watching-artwork-action[data-kind="add"]::before { background: #fafafa; }
+.watching-artwork-action[data-state="done"] { color: var(--color-accent-watching-vivid); }
+.watching-artwork-action svg { position: relative; width: 13px; height: 13px; }
+@media (hover: hover) {
+  .watching-artwork-action { width: calc(var(--spacing) * 6); height: calc(var(--spacing) * 6); }
+  .watching-artwork-action::before { inset: 0; }
+}
+
+/* Personal-card secondary actions: 32px painted controls, independent 44px touch targets. */
+.watching-record-action {
+  position: relative;
+  display: inline-flex;
+  width: calc(var(--spacing) * 11);
+  height: calc(var(--spacing) * 11);
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  border-radius: var(--radius-control);
+  color: rgba(255, 255, 255, 0.7);
+  background: transparent;
+  cursor: pointer;
+}
+.watching-record-action::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--spacing) * 1.5);
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.1);
+  transition: background-color 150ms ease-out;
+}
+.watching-record-action svg { position: relative; }
+.watching-record-action[data-active="true"],
+.watching-record-action[data-state="open"] { color: white; }
+.watching-record-action[data-active="true"]::before,
+.watching-record-action[data-state="open"]::before { background: rgba(255, 255, 255, 0.15); }
+@media (hover: hover) {
+  .watching-record-action { width: calc(var(--spacing) * 8); height: calc(var(--spacing) * 8); }
+  .watching-record-action::before { inset: 0; }
+  .watching-record-action:hover { color: white; }
+  .watching-record-action:hover::before { background: rgba(255, 255, 255, 0.15); }
+}
+
+/* Status sizes express the surface role rather than the device width. */
+.watching-status[data-size="compact"] { height: calc(var(--spacing) * 5); padding-block: 0; }
+.watching-status[data-size="regular"] { min-height: calc(var(--spacing) * 6.5); padding: var(--spacing) calc(var(--spacing) * 2.5); }
+.watching-status[data-size="regular"] svg { width: 13px; height: 13px; }
+.watching-time-label { font-size: var(--text-micro); font-weight: 500; letter-spacing: normal; }
+/* Light add and dark dismiss share a one-pixel contact border. Follow stays secondary. */
+.watching-artwork-action[data-kind="add"]::before { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); }
+.watching-artwork-action[data-kind="follow"][data-size="md"] svg { width: 14px; height: 14px; }
+.watching-artwork-action[data-kind="follow"][data-size="md"]::before { inset: calc(var(--spacing) * 2); }
+@media (hover: hover) {
+  .watching-artwork-action[data-kind="follow"][data-size="md"] { width: calc(var(--spacing) * 7); height: calc(var(--spacing) * 7); }
+  .watching-artwork-action[data-kind="follow"][data-size="md"]::before { inset: 0; }
+}
+.watching-status[data-tone="position"] { --status-ink: #b5c0c8; }

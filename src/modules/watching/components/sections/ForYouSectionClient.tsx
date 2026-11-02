@@ -10,7 +10,6 @@ import { X } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
 import { AddMark } from "@/modules/watching/components/shared/AddMark";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
-import { Button } from "@/shared/components/ui/button";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { Hint } from "@/shared/components/ui/tooltip";
@@ -113,18 +112,17 @@ function ForYouCard({
           </Badge>
         )}
 
-        <AddMark tmdbId={item.id} type={type} title={item.title} className="right-14 can-hover:right-10" />
-        {/* Dismiss — sits on the artwork, so it's glass, not a page control */}
+        <AddMark tmdbId={item.id} type={type} title={item.title} className="right-10.5 can-hover:right-10" />
+        {/* Dismiss stays secondary; shares the add control's visual size and touch target */}
         <Hint label="Not interested">
-          <Button
-            variant="overlay"
-            size="icon-xs"
+          <button
+            type="button"
             aria-label="Not interested"
             onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-            className="absolute right-2 top-2 z-10 min-h-11 min-w-11 can-hover:min-h-6 can-hover:min-w-6 rounded-full opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100 group-focus-within:opacity-100"
+            className="watching-artwork-action absolute -right-0.5 -top-0.5 z-10 can-hover:right-2 can-hover:top-2 opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-watching-vivid"
           >
-            <X />
-          </Button>
+            <X size={13} />
+          </button>
         </Hint>
 
         <div className="absolute bottom-0 inset-x-0 p-4">

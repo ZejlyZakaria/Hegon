@@ -152,6 +152,7 @@ function MovieCard({
           />
         </picture>
         <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
+        {caughtUp && <div aria-hidden="true" className="watching-status-mask" />}
 
         {/* THE ONE THING OUTSIDE THE CLUSTERS, and it earns it: a bookmark is a RIBBON, and a ribbon
             hangs from an edge. Held at the cluster's inset it floated in the corner and stopped
@@ -185,7 +186,7 @@ function MovieCard({
               the teal of a rating or the gold of the world. It has this cluster to itself: rank and
               priority never apply to a watched title. */}
           {ago && (
-            <Badge variant="flag" size="sm" color="rgba(255,255,255,0.92)">
+            <Badge variant="flag" size="sm" color="rgba(255,255,255,0.92)" className="watching-time-label">
               <Clock size={11} />
               {ago}
             </Badge>
@@ -193,7 +194,7 @@ function MovieCard({
           {/* Time until release — a world fact about the future, so neutral white like the watched-ago
               stamp, not the teal of something that's yours yet. */}
           {countdown && (
-            <Badge variant="flag" size="sm" color="rgba(255,255,255,0.92)">
+            <Badge variant="flag" size="sm" color="rgba(255,255,255,0.92)" className="watching-time-label">
               <CalendarClock size={11} />
               {countdown}
             </Badge>
@@ -201,10 +202,12 @@ function MovieCard({
         </div>
 
         <div className="absolute bottom-0 inset-x-0 p-4">
-          {caughtUp && <StatusMark status={{ label: "Caught up", tone: "caughtup", level: null }} className="mb-2" />}
-          <h4 className="text-sm font-semibold text-white line-clamp-1">
-            <button type="button" onClick={e=>{e.stopPropagation();onView();}} className="max-w-full truncate text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-watching-vivid">{displayTitle(item)}</button>
-          </h4>
+          <div className="flex min-w-0 items-center gap-2">
+            <h4 className="min-w-0 flex-1 text-sm font-semibold text-white">
+              <button type="button" onClick={e=>{e.stopPropagation();onView();}} className="block max-w-full truncate text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-watching-vivid">{displayTitle(item)}</button>
+            </h4>
+            {caughtUp && <StatusMark status={{ label: "Caught up", tone: "caughtup", level: null }} />}
+          </div>
 
           {/* Episode progress — and, beside it, the way to move it. The card has always known
               you were on S03 E03; it just wouldn't let you say you'd watched E04, so the most
@@ -230,11 +233,9 @@ function MovieCard({
                       then "S03 E12". No position is honest; a retracted one is not. */}
                   {!view?.pending && (
                   <span
-                    className="inline-flex h-5 shrink-0 items-center rounded-chip px-2 text-micro font-semibold leading-none"
-                    style={{
-                      backgroundColor: "color-mix(in srgb, var(--color-accent-watching) 40%, transparent)",
-                      color: "var(--color-accent-watching-vivid)",
-                    }}
+                    data-tone="position"
+                    data-size="compact"
+                    className="watching-status shrink-0 text-caption tabular-nums"
                   >
                     {/* eslint-disable-next-line no-restricted-syntax -- lens first; the raw values are the fallback for a title with no overlay, where they ARE the display space. */}
                     {formatPosition(view?.position.season ?? item.current_season ?? 1, view?.position.episode ?? item.current_episode ?? 0)}

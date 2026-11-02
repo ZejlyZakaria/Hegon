@@ -2,14 +2,16 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { cn } from "@/shared/utils/utils";
-import { AwardRibbon, ScoreMark } from "@/modules/watching/components/shared/Marks";
+import { ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
 import { useAwardCategories, useAwardsForPerson } from "@/modules/watching/hooks/useAwards";
-import { ceremonyWord, posterUrl } from "@/modules/watching/lib/awards";
+import { posterUrl } from "@/modules/watching/lib/awards";
+import { featuredAccolade } from "../../lib/accolade-summary";
+import { AccoladesSummary } from "../shared/AccoladesSummary";
 import type { PersonTitle } from "@/modules/watching/service";
 import type { AwardCategory, AwardEntry } from "@/modules/watching/types";
 
@@ -63,41 +65,22 @@ export function PersonAccolades({ personId, name, yourTitles }: Props) {
   if (entries.length === 0) return null;
 
   const nominations = entries.length - wins.length;
-  const winsBy = { oscars: wins.filter((e) => e.ceremony === "oscars").length, emmys: wins.filter((e) => e.ceremony === "emmys").length };
-  const summary = [
-    winsBy.oscars > 0 && `${winsBy.oscars} ${ceremonyWord("oscars", winsBy.oscars)}`,
-    winsBy.emmys > 0 && `${winsBy.emmys} ${ceremonyWord("emmys", winsBy.emmys)}`,
-    nominations > 0 && `${nominations} ${nominations === 1 ? "nomination" : "nominations"}`,
-  ].filter(Boolean).join(" · ");
-  const label = (e: AwardEntry) => cats.get(e.category)?.label ?? e.category;
-  const distinct = (() => {
-    const counts = new Map<string, number>();
-    for (const w of wins) counts.set(label(w), (counts.get(label(w)) ?? 0) + 1);
-    return [...counts.entries()];
-  })();
+  const counters: {value:number;label:string;won:boolean}[] = [];
+  for (const ceremony of ["oscars", "emmys"] as const) {
+    const count = wins.filter(e => e.ceremony === ceremony).length;
+    if (count) counters.push({value:count,label:ceremony === "oscars" ? `Oscar ${count === 1 ? "win" : "wins"}` : `Emmy ${count === 1 ? "win" : "wins"}`,won:true});
+  }
+  if (nominations) counters.push({value:nominations,label:nominations === 1 ? "nomination" : "nominations",won:false});
+  const featured = featuredAccolade(entries,cats);
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group w-full rounded-card border border-border-subtle bg-surface-1 p-4 text-left transition-colors hover:bg-surface-2 sm:px-5"
+        className="group surface-quiet w-full rounded-card p-4 text-left transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent-watching-vivid sm:px-5"
       >
-        <div className="flex items-center gap-2.5">
-          <Trophy size={15} className="shrink-0" style={{ color: AWARD }} />
-          <p className="flex-1 text-sm font-semibold text-text-primary">Accolades</p>
-          <ChevronRight size={14} className="shrink-0 text-text-tertiary transition-colors group-hover:text-text-primary" />
-        </div>
-        <p className="mt-1 text-xs tabular-nums text-text-secondary">{summary}</p>
-        {wins.length > 0 && (
-          <p className="mt-2 flex min-w-0 items-center gap-1.5 text-micro text-text-tertiary">
-            <AwardRibbon year={wins[0].year} size="card" inline />
-            <span className="truncate">
-              {distinct.slice(0, 3).map(([l, n]) => (n > 1 ? `${l} ×${n}` : l)).join(" · ")}
-              {distinct.length > 3 && <span className="text-text-tertiary/70"> · +{distinct.length - 3}</span>}
-            </span>
-          </p>
-        )}
+        <AccoladesSummary counters={counters} featured={featured} tracked interactive />
       </button>
       <PersonAccoladesPanel open={open} onClose={() => setOpen(false)} name={name} entries={entries} cats={cats} owned={owned} />
     </>

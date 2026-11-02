@@ -5,6 +5,7 @@ import Image from "next/image";
 import { tmdbImage, tmdbImageFor } from "../../lib/tmdb-image";
 import { ArrowLeft, Images, Loader2, Play } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
+import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { TopTenRibbon } from "../shared/Marks";
 import type { WatchingMedia } from "../../types";
@@ -128,12 +129,14 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
   // letting the button pop in shoved the whole (bottom-anchored) hero upward. Loading →
   // disabled + spinner; no trailer at all → invisible, but it still holds its row.
   const trailerButton = onPlayTrailer ? (
-    <button
+    <Button
       type="button"
+      variant="overlay"
+      size="sm"
       disabled={!hasTrailer}
       onClick={hasTrailer ? onPlayTrailer : undefined}
       className={cn(
-        "on-artwork group mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-label text-white/85 transition-colors",
+        "mt-4 h-11 gap-2 border border-white/20 text-label can-hover:h-8",
         hasTrailer && "hover:text-white",
         trailerLoading && "cursor-wait opacity-50",
         !hasTrailer && !trailerLoading && "invisible",
@@ -142,10 +145,10 @@ export function MediaHero({ media, isSeries, onBack, hasTrailer, trailerLoading,
       {trailerLoading ? (
         <Loader2 size={12} className="animate-spin" />
       ) : (
-        <Play size={12} className="fill-current transition-transform group-hover:scale-110" />
+        <Play size={14} className="fill-current" />
       )}
       Watch trailer
-    </button>
+    </Button>
   ) : null;
 
   return (

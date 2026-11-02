@@ -33,7 +33,7 @@ import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { useRewatches, useAddRewatch, useRemoveRewatch } from "../../hooks/useRewatches";
 import { dropReasonLabel } from "../../lib/drop-reasons";
-import { caughtUpOn, hasFullyWatchedSeason, nextStep, seriesState } from "../../lib/series-state";
+import { caughtUpOn, nextStep, seriesState } from "../../lib/series-state";
 import type { MediaView } from "../../lib/media-view";
 import { canComplete, deriveWatchStatus } from "../../lib/watch-status";
 import { WatchDatePicker } from "../shared/WatchDatePicker";
@@ -47,8 +47,6 @@ import type { WatchProviderInfo } from "../../hooks/useWatchProviders";
 // Design-system §9.1 — physical, not linear.
 const SPRING_SMOOTH = { type: "spring", stiffness: 300, damping: 28 } as const;
 const SPRING_SNAPPY = { type: "spring", stiffness: 400, damping: 30 } as const;
-
-const TEAL = "var(--color-accent-watching-vivid)";
 
 type CardStatus = "want_to_watch" | "in_progress" | "watched" | "paused" | "dropped";
 
@@ -78,11 +76,11 @@ const todayISO = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 };
 
-// ── Card atoms (white-on-teal language, ex-My Record skin) ─────────────────────
+// ── Card atoms (shared Watching status skin) ─────────────────────
 
-function StateChip({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+function StateChip({ icon, children, tone = "watching" }: { icon: React.ReactNode; children: React.ReactNode; tone?: string }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5 rounded-chip bg-white/12 px-2.5 py-1 text-label font-medium text-white">
+    <span data-tone={tone} data-size="regular" className="watching-status min-w-0 text-label">
       {icon}
       <span className="truncate">{children}</span>
     </span>
@@ -383,16 +381,6 @@ export function StatusCard({
   const completable = canComplete(media);
   const releaseKnown = watchable;
 
-  // "Season 3" when you finished it, "S3 · E4" when you walked out mid-season. Both are true
-  // sentences; which one applies is a fact about your position, not a formatting choice.
-  const stoppedAfter = !isSeries
-    ? null
-    : hasFullyWatchedSeason(seriesFacts, currentSeason)
-      ? `Season ${currentSeason}`
-      : currentEpisode > 0
-        ? `S${currentSeason} · E${currentEpisode}`
-        : null;
-
   /**
    * THE SIDE DOOR.
    *
@@ -489,7 +477,7 @@ export function StatusCard({
             {/* The bookmark ICON wears the poster bookmark's colour — same rule (watchlistLevel):
                 violet while the title is not out, then the priority's. The chip itself stays. */}
             {status === "want_to_watch" && (
-              <StateChip icon={<Bookmark size={11} fill="currentColor" style={media.is_reference ? undefined : { color: WATCHLIST_COLOR[watchlistLevel(media)] }} />}>
+              <StateChip tone="want" icon={<Bookmark size={11} fill="currentColor" style={media.is_reference ? undefined : { color: WATCHLIST_COLOR[watchlistLevel(media)] }} />}>
                 {media.is_reference ? "Unwatched" : "Want to Watch"}
               </StateChip>
             )}
@@ -500,16 +488,16 @@ export function StatusCard({
                 state under the name of another state is the disease this whole module has been
                 treated for; the last place it survived was the label. */}
             {status === "in_progress" && caughtUp && (
-              <StateChip icon={<CheckCheck size={11} />}>Caught Up</StateChip>
+              <StateChip tone="caughtup" icon={<CheckCheck size={11} />}>Caught Up</StateChip>
             )}
             {status === "in_progress" && !caughtUp && (
-              <StateChip icon={<span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: TEAL }} />}>
+              <StateChip icon={<Play size={11} fill="currentColor" />}>
                 In Progress
               </StateChip>
             )}
-            {status === "watched" && <StateChip icon={<Check size={11} />}>{isSeries ? "Completed":"Watched"}</StateChip>}
-            {status === "paused" && <StateChip icon={<PauseCircle size={11} />}>Paused</StateChip>}
-            {status === "dropped" && <StateChip icon={<CircleSlash size={11} />}>Dropped</StateChip>}
+            {status === "watched" && <StateChip tone="watched" icon={<Check size={11} />}>{isSeries ? "Completed":"Watched"}</StateChip>}
+            {status === "paused" && <StateChip tone="paused" icon={<PauseCircle size={11} />}>Paused</StateChip>}
+            {status === "dropped" && <StateChip tone="dropped" icon={<CircleSlash size={11} />}>Dropped</StateChip>}
           </motion.div>
         </AnimatePresence>
 
@@ -518,11 +506,10 @@ export function StatusCard({
             <button
               type="button"
               aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
-                            onClick={onFavoriteToggle}
-              className={cn(
-                "flex size-11 sm:size-8 sm:pointer-coarse:size-11 items-center justify-center rounded-control transition-colors active:scale-95",
-                favorite ? "bg-white/15 text-white" : "bg-white/10 text-white/70 hover:bg-white/15 hover:text-white",
-              )}
+              onClick={onFavoriteToggle}
+              aria-pressed={favorite}
+              data-active={favorite}
+              className="watching-record-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               <Heart size={13} className={cn(favorite && "fill-red-500 text-red-500")} />
             </button>
@@ -533,7 +520,7 @@ export function StatusCard({
               <button
                 type="button"
                 aria-label="More actions"
-                className="flex size-11 sm:size-8 sm:pointer-coarse:size-11 items-center justify-center rounded-control bg-white/10 text-white/70 transition-colors hover:bg-white/15 hover:text-white data-[state=open]:bg-white/15 data-[state=open]:text-white"
+                className="watching-record-action focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 <MoreHorizontal size={14} />
               </button>
@@ -561,7 +548,6 @@ export function StatusCard({
                   {!caughtUp && markItem}
                 </>
               )}
-              {isSeries && (status==="paused" || status==="dropped") && <DropdownMenuItem onClick={editPosition} className={menuItemClass}><Pencil size={13}/>Edit position</DropdownMenuItem>}
           {status === "paused" && (
                 <>
                   <DropdownMenuItem onClick={onDrop} className={menuItemClass}>
@@ -648,12 +634,14 @@ export function StatusCard({
             </div>
           )}
 
-          {status === "in_progress" && <div className="mt-3">
-            <p className="text-xs text-white/60">Last watched</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-white">{currentEpisode>0 ? `S${currentSeason} · EP${currentEpisode}`:"No episodes yet"}</p>
+          {(status === "in_progress" || isSeries && (status === "paused" || status === "dropped")) && <div className="mt-3">
+            <p className="text-xs text-white/60">{status === "paused" || status === "dropped" ? "Stopped at" : "Last watched"}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <p className="min-w-0 text-lg font-semibold tabular-nums text-white">{currentEpisode>0 ? `S${currentSeason} · EP${currentEpisode}`:"No episodes yet"}</p>
+              <button type="button" aria-label="Edit position" onClick={editPosition} className="flex size-11 shrink-0 items-center justify-center rounded-control text-white/75 hover:bg-white/10 hover:text-white can-hover:size-8 focus-visible:outline-2 focus-visible:outline-white"><Pencil size={12}/></button>
+            </div>
             {media.last_watched_at && <p className="mt-1 text-xs text-white/60">{new Date(media.last_watched_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</p>}
-            <button type="button" onClick={editPosition} className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-xs text-white/75 underline underline-offset-4 sm:min-h-8 sm:pointer-coarse:min-h-11"><Pencil size={11}/>Edit position</button>
-            {caughtUp && singleSeason && <SeasonYearPicker label="Caught up" prompt="When did you catch up?" selectedYear={selectedYear} years={years} onChange={onSeasonYearChange}/>}
+            {status === "in_progress" && caughtUp && singleSeason && <SeasonYearPicker label="Caught up" prompt="When did you catch up?" selectedYear={selectedYear} years={years} onChange={onSeasonYearChange}/>}
           </div>}
 
           {/* THE ONE FACT OF A WATCHLIST ENTRY — how much you want it. `priority_level` was written
@@ -666,11 +654,9 @@ export function StatusCard({
             </div>
           )}
 
-          {isSeries && (status==="paused" || status==="dropped") && <button type="button" onClick={editPosition} className="mt-2 min-h-11 text-xs text-white/75 underline underline-offset-4 sm:min-h-8 sm:pointer-coarse:min-h-11">Edit position</button>}
           {status === "paused" && (
             <div className="mt-2.5">
-              {stoppedAfter && <Row label="Stopped after" value={stoppedAfter} />}
-              <p className={cn("text-label leading-relaxed text-white/60", stoppedAfter ? "mt-1.5" : "mt-0.5")}>
+              <p className="text-label leading-relaxed text-white/60">
                 Pick it back up any time.
               </p>
             </div>
@@ -678,16 +664,6 @@ export function StatusCard({
 
           {status === "dropped" && (
             <div className="mt-2.5">
-              {/* WHERE you left is the fact that was missing. "Dropped" alone doesn't say whether
-                  you bailed in the pilot or left after three seasons — and those are different
-                  memories. It's derived from your position, so correcting the position in Watch
-                  History corrects this line too. */}
-              {stoppedAfter && (
-                <>
-                  <Row label="Stopped after" value={stoppedAfter} />
-                  <div className="h-px bg-white/10" />
-                </>
-              )}
               <Row
                 label="Reason"
                 value={
@@ -710,6 +686,7 @@ export function StatusCard({
 
       {editingPosition && <div className="mt-4 space-y-4 rounded-control bg-white/5 p-3">
         <p className="text-xs leading-relaxed text-white/65">Choose the last episode you actually watched. This corrects your progress without logging a new viewing.</p>
+        {(status === "paused" || status === "dropped") && <p className="text-xs text-white/75">This title will remain {status}.</p>}
         <div className="space-y-3">
           {(announcedSeasons ?? 1)>1 && <StepRow label="Season" value={draftSeason} total={announcedSeasons} max={lastSeasonOut} min={1} onDelta={d=>{setDraftSeason(Math.max(1,Math.min(draftSeason+d,lastSeasonOut ?? 1)));setDraftEpisode(0);}}/>}
           <StepRow label="Episode" value={draftEpisode} total={seasons[draftSeason-1]?.episodes ?? null} max={seasons[draftSeason-1]?.aired ?? 0} onDelta={d=>setDraftEpisode(Math.max(0,Math.min(draftEpisode+d,seasons[draftSeason-1]?.aired ?? 0)))}/>

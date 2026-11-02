@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
+import { Check, UserRoundPlus } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
@@ -10,7 +10,7 @@ import { useFollowActions, useFollowedIds } from "@/modules/watching/hooks/useFo
  * THE « + » ON A FACE — follow this person (owner, 2026-09-16, §11).
  *
  * A circle has no corner, so the mark sits ON THE RIM at the top-right, the way a presence dot
- * sits on an avatar. Idle: a plus on the dark on-artwork disc, like the poster's « + ». Followed:
+ * sits on an avatar. Idle: a person-plus on the dark artwork disc. Followed:
  * the SAME disc, the glyph becomes a teal check — a filled teal disc read too big next to a face
  * (owner). Readable without hovering, which is the point of a state. One tap toggles; optimistic,
  * so it answers on the click.
@@ -23,7 +23,7 @@ export function FollowMark({ personId, name, profileUrl, knownFor, size = "sm", 
   name: string;
   profileUrl?: string | null;
   knownFor?: string | null;
-  /** `sm` on a rail face (24 px — the overlay cluster's size), `md` on the person page's portrait (28 px). */
+  /** Visible circle:24px on a rail face,28px on the person portrait; touch target stays44px. */
   size?: "sm" | "md";
   className?: string;
 }) {
@@ -41,23 +41,23 @@ export function FollowMark({ personId, name, profileUrl, knownFor, size = "sm", 
   const glyph = size === "md" ? 14 : 13;
 
   return (
+    <span className={cn("relative inline-flex shrink-0", className)} style={{width:px,height:px}}>
     <Hint label={followed ? "Following" : "Follow"}>
       <span
+        data-kind="follow"
+        data-size={size}
+        data-state={followed ? "done" : "idle"}
         role="button"
         tabIndex={0}
         aria-pressed={followed}
         aria-label={followed ? `Unfollow ${name}` : `Follow ${name}`}
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(); }}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); toggle(); } }}
-        className={cn(
-          "on-artwork flex cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/85",
-          followed ? "text-accent-watching-vivid" : "text-white/85 hover:text-white",
-          className,
-        )}
-        style={{ width: px, height: px }}
+        className={cn("watching-artwork-action absolute focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-watching-vivid can-hover:left-0 can-hover:top-0", size === "md" ? "-left-2 -top-2" : "-left-2.5 -top-2.5")}
       >
-        {followed ? <Check size={glyph} strokeWidth={3} /> : <Plus size={glyph} strokeWidth={2.5} />}
+        {followed ? <Check size={glyph} strokeWidth={3} /> : <UserRoundPlus size={glyph} strokeWidth={2} />}
       </span>
     </Hint>
+    </span>
   );
 }

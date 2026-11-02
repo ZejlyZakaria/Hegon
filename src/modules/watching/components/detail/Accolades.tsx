@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { cn } from "@/shared/utils/utils";
@@ -10,6 +10,7 @@ import { useAwardCategories, useAwardsForWork } from "@/modules/watching/hooks/u
 import { useImdbId } from "@/modules/watching/hooks/useImdbId";
 import { useOmdbRatings } from "@/modules/watching/hooks/useOmdbRatings";
 import { externalAwardSummary, featuredAccolade } from "../../lib/accolade-summary";
+import { AccoladesSummary } from "../shared/AccoladesSummary";
 import { displayTitle } from "@/modules/watching/utils";
 import type { AwardCategory, AwardEntry, WatchingMedia } from "@/modules/watching/types";
 
@@ -52,22 +53,10 @@ export function Accolades({ media }: { media: WatchingMedia }) {
   }
   if(!counters.length) return null;
   const broaderContext=hasCanon && external && (external.wins!=null && external.wins>0 ? `${external.wins} ${external.wins===1 ? "win":"wins"}` : external.nominations!=null && external.nominations>0 ? `${external.nominations} ${external.nominations===1 ? "nomination":"nominations"}`:null);
-  const body=<>
-    <div className="flex items-center justify-between gap-3">
-      <span role="heading" aria-level={2} className="text-title text-text-primary">Accolades</span>
-      {hasCanon && <ChevronRight size={14} className="shrink-0 text-text-tertiary transition-colors group-hover:text-text-primary"/>}
-    </div>
-    <dl className={`mt-4 grid gap-4 ${counters.length>2 ? "grid-cols-3":counters.length===2 ? "grid-cols-2":"grid-cols-1"}`}>
-      {counters.map(c=><div key={c.label} className="min-w-0"><dd className="text-3xl font-semibold leading-none tracking-tight tabular-nums" style={c.won ? {color:AWARD}:undefined}>{c.value}</dd><dt className="mt-2 text-xs leading-snug text-text-secondary">{c.label}</dt></div>)}
-    </dl>
-    {hasCanon && <p className="mt-2 text-micro text-text-tertiary">In tracked categories</p>}
-    {featured && <div className="mt-4 flex items-start gap-3 border-t border-border-subtle pt-4">
-      <Trophy size={17} className="mt-0.5 shrink-0" style={{color:AWARD}}/>
-      <div className="min-w-0"><p className="text-sm font-medium leading-snug text-text-primary">{featured.label}</p><p className="mt-1 text-xs leading-relaxed text-text-secondary">{featured.count} {featured.count===1 ? "win":"wins"} {"\u00b7"} {featured.years}</p></div>
-    </div>}
+  const body=<AccoladesSummary counters={counters} featured={featured} tracked={hasCanon} interactive={hasCanon}>
     {broaderContext && <p className="mt-4 text-micro leading-relaxed text-text-tertiary">{external?.additional ? "Other awards" : "Across all awards"} {"\u00b7"} {broaderContext}<span className="ml-1 text-text-tertiary/70">(IMDb)</span></p>}
     {!hasCanon && <p className="mt-3 text-micro text-text-tertiary">IMDb awards summary</p>}
-  </>;
+  </AccoladesSummary>;
 
   // No canon behind it → no door: a plain block with OMDb's line (a Golden Globe, a BAFTA).
   if (!hasCanon) return <div className="surface-quiet rounded-card p-4 sm:px-5">{body}</div>;

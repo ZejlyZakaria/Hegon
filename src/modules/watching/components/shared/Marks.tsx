@@ -1,7 +1,6 @@
 import { CheckCheck, Heart, Star } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Hint } from "@/shared/components/ui/tooltip";
-import { Badge } from "@/shared/components/ui/badge";
 
 /**
  * THE GRAMMAR OF WATCHING'S MARKS. Every star, heart and rank chip in the module comes from
@@ -309,10 +308,5 @@ export function AwardRibbon({ year, tone = "won", size = "card", inline = false,
  * No forced height — the natural flag `sm` size, exactly like the ago/countdown flags it sits beside.
  */
 export function CaughtUpBadge({ className }: { className?: string }) {
-  return (
-    <Badge variant="flag" size="sm" color={MINE} className={className}>
-      <CheckCheck size={11} />
-      Caught up
-    </Badge>
-  );
+  return <span data-tone="caughtup" data-size="compact" className={cn("watching-status shrink-0 text-caption", className)}><CheckCheck size={11} />Caught Up</span>;
 }

@@ -194,7 +194,7 @@ describe("positionPatch — a viewing is not a correction", () => {
     expect(p.season_years).toBeUndefined();
   });
 
-  it("a FORWARD correction dates the season it LANDS on — but never the ones it leaps over", () => {
+  it("a FORWARD correction does not invent a year for any season", () => {
     // The bug the owner saw: "Watched through S2" from the poster left the badge reading "Year",
     // while the add modal and "+1" both wrote the current year. Same act, three doors, two answers.
     //
@@ -202,7 +202,7 @@ describe("positionPatch — a viewing is not a correction", () => {
     // landing is a claim about NOW (date it), leaping is a claim about SOME TIME (do not invent one).
     const from = sds({ watched: false, in_progress: true, current_season: 1, current_episode: 24 });
     const p = positionPatch(from, 3, 24, "correction");
-    expect(p.season_years).toEqual({ "3": new Date().getFullYear() });
+    expect(p.season_years).toBeUndefined();
     // Still no viewing timestamp: catching the record up is not watching something today.
     expect(p.last_watched_at).toBeUndefined();
   });
@@ -217,7 +217,7 @@ describe("positionPatch — a viewing is not a correction", () => {
     // staleStamp: what you claim now is protected. Season 1 was dated 2022 by hand; landing on
     // season 2 must not rewrite history to this year.
     const p = positionPatch(hotd({ current_season: 1, current_episode: 10 }), 2, 8, "correction");
-    expect(p.season_years).toMatchObject({ "1": 2022 });
+    expect({ ...hotd({ current_season: 1, current_episode: 10 }), ...p }.season_years).toMatchObject({ "1": 2022 });
   });
 
   it("a correction REVOKES a completion it contradicts", () => {
@@ -244,38 +244,38 @@ describe("positionPatch — a viewing is not a correction", () => {
     expect(p.watched).toBeUndefined();
   });
 
-  it("reaching the frontier drops 'paused' — you're Caught up, not paused", () => {
-    // Paused on House of the Dragon at S1; you come back and mark yourself through the last aired
-    // episode. "Paused" means there is more you are not watching — and now there isn't.
+  it("correcting to the frontier keeps Paused until an explicit resume", () => {
+    // Correcting an old stopping point, even to the aired frontier, does not express a resume.
     const p = positionPatch(hotd({ paused: true, in_progress: false, current_season: 1, current_episode: 5 }), 3, 3, "correction");
-    expect(p.paused).toBe(false);
-    expect(p.in_progress).toBe(true);
+    expect(p.paused).toBe(true);
+    expect(p.in_progress).toBe(false);
     expect(p.caught_up_at).toMatch(/^\d{4}-/);
   });
 
   it("but DROPPED survives being caught up — a decision not to continue, not a position", () => {
     // The House of the Dragon case the owner lived: watched all that aired, chose to stop.
     const p = positionPatch(hotd({ dropped: true, in_progress: false, current_season: 1, current_episode: 5 }), 3, 3, "correction");
-    expect("paused" in p).toBe(false);
-    expect(p.dropped).toBeUndefined();       // untouched → stays dropped
-    expect(p.in_progress).toBeUndefined();   // not resumed
+    expect(p.paused).toBe(false);
+    expect(p.dropped).toBe(true);            // stance is explicitly retained
+    expect(p.in_progress).toBe(false);       // not resumed
   });
 
   it("a paused show still SHORT of the frontier stays paused", () => {
     // S3 has aired; you jump forward only to the end of S2 — there is still more, so still paused.
     const p = positionPatch(hotd({ paused: true, in_progress: false, current_season: 1, current_episode: 5 }), 2, 8, "correction");
-    expect("paused" in p).toBe(false);       // untouched
-    expect(p.in_progress).toBeUndefined();
+    expect(p.paused).toBe(true);             // retained
+    expect(p.in_progress).toBe(false);
   });
 
   it("a BACKWARD correction never resumes a paused show", () => {
     const p = positionPatch(hotd({ paused: true, in_progress: false, current_season: 3, current_episode: 3 }), 2, 4, "correction");
-    expect("paused" in p).toBe(false);       // fixing where you stopped, not coming back
+    expect(p.paused).toBe(true);             // fixing where you stopped, not coming back
   });
 
-  it("dropped, then you finish a show that has ENDED → watched (completion outranks the stance)", () => {
+  it("a correction to the end of a finished show preserves Dropped", () => {
     const p = positionPatch(sds({ watched: false, dropped: true, in_progress: false, current_season: 3, current_episode: 24 }), 4, 24, "correction");
-    expect(p.watched).toBe(true);
+    expect(p.watched).toBe(false);
+    expect(p.dropped).toBe(true);
   });
 
   it("EVERY position write recomputes caught_up_at — including the Undo that used to skip it", () => {
@@ -424,27 +424,18 @@ describe("season years — a stamp you no longer claim is a leftover, not a memo
   });
 
   it("a correction round trip LOSES NOTHING — the guarantee, asserted directly", () => {
-    /**
-     * Blue Lock: season 2 dated 2025 by hand. Step back to season 1, then forward again.
-     *
-     * This used to be asserted as "a correction never stamps anything", which was a stronger claim
-     * than the guarantee needs — and it became false the day "Watched through S" started dating the
-     * season it lands on (the owner's report: the poster left "Year" while the modal and "+1" both
-     * wrote the year). What must hold is that nothing you SET is lost, and that still holds: only
-     * the landed season is written, and a stamp you are not claiming is neither rewritten nor
-     * deleted. Both halves are checked here so neither can be broken to satisfy the other.
-     */
+    // A correction retains saved dates and never dates a newly claimed scope today.
     const withYear = { watched: false, season_years: { "2": 2025 } } as const;
 
     // Backward — you got less far than the app thought. Nothing to date.
     const back = positionPatch(sds({ ...withYear, current_season: 3, current_episode: 24 }), 1, 24, "correction");
     expect(back.season_years).toBeUndefined();
 
-    // Forward again — season 3 is where you now stand, so it takes today's year…
+    // Forward again retains the existing map without dating season3.
     const forward = positionPatch(sds({ ...withYear, current_season: 1, current_episode: 24 }), 3, 24, "correction");
-    expect(forward.season_years?.["3"]).toBe(new Date().getFullYear());
+    expect(forward.season_years).toBeUndefined();
     // …and the 2025 you typed is still there, untouched.
-    expect(forward.season_years).toMatchObject({ "2": 2025 });
+    expect({ ...withYear, ...forward }.season_years).toEqual({ "2": 2025 });
   });
 });
 

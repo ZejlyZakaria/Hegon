@@ -334,7 +334,7 @@ export default function PersonPage() {
             <PersonAccolades personId={personId} name={profile.name} yourTitles={yourTitles} />
 
             <SeenTogether titles={yourTitles} personId={personId} firstName={firstName} />
-            <PersonInsights data={insights} firstName={firstName} />
+            <PersonInsights data={insights} />
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { tmdbImageFor } from "../../lib/tmdb-image";
-import { Check, List, Loader2, Plus, X } from "lucide-react";
+import { Check, ChevronRight, List, Loader2, Plus, X } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Button } from "@/shared/components/ui/button";
@@ -111,8 +111,8 @@ export function InList({ mediaItemId, userId }: Props) {
           {/* See all first, then the primary action — the toolbar reads left→right, and the
               button you press most sits at the end, next to nothing that can steal the click. */}
           {cards.length > 0 && (
-            <Button variant="quiet" size="sm" onClick={seeAll}>
-              See all
+            <Button variant="subtle" size="sm" onClick={seeAll}>
+              See all <ChevronRight size={12} aria-hidden="true" />
             </Button>
           )}
           <Popover open={open} onOpenChange={setOpen}>

@@ -237,3 +237,17 @@ it("keeps ranked titles visible independently of favorite", async () => {
   }));
   expect(await getMediaItems("owner","anime",{topRated:true})).toMatchObject([{id:"ranked",priority:3,favorite:false}]);
 });
+
+
+it.each(["paused","dropped"] as const)("preserves %s and its reason at the service/RPC boundary",async stance=>{
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL","https://watching-test.supabase.co");vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY","test-anon-key");
+  let sent:Record<string,unknown>|undefined;
+  const before={id:"show",type:"anime",personal_revision:4,current_season:2,current_episode:4,season_aired:[5,5],season_episodes:[5,5],watched:false,in_progress:false,paused:stance === "paused",dropped:stance === "dropped",drop_reason:stance === "dropped" ? "lost_interest":null};
+  server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>HttpResponse.json(before)),
+    http.get("https://watching-test.supabase.co/rest/v1/viewing_records",()=>HttpResponse.json([],{headers:{"content-range":"*/0"}})),
+    http.post("https://watching-test.supabase.co/rest/v1/rpc/personal_history_command",async({request})=>{sent=(await request.json() as {command:Record<string,unknown>}).command;return HttpResponse.json({...before,current_episode:5});}));
+  await updateMediaItem("show",{current_episode:5,caught_up_at:null,watched:true,in_progress:false,paused:false,dropped:false,drop_reason:null,watched_at:"2026-11-02",history_intent:"correction",expected_revision:4});
+  expect(sent?.patch).toMatchObject({current_episode:5,watched:false,in_progress:false,paused:before.paused,dropped:before.dropped,drop_reason:before.drop_reason});
+  expect(sent?.patch).not.toHaveProperty("watched_at");
+  expect((sent?.records as {kind:string;year:number|null}[]).every(r=>r.kind!=="COMPLETION" && r.year===null)).toBe(true);
+});

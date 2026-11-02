@@ -1,12 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { Gem, Star, Trophy } from "lucide-react";
-import { cn } from "@/shared/utils/utils";
-import { SectionHeader } from "@/shared/components/ui/section-header";
-import { MediaRow } from "@/modules/watching/components/shared/MediaRow";
-
-const AMBER = "var(--color-gold)";
+import Link from "next/link";
+import { Panel } from "@/shared/components/ui/panel";
+import { ScoreMark } from "../shared/Marks";
+import { tmdbImageFor, tmdbImageSrcSet } from "../../lib/tmdb-image";
 
 export interface InsightTitle {
   id: string;
@@ -25,84 +23,47 @@ export interface PersonInsightsData {
   hiddenGem: InsightTitle | null;  // where you and the world disagree most, in your favour
 }
 
-// A title cell — same shape as the Stats "Top Picks" cell, half-width so #1 and the gem
-// sit side by side and neither leaves a hole.
-function TitleCell({ label, icon, t }: { label: string; icon: React.ReactNode; t: InsightTitle }) {
-  return (
-    <MediaRow
-      href={`/perso/watching/${t.id}`}
-      posterUrl={t.poster_url}
-      title={t.title}
-      className="min-w-0"
-      eyebrow={
-        <p className="mb-1.5 flex items-center gap-1 text-micro font-semibold uppercase tracking-wide text-text-tertiary">
-          {icon} {label}
-        </p>
-      }
-      meta={
-        <>
-          <span className="inline-flex items-center gap-0.5 text-micro font-semibold tabular-nums text-amber-300">
-            <Star size={9} style={{ color: AMBER, fill: AMBER }} /> {t.rating}
-          </span>
-          <span className="inline-flex min-w-0 items-center gap-1 text-micro text-text-tertiary">
-            {t.metaLogo && (
-              <Image src={t.metaLogo} alt="TMDB" width={22} height={9} className="h-2.25 w-auto opacity-70" />
-            )}
-            <span className="truncate tabular-nums">{t.meta}</span>
-          </span>
-        </>
-      }
-    />
-  );
+/** Full-width highlights use the existing80px poster rung, not half-width40px cells. */
+function TitleHighlight({ label, title, world }: { label: string; title: InsightTitle; world?: InsightTitle | null }) {
+  return <Link href={`/perso/watching/${title.id}`} aria-label={`Open ${title.title}`} className="group -mx-2 flex min-w-0 items-center gap-3 rounded-control p-2 transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-accent-watching-vivid">
+    <div className="relative aspect-2/3 w-(--poster-sm) shrink-0 overflow-hidden rounded-tile bg-surface-2 ring-1 ring-border-subtle">
+      <picture>
+        {title.poster_url && <source srcSet={tmdbImageSrcSet(title.poster_url,80,500)} />}
+        <Image src={tmdbImageFor(title.poster_url,80) ?? "/placeholder.svg"} alt="" fill loading="lazy" sizes="80px" className="object-cover" />
+      </picture>
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="text-micro font-medium leading-snug text-text-tertiary">{label}</p>
+      <p className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-text-primary transition-colors group-hover:text-accent-watching-vivid">{title.title}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-label">
+        <ScoreMark value={title.rating} source="mine" />
+        {!title.metaLogo && title.meta && <span className="text-text-tertiary">{title.meta}</span>}
+      </div>
+      {world?.meta && <p className="mt-1 flex items-center gap-1.5 text-micro text-text-tertiary">
+        {world.metaLogo ? <Image src={world.metaLogo} alt="TMDB" width={22} height={9} className="h-2.25 w-auto" /> : <span>TMDB</span>}
+        <span>{world.meta}</span>
+      </p>}
+    </div>
+  </Link>;
 }
 
-// Where this person sits in YOUR library, and the two titles that define your relationship
-// with them. No invented score, no opaque weights.
-export function PersonInsights({ data, firstName }: { data: PersonInsightsData; firstName: string }) {
+export function PersonInsights({ data }: { data: PersonInsightsData }) {
   const { rank, best, hiddenGem } = data;
   if (!rank && !best && !hiddenGem) return null;
-
+  const same = best && hiddenGem && best.id === hiddenGem.id;
   const tie = rank?.tiedWith ?? [];
-  const count = rank?.count ?? 0;
-  const countLabel = `${count} ${count === 1 ? "title" : "titles"}`;
-  const tieLine =
-    tie.length === 0
-      ? "across your whole library"
-      : `Tied with ${tie[0]}${tie.length > 1 ? ` and ${tie.length - 1} more` : ""}`;
-
-  return (
-    <section>
-      <SectionHeader title={`Your ${firstName}`} />
-      <div className="surface-quiet rounded-card p-4">
-        {rank && (
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-watching/25 ring-1 ring-accent-watching-vivid/25">
-              <Trophy size={15} className="text-accent-watching-vivid" />
-            </div>
-            <p className="min-w-0 text-xs leading-relaxed text-text-secondary">
-              Your{" "}
-              <span className="text-sm font-bold tabular-nums text-text-primary">#{rank.position}</span>{" "}
-              most-watched {rank.noun}
-              <span className="block truncate text-micro text-text-tertiary">
-                <span className="tabular-nums text-text-secondary">{countLabel}</span> · {tieLine}
-              </span>
-            </p>
-          </div>
-        )}
-
-        {rank && (best || hiddenGem) && <div className="my-3 h-px bg-border-subtle" />}
-
-        {(best || hiddenGem) && (
-          <div className={cn("-mx-2 grid gap-1", best && hiddenGem ? "grid-cols-2" : "grid-cols-1")}>
-            {best && (
-              <TitleCell label="Your #1" icon={<Trophy size={10} className="text-amber-300" />} t={best} />
-            )}
-            {hiddenGem && (
-              <TitleCell label="Hidden gem" icon={<Gem size={10} className="text-accent-watching-vivid" />} t={hiddenGem} />
-            )}
-          </div>
-        )}
+  return <Panel title="Your highlights">
+    {rank && <div className="flex items-center gap-3 pb-3">
+      <span className="shrink-0 text-3xl font-semibold tracking-tight tabular-nums text-accent-watching-vivid">#{rank.position}</span>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-text-primary">Most-watched {rank.noun}</p>
+        <p className="mt-1 text-micro leading-relaxed text-text-tertiary">{rank.count} {rank.count === 1 ? "title" : "titles"} · Across your library</p>
+        {tie.length > 0 && <p className="mt-1 text-micro leading-relaxed text-text-tertiary">Tied with {tie[0]}{tie.length > 1 ? ` and ${tie.length - 1} more` : ""}</p>}
       </div>
-    </section>
-  );
+    </div>}
+    {(best || hiddenGem) && <div className="space-y-2">
+      {best && <TitleHighlight label={same ? "Highest rated · Hidden gem" : "Highest rated"} title={best} world={same ? hiddenGem : null} />}
+      {hiddenGem && !same && <TitleHighlight label="Hidden gem" title={hiddenGem} world={hiddenGem} />}
+    </div>}
+  </Panel>;
 }

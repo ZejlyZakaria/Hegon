@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Loader2, Plus } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { Hint } from "@/shared/components/ui/tooltip";
-import { OVERLAY_CIRCLE, OVERLAY_CLUSTER } from "@/modules/watching/components/shared/Marks";
+import { OVERLAY_CLUSTER } from "@/modules/watching/components/shared/Marks";
 import { useQuickAdd } from "@/modules/watching/hooks/useQuickAdd";
 import type { MediaType, WatchingMedia } from "@/modules/watching/types";
 
@@ -52,7 +52,7 @@ export function AddMark({ tmdbId, type, title, className, onAdded }: {
   return (
     <div
       className={cn(
-        OVERLAY_CLUSTER, "right-2 h-11 can-hover:h-6",
+        OVERLAY_CLUSTER, "-right-0.5 -top-0.5 h-11 can-hover:right-2 can-hover:top-2 can-hover:h-6",
         !done && "opacity-100 transition-opacity can-hover:opacity-0 can-hover:group-hover:opacity-100 group-focus-within:opacity-100",
         className,
       )}
@@ -60,6 +60,8 @@ export function AddMark({ tmdbId, type, title, className, onAdded }: {
     >
       <Hint label={done ? "In your library" : "Want to watch"}>
         <span
+          data-kind="add"
+          data-state={state.kind}
           role="button"
           tabIndex={0}
           aria-disabled={state.kind === "pending"}
@@ -67,7 +69,7 @@ export function AddMark({ tmdbId, type, title, className, onAdded }: {
           aria-label={done ? `${title} is in your library — open it` : `Add ${title} to Want to Watch`}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); void act(); }}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); void act(); } }}
-          className={cn(OVERLAY_CIRCLE, "min-h-11 min-w-11 can-hover:min-h-6 can-hover:min-w-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-watching-vivid cursor-pointer text-white/80 transition-colors hover:bg-black/85 hover:text-white", done && "text-accent-watching-vivid hover:text-accent-watching-vivid")}
+          className="watching-artwork-action relative focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-watching-vivid"
         >
           {state.kind === "pending" ? <Loader2 size={13} className="animate-spin" /> : done ? <Check size={13} /> : <Plus size={13} />}
         </span>

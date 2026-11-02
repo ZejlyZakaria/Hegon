@@ -88,6 +88,8 @@ export default function LibraryCard({ item, onClick, onDelete, eagerLoad }: Prop
           ref={attachImg}
         />
 
+        {badge && badge.tone !== "want" && <div aria-hidden="true" className="watching-status-mask" />}
+
         {/* THE TWO CLUSTERS — and they must live in the SAME box. The heart used to sit
             inside this (scaling) image while the menu sat outside it, so the moment you
             hovered, one grew and the other didn't: two marks on the same line, drifting

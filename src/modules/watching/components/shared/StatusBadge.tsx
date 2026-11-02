@@ -1,7 +1,6 @@
-import { CheckCheck, Pause, Play, X } from "lucide-react";
+import { Pause, Play, X } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
-import { Badge } from "@/shared/components/ui/badge";
-import { WatchlistMark, type WatchlistLevel } from "@/modules/watching/components/shared/Marks";
+import { CaughtUpBadge, WatchlistMark, type WatchlistLevel } from "@/modules/watching/components/shared/Marks";
 import { seriesState, type SeriesFacts } from "@/modules/watching/lib/series-state";
 
 // The status a title carries on its poster. Watched carries none — it's the library's
@@ -44,14 +43,6 @@ export function watchlistLevel(item: Pick<StatusSource, "type" | "priority_level
   return item.priority_level ?? "none";
 }
 
-// Poster consumption states use warm orange; personal ranking keeps the Watching teal.
-const TONE: Record<Exclude<PosterStatus["tone"], "want">, string> = {
-  watching: "#ffb477",
-  caughtup: "#eea064",
-  paused: "#7dd3fc",
-  dropped: "#fcd34d",
-};
-
 // The season/episode position used to ride along here ("Watching  S3 · E7"). It's gone: two
 // chips on a 100px-wide poster left neither room to breathe, and the position was the one
 // that lost — half of them rendered as a truncated "S3 · ". A poster says WHERE a title
@@ -73,25 +64,24 @@ export function posterStatus(item: StatusSource): PosterStatus | null {
 /** A readable consumption label on artwork; colour and glyph retain their meanings. */
 export function StatusMark({ status, className }: { status: PosterStatus; className?: string }) {
   if (status.tone === "want") return null;
-  const label = status.tone === "watching" ? "In Progress" : status.tone === "caughtup" ? "Caught Up" : status.label;
+  if (status.tone === "caughtup") return <CaughtUpBadge className={cn("max-w-full", className)} />;
+  const label = status.tone === "watching" ? "In Progress" : status.label;
   return (
-    <Badge
-      variant="solid"
-      size="sm"
-      color={TONE[status.tone]}
-      className={cn("min-h-4 max-w-full shrink-0 gap-0.5 rounded-chip px-1 py-0.5 text-caption font-semibold leading-none tracking-normal [&_svg]:shrink-0", className)}
+    <span
+      data-tone={status.tone}
+      data-size="compact"
+      className={cn("watching-status max-w-full shrink-0 text-caption", className)}
     >
       {status.tone === "watching" ? (
         <Play size={10} fill="currentColor" />
-      ) : status.tone === "caughtup" ? (
-        <CheckCheck size={11} strokeWidth={2.5} />
+
       ) : status.tone === "paused" ? (
         <Pause size={10} fill="currentColor" />
       ) : (
         <X size={11} strokeWidth={2.5} />
       )}
-      <span className="min-w-0 text-left leading-tight">{label}</span>
-    </Badge>
+      <span className="min-w-0 truncate text-left leading-tight">{label}</span>
+    </span>
   );
 }
 

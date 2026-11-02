@@ -314,3 +314,13 @@ Used in Watching carousels to show episode progress. A pill-shaped badge that us
 - **Don't** add `box-shadow` to standard UI components. The No-Shadow Rule is absolute for cards, buttons, inputs, and nav items.
 - **Don't** use module accent colors as backgrounds at full opacity outside their designated role. Cinema Depth (#0c3d4a) is a valid button background in Watching. Emerald Drive (#22c55e) as a card background anywhere is wrong.
 - **Don't** use AI-interface patterns: cream backgrounds, hero-metric templates (big number + small label + gradient accent), numbered section markers (01 / 02 / 03), or tiny uppercase tracked eyebrows above every section. These are banned in PRODUCT.md.
+
+## Watching surface roles (2026-11-02)
+
+Watching status palettes and geometry live in `globals.css` (`watching-status`). Poster labels use the compact20px role; the personal record uses regular26px/12px text. Genre pills remain unchanged. Relative-time labels use neutral11px/medium text and normal tracking. Status contrast comes from a bottom-only gradient, never a whole-artwork status veil. Availability/unwatched overlays retain their distinct meaning.
+
+Artwork actions share a24px visible circle, one-pixel contact border and44px touch target. Media Add uses white/dark ink, Dismiss dark/white, Follow dark with a person-plus glyph and a teal check when followed. A person hero may use a28px visible Follow circle. Target expansion preserves the visual anchor and spacing. Personal-card heart/menu controls use32px visible surfaces and44px touch targets.
+
+Navigation actions such as See all use subtle styling and a chevron; editing actions such as Manage/Change retain quiet graphite controls. Watch trailer uses the shared overlay Button/control radius. Media and Person Accolades share `AccoladesSummary`; their data scopes remain separate. Person sidebar frames and titles use Panel; its personal journey retains the module accent surface.
+
+Person highlights use full-width80px (`--poster-sm`) poster rows, a typographic personal rank and teal personal scores. Duplicate highest-rated/hidden-gem titles merge while retaining both labels and the TMDB comparison. In Progress season/episode and Caught Up labels share compact20px pill geometry; position metadata is neutral, caught-up state green. The same CaughtUpBadge component serves Last Watched and weekly airing.

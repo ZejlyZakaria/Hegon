@@ -1,6 +1,6 @@
 "use client";
 
-import { Clapperboard, Sparkles, Star, Trophy } from "lucide-react";
+import { Clapperboard, Star, Trophy } from "lucide-react";
 
 const TEAL = "var(--color-accent-watching-vivid)";
 const AMBER = "var(--color-gold)";
@@ -40,9 +40,7 @@ export function PersonJourney({ stats }: { stats: JourneyStats }) {
           "inset 0 1px 0 0 rgba(255,255,255,0.10), inset 0 0 0 1px rgba(255,255,255,0.06), 0 2px 6px -2px rgba(0,0,0,0.5), 0 18px 44px -18px rgba(0,0,0,0.6)",
       }}
     >
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-label font-medium text-white">
-        <Sparkles size={11} /> Your journey
-      </span>
+      <h2 className="text-title text-white">Your journey</h2>
 
       {owned === 0 ? (
         <p className="mt-3 text-label leading-relaxed text-white/60">

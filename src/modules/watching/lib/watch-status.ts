@@ -56,10 +56,26 @@ export type StatusFacts = Pick<
 > & {
   /** Release year — optional so card-level callers and tests need not always supply it. */
   year?: number | null;
+  drop_reason?: string | null;
 };
 
 /** The patch to hand to `useUpdateMedia` — everything but the id. */
 export type StatusPatch = Omit<UpdateMediaInput, "id">;
+
+/** A position correction changes the record, never the intention to resume watching. */
+export function preserveCorrectionStance<T extends Record<string, unknown>>(
+  before: { paused?: boolean; dropped?: boolean; drop_reason?: string | null }, patch: T, intent?: string,
+): T {
+  if (intent !== "correction" || !(before.paused || before.dropped) ||
+      !("current_season" in patch || "current_episode" in patch)) return patch;
+  const kept: Record<string, unknown> = { ...patch, watched: false, in_progress: false, want_to_watch: false,
+    paused: !!before.paused, dropped: !!before.dropped };
+  if (before.drop_reason !== undefined) kept.drop_reason = before.drop_reason;
+  else delete kept.drop_reason;
+  delete kept.watched_at;
+  delete kept.last_watched_at;
+  return kept as T;
+}
 
 // ── Reading the status ────────────────────────────────────────────────────────────────────────
 
@@ -496,19 +512,10 @@ export function positionPatch(
   const facts = { ...m, current_season: season, current_episode: episode };
   const completed = m.type === "film" || seriesState(facts) === "completed";
 
-  // Law 2. A correction is you stating the record, so it may complete. A viewing may not: "+1"
+  // An active record correction may complete; Paused/Dropped require an explicit Finish. A viewing may not: "+1"
   // hands you off to a deliberate "Finish" instead. Revocation applies to both.
-  const completes = kind === "correction" && completed && !m.watched;
+  const completes = kind === "correction" && completed && !m.watched && !m.paused && !m.dropped;
   const revokes = !!m.watched && !completed;
-
-  // Reaching the last AIRED episode makes "paused" a lie: paused means there is more you are not
-  // watching, and now there isn't — you are Caught up. DROPPED survives this (it is a decision not
-  // to continue, still true when you have seen everything out — you watched all of House of the
-  // Dragon that aired and chose to stop); PAUSED does not, because it says nothing "caught up"
-  // doesn't already say. Forward only: a backward correction is fixing where you stopped, not
-  // resuming.
-  const resumesFromPause =
-    !!m.paused && forward && !completed && seriesState(facts) === "caught-up";
 
   // ── THE YEAR, DECIDED IN DISPLAY SPACE ───────────────────────────────────────────────────────
   // Season boundaries are the only thing the two coordinate spaces disagree about, so the stamp —
@@ -532,27 +539,9 @@ export function positionPatch(
     ? seasonRange(fromV.season, toV.season - 1).filter((s) => isSeasonComplete(sp.facts, s))
     : [];
 
-  /**
-   * AND THE SEASON YOU JUST FINISHED — on a correction too, which is the fix.
-   *
-   * It used to stamp what you LEAVE, not what you COMPLETE, so finishing season 2 dated nothing and
-   * the year only appeared once you started season 3; a show you keep up with never got there at
-   * all. That was fixed for "+1". But "Watched through S2" on the poster went on stamping nothing,
-   * because it is a CORRECTION — so the same act, expressed through three doors, produced two
-   * results: the add modal and the steppers dated the season, the Watch History left "Year".
-   *
-   * The rule that settles it is the one already adopted for the add doors: A DOOR THAT ASKS FOR NO
-   * DATE SPEAKS OF THE PRESENT. Landing on a season is a statement about where you stand NOW, and
-   * that is the same claim "+1" makes when it carries you over the line.
-   *
-   * Still `forward` only: stepping BACK is saying you got less far than the app thought, and there
-   * is nothing to date about that. And still non-destructive — `stampSeasons` protects a year you
-   * set by hand behind your position (see staleStamp), and the badge stays editable either way.
-   *
-   * ⚠️ Accepted imprecision: jumping S1 → S3 dates S3 with this year even if you finished it in
-   * 2020. One click to correct, against a blank the owner reported as feeling broken.
-   */
-  const landed = forward && isSeasonDatable(factsV, toV.season) ? [toV.season] : [];
+  // Only a new viewing can assign today's year. Corrections retain existing dates;
+  // explicit historical date edits are handled by the history command.
+  const landed = kind === "viewing" && forward && isSeasonDatable(factsV, toV.season) ? [toV.season] : [];
 
   const toStamp = [...crossed, ...landed];
   const seasonYears =
@@ -560,7 +549,7 @@ export function positionPatch(
       ? stampSeasons(sp.map, toStamp, new Date().getFullYear(), staleStamp(sp.facts))
       : undefined;
 
-  return {
+  return preserveCorrectionStance(m, {
     current_season: season,
     current_episode: episode,
     caught_up_at: caughtUpAt(facts, m.caught_up_at),
@@ -569,9 +558,8 @@ export function positionPatch(
     ...(completes
       ? {
           watched: true, in_progress: false, want_to_watch: false, is_reference: false, ...RESET_STATUS,
-          // Same as markWatchedPatch: a series is finished WHEN its last season aired, not when you
-          // corrected the record. The finish year (from season_years) dates it; buildWatchedAtProjection maps
-          // the current year back to now.
+          // Existing finish years are only a legacy fallback; the service resolves canonical
+          // dated completion evidence without inventing a viewing date.
           watched_at: dateFromFinishYear(maxYear(seasonYears ?? sp.map)),
         }
       : {}),
@@ -580,6 +568,5 @@ export function positionPatch(
       // watched_at stops mattering because `watched` is false), or it keeps surfacing as completed.
       ? { watched: false, in_progress: !m.paused && !m.dropped }
       : {}),
-    ...(resumesFromPause ? { paused: false, in_progress: true } : {}),
-  };
+  }, kind);
 }
