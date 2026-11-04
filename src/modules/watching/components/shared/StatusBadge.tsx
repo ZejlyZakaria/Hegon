@@ -1,7 +1,7 @@
 import { Pause, Play, X } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { CaughtUpBadge, WatchlistMark, type WatchlistLevel } from "@/modules/watching/components/shared/Marks";
-import { seriesState, type SeriesFacts } from "@/modules/watching/lib/series-state";
+import { seriesState, requiresResume, type SeriesFacts } from "@/modules/watching/lib/series-state";
 
 // The status a title carries on its poster. Watched carries none — it's the library's
 // default state, and the rating badge already speaks for it.
@@ -51,6 +51,7 @@ export function posterStatus(item: StatusSource): PosterStatus | null {
   if (item.watched) return null;
   if (item.dropped) return { label: "Dropped", tone: "dropped", level: null };
   if (item.paused) return { label: "Paused", tone: "paused", level: null };
+  if (requiresResume(item)) return null;
   if (item.in_progress) {
     // Caught up = you have seen everything that aired and the show goes on — its own glyph (the
     // double check the Caught up badge already wears), not the play of a show you are behind on.

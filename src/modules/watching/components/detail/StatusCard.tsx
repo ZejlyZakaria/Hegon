@@ -12,8 +12,8 @@ import type { RewatchRequest, RewatchCatalogue } from "../../lib/rewatch";
 
 import { isWatchableNow } from "../../lib/watchable";
 
-import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { motion } from "framer-motion";
 import {
   Bookmark, Check, CheckCheck, ChevronRight, CircleSlash, Clock, Heart, History,
   Minus, MoreHorizontal, PauseCircle, Pencil, Play, Plus, RotateCcw, Trash2,
@@ -33,7 +33,7 @@ import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { useRewatches, useAddRewatch, useRemoveRewatch } from "../../hooks/useRewatches";
 import { dropReasonLabel } from "../../lib/drop-reasons";
-import { caughtUpOn, nextStep, seriesState } from "../../lib/series-state";
+import { caughtUpOn, nextStep, seriesState, requiresResume } from "../../lib/series-state";
 import type { MediaView } from "../../lib/media-view";
 import { canComplete, deriveWatchStatus } from "../../lib/watch-status";
 import { WatchDatePicker } from "../shared/WatchDatePicker";
@@ -45,7 +45,6 @@ import type { WatchingMedia, WatchStatus, Rewatch } from "../../types";
 import type { WatchProviderInfo } from "../../hooks/useWatchProviders";
 
 // Design-system §9.1 — physical, not linear.
-const SPRING_SMOOTH = { type: "spring", stiffness: 300, damping: 28 } as const;
 const SPRING_SNAPPY = { type: "spring", stiffness: 400, damping: 30 } as const;
 
 type CardStatus = "want_to_watch" | "in_progress" | "watched" | "paused" | "dropped";
@@ -65,6 +64,25 @@ const CARD_STATUS: Record<WatchStatus, CardStatus> = {
   completed: "watched",
   watching: "in_progress",
 };
+
+
+/** Animate height, never scale text or overlap old/new status controls. */
+function StableStatusContent({ children }: { children: ReactNode }) {
+  const content = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number>();
+  useLayoutEffect(() => {
+    const node = content.current;
+    if (!node) return;
+    const measure = () => setHeight(node.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  return <div className="overflow-clip transition-[height] duration-200 ease-out motion-reduce:transition-none" style={{ height }}>
+    <div ref={content} className="flow-root">{children}</div>
+  </div>;
+}
 
 function watchedYearOf(media: WatchingMedia, yearMap: Record<string, number> | null | undefined): number | null {
   if (media.type === "film") return media.watched_at ? new Date(media.watched_at).getFullYear() : null;
@@ -347,6 +365,7 @@ export function StatusCard({
   const state = isSeries ? seriesState(seriesFacts) : null;
   const atLastEpisode = state === "completed";
   const caughtUp = state === "caught-up";
+  const needsResume = requiresResume(seriesFacts);
 
   // Eligibility follows actual consumption; posture alone does not imply a rewatch.
   const canRewatch = watchable && (isSeries ? (view?.position.episode ?? 0)>0 || (view?.position.season ?? 1)>1 || atLastEpisode || caughtUp : media.watched);
@@ -463,17 +482,10 @@ export function StatusCard({
           "inset 0 1px 0 0 rgba(255,255,255,0.10), inset 0 0 0 1px rgba(255,255,255,0.06), 0 2px 6px -2px rgba(0,0,0,0.5), 0 18px 44px -18px rgba(0,0,0,0.6)",
       }}
     >
+      <StableStatusContent>
       {/* ── Header: state identity + secondary actions ── */}
       <div className="flex items-center justify-between gap-2">
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
-            key={`chip-${status}-${caughtUp}`}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={SPRING_SMOOTH}
-            className="min-w-0"
-          >
+        <div className="min-w-0">
             {/* The bookmark ICON wears the poster bookmark's colour — same rule (watchlistLevel):
                 violet while the title is not out, then the priority's. The chip itself stays. */}
             {status === "want_to_watch" && (
@@ -487,10 +499,11 @@ export function StatusCard({
                 bottom, while the chip at the top went on contradicting it. An app that files a
                 state under the name of another state is the disease this whole module has been
                 treated for; the last place it survived was the label. */}
+            {status === "in_progress" && needsResume && <StateChip tone="want" icon={<Clock size={11} />}>New episodes</StateChip>}
             {status === "in_progress" && caughtUp && (
               <StateChip tone="caughtup" icon={<CheckCheck size={11} />}>Caught Up</StateChip>
             )}
-            {status === "in_progress" && !caughtUp && (
+            {status === "in_progress" && !caughtUp && !needsResume && (
               <StateChip icon={<Play size={11} fill="currentColor" />}>
                 In Progress
               </StateChip>
@@ -498,8 +511,7 @@ export function StatusCard({
             {status === "watched" && <StateChip tone="watched" icon={<Check size={11} />}>{isSeries ? "Completed":"Watched"}</StateChip>}
             {status === "paused" && <StateChip tone="paused" icon={<PauseCircle size={11} />}>Paused</StateChip>}
             {status === "dropped" && <StateChip tone="dropped" icon={<CircleSlash size={11} />}>Dropped</StateChip>}
-          </motion.div>
-        </AnimatePresence>
+        </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
           {status !== "want_to_watch" && (
@@ -579,14 +591,12 @@ export function StatusCard({
       </div>
 
       {/* ── Body: the state's facts ── */}
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.div
-          key={`body-${status}`}
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -5 }}
-          transition={SPRING_SMOOTH}
-        >
+      {needsResume && !media.paused && !media.dropped && <div className="mt-3 flex items-center justify-between gap-3">
+        <span className="text-label text-white/70">New episodes available</span>
+        <button type="button" onClick={onResume} disabled={isUpdating} className="min-h-11 shrink-0 rounded-control px-2 text-label font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50">Resume watching</button>
+      </div>}
+
+      <div>
           {status === "watched" && (
             <div className="mt-2.5">
               {/* NOT "Watched" — the badge above already says that. A row adds a fact, not an echo of
@@ -681,8 +691,7 @@ export function StatusCard({
               />
             </div>
           )}
-        </motion.div>
-      </AnimatePresence>
+      </div>
 
       {editingPosition && <div className="mt-4 space-y-4 rounded-control bg-white/5 p-3">
         <p className="text-xs leading-relaxed text-white/65">Choose the last episode you actually watched. This corrects your progress without logging a new viewing.</p>
@@ -697,9 +706,9 @@ export function StatusCard({
       {/* ── The state's one action — it follows the state's facts. It used to sit BELOW
              "Where to watch", which made the card's primary button read as an action on the
              streaming services rather than on the title. ── */}
-      <AnimatePresence mode="popLayout" initial={false}>
+      <div>
         {status === "want_to_watch" && (
-          <motion.div key="f-want" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3">
+          <div className="mt-3">
             {isSeries && watchable ? (
               <PrimaryAction icon={<Play size={13} className="fill-current" />} onClick={onStartWatching} disabled={isUpdating}>
                 Start watching
@@ -721,7 +730,7 @@ export function StatusCard({
                 )}
               </div>
             )}
-          </motion.div>
+          </div>
         )}
 
         {!editingPosition && watchable && status==="in_progress" && nextPosition && <div className="mt-3">
@@ -731,11 +740,11 @@ export function StatusCard({
         </div>}
 
         {watchable && status === "in_progress" && atLastEpisode && (
-          <motion.div key="f-complete" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3">
+          <div className="mt-3">
             <PrimaryAction icon={<Check size={13} />} onClick={onMarkWatched} disabled={isUpdating}>
               Mark as completed
             </PrimaryAction>
-          </motion.div>
+          </div>
         )}
 
         {/* You've seen everything that's out — but the story isn't over. There's nothing to decide
@@ -743,29 +752,30 @@ export function StatusCard({
             WHAT you're waiting for matters: with 4 of season 3's 8 episodes aired, you're waiting
             a WEEK, not a year. Saying "the next season" there would be plain wrong. */}
         {status === "in_progress" && caughtUp && (
-          <motion.div key="f-caught" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3">
+          <div className="mt-3">
             <div className="flex items-start gap-2 py-1 text-xs leading-relaxed text-white/65">
               <CheckCheck size={13} />
               {caughtUpOn(seriesFacts) === "episode"
                 ? "All caught up — the next episode hasn't aired yet."
-                : "All caught up — waiting on the next season."}
+                : caughtUpOn(seriesFacts) === "season" ? "All caught up \u2014 waiting on the next season." : "All available episodes watched \u2014 release schedule unconfirmed."}
             </div>
-          </motion.div>
+          </div>
         )}
 
         {watchable && (status === "paused" || status === "dropped") && (
-          <motion.div key="f-resume" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={SPRING_SNAPPY} className="mt-3">
+          <div className="mt-3">
             <PrimaryAction icon={<RotateCcw size={13} />} onClick={onResume} disabled={isUpdating}>
               Resume watching
             </PrimaryAction>
-          </motion.div>
+          </div>
         )}
 
-      </AnimatePresence>
+      </div>
       {historyLabel && <button type="button" onClick={()=>setPanel("viewing")} className="mt-3 flex min-h-11 w-full items-center justify-between gap-3 border-t border-white/10 pt-2 text-sm text-white/85">
         <span className="inline-flex items-center gap-2"><History size={15}/>{historyLabel}</span><ChevronRight size={15}/>
       </button>}
       <WhereToWatch providers={providers}/>
+      </StableStatusContent>
     </section>
     <SlidingPanel open={panel!==null} onClose={()=>setPanel(null)} title={panel==="rewatch" ? editingRewatch ? "Edit rewatch":"Log rewatch":historyLabel ?? "Viewing details"}
       width="wide">

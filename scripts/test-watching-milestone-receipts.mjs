@@ -118,6 +118,10 @@ try {
   const {runAnimationStudioChecks}=await import('./test-watching-animation-studios.mjs');
   runAnimationStudioChecks({sql,db,counts});
  }
+ if(process.argv.includes('--tracking-intent')) {
+  const {runTrackingIntentChecks}=await import('./test-watching-tracking-intent.mjs');
+  runTrackingIntentChecks({sql,db,counts});
+ }
  if(process.argv.includes('--estimated-dates')) {
   const {runEstimatedDateChecks}=await import('./test-watching-estimated-dates.mjs');
   runEstimatedDateChecks({sql,db});

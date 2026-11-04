@@ -41,6 +41,7 @@ export interface SeriesFacts {
   current_episode?: number | null;
   /** When you last reached the end of what had aired. Non-null = you were caught up once. */
   caught_up_at?: string | null;
+  resume_required?: boolean;
 }
 
 /**
@@ -121,22 +122,33 @@ export function seriesState(m: SeriesFacts): SeriesState | null {
  * belongs in In Progress — you're actively following it, an episode is days away. Only the
  * between-seasons wait is "last watched".
  *
- * Derived, so it un-sets itself: a new episode airs → `seriesState` flips to `"new"` → back to In
- * Progress, no flag to forget. Series/anime only — `caughtUpOn` needs a current season, and a film's
+ * Derived availability changes when a new episode airs → `seriesState` flips to `"new"` → new-content notice; an explicit Resume is required after a completed scope. Series/anime only — `caughtUpOn` needs a current season, and a film's
  * `seriesState` is null, so it is never awaiting a next season.
  */
 export function isAwaitingNextSeason(m: SeriesFacts): boolean {
   return seriesState(m) === "caught-up" && caughtUpOn(m) === "season";
 }
 
+/** The availability hold matters only while released episodes remain unseen. */
+export function requiresResume(m: SeriesFacts): boolean {
+  return !!m.resume_required && watchedCount(m) < airedCount(m);
+}
+
+/** A pending return still belongs to the owner's consumed library and personal summaries. */
+export function hasViewingEngagement(m: {watched?:boolean;in_progress?:boolean;resume_required?:boolean;paused?:boolean;dropped?:boolean}): boolean {
+  return !!(m.watched || m.in_progress || m.resume_required || m.paused || m.dropped);
+}
+
 /** One classification shared by home rails and Stats; aired progress wins over stale posture. */
 export function activityBucket(m: SeriesFacts & {
   type?: string; watched?: boolean; in_progress?: boolean; paused?: boolean; dropped?: boolean;
 }): "in-progress" | "last-watched" | null {
-  if (m.paused || m.dropped || (!m.watched && !m.in_progress)) return null;
+  if (m.paused || m.dropped || !hasViewingEngagement(m)) return null;
   if (m.type === "film") return m.watched ? "last-watched" : "in-progress";
+  if (requiresResume(m)) return "last-watched";
   const state = seriesState(m);
   if (state === "completed" || isAwaitingNextSeason(m)) return "last-watched";
+  if (m.watched) return "last-watched"; // Unknown catalogue corrections cannot express a resume.
   if (state !== null) return "in-progress";
   // Missing airing evidence must not manufacture completion or undo a stored one.
   return m.watched ? "last-watched" : "in-progress";
@@ -157,7 +169,7 @@ export type NextStep =
  */
 export function nextStep(m: SeriesFacts): NextStep {
   const aired = m.season_aired ?? [];
-  if (aired.length === 0) return null;
+  if (requiresResume(m) || aired.length === 0) return null;
 
   const state = seriesState(m);
   if (state === "completed") return { kind: "finish" };
@@ -184,11 +196,12 @@ export function nextStep(m: SeriesFacts): NextStep {
  * "waiting on the next season" is a lie half the time: House of the Dragon has 4 of season 3's
  * 8 episodes out, so at E4 you're waiting a WEEK, not a year.
  */
-export function caughtUpOn(m: SeriesFacts): "episode" | "season" {
+export function caughtUpOn(m: SeriesFacts): "episode" | "season" | "unknown" {
   const season = m.current_season ?? 1;
   const announced = (m.season_episodes ?? [])[season - 1] ?? 0;
   const aired = (m.season_aired ?? [])[season - 1] ?? 0;
   // The season you're in is still coming out → the next EPISODE is what's missing.
+  if (announced <= 0 || aired <= 0) return "unknown";
   return aired < announced ? "episode" : "season";
 }
 
@@ -376,9 +389,22 @@ export function isSeasonDatable(m: SeriesFacts & { watched?: boolean }, season: 
  *
  * Moving BACKWARDS clears it: stepping away from the frontier by your own hand is not news.
  */
-export function caughtUpAt(m: SeriesFacts, existing?: string | null): string | null {
+export function caughtUpAt(m: SeriesFacts, existing?: string | null, allowStamp = true): string | null {
   const state = seriesState(m);
   const atFrontier = state === "caught-up" || state === "completed";
   // Keep the ORIGINAL stamp: it marks when you got there, not when you last looked.
-  return atFrontier ? (existing ?? new Date().toISOString()) : null;
+  return atFrontier ? (existing ?? (allowStamp ? new Date().toISOString() : null)) : null;
+}
+
+/** A frontier/correction timestamp is not consumption. Shared by rail order and its time label. */
+export function latestViewingAt(m: {watched_at?: string | null; last_watched_at?: string | null}): string | null {
+  const canonical = (value:string|null|undefined) => {
+    if (!value || !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(value)) return value;
+    // watched_at is legacy timestamp-without-zone stored in UTC; last_watched_at is timestamptz.
+    // Normalize both before comparison so browser/server timezones cannot reorder the rail.
+    const iso=value.replace(" ","T");
+    return /(?:Z|[+-]\d{2}(?::?\d{2})?)$/i.test(iso) ? iso.replace(/([+-]\d{2})$/,"$1:00") : `${iso}Z`;
+  };
+  return [m.watched_at,m.last_watched_at].map(canonical).filter((v):v is string=>!!v && Number.isFinite(Date.parse(v)))
+    .sort((a,b)=>Date.parse(b)-Date.parse(a))[0] ?? null;
 }

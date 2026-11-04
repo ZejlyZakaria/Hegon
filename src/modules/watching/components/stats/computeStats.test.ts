@@ -550,3 +550,13 @@ it("classifies Knight as completed without changing its recorded consumption", (
   expect(stats.hours.total).toBe(204 / 60);
   expect(knight).toMatchObject({ in_progress: true, watched: false, watched_at: "2026-04-06" });
 });
+
+
+it("keeps a returned title out of active/completed counts without adding hours",()=>{
+  const base=item({status:"ongoing",watched:false,in_progress:false,current_season:1,current_episode:3,season_aired:[3,1],season_episodes:[3,8],season_years:{"1":2024},resume_required:true});
+  const waiting=computeStats([base],[],null,new Map());
+  const active=computeStats([{...base,resume_required:false,in_progress:true}],[],null,new Map());
+  expect(waiting.statusCounts.serie).toMatchObject({awaitingResume:1,inProgress:0,watched:0,caughtUp:0});
+  expect(active.statusCounts.serie).toMatchObject({awaitingResume:0,inProgress:1});
+  expect(waiting.hours).toEqual(active.hours);
+});

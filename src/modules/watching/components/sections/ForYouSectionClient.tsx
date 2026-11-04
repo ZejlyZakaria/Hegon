@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
-import { useImageReveal } from "@/modules/watching/hooks/useImageReveal";
+import { SectionImageReveal } from "../shared/SectionImageReveal";
 import { useQueryClient } from "@tanstack/react-query";
 import { TMDB_KEYS } from "@/modules/watching/hooks/query-keys";
 import Image from "next/image";
@@ -52,17 +52,14 @@ function ForYouCard({
   onClick,
   onDismiss,
   type,
-  priority,
   orientation = "backdrop",
 }: {
   item: ForYouItem;
   onClick: () => void;
   onDismiss: () => void;
   type: MediaType;
-  priority?: boolean;
   orientation?: "poster" | "backdrop";
 }) {
-  const { loaded: imgLoaded, instant: imgInstant, onLoad: onImgLoad, attach: attachImg } = useImageReveal();
   const isPoster = orientation === "poster";
   const imgSrc = isPoster
     ? (item.poster_path ? `${TMDB_W500}${item.poster_path}` : item.backdrop_path ? `${TMDB_W500}${item.backdrop_path}` : null)
@@ -74,10 +71,7 @@ function ForYouCard({
       className={cn("group relative w-full cursor-pointer overflow-hidden transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.04]", isPoster ? "rounded-tile" : "rounded-card")}
       onClick={onClick}
     >
-      <div className={cn("relative bg-surface-2", !imgLoaded && "animate-pulse", isPoster ? "aspect-2/3" : "aspect-video")}>
-        {/* `loading="eager"` was hardcoded on EVERY item of this rail, in both the desktop and the
-            always-mounted mobile tree — up to 20 forced fetches from one section that sits below the
-            fold. `priority` never gated it: that prop only sets the fetchpriority hint. */}
+      <div className={cn("relative bg-surface-2", isPoster ? "aspect-2/3" : "aspect-video")}>
         {imgSrc && (
           <picture>
             <source srcSet={tmdbImageSrcSet(imgSrc,isPoster ? 170:360,isPoster ? 500:item.backdrop_path ? 1280:780)} />
@@ -85,14 +79,9 @@ function ForYouCard({
               src={(isPoster ? tmdbImageFor(imgSrc, 170) : tmdbImageFor(imgSrc, 360)) || imgSrc}
               alt={item.title}
               fill
-              className={cn("object-cover", !imgInstant && "transition-opacity duration-200")}
-              // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
-              style={{ opacity: imgLoaded ? 1 : 0 }}
+              className="object-cover"
               sizes={isPoster ? "(max-width: 1024px) 45vw, 180px" : "(max-width: 1024px) 45vw, 380px"}
-              loading={priority ? "eager" : "lazy"}
-              fetchPriority={priority ? "high" : "auto"}
-              onLoad={onImgLoad}
-              ref={attachImg}
+              loading="lazy"
             />
           </picture>
         )}
@@ -149,7 +138,7 @@ export default function ForYouSectionClient({
   config: WatchingConfig;
 }) {
   const { data: rawItems = [], isLoading } = useForYouRecommendations(userId, config.type);
-  const { data: ownedIds = [] } = useOwnedTmdbIds(userId, config.type);
+  const { data: ownedIds = [], isLoading: ownedLoading } = useOwnedTmdbIds(userId, config.type);
   const { data: dismissedIds = [], isLoading: dismissedLoading } = useForYouDismissals(userId, config.type);
   const dismiss = useDismissForYou(userId, config.type);
   const dismissed = new Set(dismissedIds);
@@ -199,7 +188,7 @@ export default function ForYouSectionClient({
 
   // The list and the "no"s arrive together — painting the list first would flash a card you have
   // already refused, then pull it away.
-  if (isLoading || dismissedLoading) return <ForYouSkeleton />;
+  if (isLoading || dismissedLoading || ownedLoading) return <ForYouSkeleton />;
   if (items.length === 0) return null;
 
   const totalElements = items.length;
@@ -220,17 +209,18 @@ export default function ForYouSectionClient({
   const handleAdd = (item: ForYouItem) => openTitle(item);
 
   const itemWidthStyle = {
-    width: `calc((100% - ${(cardsPerView - 1) * gap}px) / ${cardsPerView})`,
+    width: "calc((100% - (var(--hub-cards) - 1) * 16px) / var(--hub-cards))",
   };
 
   return (
+    <SectionImageReveal fallback={<ForYouSkeleton />}>
     <section>
       <SectionHeader
         title="For You"
         subtitle="Based on what you love"
         actions={
           <CarouselNav
-            className="hidden lg:flex"
+            className="[--hub-cards:3] xl:[--hub-cards:5] hidden lg:flex"
             onPrev={() => scroll("prev")}
             onNext={() => scroll("next")}
             canPrev={canGoPrev}
@@ -241,10 +231,10 @@ export default function ForYouSectionClient({
 
       <div
         ref={scrollRef}
-        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-1.5 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
+        className="[--hub-cards:3] xl:[--hub-cards:5] hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-1.5 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
-        {items.map((item, i) => (
+        {items.map((item) => (
           <div
             key={item.id}
             className="shrink-0 snap-start"
@@ -255,15 +245,14 @@ export default function ForYouSectionClient({
               type={config.type}
               onClick={() => handleAdd(item)}
               onDismiss={() => handleDismiss(item.id)}
-              priority={i < 3}
             />
           </div>
         ))}
       </div>
 
       {/* Mobile: swipeable poster rail (~2.4 visible) */}
-      <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory">
-        {items.map((item, i) => (
+      <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory py-1.5">
+        {items.map((item) => (
           <div key={item.id} className="w-[42%] md:w-[28%] shrink-0 snap-start">
             <ForYouCard
               orientation="poster"
@@ -271,11 +260,11 @@ export default function ForYouSectionClient({
               type={config.type}
               onClick={() => handleAdd(item)}
               onDismiss={() => handleDismiss(item.id)}
-              priority={i < 3}
             />
           </div>
         ))}
       </div>
     </section>
+    </SectionImageReveal>
   );
 }

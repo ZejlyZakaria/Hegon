@@ -26,7 +26,7 @@ export default function TopTenSectionClient({ userId, config }: Props) {
   const deleteMediaMutation = useDeleteMedia();
   const { openModal } = useWatching();
 
-  if (isLoading) return <CarouselSkeleton />;
+  if (isLoading) return <CarouselSkeleton title={`My Top 10 ${config.labelPlural === "films" ? "of all time" : config.labelPlural === "series" ? "Series" : "Animes"}`} subtitle={`Your highest-rated ${config.labelPlural} — 0/10`} />;
 
   const handleDelete = async (itemId: string) => {
     try {

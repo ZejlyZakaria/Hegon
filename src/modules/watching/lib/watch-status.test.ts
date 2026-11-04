@@ -236,7 +236,7 @@ describe("positionPatch — a viewing is not a correction", () => {
   it("a correction that lands on the end of a FINISHED show completes it", () => {
     const p = positionPatch(sds({ watched: false, current_season: 3, current_episode: 24 }), 4, 24, "correction");
     expect(p.watched).toBe(true);
-    expect(p.watched_at).toMatch(/^\d{4}-/);
+    expect(p.watched_at).toBeUndefined();
   });
 
   it("but a VIEWING never claims completion — finishing is its own deliberate act", () => {
@@ -249,7 +249,7 @@ describe("positionPatch — a viewing is not a correction", () => {
     const p = positionPatch(hotd({ paused: true, in_progress: false, current_season: 1, current_episode: 5 }), 3, 3, "correction");
     expect(p.paused).toBe(true);
     expect(p.in_progress).toBe(false);
-    expect(p.caught_up_at).toMatch(/^\d{4}-/);
+    expect(p.caught_up_at).toBeNull();
   });
 
   it("but DROPPED survives being caught up — a decision not to continue, not a position", () => {
@@ -530,4 +530,25 @@ describe("insertMediaSchema — the two locks agree (continued)", () => {
       }
     }
   });
+});
+
+
+describe("correction is not a viewing or a resumption",()=>{
+  it("corrects 10 to 12 without creating date stamps, years or a resume",()=>{
+    const old=hotd({current_season:1,current_episode:10,season_aired:[24],season_episodes:[24],season_years:{"1":2024},resume_required:true});
+    const p=positionPatch(old,1,12,"correction");
+    expect(p).toMatchObject({current_season:1,current_episode:12,caught_up_at:null});
+    for(const key of ["last_watched_at","watched_at","season_years","cour_years","resume_required"]) expect(p).not.toHaveProperty(key);
+  });
+  it("acknowledges a complete scope without stamping today",()=>{
+    const p=positionPatch(hotd({current_season:1,current_episode:10,season_aired:[12],season_episodes:[12],season_years:{"1":2024}}),1,12,"correction");
+    expect(p.caught_up_at).toBeNull();expect(p.last_watched_at).toBeUndefined();
+  });
+});
+
+
+it("actual forward viewing resumes a returned title without treating corrections as a resume",()=>{
+  const old=hotd({resume_required:true,in_progress:false,watched:false,current_season:1,current_episode:3,season_aired:[4],season_episodes:[8]});
+  expect(positionPatch(old,1,4,"viewing")).toMatchObject({resume_required:false,in_progress:true,watched:false});
+  const corrected=positionPatch(old,1,4,"correction");expect(corrected).not.toHaveProperty("resume_required");expect(corrected).not.toHaveProperty("in_progress");
 });

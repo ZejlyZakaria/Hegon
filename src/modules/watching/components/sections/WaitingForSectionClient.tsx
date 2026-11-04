@@ -32,7 +32,7 @@ export default function WaitingForSectionClient({ userId, config }: Props) {
   const deleteMediaMutation = useDeleteMedia();
 
   if (config.type !== "film") return null;
-  if (isLoading) return <CarouselSkeleton />;
+  if (isLoading) return <CarouselSkeleton title="Waiting for" subtitle="Coming soon" add={false} />;
 
   // The query already answers "awaiting" and orders by release date; the predicate is kept as a
   // belt for a row that sits on the line at midnight (the database and the browser disagree on

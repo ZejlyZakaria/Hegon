@@ -50,6 +50,7 @@ const updateMediaFields = z.object({
   /** Stamped on FORWARD progress only. A correction is not a viewing. */
   last_watched_at: z.string().nullable().optional(),
   caught_up_at: z.string().nullable().optional(),
+  resume_required: z.boolean().optional(),
   /** Want-to-watch urgency (NOT the Top 10 rank — that is `priority`). Null clears it. */
   priority_level: z.enum(["high", "medium", "low"]).nullable().optional(),
   watched: z.boolean().optional(),
@@ -163,6 +164,7 @@ const insertMediaFields = z.looseObject({
   current_season: z.number().nullable().optional(),
   current_episode: z.number().nullable().optional(),
   caught_up_at: z.string().nullable().optional(),
+  resume_required: z.boolean().optional(),
   watched_at: z.string().nullable().optional(),
 });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { hasViewingEngagement } from "../../lib/series-state";
 import { CalendarClock } from "lucide-react";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
@@ -17,7 +18,7 @@ interface Props {
 
 // Titles you actually engaged with — a want-to-watch has no place in a history.
 export function timelineTitles(titles: PersonTitle[]): PersonTitle[] {
-  return titles.filter((t) => t.watched || t.in_progress || t.paused || t.dropped);
+  return titles.filter((t) => hasViewingEngagement(t));
 }
 export function datedCount(titles: PersonTitle[]): number {
   return timelineTitles(titles).filter((t) => !!t.watched_at).length;

@@ -67,10 +67,14 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
 
   const [detailsOpen,setDetailsOpen]=useState(false);
   const moreId=useId();
+  const studiosId=useId();
+  const [studiosOpen,setStudiosOpen]=useState(false);
   const reducedMotion=useReducedMotion();
   const isFilm = media.type === "film";
   const { data: cours } = useAnimeCours(media.tmdb_id ?? 0, media.type === "anime");
   const animationCredits = media.type === "anime" ? animationStudioCredits(cours) : [];
+  const studioNames = [...new Set(animationCredits.flatMap(c => c.names))];
+  const studioGroups = studioNames.map(name => ({name, titles: animationCredits.filter(c=>c.names.includes(name)).flatMap(c=>c.title ? [c.title] : [])}));
   const broadcastYears = catalogueBroadcastYears(media, omdb?.yearRange);
   const episodes = catalogueEpisodes(media);
   const released = catalogueReleaseDate(media.release_date);
@@ -128,7 +132,19 @@ export function MediaDetails({ media, typeLabel, isSeries }: Props) {
             // than the rail). OMDb still complements with ratings, awards and box office below.
             : (released ? <DetailRow label="Released" value={released} /> : null)}
           {catalogueText(media.studio) ? <DetailRow label={isFilm ? "Production company" : "Network"} value={media.studio} /> : null}
-          {animationCredits.length > 0 && <DetailRow label="Animation studios" value={<div className="space-y-2">{animationCredits.map(c=><div key={c.title ?? "all"}>{c.title && <p className="text-micro font-normal leading-snug text-text-tertiary">{c.title}</p>}<p className="leading-snug">{c.names.join(", ")}</p></div>)}</div>} />}
+          {animationCredits.length > 0 && <div className="border-b border-border-subtle last:border-0">
+            {animationCredits.length === 1 && animationCredits[0].title === null
+              ? <DetailRow label="Animation studios" value={studioNames.join(", ")} />
+              : <>
+                <button type="button" aria-expanded={studiosOpen} aria-controls={studiosId} onClick={()=>setStudiosOpen(v=>!v)} className="flex min-h-11 w-full items-center justify-between gap-4 py-2.5 text-xs text-text-secondary transition-colors hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-watching-vivid">
+                  <span className="shrink-0 text-text-tertiary">Animation studios</span>
+                  <span className="flex min-w-0 items-center gap-2"><span className="truncate font-medium">{studioNames.join(", ")}</span><ChevronDown size={14} aria-hidden="true" className={`shrink-0 transition-transform duration-200 motion-reduce:transition-none ${studiosOpen ? "rotate-180" : ""}`} /></span>
+                </button>
+                <motion.div id={studiosId} aria-hidden={!studiosOpen} inert={!studiosOpen} initial={false} animate={{height:studiosOpen ? "auto":0,opacity:studiosOpen ? 1:0}} transition={{duration:reducedMotion ? 0:0.18,ease:"easeOut"}} className="overflow-hidden">
+                  <div className="space-y-3 pb-3">{studioGroups.map(group=><div key={group.name} className="rounded-control bg-surface-elevated p-3"><p className="text-xs font-medium text-text-secondary">{group.name}</p><ul className="mt-1 space-y-1 text-micro leading-snug text-text-tertiary">{group.titles.map(title=><li key={title}>{title}</li>)}</ul></div>)}</div>
+                </motion.div>
+              </>}
+          </div>}
           {hasMore && <div className="pt-1"><button type="button" aria-expanded={detailsOpen} aria-controls={moreId} onClick={()=>setDetailsOpen(v=>!v)} className="flex min-h-11 w-full items-center justify-between gap-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-watching-vivid">
             {detailsOpen ? "Fewer details" : "More details"}<ChevronDown size={14} aria-hidden="true" className={`shrink-0 transition-transform duration-200 motion-reduce:transition-none ${detailsOpen ? "rotate-180":""}`}/>
           </button><motion.div id={moreId} aria-hidden={!detailsOpen} inert={!detailsOpen} initial={false} animate={{height:detailsOpen ? "auto":0,opacity:detailsOpen ? 1:0}} transition={{duration:reducedMotion ? 0:0.18,ease:"easeOut"}} className="overflow-hidden">

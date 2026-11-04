@@ -52,7 +52,7 @@ export type StatusFacts = Pick<
   WatchingMedia,
   | "type" | "status" | "watched" | "in_progress" | "paused" | "dropped" | "favorite"
   | "current_season" | "current_episode"
-  | "season_episodes" | "season_aired" | "season_years" | "caught_up_at"
+  | "season_episodes" | "season_aired" | "season_years" | "caught_up_at" | "resume_required"
 > & {
   /** Release year — optional so card-level callers and tests need not always supply it. */
   year?: number | null;
@@ -79,6 +79,23 @@ export function preserveCorrectionStance<T extends Record<string, unknown>>(
 
 // ── Reading the status ────────────────────────────────────────────────────────────────────────
 
+/** Progress correction edits evidence, not the date or intention of consuming it. */
+export function preserveCorrectionEvidence<T extends Record<string, unknown>>(
+  before: {caught_up_at?: string | null; last_watched_at?: string | null; resume_required?: boolean},
+  patch: T, intent?: string,
+): T {
+  if (intent !== "correction" || !("current_season" in patch || "current_episode" in patch)) return patch;
+  const kept: Record<string, unknown> = {...patch};
+  if (kept.caught_up_at && !before.caught_up_at) kept.caught_up_at = null;
+  if (kept.caught_up_at && before.caught_up_at) kept.caught_up_at = before.caught_up_at;
+  if ("last_watched_at" in kept && kept.last_watched_at &&
+      (!before.last_watched_at || Date.parse(String(kept.last_watched_at)) > Date.parse(before.last_watched_at))) {
+    kept.last_watched_at = before.last_watched_at ?? null;
+  }
+  if ("resume_required" in kept) kept.resume_required = before.resume_required ?? false;
+  return kept as T;
+}
+
 /**
  * ONE answer to "what is this row's status".
  *
@@ -93,12 +110,13 @@ export function preserveCorrectionStance<T extends Record<string, unknown>>(
  */
 export function deriveWatchStatus(item: {
   is_reference?: boolean; dropped?: boolean; paused?: boolean;
-  watched?: boolean; in_progress?: boolean; want_to_watch?: boolean;
+  watched?: boolean; in_progress?: boolean; want_to_watch?: boolean; resume_required?: boolean;
 }): WatchStatus {
   if (item.is_reference) return "reference";
   if (item.dropped) return "dropped";
   if (item.paused) return "paused";
   if (item.watched) return "completed";
+  if (item.resume_required) return "watching";
   if (item.in_progress) return "watching";
   return "plan_to_watch";
 }
@@ -220,6 +238,7 @@ export function markWatchedPatch(m: StatusFacts, view?: MediaView | null): Statu
 
   return {
     watched: true,
+    resume_required: false,
     in_progress: false,
     want_to_watch: false,
     is_reference: false,
@@ -265,6 +284,7 @@ export function markCaughtUpPatch(m: StatusFacts, view?: MediaView | null): Stat
     current_episode: last.episode,
     caught_up_at: caughtUpAt(facts, m.caught_up_at),
     last_watched_at: new Date().toISOString(),
+    resume_required: false,
     ...(seasonYears ? sp.write(seasonYears) : {}),
   };
 }
@@ -459,11 +479,11 @@ export function yearsPatch(
 }
 
 export function startWatchingPatch(): StatusPatch {
-  return { in_progress: true, watched: false, want_to_watch: false, is_reference: false, ...RESET_STATUS };
+  return { in_progress: true, watched: false, want_to_watch: false, is_reference: false, resume_required: false, ...RESET_STATUS };
 }
 
 export function wantToWatchPatch(): StatusPatch {
-  return { want_to_watch: true, watched: false, in_progress: false, is_reference: false, ...RESET_STATUS };
+  return { want_to_watch: true, watched: false, in_progress: false, is_reference: false, resume_required: false, ...RESET_STATUS };
 }
 
 export function pausePatch(): StatusPatch {
@@ -475,7 +495,7 @@ export function dropPatch(reason: string | null): StatusPatch {
 }
 
 export function resumePatch(): StatusPatch {
-  return { dropped: false, drop_reason: null, paused: false, in_progress: true };
+  return { dropped: false, drop_reason: null, paused: false, in_progress: true, watched: false, resume_required: false };
 }
 
 /**
@@ -552,15 +572,14 @@ export function positionPatch(
   return preserveCorrectionStance(m, {
     current_season: season,
     current_episode: episode,
-    caught_up_at: caughtUpAt(facts, m.caught_up_at),
+    caught_up_at: caughtUpAt(facts, m.caught_up_at, kind === "viewing" && forward),
+    ...(kind === "viewing" && forward && m.resume_required && !m.paused && !m.dropped ? { resume_required: false, in_progress: true, watched: false } : {}),
     ...(kind === "viewing" && forward ? { last_watched_at: new Date().toISOString() } : {}),
     ...(seasonYears ? sp.write(seasonYears) : {}),
     ...(completes
       ? {
           watched: true, in_progress: false, want_to_watch: false, is_reference: false, ...RESET_STATUS,
-          // Existing finish years are only a legacy fallback; the service resolves canonical
-          // dated completion evidence without inventing a viewing date.
-          watched_at: dateFromFinishYear(maxYear(seasonYears ?? sp.map)),
+          // A correction acknowledges completion; its existing calendar stays at the command boundary.
         }
       : {}),
     ...(revokes

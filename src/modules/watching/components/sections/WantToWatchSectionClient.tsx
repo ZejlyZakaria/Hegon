@@ -47,7 +47,7 @@ export default function WantToWatchSectionClient({ userId, config }: Props) {
   const deleteMediaMutation = useDeleteMedia();
   const { openModal } = useWatching();
 
-  if (isLoading) return <CarouselSkeleton />;
+  if (isLoading) return <CarouselSkeleton title="Want to Watch" subtitle="Your watchlist" />;
 
   const handleDelete = async (itemId: string) => {
     try {

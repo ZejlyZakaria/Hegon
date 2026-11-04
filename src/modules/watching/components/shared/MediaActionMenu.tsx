@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { OVERLAY_CIRCLE } from "./Marks";
+import { requiresResume } from "../../lib/series-state";
 import { useWatchActions } from "../../hooks/useWatchActions";
 import { seriesState } from "../../lib/series-state";
 import DeleteConfirmModal from "../modals/DeleteConfirmModal";
@@ -178,6 +179,8 @@ export function MediaActionMenu({
                 View / Edit
               </MenuItem>
             )}
+
+            {requiresResume(item) && !item.paused && !item.dropped && <MenuItem onClick={(e)=>{e.stopPropagation();run(actions.resume);}} icon={<Play size={13} />}>Resume watching</MenuItem>}
 
             {/* "Mark as finished" on a show that is still airing was the app's oldest lie, and this
                 menu was still telling it on every poster. You cannot finish a story that is still

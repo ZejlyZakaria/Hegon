@@ -1,12 +1,12 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { useImageReveal } from "@/modules/watching/hooks/useImageReveal";
+import { SectionImageReveal } from "./SectionImageReveal";
+import { CarouselSkeleton } from "./WatchingSkeletons";
 import { useRouter } from "next/navigation";
 import { usePrefetchMedia } from "../../hooks/usePrefetchMedia";
 import Image from "next/image";
 import { tmdbImageFor, tmdbImageSrcSet } from "../../lib/tmdb-image";
-import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import type { WatchingMedia } from "@/modules/watching/types";
 import { cn } from "@/shared/utils/utils";
@@ -22,7 +22,7 @@ import { WATCHING_ACCENT } from "@/modules/watching/ui";
 // See Marks.tsx — the reasoning lives with the grammar, not here.
 import { displayTitle, watchedAgo, releaseCountdown } from "@/modules/watching/utils";
 import { Clock, CalendarClock } from "lucide-react";
-import { isAwaitingNextSeason } from "@/modules/watching/lib/series-state";
+import { isAwaitingNextSeason, latestViewingAt } from "@/modules/watching/lib/series-state";
 import { formatPosition, overallProgress } from "@/modules/watching/lib/progress";
 import { useMediaViews } from "@/modules/watching/hooks/useMediaView";
 import type { MediaView } from "@/modules/watching/lib/media-view";
@@ -72,7 +72,6 @@ function MovieCard({
   showWatchedAgo,
   showCountdown,
   showCaughtUp,
-  eagerLoad,
   orientation = "backdrop",
   mark,
   meta,
@@ -90,20 +89,15 @@ function MovieCard({
   showWatchedAgo?: boolean;
   showCountdown?: boolean;
   showCaughtUp?: boolean;
-  eagerLoad?: boolean;
   orientation?: "poster" | "backdrop";
   mark?: (item: WatchingMedia) => React.ReactNode;
   meta?: (item: WatchingMedia) => React.ReactNode;
 }) {
-  const { loaded: imgLoaded, instant: imgInstant, onLoad: onImgLoad, attach: attachImg } = useImageReveal();
   const isPoster = orientation === "poster";
   const caughtUp = !!showCaughtUp && isAwaitingNextSeason(item);
   // Compact on the narrow poster (mobile): "2w" instead of "2 weeks ago", which crowds the tile.
-  // NOT on a caught-up title: `watched_at` is its old finish date (Bleach, caught up two years ago
-  // then again yesterday via a "+1", which only moves `last_watched_at`), so the badge would read a
-  // stale "2 years ago". Its state is "Caught up" — that badge stands in for the date, and dropping
-  // the "ago" also un-crowds the top row (one left badge instead of two beside the heart + menu).
-  const ago = showWatchedAgo && !caughtUp ? watchedAgo(item.watched_at, { short: isPoster }) : null;
+  // The same consumption date orders the rail and labels every title, including Caught Up.
+  const ago = showWatchedAgo ? watchedAgo(latestViewingAt(item), { short: isPoster }) : null;
   // "Waiting for" cards: the countdown to release. Legacy rows with no stored date still belong here
   // (via status) but can't count — they say "Soon" rather than nothing.
   const countdown = showCountdown ? (releaseCountdown(item.release_date, { short: isPoster }) ?? "Soon") : null;
@@ -141,14 +135,9 @@ function MovieCard({
             // pixel. A `fill` image can fall a sub-pixel short of the rounded edge, letting the
             // `bg-zinc-800` behind it show as a 1px hairline ("le trait") at the bottom. Overscanning
             // leaves no gap for it; the overflow-hidden clips the excess so nothing shows.
-            className={cn("object-cover scale-[1.02]", !imgInstant && "transition-opacity duration-200")}
-            // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
-            style={{ opacity: imgLoaded ? 1 : 0 }}
+            className="object-cover scale-[1.02]"
             sizes={isPoster ? "(max-width: 1024px) 45vw, 180px" : "(max-width: 1024px) 45vw, 380px"}
-            loading={eagerLoad ? "eager" : "lazy"}
-            fetchPriority={eagerLoad ? "high" : "auto"}
-            onLoad={onImgLoad}
-            ref={attachImg}
+            loading="lazy"
           />
         </picture>
         <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-transparent" />
@@ -334,16 +323,11 @@ export function MediaCarousel({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(5);
-  const [localItems, setLocalItems] = useState(items);
   const prevFirstIdRef = useRef<string | null>(null);
   const gap = 16;
   // One batched read for the whole rail, then a lens per card — the overlay costs a single query,
   // not one per tile.
-  const views = useMediaViews(localItems);
-
-  useEffect(() => {
-    setLocalItems(items);
-  }, [items]);
+  const views = useMediaViews(items);
 
   useEffect(() => {
     const handleResize = () => {
@@ -363,7 +347,7 @@ export function MediaCarousel({
   // overrode all of them — it shoved every Top-10 title to the front of Recently Watched (Chernobyl,
   // rank 3, jumped above Arcane despite being watched a year earlier). The server's order is the
   // truth; we keep it.
-  const sortedItems = localItems;
+  const sortedItems = items;
 
   // Auto-scroll back to the start when a NEW item takes position 1 — covers both
   // adding (Want to Watch) AND a freshly-watched title entering Recently Watched
@@ -371,10 +355,12 @@ export function MediaCarousel({
   useEffect(() => {
     const firstId = sortedItems[0]?.id ?? null;
     if (prevFirstIdRef.current !== null && firstId && firstId !== prevFirstIdRef.current) {
-      setCurrentIndex(0);
-      requestAnimationFrame(() => {
+      const frame = requestAnimationFrame(() => {
+        setCurrentIndex(0);
         scrollRef.current?.scrollTo({ left: 0, behavior: "smooth" });
       });
+      prevFirstIdRef.current = firstId;
+      return () => cancelAnimationFrame(frame);
     }
     prevFirstIdRef.current = firstId;
   }, [sortedItems]);
@@ -401,10 +387,10 @@ export function MediaCarousel({
   };
 
   const itemWidthStyle = {
-    width: `calc((100% - ${(cardsPerView - 1) * gap}px) / ${cardsPerView})`,
+    width: "calc((100% - (var(--hub-cards) - 1) * 16px) / var(--hub-cards))",
   };
 
-  if (localItems.length === 0) {
+  if (items.length === 0) {
     return (
       <section>
         <div className="mb-1.5 flex items-center justify-between">
@@ -445,6 +431,7 @@ export function MediaCarousel({
   }
 
   return (
+    <SectionImageReveal fallback={<CarouselSkeleton title={title} subtitle={subtitle} add={canAdd} seeAll={!!onSeeAll} />}>
     <section>
       <SectionHeader
         title={title}
@@ -476,19 +463,12 @@ export function MediaCarousel({
 
       <div
         ref={scrollRef}
-        className="hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-3 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
+        className="[--hub-cards:3] xl:[--hub-cards:5] hidden lg:flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-3 -mx-4 px-4 scroll-px-4 sm:-mx-6 sm:px-6 sm:scroll-px-6"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
-        {sortedItems.map((item, i) => (
-          <motion.div
+        {sortedItems.map((item) => (
+          <div
             key={item.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.25,
-              delay: i * 0.04,
-              ease: [0.23, 1, 0.32, 1],
-            }}
             className="shrink-0 snap-start"
             style={itemWidthStyle}
           >
@@ -505,42 +485,17 @@ export function MediaCarousel({
               showCaughtUp={showCaughtUp}
               mark={mark}
               meta={meta}
-              /**
-               * Lazy, even here. A page carries SEVEN of these rails, and each one claiming its
-               * first five images as `eager` meant ~35 forced fetches for the one rail actually on
-               * screen. The browser loads an in-viewport `lazy` image immediately anyway — what it
-               * stops doing is racing the six rails you have not scrolled to yet.
-               *
-               * The page's real above-the-fold image is Don't Miss's hero, which owns its own eager
-               * budget. `MovieCard` still supports `eagerLoad` for a surface that genuinely leads.
-               */
-              eagerLoad={false}
             />
-          </motion.div>
+          </div>
         ))}
       </div>
 
-      {/**
-       * Mobile: swipeable poster rail (~2.4 visible) — posters read better than wide backdrops on a
-       * phone. Native swipe; no arrows.
-       *
-       * ⚠️ THIS TREE IS ALWAYS MOUNTED. `lg:hidden` is CSS, and **`display:none` does not stop
-       * `loading="eager"` from downloading** — so on a desktop screen this invisible rail was
-       * fetching its own first three images for every carousel on the page, on top of the visible
-       * one's. Measured on /movies: ~60 of 74 image requests fired immediately, which is the real
-       * reason three posters appear and the rest crawl — not a lazy-loading seam, a stampede.
-       *
-       * So this rail is NEVER eager. That costs nothing on a phone: an image marked `lazy` that is
-       * already inside the viewport is fetched right away by the browser. `lazy` means "wait until
-       * it's needed", not "wait".
-       */}
+      {/* Mobile: native poster rail. Both responsive trees stay lazy at mount;
+          the section gate warms only the visible tree and its next viewport. */}
       <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory py-1.5">
-        {sortedItems.map((item, i) => (
-          <motion.div
+        {sortedItems.map((item) => (
+          <div
             key={item.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: i * 0.04, ease: [0.23, 1, 0.32, 1] }}
             className="w-[42%] md:w-[28%] shrink-0 snap-start"
           >
             <MovieCard
@@ -557,11 +512,11 @@ export function MediaCarousel({
               showCaughtUp={showCaughtUp}
               mark={mark}
               meta={meta}
-              eagerLoad={false}
             />
-          </motion.div>
+          </div>
         ))}
       </div>
     </section>
+    </SectionImageReveal>
   );
 }

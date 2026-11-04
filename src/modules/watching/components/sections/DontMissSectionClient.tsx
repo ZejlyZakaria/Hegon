@@ -3,7 +3,8 @@
 
 import { useMemo, useState } from "react";
 import { cn } from "@/shared/utils/utils";
-import { useImageReveal } from "@/modules/watching/hooks/useImageReveal";
+import { SectionImageReveal } from "../shared/SectionImageReveal";
+import { SectionHeader } from "@/shared/components/ui/section-header";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Check, Plus, TrendingUp } from "lucide-react";
@@ -31,7 +32,6 @@ function DontMissCard({
   item,
   isActive,
   isTrending,
-  isFirst,
   isOwned,
   onHover,
   onAdd,
@@ -40,19 +40,12 @@ function DontMissCard({
   item: any;
   isActive: boolean;
   isTrending: boolean;
-  isFirst: boolean;
   isOwned: boolean;
   onHover: () => void;
   onAdd: () => void;
   /** Defined when you own it AND the internal id has resolved — opens your fiche directly. */
   onOpenDetail?: () => void;
 }) {
-  const {
-    loaded: imgLoaded,
-    instant: imgInstant,
-    onLoad: onImgLoad,
-    attach: attachImg,
-  } = useImageReveal();
   const posterUrl = item.poster_path ? `${TMDB_W500}${item.poster_path}` : null;
   const title = item.title || item.name;
   const year = (item.release_date || item.first_air_date)?.slice(0, 4);
@@ -102,15 +95,12 @@ function DontMissCard({
         </div>
       )}
 
-      {/* ── portrait poster — left-anchored, natural 2:3 dimensions. Pulses while
-            the image streams (data is instant from the DB cache, posters aren't). ── */}
+      {/* Portrait artwork keeps its natural 2:3 frame; the section owns initial loading. */}
       <div
-        className={`absolute left-0 top-0 bottom-0 bg-surface-2 ${imgLoaded ? "" : "animate-pulse"}`}
+        className="absolute left-0 top-0 bottom-0 bg-surface-2"
         style={{ aspectRatio: "2/3" }}
       >
-        {/* Only the FIRST card leads the page — it is the one above the fold, and the only one that
-            earns `eager`. All six were claiming it, which is how this rail alone fired twelve
-            immediate fetches that raced the rest of the page. */}
+        {/* The section gate schedules the visible responsive tree. */}
         {posterUrl && (
           <picture>
             <source srcSet={tmdbImageSrcSet(posterUrl,220,780)} />
@@ -118,17 +108,9 @@ function DontMissCard({
               src={tmdbImageFor(posterUrl, 220) || posterUrl}
               alt={title}
               fill
-              className={cn(
-                "object-cover",
-                !imgInstant && "transition-opacity duration-200",
-              )}
-              // Cached → shown at once, no transition; fetched → the fade (useImageReveal).
-              style={{ opacity: imgLoaded ? 1 : 0 }}
+              className="object-cover"
               sizes="(max-width: 1024px) 45vw, 240px"
-              loading={isFirst ? "eager" : "lazy"}
-              fetchPriority={isFirst ? "high" : "auto"}
-              onLoad={onImgLoad}
-              ref={attachImg}
+              loading="lazy"
             />
           </picture>
         )}
@@ -376,13 +358,9 @@ export default function DontMissSectionClient({
   if (items.length === 0) return null;
 
   return (
+    <SectionImageReveal fallback={<DontMissSkeleton />}>
     <section>
-      <div className="mb-1.5">
-        <h3 className="text-title text-text-primary">Don&apos;t Miss</h3>
-        <p className="mt-1 text-xs text-text-tertiary">
-          Trending now, plus recent gems
-        </p>
-      </div>
+      <SectionHeader title="Don't Miss" subtitle="Trending now, plus recent gems" />
 
       {/* Touch (any width) + every narrow screen — the accordion is a HOVER interaction, so the
           split is by pointer, not width (`lg:can-hover:hidden` hides this only when ≥lg AND mouse).
@@ -415,7 +393,6 @@ export default function DontMissSectionClient({
               item={item}
               isActive={activeIndex === i}
               isTrending={i === 0}
-              isFirst={i < 3}
               isOwned={owned.has(item.id)}
               onHover={() => setActiveIndex(i)}
               onAdd={() => openTitle(item)}
@@ -425,5 +402,6 @@ export default function DontMissSectionClient({
         </div>
       </div>
     </section>
+    </SectionImageReveal>
   );
 }

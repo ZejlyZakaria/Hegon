@@ -17,8 +17,8 @@ import { getCurrentUserId } from "@/shared/utils/getCurrentUserId";
 import { reportError } from "@/shared/utils/report-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WatchingMedia, MediaType, EpisodeHighlight, MediaList, MediaListItem, MediaListItemWithMedia, TmdbListResult, TmdbPersonResult, CatalogueResult, ThemeFavorite, ThemeFavoriteInput, Rewatch, AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry, OwnedIndexRow, PersonFollow, PersonFollowInput, PersonUpcomingRow, PersonRankRow, RankingKind } from "./types";
-import { preserveCorrectionStance, deriveWatchStatus } from "./lib/watch-status";
-import { activityBucket, airedFromTmdb } from "./lib/series-state";
+import { preserveCorrectionEvidence, preserveCorrectionStance, deriveWatchStatus } from "./lib/watch-status";
+import { latestViewingAt, activityBucket, airedFromTmdb } from "./lib/series-state";
 import { runtimeFromTmdb } from "./lib/tmdb-runtime";
 import { insertMediaSchema, updateMediaSchema } from "./schemas/media.schema";
 
@@ -101,7 +101,7 @@ export async function uploadCustomPoster(file: File): Promise<string | null> {
 // `tmdb_id`, which the lens needed and this list didn't carry — a surface can't speak about a fact
 // it never selected.)
 const SECTION_COLUMNS =
-  "id, personal_revision, updated_at, type, tmdb_id, title, original_title, poster_url, backdrop_url, year, release_date, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, last_watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, caught_up_at, paused, dropped";
+  "id, personal_revision, updated_at, type, tmdb_id, title, original_title, poster_url, backdrop_url, year, release_date, user_rating, favorite, tags, priority, priority_level, want_to_watch, watched, watched_at, last_watched_at, in_progress, current_season, current_episode, season_episodes, season_aired, season_years, status, resume_required, caught_up_at, paused, dropped";
 
 export async function getMediaItems(
   userId: string,
@@ -115,11 +115,11 @@ export async function getMediaItems(
     const candidates = await fetchAllRows<WatchingMedia>((from, to) => supabase
       .schema("watching").from("media_items").select(SECTION_COLUMNS)
       .eq("user_id", userId).eq("type", type)
-      .or("watched.eq.true,in_progress.eq.true")
+      .or("watched.eq.true,in_progress.eq.true,resume_required.eq.true")
       .order("id").range(from, to));
     const bucket = options.inProgress ? "in-progress" : "last-watched";
     const stamp = (m: WatchingMedia) => {
-      const value = options.inProgress ? m.updated_at : m.watched_at ?? m.last_watched_at ?? m.caught_up_at;
+      const value = options.inProgress ? m.updated_at : latestViewingAt(m);
       const time = value ? Date.parse(value) : NaN;
       return Number.isFinite(time) ? time : -Infinity;
     };
@@ -192,7 +192,7 @@ export async function getMediaItems(
 // `priority_level` and `release_date` for its watchlist BOOKMARK (violet while the title is not
 // out, then the priority's colour, white when none — the same rule as every poster).
 export const LIBRARY_COLUMNS =
-  "id, personal_revision, type, priority, title, original_title, poster_url, favorite, year, release_date, user_rating, watched_at, updated_at, tags, watched, in_progress, want_to_watch, priority_level, dropped, drop_reason, paused, current_season, current_episode, status, season_episodes, season_aired, season_years, caught_up_at";
+  "id, personal_revision, type, priority, title, original_title, poster_url, favorite, year, release_date, user_rating, watched_at, updated_at, tags, watched, in_progress, want_to_watch, priority_level, dropped, drop_reason, paused, current_season, current_episode, status, season_episodes, season_aired, season_years, resume_required, caught_up_at";
 
 /**
  * The ONE library read, for both callers. `/library` is the module's single server-rendered page
@@ -213,7 +213,7 @@ export async function getLibraryMedia(
     .eq("user_id", userId)
     // Everything you've engaged with — seen, seeing, paused, or abandoned. Reference
     // stubs have all these flags false, so they're excluded automatically.
-    .or("watched.eq.true,in_progress.eq.true,dropped.eq.true,paused.eq.true")
+    .or("watched.eq.true,in_progress.eq.true,resume_required.eq.true,dropped.eq.true,paused.eq.true")
     .order("updated_at", { ascending: false })
     .order("id").range(from, to));
   return (data as unknown as WatchingMedia[]) ?? [];
@@ -292,6 +292,7 @@ export interface StatsRawItem {
   season_end_dates: (string | null)[] | null;
   status: string | null;
   caught_up_at: string | null;
+  resume_required?: boolean;
 }
 
 /** Everything the stats page computes from: the rows, plus the overlay that makes them readable. */
@@ -307,7 +308,7 @@ export async function getWatchingStatsData(userId: string, orgId:string): Promis
   const data = await fetchAllRows<any>((from, to) => supabase
     .schema("watching")
     .from("media_items")
-    .select("id, personal_revision, history_version, viewing_date, legacy_consumption, tmdb_id, type, title, original_title, poster_url, backdrop_url, year, runtime, status, caught_up_at, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, directors, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters, season_end_dates, cour_years, cour_ratings")
+    .select("id, personal_revision, history_version, viewing_date, legacy_consumption, tmdb_id, type, title, original_title, poster_url, backdrop_url, year, runtime, status, resume_required, caught_up_at, season_episodes, season_aired, episodes, user_rating, favorite, watched_at, tags, directors, watched, in_progress, paused, dropped, current_season, current_episode, updated_at, season_years, season_ratings, season_posters, season_end_dates, cour_years, cour_ratings")
     .eq("user_id", userId).eq("org_id",orgId)
     // Anything you spent time on — completed, watching, paused, or dropped. The
     // episodes you actually watched are real hours regardless of current status.
@@ -371,10 +372,18 @@ async function activeViewingRecords(mediaId: string): Promise<StoredViewingAsser
 export async function updateMediaItem(id: string, data: Record<string, any>): Promise<WatchingMedia> {
   updateMediaSchema.parse({ id, ...data });
   const { expected_revision, history_date, history_intent, ...inputPatch } = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
-  let patch = inputPatch;
-  const personalFields = ["watched", "in_progress", "want_to_watch", "paused", "dropped", "drop_reason", "favorite", "priority", "priority_level", "is_reference", "notes", "tags", "user_rating", "current_season", "current_episode", "season_years", "cour_years", "season_ratings", "cour_ratings", "watched_at", "last_watched_at", "caught_up_at", "viewing_date"];
+  // Existing catalogue membership is accepted by observe_provider, never overwritten by a
+  // thin TMDB payload from an add/edit door. Such writes could bypass growth/hold protection.
+  const providerFields = ["status","season_aired","season_episodes","season_end_dates","episodes","seasons"];
+  let patch = Object.fromEntries(Object.entries(inputPatch).filter(([key])=>!providerFields.includes(key)));
+  const personalFields = ["watched", "in_progress", "want_to_watch", "paused", "dropped", "drop_reason", "favorite", "priority", "priority_level", "is_reference", "notes", "tags", "user_rating", "current_season", "current_episode", "season_years", "cour_years", "season_ratings", "cour_ratings", "watched_at", "last_watched_at", "caught_up_at", "resume_required", "viewing_date"];
   if (history_date === undefined && !personalFields.some(key => key in patch)) {
-    // Provider/artwork refresh only: no personal revision or history event.
+    // Descriptive/artwork refresh only: no personal revision or history event.
+    if (!Object.keys(patch).length) {
+      const existing = await getMediaItemById(id);
+      if (!existing) throw new Error("Media unavailable");
+      return existing;
+    }
     const { data: result, error } = await createClient().schema("watching").from("media_items")
       .update({ ...patch, updated_at: new Date().toISOString() }).eq("id",id).select().single();
     if (error) throw error;
@@ -385,7 +394,11 @@ export async function updateMediaItem(id: string, data: Record<string, any>): Pr
   // A supplied UI token must win over this fresh read: never silently rebase a stale gesture.
   const revision = expected_revision ?? before.personal_revision;
   if (revision !== before.personal_revision) throw new Error("This title changed. Reload before editing.");
-  patch = preserveCorrectionStance(before, patch, history_intent);
+  patch = preserveCorrectionEvidence(before, preserveCorrectionStance(before, patch, history_intent), history_intent);
+  if (before.resume_required && !before.paused && !before.dropped && history_intent === "viewing" &&
+      ((patch.current_season ?? before.current_season ?? 1) > (before.current_season ?? 1) ||
+       (patch.current_season ?? before.current_season ?? 1) === (before.current_season ?? 1) &&
+       (patch.current_episode ?? before.current_episode ?? 0) > (before.current_episode ?? 0))) Object.assign(patch,{resume_required:false,in_progress:true,watched:false});
   let meta: HistoryMetadata = { history_date, history_intent };
   const captures = ["watched", "current_season", "current_episode", "season_years", "cour_years", "watched_at"].some(k => k in patch) || history_date !== undefined;
   const active = captures ? await activeViewingRecords(id) : [];
@@ -422,7 +435,7 @@ export async function getExistingMediaItem(
     .from("media_items")
     // `type` and `status` are what let resolveTransition stop GUESSING the outcome from the list you
     // came through. Without them it congratulated you on finishing a show that is still airing.
-    .select("id, personal_revision, type, status, favorite, priority, watched, watched_at, in_progress, want_to_watch, paused, dropped, current_episode, current_season, season_episodes, season_aired, season_years, caught_up_at")
+    .select("id, personal_revision, type, status, favorite, priority, watched, watched_at, in_progress, want_to_watch, paused, dropped, current_episode, current_season, season_episodes, season_aired, season_years, resume_required, caught_up_at")
     .eq("user_id", userId)
     .in("type", tmdbKind(type) === "movie" ? ["film"] : ["serie", "anime"])
     .eq("tmdb_id", tmdbId)
@@ -1869,6 +1882,7 @@ export interface PersonTitle {
   season_episodes: number[] | null;
   status: string | null;
   caught_up_at: string | null;
+  resume_required?: boolean;
   watched_at: string | null;
   tmdb_id: number;
   role: string | null;
@@ -1878,7 +1892,7 @@ export interface PersonTitle {
 }
 
 const PERSON_TITLE_COLUMNS =
-  "id, type, title, poster_url, backdrop_url, year, release_date, runtime, user_rating, watched, in_progress, want_to_watch, paused, dropped, priority, priority_level, current_season, current_episode, season_aired, season_episodes, status, caught_up_at, watched_at, tmdb_id, cast_members, directors";
+  "id, type, title, poster_url, backdrop_url, year, release_date, runtime, user_rating, watched, in_progress, want_to_watch, paused, dropped, priority, priority_level, current_season, current_episode, season_aired, season_episodes, status, resume_required, caught_up_at, watched_at, tmdb_id, cast_members, directors";
 
 // Your collection titles featuring this person — matched on the person's TMDB filmography
 // (their credits' tmdb_ids) ∩ your library, NOT on stored cast_members. The stored cast is now the
@@ -1893,14 +1907,14 @@ export async function getTitlesByPerson(userId: string, creditTmdbIds: number[])
     .schema("watching").from("media_items").select(PERSON_TITLE_COLUMNS)
     .eq("user_id", userId)
     .in("tmdb_id", creditTmdbIds)
-    .or("watched.eq.true,in_progress.eq.true,dropped.eq.true,paused.eq.true,want_to_watch.eq.true,favorite.eq.true")
+    .or("watched.eq.true,in_progress.eq.true,resume_required.eq.true,dropped.eq.true,paused.eq.true,want_to_watch.eq.true,favorite.eq.true")
     .order("id").range(from, to));
   return (data ?? []).map((r: any): PersonTitle => ({
     id: r.id, type: r.type, title: r.title, poster_url: r.poster_url, backdrop_url: r.backdrop_url,
     year: r.year, release_date: r.release_date ?? null, runtime: r.runtime, user_rating: r.user_rating, watched: r.watched,
     in_progress: r.in_progress, want_to_watch: r.want_to_watch, paused: r.paused, dropped: r.dropped,
     priority: r.priority ?? null, priority_level: r.priority_level ?? null, current_season: r.current_season, current_episode: r.current_episode,
-    season_aired: r.season_aired ?? null, season_episodes: r.season_episodes ?? null, status: r.status ?? null, caught_up_at: r.caught_up_at ?? null,
+    season_aired: r.season_aired ?? null, season_episodes: r.season_episodes ?? null, status: r.status ?? null, resume_required: r.resume_required ?? false, caught_up_at: r.caught_up_at ?? null,
     watched_at: r.watched_at, tmdb_id: r.tmdb_id, role: null,
     cast_members: r.cast_members ?? [], directors: r.directors ?? [],
   }));
@@ -1950,9 +1964,9 @@ export async function getPeopleCounts(userId: string): Promise<PeopleCounts> {
 
   const supabase = createClient();
   const data = await fetchAllRows<any>((from, to) => supabase
-    .schema("watching").from("media_items").select("type, cast_members, directors, watched, in_progress, paused, dropped, release_date, year")
+    .schema("watching").from("media_items").select("type, cast_members, directors, watched, in_progress, resume_required, paused, dropped, release_date, year")
     .eq("user_id", userId)
-    .or("watched.eq.true,in_progress.eq.true,paused.eq.true,dropped.eq.true")
+    .or("watched.eq.true,in_progress.eq.true,resume_required.eq.true,paused.eq.true,dropped.eq.true")
     .order("id").range(from, to));
 
   // Mirror getPersonBundle's filmography curation: a "Self" / "(uncredited)" cast credit is NOT
@@ -2155,7 +2169,7 @@ export async function getAwardsForPerson(personTmdbId: number): Promise<AwardEnt
 
 /** The Museum's owned index — see `OwnedIndexRow`. */
 export const OWNED_INDEX_COLUMNS =
-  "id, personal_revision, type, tmdb_id, title, original_title, poster_url, user_rating, watched, in_progress, want_to_watch, paused, dropped, priority_level, release_date, status, season_aired, current_season, current_episode, caught_up_at";
+  "id, personal_revision, type, tmdb_id, title, original_title, poster_url, user_rating, watched, in_progress, want_to_watch, paused, dropped, priority_level, release_date, status, season_aired, current_season, current_episode, resume_required, caught_up_at";
 
 /**
  * The whole library as an INDEX, every status, with the TMDB id the canon joins on — one query,

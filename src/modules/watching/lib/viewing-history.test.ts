@@ -107,3 +107,31 @@ describe("retention boundaries", () => {
     expect(next.records[0]).toMatchObject({ supersedes_id: "dated", date_precision: "UNKNOWN", year: null, month: null, day: null, ranges: original.ranges });
   });
 });
+
+
+describe("correcting historical episode counts",()=>{
+  const old={type:"anime",watched:false,current_season:1,current_episode:10,season_aired:[24],runtime:24,watched_at:"2024-12-31"};
+  it("keeps EP11-12 in 2024 without inventing their month/day",()=>{
+    const result=captureHistory(old,{current_episode:12},{history_intent:"correction"});
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0]).toMatchObject({year:2024,month:null,day:null,date_precision:"YEAR",date_confidence:"INFERRED",origin:"USER_CORRECTION"});
+    expect(result.records[0].ranges[0]).toMatchObject({episode_from:11,episode_to:12});
+  });
+  it("leaves an undated scope unknown and does not borrow another season's year",()=>{
+    const result=captureHistory({...old,watched_at:null,season_years:{"2":2025}},{current_episode:12},{history_intent:"correction"});
+    expect(result.records[0]).toMatchObject({year:null,date_precision:"UNKNOWN"});
+  });
+  it("preserves prior assertions and avoids assigning a year when that scope spans years",()=>{
+    const stored=(year:number,id:string)=>({...assertion("FIRST_WATCH",viewingDate({year,month:null,day:null}),positionCoverage(old)),id});
+    const active=[stored(2023,"old1"),stored(2024,"old2")];
+    const result=captureHistory({...old,watched_at:null},{current_episode:12},{history_intent:"correction"},active);
+    expect(result.retract_ids).toEqual([]);expect(result.records[0].year).toBeNull();
+  });
+});
+
+
+it("does not borrow a whole-season year for an unidentified anime cour",()=>{
+  const old={type:"anime",current_season:1,current_episode:10,season_aired:[24],runtime:24,watched_at:"2020-12-31",season_years:{"1":2020},cour_years:{"1":2020,"2":2024}};
+  const result=captureHistory(old,{current_episode:12},{history_intent:"correction"});
+  expect(result.records[0]).toMatchObject({year:null,date_precision:"UNKNOWN"});
+});

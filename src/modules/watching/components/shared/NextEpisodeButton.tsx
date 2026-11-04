@@ -64,7 +64,7 @@ export function NextEpisodeButton({ item, view }: { item: WatchingMedia; view?: 
     // Episode vs season, because the re-bucketing split them: a weekly show mid-run waits on the
     // next EPISODE and stays in In Progress (this is where the button shows); one between seasons
     // waits on the next SEASON and is moved to Last Watched. The old copy always said "season".
-    const waitingFor = caughtUpOn(item) === "season" ? "the next season" : "the next episode";
+    const waitingFor = caughtUpOn(item) === "season" ? "the next season" : caughtUpOn(item) === "episode" ? "the next episode" : "a confirmed release schedule";
     return (
       <Hint label={`You've seen everything that's out. Waiting on ${waitingFor}.`}>
         {/* The SAME badge as Last Watched — one component, zero per-place overrides, so it is

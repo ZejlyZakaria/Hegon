@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  requiresResume,
+  activityBucket,
+  latestViewingAt,
+  caughtUpOn,
   airedCount,
   airedFromTmdb,
   caughtUpAt,
@@ -370,4 +374,37 @@ describe("the rest", () => {
     expect(isSeasonComplete(hotd(1, 1), 1)).toBe(true);    // 10/10 aired
     expect(isSeasonComplete(hotd(1, 1), 3)).toBe(false);   // 3/8 aired — its year must not be stamped
   });
+});
+
+
+describe("availability is not resumption or viewing recency",()=>{
+  const old={type:"serie",watched:false,in_progress:true,status:"ongoing",current_season:1,current_episode:10,season_aired:[10,1],season_episodes:[10,8],resume_required:true};
+  it("keeps a returned season in Last Watched until explicitly resumed",()=>{
+    expect(activityBucket(old)).toBe("last-watched");expect(nextStep(old)).toBeNull();
+    expect(activityBucket({...old,resume_required:false})).toBe("in-progress");
+  });
+  it("does not resume a completed revival or suspended title",()=>{
+    expect(activityBucket({...old,watched:true,in_progress:false})).toBe("last-watched");
+    expect(activityBucket({...old,paused:true})).toBeNull();expect(activityBucket({...old,dropped:true})).toBeNull();
+  });
+  it("does not mistake missing season totals for a completed season",()=>{
+    expect(caughtUpOn({...old,resume_required:false,season_episodes:[0],season_aired:[4],current_episode:4})).toBe("unknown");
+  });
+  it("Silo uses its new viewing while Hill House retains its old date",()=>{
+    expect(latestViewingAt({watched_at:"2024-12-31",last_watched_at:"2026-11-04T14:57:15Z"})).toBe("2026-11-04T14:57:15Z");
+    expect(latestViewingAt({watched_at:"2024-01-17",last_watched_at:null})).toBe("2024-01-17");
+    expect(latestViewingAt({watched_at:"invalid",last_watched_at:null})).toBeNull();
+  });
+});
+
+
+it("a historical correction reaching all available episodes makes a stale hold non-actionable",()=>{
+  const facts={resume_required:true,current_season:2,current_episode:1,season_aired:[10,1],season_episodes:[10,8],status:"ongoing"};
+  expect(requiresResume(facts)).toBe(false);expect(nextStep(facts)?.kind).toBe("caught-up");
+});
+
+
+it("compares legacy UTC dates and explicit-zone activity consistently",()=>{
+  expect(latestViewingAt({watched_at:"2026-11-04 12:00:00",last_watched_at:"2026-11-04T11:59:59Z"})).toBe("2026-11-04T12:00:00Z");
+  expect(latestViewingAt({last_watched_at:"2026-11-04 14:57:15.578+00"})).toBe("2026-11-04T14:57:15.578+00:00");
 });

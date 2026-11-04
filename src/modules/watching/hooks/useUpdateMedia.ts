@@ -13,7 +13,7 @@ import { toColumns, updateMediaSchema, type UpdateMediaInput } from "../schemas/
 // is DERIVED from it (ordered by the date), so back-dating a title on its detail page must move it
 // in the rail. There is no `recently_watched` flag here any more — the column is dead, the section
 // reads the date directly.
-const STATUS_FIELDS = ["watched", "in_progress", "want_to_watch", "is_reference", "dropped", "paused", "watched_at"] as const;
+const STATUS_FIELDS = ["watched", "in_progress", "want_to_watch", "is_reference", "dropped", "paused", "watched_at", "resume_required"] as const;
 
 // Any field whose change can move a number on the Stats page (counts, hours, ratings, genres, top
 // picks, activity). Notes are the only common edit that does NOT affect Stats.
@@ -147,9 +147,10 @@ export function useUpdateMedia() {
 
       // A season/episode progress change must refresh the In Progress carousels so
       // their progress bar reflects the new position (status change already does).
-      if (!isStatusChange && hasAnyField(input, ["current_season", "current_episode"])) {
+      if (!isStatusChange && hasAnyField(input, ["current_season", "current_episode", "last_watched_at"])) {
         for (const type of touched) {
-          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.inProgress(type) });
+          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.inProgress(type), refetchType: "all" });
+          queryClient.invalidateQueries({ queryKey: WATCHING_KEYS.recentlyWatched(type), refetchType: "all" });
         }
       }
 

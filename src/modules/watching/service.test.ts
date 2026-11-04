@@ -192,6 +192,21 @@ it("loads viewing history without the unused rating audit query",async()=>{
 
 
 describe("derived series rails", () => {
+  it("ranks a newly caught-up Silo ahead of ten newer first watches despite its legacy date", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://watching-test.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
+    const base = {type:"serie",in_progress:true,watched:false,status:"ongoing",current_season:3,current_episode:10,season_aired:[10,10,10,0],season_episodes:[10,10,10,1]};
+    const silo = {...base,id:"silo",watched_at:"2024-12-31 12:00:00",last_watched_at:"2026-11-04T14:57:15.578Z",caught_up_at:"2026-11-04T14:57:15.578Z"};
+    const rows = [...Array.from({length:10},(_,i)=>({...base,id:`older-${i}`,watched_at:"2026-10-01",updated_at:"2026-12-01"})),silo,
+      {...base,id:"invalid-first-date",watched_at:"invalid",last_watched_at:"2026-11-03",caught_up_at:null},
+      {...base,id:"caught-stamp",watched_at:null,last_watched_at:null,caught_up_at:"2026-11-02"},
+      {...base,id:"hill-house",watched_at:"2024-01-17",last_watched_at:null,caught_up_at:"2026-07-24",status:"ended"}];
+    server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>HttpResponse.json(rows)));
+    const last = await getMediaItems("owner","serie",{recentlyWatched:true,limit:10});
+    expect(last.map(m=>m.id).slice(0,3)).toEqual(["silo","invalid-first-date","older-0"]);
+    expect(last.some(m=>["caught-stamp","hill-house"].includes(m.id))).toBe(false);
+    expect(await getMediaItems("owner","serie",{inProgress:true})).toEqual([]);
+  });
   it("classifies all pages before the ten-item cap and reads no provider or write endpoint", async () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://watching-test.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
@@ -209,7 +224,7 @@ describe("derived series rails", () => {
       calls++;
       const q = new URL(request.url).searchParams;
       expect(q.get("user_id")).toBe("eq.owner");
-      expect(q.get("or")).toBe("(watched.eq.true,in_progress.eq.true)");
+      expect(q.get("or")).toBe("(watched.eq.true,in_progress.eq.true,resume_required.eq.true)");
       expect(q.has("watched")).toBe(false);
       expect(q.get("select")).toContain("updated_at");
       const from = Number(q.get("offset") ?? 0), limit = Number(q.get("limit") ?? 1000);
@@ -250,4 +265,13 @@ it.each(["paused","dropped"] as const)("preserves %s and its reason at the servi
   expect(sent?.patch).toMatchObject({current_episode:5,watched:false,in_progress:false,paused:before.paused,dropped:before.dropped,drop_reason:before.drop_reason});
   expect(sent?.patch).not.toHaveProperty("watched_at");
   expect((sent?.records as {kind:string;year:number|null}[]).every(r=>r.kind!=="COMPLETION" && r.year===null)).toBe(true);
+});
+
+
+it("does not let a thin catalogue refresh bypass the accepted provider transaction",async()=>{
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL","https://watching-test.supabase.co");vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY","test-anon-key");
+  const saved={id:"show",type:"serie",season_aired:[10],season_episodes:[10],status:"ongoing"};
+  server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>HttpResponse.json(saved)),
+    http.patch("https://watching-test.supabase.co/rest/v1/media_items",()=>{throw Error("Unaccepted catalogue overwrite");}));
+  expect(await updateMediaItem("show",{season_aired:[10,1],season_episodes:[10,8],status:"ended"})).toEqual(saved);
 });

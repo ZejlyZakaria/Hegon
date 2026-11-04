@@ -15,7 +15,12 @@
 // it is not drawn at all: see `DetailSkeleton`.)
 import { CastCrewSkeleton } from "../detail/CastCrew";
 import { MoreLikeThisSkeleton } from "../detail/MoreLikeThis";
+import { WATCHING_CONFIGS } from "../../lib/media-utils";
+import type { MediaType } from "../../types";
 import { ROW_VARS } from "../../lib/dont-miss-layout";
+import { SectionHeader } from "@/shared/components/ui/section-header";
+import { Button } from "@/shared/components/ui/button";
+import { Plus } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 
 /** THE pulse: one animation, one surface, one default corner. Every skeleton in Watching draws this. */
@@ -87,26 +92,26 @@ export function PosterCellsSkeleton({ rail }: { rail: keyof typeof RAIL_CELLS })
  * symptom (`cards={5}`) instead of the cause; two matching CSS breakpoints replace both the prop
  * and the patch.
  */
-export function CarouselSkeleton() {
+function SkeletonHeader({ title, subtitle, nav = true, add = false, seeAll = false }: { title: string; subtitle?: string; nav?: boolean; add?: boolean; seeAll?: boolean }) {
+  const line = (text: string) => <span className="relative block"><span className="invisible">{text}</span><span className="absolute inset-x-0 top-1/2 h-[0.8em] -translate-y-1/2 animate-pulse rounded-control bg-surface-2" /></span>;
+  return <div aria-hidden="true"><SectionHeader title={line(title)} subtitle={subtitle ? line(subtitle) : undefined} actions={nav || add || seeAll ? <>
+    {nav && <div className="hidden gap-1.5 lg:flex"><Pulse className="size-8" /><Pulse className="size-8" /></div>}
+    {seeAll && <Button size="sm" disabled className="invisible">See all</Button>}
+    {add && <Button size="sm" disabled className="invisible"><Plus />Add</Button>}
+  </> : undefined} /></div>;
+}
+
+export function CarouselSkeleton({ title = "Last Watched", subtitle, add = true, seeAll = false }: { title?: string; subtitle?: string; add?: boolean; seeAll?: boolean } = {}) {
   return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="space-y-2">
-          <Pulse className="h-5 w-40 bg-surface-2" />
-          <Pulse className="h-3 w-24 bg-surface-2" />
-        </div>
-        <div className="hidden lg:flex gap-2">
-          <Pulse className="h-8 w-8 rounded-full bg-surface-2" />
-          <Pulse className="h-8 w-8 rounded-full bg-surface-2" />
-        </div>
-      </div>
+    <div aria-hidden="true">
+      <SkeletonHeader title={title} subtitle={subtitle} add={add} seeAll={seeAll} />
       {/* Desktop: backdrop grid — 3-up from lg (1024px), 5-up from xl (1280px), same as MediaCarousel. */}
-      <div className="hidden lg:grid xl:hidden grid-cols-3 gap-4 py-1.5">
+      <div className="hidden lg:grid xl:hidden grid-cols-3 gap-4 py-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="animate-pulse rounded-card overflow-hidden bg-surface-2 aspect-video" />
         ))}
       </div>
-      <div className="hidden xl:grid grid-cols-5 gap-4 py-1.5">
+      <div className="hidden xl:grid grid-cols-5 gap-4 py-3">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="animate-pulse rounded-card overflow-hidden bg-surface-2 aspect-video" />
         ))}
@@ -114,7 +119,7 @@ export function CarouselSkeleton() {
       {/* Touch + narrow: poster rail (~2.4 on a phone, ~3.5 on an iPad-portrait md screen). */}
       <div className="flex gap-3 overflow-hidden py-1.5 lg:hidden">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="w-[42%] md:w-[28%] shrink-0 animate-pulse rounded-card overflow-hidden bg-surface-2 aspect-2/3" />
+          <div key={i} className="w-[42%] md:w-[28%] shrink-0 animate-pulse rounded-tile overflow-hidden bg-surface-2 aspect-2/3" />
         ))}
       </div>
     </div>
@@ -128,11 +133,7 @@ export function DontMissSkeleton() {
   // flex ratios, so the day the real row stopped using ratios the skeleton went on drawing them.
   return (
     <section>
-      {/* header — mirrors the real "Don't Miss" title + subtitle (no shift on resolve) */}
-      <div className="mb-1.5">
-        <div className="h-5 w-28 rounded bg-surface-2 animate-pulse" />
-        <div className="mt-1 h-3 w-44 rounded bg-surface-2 animate-pulse" />
-      </div>
+      <SkeletonHeader title="Don't Miss" subtitle="Trending now, plus recent gems" nav={false} />
       {/* Desktop: mirrors the real accordion card while images stream — a dark card
           with a pulsing poster anchored left (same as DontMissCard), and the same
           py-1.5 wrapper, so skeleton → real-cards is seamless in shape AND spacing. */}
@@ -170,17 +171,7 @@ export function DontMissSkeleton() {
 export function ForYouSkeleton() {
   return (
     <section>
-      {/* header — title + subtitle + nav arrows, mirrors the real For You header */}
-      <div className="mb-1.5 flex items-center justify-between">
-        <div>
-          <div className="h-5 w-24 rounded bg-surface-2 animate-pulse" />
-          <div className="mt-1 h-3 w-40 rounded bg-surface-2 animate-pulse" />
-        </div>
-        <div className="hidden gap-2 lg:flex">
-          <div className="h-8 w-8 rounded-full bg-surface-2 animate-pulse" />
-          <div className="h-8 w-8 rounded-full bg-surface-2 animate-pulse" />
-        </div>
-      </div>
+      <SkeletonHeader title="For You" subtitle="Based on what you love" />
       {/* Desktop: backdrop row — py-1.5 mirrors the real row's hover-scale headroom. Same
           `cardsPerView` breakpoints as the real section (3 from lg, 5 from xl) — a flat 5 across
           the whole desktop range meant the lg-only zone (1024-1279px) showed 5 narrow cards where
@@ -198,7 +189,7 @@ export function ForYouSkeleton() {
       {/* Touch + narrow: poster rail (denser on an iPad-portrait md screen). */}
       <div className="flex gap-3 overflow-hidden py-1.5 lg:hidden">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="aspect-2/3 w-[42%] md:w-[28%] shrink-0 rounded-card bg-surface-2 animate-pulse" />
+          <div key={i} className="aspect-2/3 w-[42%] md:w-[28%] shrink-0 rounded-tile bg-surface-2 animate-pulse" />
         ))}
       </div>
     </section>
@@ -230,14 +221,17 @@ export function ForYouSkeleton() {
  * route now owns its boundary, or has none and simply holds the previous screen until it can draw
  * its own. Nothing can be inherited, so nothing can lie.
  */
-export function GridPageSkeleton() {
+export function GridPageSkeleton({ type }: { type: MediaType }) {
+  const config = WATCHING_CONFIGS[type];
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <DontMissSkeleton />
       <ForYouSkeleton />
-      <CarouselSkeleton />
-      <CarouselSkeleton />
-      <CarouselSkeleton />
+      {config.hasInProgress && <CarouselSkeleton title="In Progress" subtitle={`${type === "serie" ? "Series" : "Animes"} that you are currently watching`} />}
+      <CarouselSkeleton title="Last Watched" subtitle={`The last 10 ${config.labelPlural} you watched`} />
+      {type === "film" && <CarouselSkeleton title="Waiting for" subtitle="Coming soon" add={false} />}
+      <CarouselSkeleton title="Want to Watch" subtitle="Your watchlist" />
+      <CarouselSkeleton title={`My Top 10 ${type === "film" ? "of all time" : type === "serie" ? "Series" : "Animes"}`} subtitle={`Your highest-rated ${config.labelPlural} — 0/10`} />
     </div>
   );
 }

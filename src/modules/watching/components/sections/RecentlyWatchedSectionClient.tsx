@@ -26,7 +26,7 @@ export default function RecentlyWatchedSectionClient({ userId, config }: Props) 
   const deleteMediaMutation = useDeleteMedia();
   const { openModal } = useWatching();
 
-  if (isLoading) return <CarouselSkeleton />;
+  if (isLoading) return <CarouselSkeleton title="Last Watched" subtitle={`The last 10 ${config.labelPlural} you watched`} />;
 
   const handleDelete = async (itemId: string) => {
     try {

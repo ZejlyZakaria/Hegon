@@ -19,6 +19,6 @@ describe("progress corrections retain explicit suspension",()=>{
     expect(kept).toMatchObject({watched:false,in_progress:false,dropped:true,drop_reason:"lost_interest"});
     expect(kept).not.toHaveProperty("last_watched_at");expect(old.watched).toBe(true);
     const rating={user_rating:9};expect(preserveCorrectionStance(before,rating,"correction")).toBe(rating);
-    expect(preserveCorrectionStance(before,resumePatch(),"claim")).toEqual({paused:false,dropped:false,drop_reason:null,in_progress:true});
+    expect(preserveCorrectionStance(before,resumePatch(),"claim")).toEqual({paused:false,dropped:false,drop_reason:null,in_progress:true,watched:false,resume_required:false});
   });
 });

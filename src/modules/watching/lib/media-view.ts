@@ -84,7 +84,7 @@ export function claimableSeasons(seasons: ViewSeason[]): number {
 
 export type MediaViewSource = Pick<
   WatchingMedia,
-  | "type" | "status" | "caught_up_at" | "episodes"
+  | "type" | "status" | "caught_up_at" | "resume_required" | "episodes"
   | "season_episodes" | "season_aired" | "season_posters" | "season_end_dates"
   | "current_season" | "current_episode"
   | "season_years" | "season_ratings" | "cour_years" | "cour_ratings"
@@ -183,6 +183,7 @@ export function buildMediaView(
         season_aired: seasons.map((s) => s.aired),
         status: media.status,
         caught_up_at: media.caught_up_at,
+        resume_required: media.resume_required,
         current_season: ov.currentSeason,
         current_episode: ov.currentEpisode,
       },
@@ -229,6 +230,7 @@ export function buildMediaView(
       season_aired: media.season_aired ?? null,
       status: media.status,
       caught_up_at: media.caught_up_at,
+        resume_required: media.resume_required,
       current_season: media.current_season ?? 1,
       current_episode: media.current_episode ?? 0,
     },

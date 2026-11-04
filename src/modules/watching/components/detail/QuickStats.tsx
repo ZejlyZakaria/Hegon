@@ -1,5 +1,6 @@
 "use client";
 
+import { hasViewingEngagement } from "../../lib/series-state";
 import { useMemo } from "react";
 import { Clock, Layers, RotateCcw } from "lucide-react";
 import { Panel } from "@/shared/components/ui/panel";
@@ -11,7 +12,7 @@ import type { WatchingMedia } from "../../types";
 
 /** Personal consumption only, from the same frozen ledger as viewing details. */
 export function QuickStats({ media, view }: { media: WatchingMedia; view?: MediaView | null }) {
-  const engaged = !!(media.watched || media.in_progress || media.paused || media.dropped);
+  const engaged = hasViewingEngagement(media);
   const history = useMediaHistory(media.id, engaged);
   const rewatches = useRewatches(media.id);
   const summary = useMemo(() => buildViewingSummary(media, history.data?.records ?? [], rewatches.data ?? [], view),

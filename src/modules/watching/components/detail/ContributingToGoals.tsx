@@ -1,5 +1,6 @@
 "use client";
 
+import { hasViewingEngagement } from "../../lib/series-state";
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Target, Check } from "lucide-react";
@@ -18,7 +19,7 @@ const GOALS_ACCENT = "var(--color-accent-goals)";
 // Explain membership in the same live metric as Goals, using accepted consumption periods.
 export function ContributingToGoals({ media, view }: { media: WatchingMedia; view?: MediaView|null }) {
   const router = useRouter();
-  const engaged=!!(media.watched || media.in_progress || media.paused || media.dropped);
+  const engaged=hasViewingEngagement(media);
   const { data: goals = [] } = useWatchingGoals(engaged);
   const history=useMediaHistory(media.id,engaged);
   const contribution=useMemo(()=>{

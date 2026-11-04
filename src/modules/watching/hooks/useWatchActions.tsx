@@ -185,7 +185,7 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
         toast.error("We don't know what has aired for this title yet.");
         return null;
       }
-      return write(patch, "All caught up — waiting on what comes next.");
+      return write(patch, "All caught up — waiting on what comes next.", "viewing");
     },
 
     /** Not a status, but it lives on the same menus and it was written by hand in three places too. */

@@ -1,3 +1,4 @@
+import { hasViewingEngagement } from "./series-state";
 import { legacyRuntime, legacyCoordinates } from "./legacy-consumption";
 import { parseViewingInput, viewingDate, type StoredViewingAssertion, type ViewingRange, type ViewingDate } from "./viewing-history";
 import type { StatsRawItem } from "../service";
@@ -111,7 +112,7 @@ export function historicalContributions(item: StatsRawItem, view: MediaView, his
       addLegacy(1,year,0,[{season_key:"film",season_number_at_recording:0,episode_from:1,episode_to:1,episode_ids:null,minutes:runtime,duration_basis:runtime!=null && runtime>0 ? "RUNTIME_SNAPSHOT":"UNKNOWN"}]);
       represented.add(coordinate(0,1));
     }
-  } else if (item.watched || item.in_progress || item.paused || item.dropped) legacy.forEach((bucket,index) => {
+  } else if (hasViewingEngagement(item)) legacy.forEach((bucket,index) => {
     if (bucket.episodes<=0) return;
     const coarse=first.filter(r=>!r.ranges.length);
     const shadowed=coarse.some(r=>r.scope_kind==="WHOLE_TITLE" ||

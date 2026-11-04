@@ -3,7 +3,7 @@ import { periodEpisodeLabel, ratedScopePresentation } from "../../lib/season-his
 import { deduplicateFirstViewing, rangeCount, legacyViewingDate, calendarStats, type CalendarStats, historicalContributions, historicalRatingResult, periodMatches, recordsFor, formatHistoryDate, type HistoryAnalytics, type WatchContribution } from "../../lib/history-analytics";
 import type { StatsRawItem, RewatchStatItem } from "../../service";
 import { buildMediaView, type MediaView } from "../../lib/media-view";
-import { activityBucket, isAwaitingNextSeason } from "../../lib/series-state";
+import { activityBucket, isAwaitingNextSeason, requiresResume } from "../../lib/series-state";
 import type { AnimeCoursRow } from "../../types";
 
 /**
@@ -81,8 +81,8 @@ export interface ComputedStats {
   counts: { film: number; serie: number; anime: number; total: number };
   // Per-type status split of the counted shows (watched / in progress / paused / dropped).
   statusCounts: {
-    serie: { watched: number; inProgress: number; caughtUp: number; paused: number; dropped: number };
-    anime: { watched: number; inProgress: number; caughtUp: number; paused: number; dropped: number };
+    serie: { watched: number; inProgress: number; caughtUp: number; awaitingResume: number; paused: number; dropped: number };
+    anime: { watched: number; inProgress: number; caughtUp: number; awaitingResume: number; paused: number; dropped: number };
   };
   rewatches: number;  // rewatch events in the period (they add hours, not unique titles)
   // Hours Watched — rewatch time is its own 4th slice (pulled out of the per-type
@@ -231,10 +231,11 @@ export function computeStats(
   const statusOf = (type: "serie" | "anime") => {
     const of = periodItems.filter((i) => i.type === type);
     return {
-      watched:    of.filter((i) => activityBucket(i) === "last-watched" && !isAwaitingNextSeason(i)).length,
+      watched:    of.filter((i) => activityBucket(i) === "last-watched" && !isAwaitingNextSeason(i) && !requiresResume(i)).length,
       // Use the same derived classification as the two home rails.
       inProgress: of.filter((i) => activityBucket(i) === "in-progress").length,
       caughtUp:   of.filter((i) => activityBucket(i) === "last-watched" && isAwaitingNextSeason(i)).length,
+      awaitingResume: of.filter((i) => activityBucket(i) === "last-watched" && requiresResume(i)).length,
       paused:     of.filter((i) => i.paused).length,
       dropped:    of.filter((i) => i.dropped).length,
     };

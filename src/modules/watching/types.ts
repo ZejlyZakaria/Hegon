@@ -37,6 +37,8 @@ export interface WatchingMedia {
   season_aired?: number[] | null;
   /** When you last saw everything that had aired. Non-null = you were caught up once. */
   caught_up_at?: string | null;
+  /** New content after a completed scope; cleared only by an explicit resumption/viewing. */
+  resume_required?: boolean;
   last_synced_at?: string | null;
   /** When you last moved FORWARD through this title. Null = never captured. */
   last_watched_at?: string | null;
@@ -280,7 +282,7 @@ export type OwnedIndexRow = Pick<
   WatchingMedia,
   | "id" | "type" | "tmdb_id" | "title" | "original_title" | "poster_url" | "user_rating"
   | "watched" | "in_progress" | "want_to_watch" | "paused" | "dropped"
-  | "priority_level" | "release_date" | "status" | "season_aired" | "current_season" | "current_episode" | "caught_up_at"
+  | "priority_level" | "release_date" | "status" | "season_aired" | "current_season" | "current_episode" | "caught_up_at" | "resume_required"
 >;
 
 // ── People you follow (§11) ──

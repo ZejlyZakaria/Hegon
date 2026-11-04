@@ -12,8 +12,8 @@ import { useCallback, useRef, useState } from "react";
  * within a few frames of the mount — a real transfer never does. Either way the picture is shown
  * at full opacity with NO transition; a picture that took its time still fades.
  *
- * One hook for the four card surfaces (rails, library, For You, Don't Miss), so the rule cannot
- * drift between them.
+ * Standalone card surfaces use this hook. Hub sections coordinate their initial visible images
+ * with SectionImageReveal instead, so these two reveal policies never run on the same image.
  */
 const INSTANT_MS = 100;
 

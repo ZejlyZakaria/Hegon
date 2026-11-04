@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
+import { hasViewingEngagement } from "@/modules/watching/lib/series-state";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Clapperboard } from "lucide-react";
@@ -522,7 +523,7 @@ export default function MediaDetailPage() {
                 you're mid-way through, caught up on, paused, or stopped-but-loved (Prison Break after
                 a poor final season; a True Detective anthology season) can all be a favourite. Only
                 want-to-watch is out — a Top 10 is a verdict, and you cannot rank what you've not seen. */}
-            {(media.watched || media.in_progress || media.paused || media.dropped) && (
+            {(hasViewingEngagement(media)) && (
               <TopTenRank media={media} />
             )}
 

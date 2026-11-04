@@ -43,7 +43,7 @@ export function legacyDisplayCounts(item:StatsRawItem,view:MediaView):number[]|n
 // was tried here and reverted: it made Stats read a second source for a fact that must have one.
 function fallbackYearOf(i: StatsRawItem): number | null {
   if(i.legacy_consumption) return i.legacy_consumption.fallback_year;
-  const d = i.watched ? i.watched_at : i.updated_at;
+  const d = i.watched || i.resume_required ? i.watched_at : i.updated_at;
   return d ? new Date(d).getFullYear() : null;
 }
 

@@ -1,10 +1,11 @@
+import { hasViewingEngagement } from "./series-state";
 import type { PersonTitle } from "../service";
 import { mediaIdentity } from "./possession";
 import { isDirectorCredit } from "./credit-roles";
-export function isExperienced(t: { watched: boolean; in_progress: boolean; paused: boolean; dropped: boolean; release_date?: string | null; year?: number | null }, today = new Date().toISOString().slice(0, 10)): boolean {
+export function isExperienced(t: { resume_required?: boolean; watched: boolean; in_progress: boolean; paused: boolean; dropped: boolean; release_date?: string | null; year?: number | null }, today = new Date().toISOString().slice(0, 10)): boolean {
   if (t.release_date && t.release_date > today) return false;
   if (!t.release_date && t.year != null && t.year > Number(today.slice(0, 4))) return false;
-  return t.watched || t.in_progress || t.paused || t.dropped;
+  return hasViewingEngagement(t);
 }
 export interface CoPerson { id: number; name: string; profile_url: string | null; count: number; billing: number; isDirector: boolean; roleLabel: string }
 export function collaborators(titles: PersonTitle[], personId: number): CoPerson[] {

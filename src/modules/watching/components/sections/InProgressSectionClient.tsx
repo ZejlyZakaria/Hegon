@@ -26,7 +26,7 @@ export default function InProgressSectionClient({ userId, config }: Props) {
   const deleteMediaMutation = useDeleteMedia();
   const { openModal } = useWatching();
 
-  if (isLoading) return <CarouselSkeleton />;
+  if (isLoading) return <CarouselSkeleton title="In Progress" subtitle={`${config.labelPlural === "series" ? "Series" : "Animes"} that you are currently watching`} />;
 
   const handleDelete = async (itemId: string) => {
     try {

@@ -191,7 +191,7 @@ Deno.serve(async () => {
     const batch = await selectBatch(supabase);
 
     let succeeded = 0;
-    let changed = 0, repaired = 0, failed = 0, rows = 0;
+    let changed = 0, growthDetected = 0, failed = 0, rows = 0;
     const log: string[] = [];
 
     for (const [tmdbId, group] of batch) {
@@ -231,7 +231,7 @@ Deno.serve(async () => {
         failed++; log.push(`${title}: ${error?.message ?? evidence?.reason_code ?? evidence?.classification}`); continue;
       }
       if (evidence.accepted) changed++;
-      if (evidence.growth) repaired++;
+      if (evidence.growth) growthDetected++;
       succeeded++;
       log.push(`${title}: ${evidence.classification}`);
 
@@ -239,7 +239,7 @@ Deno.serve(async () => {
 
     const result = batchOutcome(succeeded, failed);
     return new Response(
-      JSON.stringify({ ...result, shows: batch.length, rows, changed, repaired, failed, log }),
+      JSON.stringify({ ...result, shows: batch.length, rows, changed, growth_detected: growthDetected, failed, log }),
       { status: result.status, headers: { "Content-Type": "application/json" } },
     );
   } catch (e) {

@@ -15,8 +15,8 @@ describe("derived activity classification", () => {
     expect(activityBucket({ ...knight, status: "returning series", season_episodes: [8] })).toBe("in-progress");
     expect(activityBucket({ ...knight, current_episode: 5 })).toBe("in-progress");
   });
-  it("returns to In Progress on actual growth even with a stale watched flag", () => {
-    expect(activityBucket({ ...knight, type: "anime", watched: true, in_progress: false, season_aired: [7], season_episodes: [8] })).toBe("in-progress");
+  it("does not treat a stale completed claim as an intention to resume", () => {
+    expect(activityBucket({ ...knight, type: "anime", watched: true, in_progress: false, season_aired: [7], season_episodes: [8] })).toBe("last-watched");
   });
   it("preserves explicit paused/dropped states and does not promote unstarted titles", () => {
     expect(activityBucket({ ...knight, paused: true })).toBeNull();

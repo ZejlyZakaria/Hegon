@@ -43,6 +43,7 @@ export interface StoredViewingAssertion extends ViewingAssertion { id: string; r
 export interface HistoryFacts {
   type: string; watched?: boolean; current_season?: number | null; current_episode?: number | null;
   season_aired?: number[] | null; runtime?: number | null;
+  watched_at?: string | null;
   season_years?: Record<string, number> | null; cour_years?: Record<string, number> | null;
 }
 export interface HistoryMetadata {
@@ -103,7 +104,21 @@ export function captureHistory(before: HistoryFacts | null, patch: Partial<Histo
       return start <= r.episode_to ? [range(r.season_number_at_recording,start,r.episode_to,after.runtime)] : [];
     });
     for (const coverage of added) {
-      records.push({ ...assertion("FIRST_WATCH",date,[coverage],correction),
+      // A correction can inherit only a consistent known year from this same scope.
+      // It cannot invent a month/day for episodes whose viewing date was never recorded.
+      const knownYears = new Set(active.filter(r=>r.kind==="FIRST_WATCH" && r.year!=null &&
+        r.ranges.some(p=>p.season_key===coverage.season_key)).map(r=>r.year!));
+      const stampedYear = before?.season_years?.[String(coverage.season_number_at_recording)];
+      const hasCourDates = Object.keys(before?.cour_years ?? {}).length > 0;
+      if (stampedYear && !hasCourDates) knownYears.add(stampedYear);
+      if (!knownYears.size && !hasCourDates && before?.watched_at && coverage.season_number_at_recording === (before.current_season ?? 1)) {
+        const year = Number(before.watched_at.slice(0,4));
+        if (Number.isInteger(year) && year>0) knownYears.add(year);
+      }
+      const inheritedYear = correction && meta.history_date===undefined && knownYears.size===1 ? [...knownYears][0] : null;
+      const captured = assertion("FIRST_WATCH",inheritedYear ? viewingDate({year:inheritedYear,month:null,day:null}):date,[coverage],correction);
+      if (inheritedYear) captured.date_confidence="INFERRED";
+      records.push({ ...captured,
         scope_kind: after.type === "film" ? "WHOLE_TITLE" : "SEASON", scope_key: coverage.season_key });
     }
     const forward = (after.current_season ?? 1) > (before?.current_season ?? 1) ||

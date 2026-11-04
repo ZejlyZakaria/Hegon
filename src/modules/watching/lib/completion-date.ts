@@ -30,6 +30,11 @@ export function completionDatePatch(before:HistoryFacts|null,patch:Record<string
     }
     return {patch,meta};
   }
+  if (before && meta.history_intent === "correction" &&
+      ("current_season" in patch || "current_episode" in patch) && meta.history_date === undefined) {
+    // Position corrections preserve their old calendar even when they newly acknowledge completion.
+    return {patch:{...patch,...("watched_at" in patch ? {watched_at:before.watched_at ?? null}: {})},meta};
+  }
   if(!after.watched || !before) return {patch,meta};
   const finishing=patch.watched===true && !before.watched;
   let date:WatchDateParts|null|undefined;

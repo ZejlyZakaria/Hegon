@@ -93,12 +93,13 @@ function MetricCard({ label, value, sub, icon }: {
 // Status breakdown line for the TV Shows / Anime cards — only the non-empty statuses,
 // same wording as before plus paused/dropped. Wraps if long (that's fine). Hidden
 // when everything is watched (the value already says it).
-function statusSub(s: { watched: number; inProgress: number; caughtUp: number; paused: number; dropped: number }): string | undefined {
-  if (s.inProgress + s.caughtUp + s.paused + s.dropped === 0) return undefined;
+function statusSub(s: { watched: number; inProgress: number; caughtUp: number; awaitingResume: number; paused: number; dropped: number }): string | undefined {
+  if (s.inProgress + s.caughtUp + s.awaitingResume + s.paused + s.dropped === 0) return undefined;
   const parts: string[] = [];
   if (s.watched > 0)    parts.push(`${s.watched} watched`);
   if (s.inProgress > 0) parts.push(`${s.inProgress} in progress`);
   if (s.caughtUp > 0)   parts.push(`${s.caughtUp} caught up`);
+  if (s.awaitingResume > 0) parts.push(`${s.awaitingResume} awaiting resume`);
   if (s.paused > 0)     parts.push(`${s.paused} paused`);
   if (s.dropped > 0)    parts.push(`${s.dropped} dropped`);
   return parts.join(" · ");
