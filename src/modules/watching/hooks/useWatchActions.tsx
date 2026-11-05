@@ -34,16 +34,17 @@ import { reportError } from "@/shared/utils/report-error";
  * lets the overlay be adopted surface by surface without a flag day.
  */
 type Target =
-  | (StatusFacts & WatchableFacts & {
-      id: string;
-      personal_revision?: number;
-      tmdb_id?: number;
-      season_posters?: (string | null)[] | null;
-      season_end_dates?: (string | null)[] | null;
-      season_ratings?: Record<string, number> | null;
-      cour_years?: Record<string, number> | null;
-      cour_ratings?: Record<string, number> | null;
-    })
+  | (StatusFacts &
+      WatchableFacts & {
+        id: string;
+        personal_revision?: number;
+        tmdb_id?: number;
+        season_posters?: (string | null)[] | null;
+        season_end_dates?: (string | null)[] | null;
+        season_ratings?: Record<string, number> | null;
+        cour_years?: Record<string, number> | null;
+        cour_ratings?: Record<string, number> | null;
+      })
   | null
   | undefined;
 
@@ -100,7 +101,9 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
    * write — so it sees `metric_current` before `syncWatchingGoals` (fired in `onSuccess`) bumps it
    * — but nothing awaits it until the write is done, and a failure degrades to the plain toast.
    */
-  const rippleWatched = (goals: Awaited<ReturnType<typeof getActiveWatchingGoals>>) => {
+  const rippleWatched = (
+    goals: Awaited<ReturnType<typeof getActiveWatchingGoals>>,
+  ) => {
     if (!media) return;
     const matched = goals.filter((g) => goalWouldCount(g, media.type));
     if (matched.length === 0) {
@@ -110,38 +113,82 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
     matched.forEach((g) => {
       const old = g.metric_current;
       toast.custom(() => (
-        <GoalRippleToast title={g.title} oldCount={old} newCount={old + 1} target={g.metric_target ?? 0} />
+        <GoalRippleToast
+          title={g.title}
+          oldCount={old}
+          newCount={old + 1}
+          target={g.metric_target ?? 0}
+        />
       ));
     });
   };
 
-  const write = async (patch: StatusPatch | null, message: string, intent: "viewing" | "correction" | "claim" = "claim", expectedRevision?: number, target: Target = media): Promise<(StatusPatch & { personal_revision?: number }) | null> => {
-    const media = target;
-    if (!media || !patch) return null;
-    // The goals a completion would count towards — started now, only on that path, served from the
-    // cache when a goals surface already holds them fresh. Its failure is its own (reported, R8),
-    // never the write's: the write below does not wait for it and does not see its errors.
+  const write = async (
+    patch: StatusPatch | null,
+    message: string,
+    intent: "viewing" | "correction" | "claim" = "claim",
+    expectedRevision?: number,
+    target?: Target,
+  ): Promise<(StatusPatch & { personal_revision?: number }) | null> => {
+    const subject = target === undefined ? media : target;
+
+    if (!subject || !patch) return null;
+
     type Goals = Awaited<ReturnType<typeof getActiveWatchingGoals>>;
+
     const goalsP: Promise<Goals> =
       patch.watched === true
-        ? queryClient.fetchQuery(watchingGoalsQuery()).catch((e: unknown) => { reportError(e, { at: "useWatchActions.goals" }); return [] as Goals; })
+        ? queryClient.fetchQuery(watchingGoalsQuery()).catch((e: unknown) => {
+            reportError(e, { at: "useWatchActions.goals" });
+            return [] as Goals;
+          })
         : Promise.resolve([] as Goals);
+
     try {
-      // `type` never reaches the database — it scopes the invalidations, so pausing an anime
-      // stops refetching the film carousels.
       const now = new Date();
-      const revision = expectedRevision ?? (ownRevision.current?.id === media.id
-        ? Math.max(ownRevision.current.value, media.personal_revision ?? 0) : media.personal_revision);
+
+      const revision =
+        expectedRevision ??
+        (ownRevision.current?.id === subject.id
+          ? Math.max(ownRevision.current.value, subject.personal_revision ?? 0)
+          : subject.personal_revision);
+
       const saved = await updateMedia.mutateAsync({
-        id: media.id, type: media.type, ...patch, expected_revision: revision, history_intent: intent,
-        ...(intent === "viewing" ? { history_date: { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() } } : {}),
+        id: subject.id,
+        type: subject.type,
+        ...patch,
+        expected_revision: revision,
+        history_intent: intent,
+        ...(intent === "viewing"
+          ? {
+              history_date: {
+                year: now.getFullYear(),
+                month: now.getMonth() + 1,
+                day: now.getDate(),
+              },
+            }
+          : {}),
       });
-      if (saved.personal_revision !== undefined) ownRevision.current = { id: media.id, value: saved.personal_revision };
-      if (patch.watched === true) rippleWatched(await goalsP);
-      else if (message) toast(message);
-      return { ...patch, ...(patch.watched ? {watched_at:saved.watched_at}:{}), personal_revision: saved.personal_revision };
+
+      if (saved.personal_revision !== undefined) {
+        ownRevision.current = {
+          id: subject.id,
+          value: saved.personal_revision,
+        };
+      }
+
+      if (patch.watched === true) {
+        rippleWatched(await goalsP);
+      } else if (message) {
+        toast(message);
+      }
+
+      return {
+        ...patch,
+        ...(patch.watched ? { watched_at: saved.watched_at } : {}),
+        personal_revision: saved.personal_revision,
+      };
     } catch (err) {
-      // The demo guard toasts on its own; useUpdateMedia rolls the optimistic update back.
       if (!isDemoReadOnlyError(err)) toast.error("Failed to update.");
       return null;
     }
@@ -151,7 +198,11 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
   // caught-up paths must refuse it: you can neither finish nor be caught up on a film that doesn't
   // exist. This is the backstop; the surfaces also hide the buttons (see `canMark`).
   const notOutYet = () => {
-    toast.error(media?.type === "film" ? "This film isn't out yet." : "No released content is available for this action yet.");
+    toast.error(
+      media?.type === "film"
+        ? "This film isn't out yet."
+        : "No released content is available for this action yet.",
+    );
     return Promise.resolve(null);
   };
 
@@ -169,7 +220,8 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
 
     /** Whether to OFFER a completion affordance at all. An unreleased film gets none — there is
      *  nothing to mark. A series always does (watched, or caught up). */
-    canMark: watchable && !!media && (canComplete(media) || media.type !== "film"),
+    canMark:
+      watchable && !!media && (canComplete(media) || media.type !== "film"),
 
     markWatched: () => {
       if (!media) return Promise.resolve(null);
@@ -186,23 +238,37 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
         toast.error("We don't know what has aired for this title yet.");
         return null;
       }
-      return write(patch, "All caught up — waiting on what comes next.", "viewing");
+      return write(
+        patch,
+        "All caught up — waiting on what comes next.",
+        "viewing",
+      );
     },
 
     /** Not a status, but it lives on the same menus and it was written by hand in three places too. */
     toggleFavorite: () =>
       media
-        ? write({ favorite: !media.favorite }, media.favorite ? "Removed from favorites." : "Added to favorites.")
+        ? write(
+            { favorite: !media.favorite },
+            media.favorite ? "Removed from favorites." : "Added to favorites.",
+          )
         : Promise.resolve(null),
 
-    startWatching: () => watchable ? write(startWatchingPatch(), "Started watching.") : notOutYet(),
+    startWatching: () =>
+      watchable
+        ? write(startWatchingPatch(), "Started watching.")
+        : notOutYet(),
     wantToWatch: () => write(wantToWatchPatch(), "Added to Want to Watch."),
     pause: () => write(pausePatch(), "Paused."),
-    drop: (reason: string | null) => write(dropPatch(reason), "Marked as dropped."),
+    drop: (reason: string | null) =>
+      write(dropPatch(reason), "Marked as dropped."),
     // One page-level writer can resume a selected row without mounting a hook/query per card.
-    resumeItem: (item: NonNullable<Target>) => isWatchableNow(item)
-      ? write(resumePatch(), "Back to watching.", "claim", undefined, item) : Promise.resolve(null),
-    resume: () => watchable ? write(resumePatch(), "Back to watching.") : notOutYet(),
+    resumeItem: (item: NonNullable<Target>) =>
+      isWatchableNow(item)
+        ? write(resumePatch(), "Back to watching.", "claim", undefined, item)
+        : Promise.resolve(null),
+    resume: () =>
+      watchable ? write(resumePatch(), "Back to watching.") : notOutYet(),
 
     /**
      * `kind` is the fact only the caller knows: "+1" and the steppers are a VIEWING (they date it,
@@ -210,8 +276,19 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
      * CORRECTION of the record, and dating a memory from 2018 with today's year would swap one
      * false claim for another.
      */
-    setPosition: (season: number, episode: number, kind: "viewing" | "correction", message = "") =>
-      media && (kind === "correction" || watchable) ? write(positionPatch(media, season, episode, kind, view), message, kind) : Promise.resolve(null),
+    setPosition: (
+      season: number,
+      episode: number,
+      kind: "viewing" | "correction",
+      message = "",
+    ) =>
+      media && (kind === "correction" || watchable)
+        ? write(
+            positionPatch(media, season, episode, kind, view),
+            message,
+            kind,
+          )
+        : Promise.resolve(null),
 
     /**
      * UNDO IS NOT A CORRECTION — and the toast is the only caller that can tell them apart.
@@ -234,11 +311,23 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
      * surface never selected the column and does not KNOW — writing null on that would erase a real
      * date to undo a mis-tap. A surface that cannot answer simply doesn't get asked.
      */
-    undoPosition: (season: number, episode: number, lastWatchedAt?: string | null, expectedRevision?: number) => {
+    undoPosition: (
+      season: number,
+      episode: number,
+      lastWatchedAt?: string | null,
+      expectedRevision?: number,
+    ) => {
       if (!media) return Promise.resolve(null);
       const patch = positionPatch(media, season, episode, "correction", view);
       if (!patch) return Promise.resolve(null);
-      return write(lastWatchedAt === undefined ? patch : { ...patch, last_watched_at: lastWatchedAt }, "", "correction", expectedRevision);
+      return write(
+        lastWatchedAt === undefined
+          ? patch
+          : { ...patch, last_watched_at: lastWatchedAt },
+        "",
+        "correction",
+        expectedRevision,
+      );
     },
   };
 }
