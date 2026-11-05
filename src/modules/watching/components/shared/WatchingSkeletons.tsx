@@ -92,19 +92,20 @@ export function PosterCellsSkeleton({ rail }: { rail: keyof typeof RAIL_CELLS })
  * symptom (`cards={5}`) instead of the cause; two matching CSS breakpoints replace both the prop
  * and the patch.
  */
-function SkeletonHeader({ title, subtitle, nav = true, add = false, seeAll = false }: { title: string; subtitle?: string; nav?: boolean; add?: boolean; seeAll?: boolean }) {
+function SkeletonHeader({ title, subtitle, nav = true, add = false, seeAll = false, actions }: { title: string; subtitle?: string; nav?: boolean; add?: boolean; seeAll?: boolean; actions?: React.ReactNode }) {
   const line = (text: string) => <span className="relative block"><span className="invisible">{text}</span><span className="absolute inset-x-0 top-1/2 h-[0.8em] -translate-y-1/2 animate-pulse rounded-control bg-surface-2" /></span>;
-  return <div aria-hidden="true"><SectionHeader title={line(title)} subtitle={subtitle ? line(subtitle) : undefined} actions={nav || add || seeAll ? <>
+  return <div aria-hidden="true"><SectionHeader className={actions ? "[&>div:last-child]:max-w-full [&>div:last-child]:shrink [&>div:last-child]:flex-wrap" : undefined} title={line(title)} subtitle={subtitle ? line(subtitle) : undefined} actions={nav || add || seeAll || actions ? <>
+    {actions && <div inert>{actions}</div>}
     {nav && <div className="hidden gap-1.5 lg:flex"><Pulse className="size-8" /><Pulse className="size-8" /></div>}
     {seeAll && <Button size="sm" disabled className="invisible">See all</Button>}
     {add && <Button size="sm" disabled className="invisible"><Plus />Add</Button>}
   </> : undefined} /></div>;
 }
 
-export function CarouselSkeleton({ title = "Last Watched", subtitle, add = true, seeAll = false }: { title?: string; subtitle?: string; add?: boolean; seeAll?: boolean } = {}) {
+export function CarouselSkeleton({ title = "Last Watched", subtitle, add = true, seeAll = false, actions }: { title?: string; subtitle?: string; add?: boolean; seeAll?: boolean; actions?: React.ReactNode } = {}) {
   return (
     <div aria-hidden="true">
-      <SkeletonHeader title={title} subtitle={subtitle} add={add} seeAll={seeAll} />
+      <SkeletonHeader title={title} subtitle={subtitle} add={add} seeAll={seeAll} actions={actions} />
       {/* Desktop: backdrop grid — 3-up from lg (1024px), 5-up from xl (1280px), same as MediaCarousel. */}
       <div className="hidden lg:grid xl:hidden grid-cols-3 gap-4 py-3">
         {Array.from({ length: 3 }).map((_, i) => (

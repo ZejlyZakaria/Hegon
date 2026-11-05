@@ -408,3 +408,21 @@ it("compares legacy UTC dates and explicit-zone activity consistently",()=>{
   expect(latestViewingAt({watched_at:"2026-11-04 12:00:00",last_watched_at:"2026-11-04T11:59:59Z"})).toBe("2026-11-04T12:00:00Z");
   expect(latestViewingAt({last_watched_at:"2026-11-04 14:57:15.578+00"})).toBe("2026-11-04T14:57:15.578+00:00");
 });
+
+
+describe("completed viewing date outranks legacy activity stamps", () => {
+  const promised = {watched:true,watched_at:"2022-05-23 12:00:00",last_watched_at:"2026-09-19 14:43:25.894+00"};
+  it("uses The Promised Neverland's saved completion, without changing its data", () => {
+    const before = JSON.stringify(promised);
+    expect(latestViewingAt(promised)).toBe("2022-05-23T12:00:00Z");
+    expect(JSON.stringify(promised)).toBe(before);
+  });
+  it("does not revive a legacy activity date for an undated completed claim", () => {
+    expect(latestViewingAt({...promised,watched_at:null})).toBeNull();
+    expect(latestViewingAt({...promised,watched_at:"invalid"})).toBeNull();
+  });
+  it("retains actual recent consumption for ongoing shows and newly dated completions", () => {
+    expect(latestViewingAt({...promised,watched:false})).toBe("2026-09-19T14:43:25.894+00:00");
+    expect(latestViewingAt({...promised,watched_at:"2026-11-05 12:00:00"})).toBe("2026-11-05T12:00:00Z");
+  });
+});

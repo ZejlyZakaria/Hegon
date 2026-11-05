@@ -115,7 +115,8 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
     });
   };
 
-  const write = async (patch: StatusPatch | null, message: string, intent: "viewing" | "correction" | "claim" = "claim", expectedRevision?: number): Promise<(StatusPatch & { personal_revision?: number }) | null> => {
+  const write = async (patch: StatusPatch | null, message: string, intent: "viewing" | "correction" | "claim" = "claim", expectedRevision?: number, target: Target = media): Promise<(StatusPatch & { personal_revision?: number }) | null> => {
+    const media = target;
     if (!media || !patch) return null;
     // The goals a completion would count towards — started now, only on that path, served from the
     // cache when a goals surface already holds them fresh. Its failure is its own (reported, R8),
@@ -198,6 +199,9 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
     wantToWatch: () => write(wantToWatchPatch(), "Added to Want to Watch."),
     pause: () => write(pausePatch(), "Paused."),
     drop: (reason: string | null) => write(dropPatch(reason), "Marked as dropped."),
+    // One page-level writer can resume a selected row without mounting a hook/query per card.
+    resumeItem: (item: NonNullable<Target>) => isWatchableNow(item)
+      ? write(resumePatch(), "Back to watching.", "claim", undefined, item) : Promise.resolve(null),
     resume: () => watchable ? write(resumePatch(), "Back to watching.") : notOutYet(),
 
     /**

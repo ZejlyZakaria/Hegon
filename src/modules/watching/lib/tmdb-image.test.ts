@@ -53,6 +53,9 @@ describe("Native image source candidates",()=>{
     expect(tmdbImageSrcSet(POSTER,170,500)).toBe([
       tmdbImage(POSTER,"w185")+" 1x",tmdbImage(POSTER,"w342")+" 2x",tmdbImage(POSTER,"w500")+" 3x",
     ].join(", "));
+    expect(tmdbImageSrcSet(POSTER,112,500)).toBe([
+      tmdbImage(POSTER,"w154")+" 1x",tmdbImage(POSTER,"w342")+" 2x",tmdbImage(POSTER,"w342")+" 3x",
+    ].join(", "));
     expect(tmdbImageSrcSet(BACKDROP,360)).toContain(tmdbImage(BACKDROP,"w1280")+" 3x");
   });
   it("supplies width descriptors for fluid season frames without exceeding their cap",()=>{

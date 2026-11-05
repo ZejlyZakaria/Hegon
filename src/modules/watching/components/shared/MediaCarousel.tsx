@@ -299,7 +299,7 @@ function MovieCard({
 
 // ─── main ─────────────────────────────────────────────────────────────────────
 
-export function MediaCarousel({
+function PersonalMediaCarousel({
   title,
   subtitle,
   items,
@@ -317,6 +317,23 @@ export function MediaCarousel({
 }: MediaCarouselProps) {
   const router = useRouter();
   const prefetch = usePrefetchMedia();
+  const views = useMediaViews(items);
+  return <MediaCarouselLayout title={title} subtitle={subtitle} items={items} getItemKey={item => item.id} onAddClick={onAddClick} onSeeAll={onSeeAll} actions={actions}
+    renderItem={(item, orientation) => <MovieCard item={item} orientation={orientation} view={views.get(item.id)} onView={() => router.push(`/perso/watching/${item.id}`)} onIntent={() => prefetch(item.id)} onDelete={onDelete} showEpisodeBadge={showEpisodeBadge} showRankBadge={showRankBadge} showWatchedAgo={showWatchedAgo} showCountdown={showCountdown} showCaughtUp={showCaughtUp} mark={mark} meta={meta} />} />;
+}
+
+type CustomMediaCarouselProps<T> = Pick<MediaCarouselProps, "title" | "subtitle" | "actions" | "onSeeAll" | "onAddClick"> & {
+  items: T[];
+  getItemKey: (item: T) => string;
+  renderItem: (item: T, orientation: "poster" | "backdrop") => React.ReactNode;
+};
+
+/** The same rail/navigation/reveal for personal media and scope-specific release cards. */
+export function MediaCarousel<T>(props: MediaCarouselProps | CustomMediaCarouselProps<T>) {
+  return "renderItem" in props ? <MediaCarouselLayout {...props} /> : <PersonalMediaCarousel {...props} />;
+}
+
+function MediaCarouselLayout<T>({ title, subtitle, items, getItemKey, renderItem, onAddClick, onSeeAll, actions }: CustomMediaCarouselProps<T>) {
   // Add IS shown in the read-only demo — clicking it runs the full add flow, then
   // the guarded mutation shows the friendly read-only toast.
   const canAdd = !!onAddClick;
@@ -325,9 +342,6 @@ export function MediaCarousel({
   const [cardsPerView, setCardsPerView] = useState(5);
   const prevFirstIdRef = useRef<string | null>(null);
   const gap = 16;
-  // One batched read for the whole rail, then a lens per card — the overlay costs a single query,
-  // not one per tile.
-  const views = useMediaViews(items);
 
   useEffect(() => {
     const handleResize = () => {
@@ -353,7 +367,7 @@ export function MediaCarousel({
   // adding (Want to Watch) AND a freshly-watched title entering Recently Watched
   // (which is length-capped, so a length check wouldn't fire).
   useEffect(() => {
-    const firstId = sortedItems[0]?.id ?? null;
+    const firstId = sortedItems.length ? getItemKey(sortedItems[0]) : null;
     if (prevFirstIdRef.current !== null && firstId && firstId !== prevFirstIdRef.current) {
       const frame = requestAnimationFrame(() => {
         setCurrentIndex(0);
@@ -363,7 +377,7 @@ export function MediaCarousel({
       return () => cancelAnimationFrame(frame);
     }
     prevFirstIdRef.current = firstId;
-  }, [sortedItems]);
+  }, [sortedItems, getItemKey]);
 
   const totalElements = sortedItems.length;
   const canGoPrev = currentIndex > 0;
@@ -431,9 +445,10 @@ export function MediaCarousel({
   }
 
   return (
-    <SectionImageReveal fallback={<CarouselSkeleton title={title} subtitle={subtitle} add={canAdd} seeAll={!!onSeeAll} />}>
+    <SectionImageReveal fallback={<CarouselSkeleton title={title} subtitle={subtitle} add={canAdd} seeAll={!!onSeeAll} actions={actions} />}>
     <section>
       <SectionHeader
+        className={actions ? "[&>div:last-child]:max-w-full [&>div:last-child]:shrink [&>div:last-child]:flex-wrap" : undefined}
         title={title}
         subtitle={subtitle}
         actions={
@@ -468,24 +483,11 @@ export function MediaCarousel({
       >
         {sortedItems.map((item) => (
           <div
-            key={item.id}
+            key={getItemKey(item)}
             className="shrink-0 snap-start"
             style={itemWidthStyle}
           >
-            <MovieCard
-              item={item}
-              view={views.get(item.id)}
-              onView={() => router.push(`/perso/watching/${item.id}`)}
-              onIntent={() => prefetch(item.id)}
-              onDelete={onDelete}
-              showEpisodeBadge={showEpisodeBadge}
-              showRankBadge={showRankBadge}
-              showWatchedAgo={showWatchedAgo}
-              showCountdown={showCountdown}
-              showCaughtUp={showCaughtUp}
-              mark={mark}
-              meta={meta}
-            />
+            {renderItem(item, "backdrop")}
           </div>
         ))}
       </div>
@@ -495,24 +497,10 @@ export function MediaCarousel({
       <div className="flex lg:hidden gap-3 overflow-x-auto custom-scrollbar-hide snap-x snap-mandatory py-1.5">
         {sortedItems.map((item) => (
           <div
-            key={item.id}
+            key={getItemKey(item)}
             className="w-[42%] md:w-[28%] shrink-0 snap-start"
           >
-            <MovieCard
-              orientation="poster"
-              item={item}
-              view={views.get(item.id)}
-              onView={() => router.push(`/perso/watching/${item.id}`)}
-              onIntent={() => prefetch(item.id)}
-              onDelete={onDelete}
-              showEpisodeBadge={showEpisodeBadge}
-              showRankBadge={showRankBadge}
-              showWatchedAgo={showWatchedAgo}
-              showCountdown={showCountdown}
-              showCaughtUp={showCaughtUp}
-              mark={mark}
-              meta={meta}
-            />
+            {renderItem(item, "poster")}
           </div>
         ))}
       </div>

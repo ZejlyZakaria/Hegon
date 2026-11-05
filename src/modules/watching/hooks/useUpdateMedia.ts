@@ -98,6 +98,10 @@ export function useUpdateMedia() {
       const input = rawInput;
       const { id } = input;
       // A server correction can also retire dates and ratings absent from the cursor patch.
+      // Even a note/favorite changes personal_revision; cached Resume targets must refresh.
+      if (input.type !== "film") {
+        queryClient.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "updates"] });
+      }
       const isStatusChange = hasAnyField(input, STATUS_FIELDS) ||
         input.history_intent === "correction" && hasAnyField(input, ["current_season", "current_episode"]);
 

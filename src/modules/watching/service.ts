@@ -1,3 +1,4 @@
+import { updatesCatalogueWorkKeys } from "./lib/updates";
 import { completionDatePatch } from "./lib/completion-date";
 import { buildRewatch, emptyCatalogue, type RewatchRequest, type RewatchCatalogue } from "./lib/rewatch";
 import { workKeyOf, rangeCount, frozenMinutes, formatHistoryDate, type HistoricalViewing, type HistoricalRating, type HistoryAnalytics } from "./lib/history-analytics";
@@ -2292,4 +2293,34 @@ export async function getAchievementReceipts(userId:string,orgId:string) {
     .eq("user_id",userId).eq("org_id",orgId);
   if(error) throw error;
   return {receipts:(data ?? []) as import("./lib/milestone-receipts").UnlockReceipt[]};
+}
+
+
+// Updates reads robot-written catalogues in bounded batches; never calls a provider on render.
+export async function getWatchingUpdatesData(userId: string, orgId: string): Promise<import("./lib/updates").UpdatesData> {
+  if (!userId || !orgId) throw new Error("Organization and user required");
+  const db = createClient().schema("watching");
+  const items = await fetchAllRows<import("./lib/updates").UpdatesMedia>((from, to) => db.from("media_items")
+    .select("id,tmdb_id,type,title,poster_url,backdrop_url,year,release_date,personal_revision,favorite,watched,in_progress,paused,dropped,want_to_watch,is_reference,resume_required,status,caught_up_at,current_season,current_episode,episodes,season_episodes,season_aired,season_years,season_ratings,cour_years,cour_ratings,season_posters,season_air_dates,season_end_dates")
+    .eq("user_id", userId).eq("org_id", orgId).in("type", ["serie", "anime"])
+    .or("watched.eq.true,in_progress.eq.true,resume_required.eq.true,paused.eq.true,dropped.eq.true,want_to_watch.eq.true")
+    .order("id").range(from, to));
+  const cours = await getAnimeCoursMany(items.filter(item => item.type === "anime").map(item => item.tmdb_id));
+  const base = { items, cours: [...cours.values()], catalogues: [] };
+  // Evidence is needed for TV weekly releases as well as accepted anime parts.
+  // Select remaining scopes before freshness classification, so missing dates cannot hide a candidate.
+  const workKeys = updatesCatalogueWorkKeys(base);
+  const readCatalogues = async () => {
+    const rows: import("./lib/updates").UpdatesData["catalogues"] = [];
+    // eslint-disable-next-line no-restricted-syntax -- Bounded catalogue batches and Range pagination, never one request per card.
+    for (let start = 0; start < workKeys.length; start += 100) {
+      const heads = await fetchAllRows<{ accepted_snapshot_id: string | null }>((from, to) => db.from("provider_heads")
+        .select("accepted_snapshot_id").eq("provider", "tmdb").in("work_key", workKeys.slice(start, start + 100)).order("work_key").range(from, to));
+      const ids = heads.flatMap(head => head.accepted_snapshot_id ? [head.accepted_snapshot_id] : []);
+      if (ids.length) rows.push(...await fetchAllRows<import("./lib/updates").UpdatesData["catalogues"][number]>((from, to) => db.from("provider_snapshots")
+        .select("work_key,facts").in("id", ids).order("id").range(from, to)));
+    }
+    return rows;
+  };
+  return { ...base, catalogues: await readCatalogues() };
 }

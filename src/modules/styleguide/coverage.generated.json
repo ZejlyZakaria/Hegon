@@ -335,7 +335,7 @@
       }
     },
     "watching": {
-      "files": 221,
+      "files": 228,
       "uses": [
         "badge",
         "button",
@@ -356,7 +356,7 @@
       "smells": {
         "arbitrary-type": 4,
         "handrolled-glass": 5,
-        "raw-scrim": 24
+        "raw-scrim": 25
       },
       "worst": {
         "arbitrary-type": {

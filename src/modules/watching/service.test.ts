@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/tests/mocks/server";
-import { getMediaItems, updateMediaItem, getMediaHistory, getPersonBundle, getWatchlistPage, getAnimeCoursMany, saveScopeRating, getHistoryAnalytics, addRewatch, getRewatches } from "./service";
+import { getWatchingUpdatesData, getMediaItems, updateMediaItem, getMediaHistory, getPersonBundle, getWatchlistPage, getAnimeCoursMany, saveScopeRating, getHistoryAnalytics, addRewatch, getRewatches } from "./service";
 import { mapCredits } from "./hooks/useMediaCredits";
 afterEach(() => vi.unstubAllEnvs());
 describe("Watching provider service contracts", () => {
@@ -274,4 +274,64 @@ it("does not let a thin catalogue refresh bypass the accepted provider transacti
   server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>HttpResponse.json(saved)),
     http.patch("https://watching-test.supabase.co/rest/v1/media_items",()=>{throw Error("Unaccepted catalogue overwrite");}));
   expect(await updateMediaItem("show",{season_aired:[10,1],season_episodes:[10,8],status:"ended"})).toEqual(saved);
+});
+
+
+it("does not promote a completed 2022 anime into the recent ten using an old 2026 position stamp", async () => {
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://watching-test.supabase.co");
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
+  const base={type:"anime",watched:true,in_progress:false,status:"ended",current_season:2,current_episode:11,season_aired:[12,11],season_episodes:[12,11]};
+  const promised={...base,id:"promised",title:"The Promised Neverland",watched_at:"2022-05-23 12:00:00",last_watched_at:"2026-09-19 14:43:25.894+00",caught_up_at:"2026-09-19 14:43:25.894+00",season_years:{1:2020,2:2022}};
+  const rows=[promised,...Array.from({length:10},(_,i)=>({...base,id:`recent-${i}`,watched_at:"2026-08-01",last_watched_at:null}))];
+  let reads=0;
+  server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>{reads++;return HttpResponse.json(rows);}));
+  const recent=await getMediaItems("owner","anime",{recentlyWatched:true,limit:10});
+  expect(recent).toHaveLength(10);
+  expect(recent.some(m=>m.id==="promised")).toBe(false);
+  const all=await getMediaItems("owner","anime",{recentlyWatched:true,limit:20});
+  expect(all.at(-1)).toMatchObject(promised);
+  expect(reads).toBe(2); // Same batch read per rail; no per-title history calls.
+});
+
+
+it("loads Updates with scoped, paginated batch reads and only accepted catalogue heads", async () => {
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://watching-test.supabase.co");
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
+  const calls:string[]=[];
+  server.use(http.get("https://watching-test.supabase.co/rest/v1/:table", ({request,params})=>{
+    const q=new URL(request.url).searchParams; calls.push(String(params.table));
+    expect(request.method).toBe("GET");
+    if(params.table==="media_items") {
+      expect(q.get("user_id")).toBe("eq.owner");expect(q.get("org_id")).toBe("eq.org");
+      expect(q.get("type")).toBe("in.(serie,anime)");expect(q.get("limit")).toBe("1000");
+      expect(q.get("or")).toContain("want_to_watch.eq.true");expect(q.get("select")).toContain("backdrop_url");
+      return HttpResponse.json([{id:"show",type:"anime",tmdb_id:42,in_progress:true,current_season:1,current_episode:12,season_episodes:[24],season_aired:[12]}]);
+    }
+    if(params.table==="anime_cours")return HttpResponse.json([{tmdb_id:42,source:"anilist",cours:[
+      {anilist_id:1,season:1,episodes:12,start_episode:1,end_episode:12},
+      {anilist_id:2,season:2,episodes:12,start_episode:13,end_episode:24}]}]);
+    if(params.table==="provider_heads") {expect(q.get("provider")).toBe("eq.tmdb");return HttpResponse.json([{accepted_snapshot_id:"accepted"},{accepted_snapshot_id:null}]);}
+    if(params.table==="provider_snapshots") {expect(q.get("id")).toBe("in.(accepted)");return HttpResponse.json([{work_key:"tv:42",facts:{seasons:[]}}]);}
+    return HttpResponse.json({message:"Unexpected read"},{status:500});
+  }));
+  const data=await getWatchingUpdatesData("owner","org");
+  expect(data.items).toHaveLength(1);expect(data.catalogues).toHaveLength(1);expect(data.cours).toHaveLength(1);
+  expect(calls.sort()).toEqual(["anime_cours","media_items","provider_heads","provider_snapshots"]);
+});
+
+
+it("Updates reads accepted TV episode evidence in a batch for release freshness", async () => {
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://watching-test.supabase.co");
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
+  let reads=0;
+  server.use(http.get("https://watching-test.supabase.co/rest/v1/media_items",()=>{
+    reads++;return HttpResponse.json([{id:"show",type:"serie",tmdb_id:42,in_progress:true,current_season:1,current_episode:10,season_episodes:[10,8],season_aired:[10,0],season_air_dates:[null,"2027-01-01"]}]);
+  }));
+  server.use(http.get("https://watching-test.supabase.co/rest/v1/provider_heads", ({request}) => {
+    reads++;expect(new URL(request.url).searchParams.get("work_key")).toBe("in.(tv:42)");return HttpResponse.json([{accepted_snapshot_id:"tv-accepted"}]);
+  }),http.get("https://watching-test.supabase.co/rest/v1/provider_snapshots", () => {
+    reads++;return HttpResponse.json([{work_key:"tv:42",facts:{seasons:[]}}]);
+  }));
+  const data=await getWatchingUpdatesData("owner","org");
+  expect(data.items).toHaveLength(1);expect(data.catalogues).toHaveLength(1);expect(data.cours).toEqual([]);expect(reads).toBe(3);
 });

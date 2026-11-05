@@ -1,3 +1,6 @@
+import { QueryClient } from "@tanstack/react-query";
+import { WATCHING_KEYS, PEOPLE_KEYS } from "../hooks/query-keys";
+import * as mutationDependencies from "./mutation-dependencies";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as timelineHelpers from "./viewing-timeline";
 import * as rewatchHelpers from "./rewatch";
@@ -5,7 +8,7 @@ import * as historyHelpers from "./history-analytics";
 import { parseViewingInput } from "./viewing-history";
 import * as seriesFacts from "./series-state";
 import { isWatchableNow } from "./watchable";
-import { canComplete, deriveWatchStatus } from "./watch-status";
+import { canComplete, deriveWatchStatus, resumePatch } from "./watch-status";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
@@ -332,4 +335,39 @@ describe("Best Episodes native still quality",()=>{
     expect(image.props.src).toBe("https://image.tmdb.org/t/p/w1280/show.jpg");expect(image.props.srcSet).toBeUndefined();
     expect(image.props.className).toContain("blur");
   });
+});
+
+
+it("Updates resumes a selected row through the existing writer without inventing consumption", async () => {
+  const writes:Record<string,unknown>[]=[];
+  const loaded=component("src/modules/watching/hooks/useWatchActions.tsx",{
+    "../lib/watch-status": {resumePatch},
+    "../lib/watchable": {isWatchableNow},
+    "./useMediaView": {useMediaView:()=>null},
+    "./useUpdateMedia": {useUpdateMedia:()=>({isPending:false,mutateAsync:async (patch:Record<string,unknown>)=>{writes.push(patch);return {personal_revision:8};}})},
+    "@tanstack/react-query": {useQueryClient:()=>({})},
+    "@/shared/utils/toast": {toast:()=>{}},
+  });
+  const actions=(loaded.useWatchActions as (media:null)=>{resumeItem:(row:unknown)=>Promise<unknown>})(null);
+  await actions.resumeItem({id:"selected",type:"anime",personal_revision:7,season_aired:[10,1]});
+  expect(writes).toHaveLength(1);
+  expect(writes[0]).toMatchObject({id:"selected",type:"anime",expected_revision:7,history_intent:"claim",in_progress:true,watched:false,resume_required:false});
+  for(const field of ["history_date","watched_at","last_watched_at","current_season","current_episode","season_years","cour_years","user_rating"])expect(writes[0]).not.toHaveProperty(field);
+});
+
+
+it.each(["anime","film"])("keeps Updates resume revisions fresh after a %s note edit", type => {
+  const client=new QueryClient();
+  const key=WATCHING_KEYS.updates("owner","org");
+  client.setQueryData(key,{items:[{id:"selected",personal_revision:1}]});
+  const loaded=component("src/modules/watching/hooks/useUpdateMedia.ts",{
+    "@tanstack/react-query": {useQueryClient:()=>client,useMutation:(options:unknown)=>options},
+    "./query-keys": {WATCHING_KEYS,PEOPLE_KEYS},
+    "../lib/mutation-dependencies": mutationDependencies,
+    "@/modules/settings/hooks/useSettings": {useIsDemo:()=>false},
+  });
+  const mutation=(loaded.useUpdateMedia as ()=>{onSuccess:(saved:unknown,input:unknown)=>void})();
+  mutation.onSuccess({id:"selected",personal_revision:2},{id:"selected",type,notes:"Updated note"});
+  expect(client.getQueryState(key)?.isInvalidated).toBe(type!=="film");
+  client.clear();
 });

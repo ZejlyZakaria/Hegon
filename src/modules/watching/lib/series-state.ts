@@ -396,8 +396,10 @@ export function caughtUpAt(m: SeriesFacts, existing?: string | null, allowStamp 
   return atFrontier ? (existing ?? (allowStamp ? new Date().toISOString() : null)) : null;
 }
 
-/** A frontier/correction timestamp is not consumption. Shared by rail order and its time label. */
-export function latestViewingAt(m: {watched_at?: string | null; last_watched_at?: string | null}): string | null {
+/** Shared by rail order and its time label. A completed claim is dated by its completion
+ * projection; legacy activity stamps can describe an old position edit rather than a viewing.
+ * Ongoing titles still need their actual forward-viewing stamp (e.g. a later aired season). */
+export function latestViewingAt(m: {watched?: boolean; watched_at?: string | null; last_watched_at?: string | null}): string | null {
   const canonical = (value:string|null|undefined) => {
     if (!value || !/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(value)) return value;
     // watched_at is legacy timestamp-without-zone stored in UTC; last_watched_at is timestamptz.
@@ -405,6 +407,7 @@ export function latestViewingAt(m: {watched_at?: string | null; last_watched_at?
     const iso=value.replace(" ","T");
     return /(?:Z|[+-]\d{2}(?::?\d{2})?)$/i.test(iso) ? iso.replace(/([+-]\d{2})$/,"$1:00") : `${iso}Z`;
   };
-  return [m.watched_at,m.last_watched_at].map(canonical).filter((v):v is string=>!!v && Number.isFinite(Date.parse(v)))
+  const dates = m.watched ? [m.watched_at] : [m.watched_at,m.last_watched_at];
+  return dates.map(canonical).filter((v):v is string=>!!v && Number.isFinite(Date.parse(v)))
     .sort((a,b)=>Date.parse(b)-Date.parse(a))[0] ?? null;
 }
