@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bookmark, Eye, EyeOff, LayoutGrid, ListOrdered } from "lucide-react";
+import { Bookmark, Eye, EyeOff, LayoutGrid, ListOrdered } from "lucide-react";
 import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/utils";
@@ -14,6 +14,10 @@ import { useAwardCategories, useAwardCategoryRows, useOwnedTitles } from "@/modu
 import { canonStatus, indexOwned, isSeen, ownedFor, type CanonBucket } from "@/modules/watching/lib/awards";
 import { displayTitle } from "@/modules/watching/utils";
 import type { AwardEntry, OwnedIndexRow } from "@/modules/watching/types";
+import { AwardCategoryGridSkeleton, AwardTitleSkeleton, AwardSummarySkeleton } from "./AwardsSkeletons";
+import { AwardBackBar } from "./AwardsControls";
+import { WatchingReadError } from "../shared/WatchingReadError";
+import { queryReadState } from "../../lib/query-read-state";
 import { entryImage } from "./AwardsClient";
 import { NomineesPanel } from "./NomineesPanel";
 
@@ -40,7 +44,6 @@ const BUCKETS: { value: Bucket; label: string; icon: React.ReactNode }[] = [
 ];
 
 export function AwardCategoryClient({ userId, categoryKey }: { userId: string; categoryKey: string }) {
-  const router = useRouter();
   const [bucket, setBucket] = useState<Bucket>("all");
   const [nomineesOpen, setNomineesOpen] = useState(false);
   const categoriesQ = useAwardCategories();
@@ -62,23 +65,15 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
   // "since" from the rows themselves — the table's value is a nominal first ceremony.
   const since = winners.length ? Math.min(...winners.map((e) => e.year)) : null;
 
-  const loading = categoriesQ.isLoading || rowsQ.isLoading || ownedQ.isLoading;
+  const read = queryReadState([categoriesQ, rowsQ, ownedQ]);
+  const loading = read.loading;
+
+  if (!categoriesQ.isLoading && categoriesQ.data && !category && !categoriesQ.isError) return <div className="flex flex-col"><AwardBackBar /><p className="p-4 text-sm text-text-secondary">This award category was not found.</p></div>;
 
   return (
     <div className="flex flex-col">
       {/* ── Contextual topbar — the list detail's, verbatim ── */}
-      <div className="flex items-center gap-2 border-b border-border-subtle bg-zinc-950 px-4 py-3 sm:px-6">
-        <button
-          type="button"
-          // Back to the ceremony you came from — the Awards page reads it from the URL.
-          onClick={() => router.push(`/perso/watching/awards?c=${category?.ceremony ?? "oscars"}`)}
-          className="flex shrink-0 items-center gap-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary"
-        >
-          <ArrowLeft size={14} />
-          <span className="hidden sm:inline">Back to Awards</span>
-          <span className="sm:hidden">Back</span>
-        </button>
-      </div>
+      <AwardBackBar ceremony={category?.ceremony ?? "oscars"} />
 
       {/* The filters face the TITLE, not the Back button (owner): they are about this list. */}
       <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-5 sm:px-6">
@@ -86,13 +81,13 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
           <p className="text-caption uppercase text-text-tertiary">{category?.ceremony === "emmys" ? "Emmys" : "Oscars"}</p>
           {/* Both lines are reserved at their real height while loading (h-7 title, h-4 stats), so the
               filters facing them stand where they will stand — nothing slides down when the data lands. */}
-          {category ? (
+          {read.blocked && !category ? <h1 className="mt-1 text-xl font-bold leading-7 text-text-primary">Award category</h1> : category ? (
             <h1 className="mt-1 text-xl font-bold leading-7 text-text-primary">{category.label}</h1>
           ) : (
-            <div className="mt-1 flex h-7 items-center"><div className="h-5 w-40 animate-pulse rounded-control bg-surface-2" /></div>
+            <AwardTitleSkeleton />
           )}
-          {loading ? (
-            <div className="mt-1 flex h-4 items-center"><div className="h-3 w-52 animate-pulse rounded-control bg-surface-2" /></div>
+          {read.blocked ? <p className="mt-1 h-4 text-xs text-text-tertiary">Viewing status unavailable</p> : loading ? (
+            <AwardSummarySkeleton />
           ) : (
             <p className="mt-1 h-4 text-xs leading-4 tabular-nums text-text-tertiary">
               <span className="font-medium text-text-secondary">{seen}</span> of {winners.length} winners watched
@@ -102,7 +97,7 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <SegmentedControl items={BUCKETS} value={bucket} onChange={setBucket} size="sm" responsiveLabels />
-          <Button variant="quiet" size="sm" onClick={() => setNomineesOpen(true)}>
+          <Button variant="quiet" size="sm" disabled={loading || read.blocked} onClick={() => setNomineesOpen(true)}>
             <ListOrdered />
             Nominees
           </Button>
@@ -111,16 +106,9 @@ export function AwardCategoryClient({ userId, categoryKey }: { userId: string; c
 
       {category && <NomineesPanel open={nomineesOpen} onClose={() => setNomineesOpen(false)} category={category} entries={all} owned={owned} />}
 
-      {loading ? (
-        <div className="grid grid-cols-3 gap-3 p-4 sm:grid-cols-4 sm:p-6 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
-          {Array.from({ length: 20 }, (_, i) => (
-            <div key={i} className="animate-pulse">
-              <div className="aspect-2/3 rounded-tile bg-surface-2" />
-              <div className="mt-2 h-3 w-3/4 rounded bg-surface-2" />
-              <div className="mt-1.5 h-2.5 w-1/2 rounded bg-surface-2" />
-            </div>
-          ))}
-        </div>
+      {(read.blocked || read.stale) && <div className="px-4 pt-4 sm:px-6"><WatchingReadError resource="this award category" cached={!read.blocked} onRetry={read.retry} /></div>}
+      {read.blocked ? null : loading ? (
+        <AwardCategoryGridSkeleton />
       ) : entries.length === 0 ? (
         <p className="px-4 py-8 text-xs text-text-tertiary sm:px-6">
           {winners.length === 0 ? "Nothing here yet — the source has no winners for this category, or the last sync missed it." : "No winner matches this filter."}

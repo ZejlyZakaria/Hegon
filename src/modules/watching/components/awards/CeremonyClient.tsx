@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CalendarClock } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { AwardRibbon, ScoreMark } from "@/modules/watching/components/shared/Marks";
 import { AddMark } from "@/modules/watching/components/shared/AddMark";
@@ -12,6 +12,10 @@ import { useAwardCategories, useAwardCeremonies, useAwardYear, useOwnedTitles } 
 import { canonStatus, indexOwned, isSeen, ownedFor } from "@/modules/watching/lib/awards";
 import { displayTitle } from "@/modules/watching/utils";
 import type { AwardCategory, AwardCeremony, AwardCeremonyRow, AwardEntry, OwnedIndexRow } from "@/modules/watching/types";
+import { CeremonyRowsSkeleton, AwardSummarySkeleton } from "./AwardsSkeletons";
+import { AwardBackBar } from "./AwardsControls";
+import { WatchingReadError } from "../shared/WatchingReadError";
+import { queryReadState } from "../../lib/query-read-state";
 import { entryImage } from "./AwardsClient";
 
 /**
@@ -31,7 +35,6 @@ export const daysUntil = (iso: string) => Math.ceil((new Date(iso + "T00:00:00")
 const fmtDate = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 export function CeremonyClient({ userId, ceremony, year }: { userId: string; ceremony: AwardCeremony; year: number }) {
-  const router = useRouter();
   const categoriesQ = useAwardCategories();
   const ceremoniesQ = useAwardCeremonies();
   const rowsQ = useAwardYear(ceremony, year);
@@ -51,26 +54,17 @@ export function CeremonyClient({ userId, ceremony, year }: { userId: string; cer
   const days = info?.held_on ? daysUntil(info.held_on) : null;
   const upcoming = days != null && days >= 0;
   const seen = entries.filter((e) => isSeen(ownedFor(owned, e))).length;
-  const loading = categoriesQ.isLoading || rowsQ.isLoading || ownedQ.isLoading;
+  const read = queryReadState([categoriesQ, ceremoniesQ, rowsQ, ownedQ]);
+  const loading = read.loading;
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 border-b border-border-subtle bg-zinc-950 px-4 py-3 sm:px-6">
-        <button
-          type="button"
-          onClick={() => router.push(`/perso/watching/awards?c=${ceremony}`)}
-          className="flex shrink-0 items-center gap-1.5 text-sm text-text-tertiary transition-colors hover:text-text-primary"
-        >
-          <ArrowLeft size={14} />
-          <span className="hidden sm:inline">Back to Awards</span>
-          <span className="sm:hidden">Back</span>
-        </button>
-      </div>
+      <AwardBackBar ceremony={ceremony} />
 
       <div className="px-4 pt-5 sm:px-6">
         <p className="text-caption uppercase text-text-tertiary">{ceremony === "emmys" ? "Emmys" : "Oscars"} · {year}</p>
         <h1 className="mt-1 text-xl font-bold text-text-primary">{ceremonyName(ceremony, info?.edition ?? null, year)}</h1>
-        <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs tabular-nums text-text-tertiary">
+        {loading ? <AwardSummarySkeleton /> : <p className="mt-1 flex min-h-4 flex-wrap items-center gap-x-2 text-xs tabular-nums text-text-tertiary">
           {info?.held_on && (
             <span className="flex items-center gap-1.5">
               <CalendarClock size={12} />
@@ -78,21 +72,15 @@ export function CeremonyClient({ userId, ceremony, year }: { userId: string; cer
               {upcoming && <span className="font-semibold" style={{ color: "var(--color-award)" }}>· {days === 0 ? "tonight" : days === 1 ? "tomorrow" : `in ${days} days`}</span>}
             </span>
           )}
-          {!loading && entries.length > 0 && (
+          {!loading && !read.blocked && entries.length > 0 && (
             <span>· <span className="font-medium text-text-secondary">{seen}</span> of {entries.length} {upcoming ? "nominees" : "titles"} seen</span>
           )}
-        </p>
+        </p>}
       </div>
 
-      {loading ? (
-        <div className="space-y-6 p-4 sm:p-6">
-          {Array.from({ length: 4 }, (_, i) => (
-            <div key={i} className="animate-pulse">
-              <div className="mb-3 h-3.5 w-40 rounded bg-surface-2" />
-              <div className="flex gap-3">{Array.from({ length: 5 }, (_, j) => <div key={j} className="aspect-2/3 w-28 shrink-0 rounded-tile bg-surface-2" />)}</div>
-            </div>
-          ))}
-        </div>
+      {(read.blocked || read.stale) && <div className="px-4 pt-4 sm:px-6"><WatchingReadError resource="this ceremony" cached={!read.blocked} onRetry={read.retry} /></div>}
+      {read.blocked ? null : loading ? (
+        <CeremonyRowsSkeleton />
       ) : entries.length === 0 ? (
         <p className="px-4 py-8 text-xs text-text-tertiary sm:px-6">No nominees yet for this ceremony.</p>
       ) : (

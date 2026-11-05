@@ -18,6 +18,8 @@ import { Hint } from "@/shared/components/ui/tooltip";
 import { InlineFormActions } from "@/shared/components/ui/inline-form-actions";
 import { Badge } from "@/shared/components/ui/badge";
 import { GOLD, MINE, RankMark, OVERLAY_CLUSTER, OVERLAY_CIRCLE } from "@/modules/watching/components/shared/Marks";
+import { queryReadState } from "../../lib/query-read-state";
+import { WatchingReadError } from "../shared/WatchingReadError";
 import { WATCHING_ACCENT } from "../../ui";
 
 // Type is a category → a tinted badge, one colour per type. It used to be a grey pill that
@@ -745,7 +747,9 @@ function GridItem({ item, rank, onOpen, onRemove, listId, lens }: {
 
 export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbnails; userId: string; onBack: () => void }) {
   const router = useRouter();
-  const { data: rawItems = [], isLoading } = useListItems(list.id);
+  const itemsQuery = useListItems(list.id);
+  const { data: rawItems = [], isLoading } = itemsQuery;
+  const read = queryReadState([itemsQuery]);
   const removeItem = useRemoveItemFromList(list.id);
   const updateList = useUpdateMediaList(userId);
   const deleteList = useDeleteMediaList(userId);
@@ -855,6 +859,8 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
       toast.error("Failed to remove.");
     }
   };
+
+  if (read.blocked) return <div className="space-y-4 p-4 md:p-6"><Button variant="quiet" size="sm" onClick={onBack}><ArrowLeft />Back to Lists</Button><h1 className="text-xl font-semibold text-text-primary">{list.name}</h1><WatchingReadError resource="this list's titles" onRetry={read.retry} /></div>;
 
   return (
     <div className="flex flex-col">
@@ -1040,6 +1046,7 @@ export function ListDetail({ list, userId, onBack }: { list: MediaListWithThumbn
         </div>
       </div>
 
+      {read.stale && <div className="px-4 py-3"><WatchingReadError resource="this list's titles" cached onRetry={read.retry} /></div>}
       {/* ── Content ── */}
       <div className="flex flex-col pb-8">
         {isLoading && (

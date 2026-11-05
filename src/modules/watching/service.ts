@@ -1207,12 +1207,14 @@ export async function getListsWithThumbnails(userId: string): Promise<MediaListW
   if (!lists?.length) return [];
 
   const listIds = lists.map((l: any) => l.id);
-  const { data: items } = await supabase
+  const { data: items, error: itemsError } = await supabase
     .schema("watching")
     .from("media_list_items")
     .select("list_id, media_items(id, poster_url, title)")
     .in("list_id", listIds)
     .order("position", { ascending: true });
+
+  if (itemsError) throw itemsError;
 
   const byList = new Map<string, { poster_url: string | null; title: string }[]>();
   for (const item of items ?? []) {

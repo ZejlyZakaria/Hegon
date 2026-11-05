@@ -3,13 +3,15 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, CalendarClock, Trophy } from "lucide-react";
-import { SegmentedControl } from "@/shared/components/ui/segmented-control";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { MediaCarousel } from "@/modules/watching/components/shared/MediaCarousel";
 import { AwardRibbon } from "@/modules/watching/components/shared/Marks";
-import { CarouselSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
+import { AwardShelfSkeleton, AwardCategoriesSkeleton } from "./AwardsSkeletons";
+import { AwardCeremonyControl } from "./AwardsControls";
+import { WatchingReadError } from "../shared/WatchingReadError";
+import { queryReadState } from "../../lib/query-read-state";
 import { useAwardCategories, useAwardCeremonies, useAwardWinners, useAwardYear, useOwnedTitles, useShelfRows } from "@/modules/watching/hooks/useAwards";
 import { buildShelf, coverage, indexOwned, ownedFor, posterUrl } from "@/modules/watching/lib/awards";
 import { TrophyShelfPanel } from "./TrophyShelfPanel";
@@ -30,12 +32,6 @@ import type { AwardCategory, AwardCeremony, AwardEntry, OwnedIndexRow } from "@/
  * the ceremony you left, not on the default.
  */
 
-const CEREMONIES: { value: AwardCeremony; label: string }[] = [
-  { value: "oscars", label: "Oscars" },
-  { value: "emmys", label: "Emmys" },
-];
-
-
 /**
  * The image a canon entry shows. A portrait category (Best Actor) shows the PERSON — the prize is
  * theirs — and falls back to the poster when TMDB has no photo of them; every other category shows
@@ -51,10 +47,8 @@ export function entryImage(e: AwardEntry, o: OwnedIndexRow | null, portrait: boo
 }
 
 export function AwardsClient({ userId }: { userId: string }) {
-  const router = useRouter();
   const params = useSearchParams();
   const ceremony: AwardCeremony = params.get("c") === "emmys" ? "emmys" : "oscars";
-  const setCeremony = (c: AwardCeremony) => router.replace(`/perso/watching/awards?c=${c}`, { scroll: false });
   const [shelfOpen, setShelfOpen] = useState(false);
   const categoriesQ = useAwardCategories();
   const ceremoniesQ = useAwardCeremonies();
@@ -81,10 +75,18 @@ export function AwardsClient({ userId }: { userId: string }) {
   const shelfIds = useMemo(() => shelf.map((s) => s.owned.id), [shelf]);
   const shelfRowsQ = useShelfRows(shelfIds);
 
-  const loading = categoriesQ.isLoading || winnersQ.isLoading || ownedQ.isLoading || (shelfIds.length > 0 && shelfRowsQ.isLoading);
+  const base = queryReadState([categoriesQ, winnersQ, ownedQ]);
+  const shelfRead = queryReadState([shelfRowsQ]);
+  const loading = base.loading;
+  const ceremonyControl = <AwardCeremonyControl ceremony={ceremony} />;
+  const shelfSubtitle = !base.loading && !base.blocked ? `${shelf.length} award-winning ${shelf.length === 1 ? "title" : "titles"} you've seen` : "Award-winning titles you've seen";
+
+  if (base.blocked) return <div className="space-y-4 p-4 md:p-6"><SectionHeader title="Your trophy shelf" actions={ceremonyControl} /><WatchingReadError resource="awards and your viewing status" onRetry={base.retry} /></div>;
 
   return (
     <div className="space-y-8 p-4 md:p-6">
+      {base.stale && <WatchingReadError resource="awards and your viewing status" cached onRetry={base.retry} />}
+      {(ceremoniesQ.isError || nextRowsQ.isError) && <WatchingReadError resource="upcoming ceremonies" cached={ceremoniesQ.data !== undefined && nextRowsQ.data !== undefined} onRetry={() => { if (ceremoniesQ.isError) void ceremoniesQ.refetch(); if (nextRowsQ.isError) void nextRowsQ.refetch(); }} />}
       {/* ── This year — the run-up to the next ceremony, while there is one ── */}
       {next && (nextRowsQ.data?.length ?? 0) > 0 && (() => {
         const nominees = nextRowsQ.data ?? [];
@@ -115,14 +117,17 @@ export function AwardsClient({ userId }: { userId: string }) {
       })()}
 
       {/* ── Your trophy shelf — the opening; the ceremony switch sits in its header ── */}
-      {loading ? (
-        <CarouselSkeleton />
+      {loading || shelfRead.loading ? (
+        <AwardShelfSkeleton ceremony={ceremony} subtitle={shelfSubtitle} actions={ceremonyControl} />
+      ) : shelfRead.blocked ? (
+        <WatchingReadError resource="your trophy shelf" onRetry={shelfRead.retry} />
       ) : shelf.length > 0 ? (
         <MediaCarousel
+          staticSkeletonTitle
           title="Your trophy shelf"
-          subtitle={`${shelf.length} award-winning ${shelf.length === 1 ? "title" : "titles"} you've seen`}
+          subtitle={shelfSubtitle}
           items={shelfRowsQ.data ?? []}
-          actions={<SegmentedControl items={CEREMONIES} value={ceremony} onChange={setCeremony} size="sm" />}
+          actions={ceremonyControl}
           onSeeAll={() => setShelfOpen(true)}
           mark={(item) => {
             const s = shelfById.get(item.id);
@@ -144,7 +149,7 @@ export function AwardsClient({ userId }: { userId: string }) {
           <SectionHeader
             title="Your trophy shelf"
             subtitle="Award-winning titles you've seen"
-            actions={<SegmentedControl items={CEREMONIES} value={ceremony} onChange={setCeremony} size="sm" />}
+            actions={ceremonyControl}
           />
           <div className="flex items-center gap-3 rounded-card border border-border-subtle bg-surface-1 px-4 py-5">
             <Trophy size={16} className="shrink-0 text-text-tertiary" />
@@ -153,11 +158,12 @@ export function AwardsClient({ userId }: { userId: string }) {
         </section>
       )}
 
+      {shelfRead.stale && <WatchingReadError resource="your trophy shelf" cached onRetry={shelfRead.retry} />}
       {/* ── The canon, category by category ── */}
       <section>
         <SectionHeader title="Categories" subtitle="The canon, category by category — what you've seen, and what's left" />
         {loading ? (
-          <CategoriesSkeleton />
+          <AwardCategoriesSkeleton />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {categories.map((c) => (
@@ -234,24 +240,5 @@ function CategoryCard({ category, entries, owned }: { category: AwardCategory; e
         </div>
       </div>
     </Link>
-  );
-}
-
-function CategoriesSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-      {Array.from({ length: 8 }, (_, i) => (
-        <div key={i} className="animate-pulse overflow-hidden rounded-card border border-border-subtle bg-surface-1">
-          <div className="flex h-42 gap-0.5 bg-black">
-            {[0, 1, 2].map((j) => <div key={j} className="flex-1 bg-surface-2" />)}
-          </div>
-          <div className="p-3">
-            <div className="h-3.5 w-24 rounded bg-surface-2" />
-            <div className="mt-2 h-2.5 w-20 rounded bg-surface-2" />
-            <div className="mt-2 h-1 w-full rounded bg-surface-2" />
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }

@@ -34,6 +34,8 @@ import { MediaActionMenu } from "./MediaActionMenu";
 type MediaCarouselProps = {
   title: string;
   subtitle?: string;
+  /** Keep a known section title visible while its data/images load. */
+  staticSkeletonTitle?: boolean;
   items: WatchingMedia[];
   onAddClick?: () => void;
   /** The rail is a window on a bigger list — this opens the whole of it. */
@@ -302,6 +304,7 @@ function MovieCard({
 function PersonalMediaCarousel({
   title,
   subtitle,
+  staticSkeletonTitle,
   items,
   onAddClick,
   onSeeAll,
@@ -318,11 +321,11 @@ function PersonalMediaCarousel({
   const router = useRouter();
   const prefetch = usePrefetchMedia();
   const views = useMediaViews(items);
-  return <MediaCarouselLayout title={title} subtitle={subtitle} items={items} getItemKey={item => item.id} onAddClick={onAddClick} onSeeAll={onSeeAll} actions={actions}
+  return <MediaCarouselLayout title={title} subtitle={subtitle} staticSkeletonTitle={staticSkeletonTitle} items={items} getItemKey={item => item.id} onAddClick={onAddClick} onSeeAll={onSeeAll} actions={actions}
     renderItem={(item, orientation) => <MovieCard item={item} orientation={orientation} view={views.get(item.id)} onView={() => router.push(`/perso/watching/${item.id}`)} onIntent={() => prefetch(item.id)} onDelete={onDelete} showEpisodeBadge={showEpisodeBadge} showRankBadge={showRankBadge} showWatchedAgo={showWatchedAgo} showCountdown={showCountdown} showCaughtUp={showCaughtUp} mark={mark} meta={meta} />} />;
 }
 
-type CustomMediaCarouselProps<T> = Pick<MediaCarouselProps, "title" | "subtitle" | "actions" | "onSeeAll" | "onAddClick"> & {
+type CustomMediaCarouselProps<T> = Pick<MediaCarouselProps, "title" | "subtitle" | "staticSkeletonTitle" | "actions" | "onSeeAll" | "onAddClick"> & {
   items: T[];
   getItemKey: (item: T) => string;
   renderItem: (item: T, orientation: "poster" | "backdrop") => React.ReactNode;
@@ -333,7 +336,7 @@ export function MediaCarousel<T>(props: MediaCarouselProps | CustomMediaCarousel
   return "renderItem" in props ? <MediaCarouselLayout {...props} /> : <PersonalMediaCarousel {...props} />;
 }
 
-function MediaCarouselLayout<T>({ title, subtitle, items, getItemKey, renderItem, onAddClick, onSeeAll, actions }: CustomMediaCarouselProps<T>) {
+function MediaCarouselLayout<T>({ title, subtitle, staticSkeletonTitle, items, getItemKey, renderItem, onAddClick, onSeeAll, actions }: CustomMediaCarouselProps<T>) {
   // Add IS shown in the read-only demo — clicking it runs the full add flow, then
   // the guarded mutation shows the friendly read-only toast.
   const canAdd = !!onAddClick;
@@ -445,7 +448,7 @@ function MediaCarouselLayout<T>({ title, subtitle, items, getItemKey, renderItem
   }
 
   return (
-    <SectionImageReveal fallback={<CarouselSkeleton title={title} subtitle={subtitle} add={canAdd} seeAll={!!onSeeAll} actions={actions} />}>
+    <SectionImageReveal fallback={<CarouselSkeleton staticTitle={staticSkeletonTitle} title={title} subtitle={subtitle} add={canAdd} seeAll={!!onSeeAll} actions={actions} />}>
     <section>
       <SectionHeader
         className={actions ? "[&>div:last-child]:max-w-full [&>div:last-child]:shrink [&>div:last-child]:flex-wrap" : undefined}

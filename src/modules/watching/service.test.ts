@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/tests/mocks/server";
-import { getWatchingUpdatesData, getMediaItems, updateMediaItem, getMediaHistory, getPersonBundle, getWatchlistPage, getAnimeCoursMany, saveScopeRating, getHistoryAnalytics, addRewatch, getRewatches } from "./service";
+import { getListsWithThumbnails, getWatchingUpdatesData, getMediaItems, updateMediaItem, getMediaHistory, getPersonBundle, getWatchlistPage, getAnimeCoursMany, saveScopeRating, getHistoryAnalytics, addRewatch, getRewatches } from "./service";
 import { mapCredits } from "./hooks/useMediaCredits";
 afterEach(() => vi.unstubAllEnvs());
 describe("Watching provider service contracts", () => {
@@ -334,4 +334,22 @@ it("Updates reads accepted TV episode evidence in a batch for release freshness"
   }));
   const data=await getWatchingUpdatesData("owner","org");
   expect(data.items).toHaveLength(1);expect(data.catalogues).toHaveLength(1);expect(data.cours).toEqual([]);expect(reads).toBe(3);
+});
+
+
+describe("List loading failures are never empty collections", () => {
+  it("propagates a child read failure instead of inventing a zero count", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://watching-test.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
+    server.use(http.get("https://watching-test.supabase.co/rest/v1/media_lists", () => HttpResponse.json([{id:"list",name:"Existing list"}])),
+      http.get("https://watching-test.supabase.co/rest/v1/media_list_items", () => HttpResponse.json({message:"Items unavailable"},{status:503})));
+    await expect(getListsWithThumbnails("owner")).rejects.toMatchObject({message:"Items unavailable"});
+  });
+  it("preserves valid empty lists and successful counts", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://watching-test.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
+    server.use(http.get("https://watching-test.supabase.co/rest/v1/media_lists", () => HttpResponse.json([{id:"empty",name:"Empty list"},{id:"full",name:"A list"}])),
+      http.get("https://watching-test.supabase.co/rest/v1/media_list_items", () => HttpResponse.json([{list_id:"full",media_items:{id:"film",title:"A film",poster_url:null}}])));
+    expect(await getListsWithThumbnails("owner")).toMatchObject([{id:"empty",count:0,thumbnails:[]},{id:"full",count:1,thumbnails:[{title:"A film"}]}]);
+  });
 });

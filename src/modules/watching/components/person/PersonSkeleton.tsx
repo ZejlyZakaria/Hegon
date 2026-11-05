@@ -1,15 +1,13 @@
 "use client";
 
-const Bar = ({ className }: { className: string }) => (
-  <div className={`animate-pulse rounded bg-surface-2 ${className}`} />
-);
+import { Pulse } from "../shared/SkeletonPulse";
 
 const PosterGrid = ({ n }: { n: number }) => (
   <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
     {Array.from({ length: n }, (_, i) => (
       <div key={i}>
-        <div className="aspect-2/3 animate-pulse rounded-tile bg-surface-2" />
-        <Bar className="mt-2 h-3 w-4/5" />
+        <Pulse className="aspect-2/3 rounded-tile" />
+        <Pulse className="mt-2 h-3 w-4/5" />
       </div>
     ))}
   </div>
@@ -30,10 +28,10 @@ export function PersonSkeleton() {
           <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/30 to-transparent" />
         </div>
         <div className="relative -mt-16 flex flex-col items-center px-4 pb-2">
-          <div className="aspect-2/3 w-(--poster-md) shrink-0 animate-pulse rounded-tile bg-surface-2" />
-          <Bar className="mt-3 h-6 w-40" />
-          <Bar className="mt-2.5 h-4 w-56" />
-          <Bar className="mt-3 h-14 w-full" />
+          <Pulse className="aspect-2/3 w-(--poster-md) shrink-0 rounded-tile" />
+          <Pulse className="mt-3 h-6 w-40" />
+          <Pulse className="mt-2.5 h-4 w-56" />
+          <Pulse className="mt-3 h-14 w-full" />
         </div>
       </div>
 
@@ -45,15 +43,16 @@ export function PersonSkeleton() {
           the old skeleton showed a plain empty banner there and the whole block popped in at
           once the moment the row landed. No tags row, no trailer button here — Person has
           neither; that's the "necessary adaptation" from the detail page's shape. */}
-      <div className="relative hidden w-full animate-pulse overflow-hidden bg-surface-2 lg:block lg:aspect-21/9 lg:max-h-[55vh] lg:min-h-70">
+      <div className="relative hidden w-full overflow-hidden lg:block lg:aspect-21/9 lg:max-h-[55vh] lg:min-h-70">
+        <Pulse className="absolute inset-0 rounded-none" />
         <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/40 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 px-10 pb-8">
           <div className="flex items-end gap-8">
-            <div className="aspect-2/3 w-(--poster-xl) shrink-0 animate-pulse rounded-tile bg-surface-2" />
+            <Pulse className="aspect-2/3 w-(--poster-xl) shrink-0 rounded-tile" />
             <div className="flex-1 space-y-3 pb-1">
-              <div className="h-7 w-2/3 animate-pulse rounded-control bg-surface-2" />
-              <div className="h-4 w-1/3 animate-pulse rounded bg-surface-2" />
-              <div className="h-10 w-full max-w-4xl animate-pulse rounded-control bg-surface-2" />
+              <Pulse className="h-7 w-2/3 rounded-control" />
+              <Pulse className="h-4 w-1/3 rounded-control" />
+              <Pulse className="h-10 w-full max-w-4xl rounded-control" />
             </div>
           </div>
         </div>
@@ -61,17 +60,17 @@ export function PersonSkeleton() {
 
       {/* Mobile slot — the branded card rides right after the hero, as on the real page */}
       <div className="px-4 pt-4 lg:hidden">
-        <div className="h-52 animate-pulse rounded-card bg-surface-2" />
+        <Pulse className="h-52 rounded-card" />
       </div>
 
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
           <div>
-            <Bar className="mb-3 h-4 w-44" />
+            <Pulse className="mb-3 h-4 w-44" />
             <PosterGrid n={6} />
           </div>
           <div>
-            <Bar className="mb-3 h-4 w-32" />
+            <Pulse className="mb-3 h-4 w-32" />
             {/* Not seen yet starts at exactly 18 — `visibleCount`'s initial state in
                 PersonPage.tsx, a fixed constant, not a data-dependent guess like the row above. */}
             <PosterGrid n={18} />
@@ -80,14 +79,14 @@ export function PersonSkeleton() {
 
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-2 lg:pr-8">
           {/* Desktop only — on mobile this card already appeared under the hero */}
-          <div className="hidden h-52 animate-pulse rounded-card bg-surface-2 lg:block" />
+          <Pulse className="hidden h-52 rounded-card lg:block" />
           <div>
-            <Bar className="mb-3 h-4 w-32" />
-            <div className="h-40 animate-pulse rounded-card bg-surface-2" />
+            <Pulse className="mb-3 h-4 w-32" />
+            <Pulse className="h-40 rounded-card" />
           </div>
           <div>
-            <Bar className="mb-3 h-4 w-28" />
-            <div className="h-28 animate-pulse rounded-card bg-surface-2" />
+            <Pulse className="mb-3 h-4 w-28" />
+            <Pulse className="h-28 rounded-card" />
           </div>
         </div>
       </div>

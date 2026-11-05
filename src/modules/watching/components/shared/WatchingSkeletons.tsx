@@ -23,10 +23,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Plus } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 
-/** THE pulse: one animation, one surface, one default corner. Every skeleton in Watching draws this. */
-export function Pulse({ className }: { className: string }) {
-  return <div className={`animate-pulse rounded-control bg-surface-2 ${className}`} />;
-}
+import { Pulse } from "./SkeletonPulse";
+export { Pulse } from "./SkeletonPulse";
 
 /**
  * THE CELLS OF A PAGED RAIL — as many as the real rail shows at each width, not one more. A rail
@@ -92,9 +90,9 @@ export function PosterCellsSkeleton({ rail }: { rail: keyof typeof RAIL_CELLS })
  * symptom (`cards={5}`) instead of the cause; two matching CSS breakpoints replace both the prop
  * and the patch.
  */
-function SkeletonHeader({ title, subtitle, nav = true, add = false, seeAll = false, actions }: { title: string; subtitle?: string; nav?: boolean; add?: boolean; seeAll?: boolean; actions?: React.ReactNode }) {
+function SkeletonHeader({ title, subtitle, nav = true, add = false, seeAll = false, actions, staticTitle = false }: { staticTitle?: boolean; title: string; subtitle?: string; nav?: boolean; add?: boolean; seeAll?: boolean; actions?: React.ReactNode }) {
   const line = (text: string) => <span className="relative block"><span className="invisible">{text}</span><span className="absolute inset-x-0 top-1/2 h-[0.8em] -translate-y-1/2 animate-pulse rounded-control bg-surface-2" /></span>;
-  return <div aria-hidden="true"><SectionHeader className={actions ? "[&>div:last-child]:max-w-full [&>div:last-child]:shrink [&>div:last-child]:flex-wrap" : undefined} title={line(title)} subtitle={subtitle ? line(subtitle) : undefined} actions={nav || add || seeAll || actions ? <>
+  return <div aria-hidden="true"><SectionHeader className={actions ? "[&>div:last-child]:max-w-full [&>div:last-child]:shrink [&>div:last-child]:flex-wrap" : undefined} title={staticTitle ? title : line(title)} subtitle={subtitle ? (staticTitle ? <span className="relative block h-[1lh] w-64 max-w-full"><span className="absolute inset-x-0 top-1/2 h-[0.8em] -translate-y-1/2 animate-pulse rounded-control bg-surface-2" /></span> : line(subtitle)) : undefined} actions={nav || add || seeAll || actions ? <>
     {actions && <div inert>{actions}</div>}
     {nav && <div className="hidden gap-1.5 lg:flex"><Pulse className="size-8" /><Pulse className="size-8" /></div>}
     {seeAll && <Button size="sm" disabled className="invisible">See all</Button>}
@@ -102,10 +100,10 @@ function SkeletonHeader({ title, subtitle, nav = true, add = false, seeAll = fal
   </> : undefined} /></div>;
 }
 
-export function CarouselSkeleton({ title = "Last Watched", subtitle, add = true, seeAll = false, actions }: { title?: string; subtitle?: string; add?: boolean; seeAll?: boolean; actions?: React.ReactNode } = {}) {
+export function CarouselSkeleton({ title = "Last Watched", subtitle, add = true, seeAll = false, actions, staticTitle = false }: { staticTitle?: boolean; title?: string; subtitle?: string; add?: boolean; seeAll?: boolean; actions?: React.ReactNode } = {}) {
   return (
     <div aria-hidden="true">
-      <SkeletonHeader title={title} subtitle={subtitle} add={add} seeAll={seeAll} actions={actions} />
+      <SkeletonHeader title={title} subtitle={subtitle} add={add} seeAll={seeAll} actions={actions} staticTitle={staticTitle} />
       {/* Desktop: backdrop grid — 3-up from lg (1024px), 5-up from xl (1280px), same as MediaCarousel. */}
       <div className="hidden lg:grid xl:hidden grid-cols-3 gap-4 py-3">
         {Array.from({ length: 3 }).map((_, i) => (
@@ -239,41 +237,41 @@ export function GridPageSkeleton({ type }: { type: MediaType }) {
 
 export function StatsSkeleton() {
   return (
-    <div className="space-y-4 p-4 md:p-6 animate-pulse">
+    <div className="space-y-4 p-4 md:p-6">
       {/* Year pills — "All time" + one per year the account has data for; ~14 is what this
           account currently shows. Export + Wrapped sit at the end of the same row. */}
       <div className="flex items-center gap-2">
         <div className="hidden flex-1 gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex">
-          {Array.from({ length: 14 }, (_, i) => <div key={i} className="h-8 w-14 shrink-0 rounded-control bg-surface-1" />)}
+          {Array.from({ length: 14 }, (_, i) => <Pulse key={i} className="h-8 w-14 shrink-0" />)}
         </div>
-        <div className="h-9 flex-1 rounded-control bg-surface-1 sm:hidden" />
+        <Pulse className="h-9 flex-1 rounded-control sm:hidden" />
         <div className="flex shrink-0 gap-2">
-          <div className="h-8 w-20 rounded-control bg-surface-1" />
-          <div className="h-8 w-28 rounded-control bg-surface-1" />
+          <Pulse className="h-8 w-20 rounded-control" />
+          <Pulse className="h-8 w-28 rounded-control" />
         </div>
       </div>
 
       {/* Metric cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-28 rounded-card surface-card" />)}
+        {[1, 2, 3, 4, 5].map((i) => <Pulse key={i} className="h-28 rounded-card" />)}
       </div>
 
       {/* Your Watching Goals — present whenever a Goal is linked to this module, which for an
           active account is the common case, not the exception. */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <div className="h-3.5 w-3.5 rounded-full bg-surface-2" />
-          <div className="h-4 w-36 rounded bg-surface-2" />
+          <Pulse className="h-3.5 w-3.5 rounded-full" />
+          <Pulse className="h-4 w-36 rounded-control" />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="rounded-card surface-card p-4">
               <div className="flex items-center justify-between gap-2">
-                <div className="h-3.5 w-28 rounded bg-surface-2" />
-                <div className="h-3 w-10 rounded bg-surface-2" />
+                <Pulse className="h-3.5 w-28 rounded-control" />
+                <Pulse className="h-3 w-10 rounded-control" />
               </div>
-              <div className="mt-3 h-1.5 w-full rounded-full bg-surface-2" />
-              <div className="mt-2 h-2.5 w-32 rounded bg-surface-2" />
+              <Pulse className="mt-3 h-1.5 w-full rounded-full" />
+              <Pulse className="mt-2 h-2.5 w-32 rounded-control" />
             </div>
           ))}
         </div>
@@ -282,29 +280,29 @@ export function StatsSkeleton() {
       {/* Row 2 — charts. Mirrors the real ladder: stacked on a phone, two-up on an iPad with the
           third spanning the full width below, three only on a desktop. */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
-        <div className="h-60 rounded-card surface-card" />
-        <div className="h-60 rounded-card surface-card" />
-        <div className="h-60 rounded-card surface-card lg:col-span-2 xl:col-span-1" />
+        <Pulse className="h-60 rounded-card" />
+        <Pulse className="h-60 rounded-card" />
+        <Pulse className="h-60 rounded-card lg:col-span-2 xl:col-span-1" />
       </div>
 
       {/* Top Picks + Top Genres */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="h-60 rounded-card surface-card" />
-        <div className="h-60 rounded-card surface-card" />
+        <Pulse className="h-60 rounded-card" />
+        <Pulse className="h-60 rounded-card" />
       </div>
 
       {/* Achievements — the fixed set from computeStats.ts (only unlocked/locked is data). Same
           grid ladder as the shared AchievementGrid: four across on an iPad, six on a desktop. */}
       <div>
-        <div className="mb-4 h-4 w-32 rounded bg-surface-2" />
+        <Pulse className="mb-4 h-4 w-32 rounded-control" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {Array.from({ length: 12 }, (_, i) => (
-            <div key={i} className="rounded-xl border border-border-subtle bg-surface-1 p-4">
+            <div key={i} className="rounded-card border border-border-subtle bg-surface-1 p-4">
               <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-lg bg-surface-2" />
+                <Pulse className="h-9 w-9 rounded-control" />
               </div>
-              <div className="mt-2.5 h-3.5 w-4/5 rounded bg-surface-2" />
-              <div className="mt-1.5 h-2.5 w-full rounded bg-surface-2" />
+              <Pulse className="mt-2.5 h-3.5 w-4/5 rounded-control" />
+              <Pulse className="mt-1.5 h-2.5 w-full rounded-control" />
             </div>
           ))}
         </div>
@@ -338,31 +336,32 @@ function HeroSkeleton() {
           <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/30 to-transparent" />
         </div>
         <div className="relative -mt-16 flex flex-col items-center px-4 pb-2">
-          <div className="aspect-2/3 w-(--poster-md) shrink-0 animate-pulse rounded-tile bg-surface-2" />
-          <div className="mt-3 h-6 w-40 animate-pulse rounded-control bg-surface-2" />
+          <Pulse className="aspect-2/3 w-(--poster-md) shrink-0 rounded-tile" />
+          <Pulse className="mt-3 h-6 w-40 rounded-control" />
           <div className="mt-3 flex gap-1.5">
             {[14, 16, 12].map((w, i) => (
               <div key={i} className="h-5 animate-pulse rounded-full bg-surface-2" style={{ width: `${w * 4}px` }} />
             ))}
           </div>
-          <div className="mt-2.5 h-4 w-48 animate-pulse rounded bg-surface-2" />
-          <div className="mt-3 h-14 w-full animate-pulse rounded-control bg-surface-2" />
+          <Pulse className="mt-2.5 h-4 w-48 rounded-control" />
+          <Pulse className="mt-3 h-14 w-full rounded-control" />
           {/* Reserved trailer slot — same height as the real button, so nothing shifts */}
-          <div className="mt-4 h-8 w-32 animate-pulse rounded-full bg-surface-2" />
+          <Pulse className="mt-4 h-8 w-32 rounded-full" />
         </div>
       </div>
 
       {/* ── Desktop — content anchored to the bottom of the banner ── */}
-      <div className="relative hidden w-full animate-pulse overflow-hidden bg-surface-2 lg:block lg:aspect-21/9 lg:max-h-[55vh] lg:min-h-70">
+      <div className="relative hidden w-full overflow-hidden lg:block lg:aspect-21/9 lg:max-h-[55vh] lg:min-h-70">
+        <Pulse className="absolute inset-0 rounded-none" />
         <div className="absolute inset-0 bg-linear-to-t from-surface-0 via-surface-0/40 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 px-10 pb-8">
           <div className="flex items-end gap-8">
-            <div className="aspect-2/3 w-(--poster-xl) shrink-0 animate-pulse rounded-tile bg-surface-2" />
+            <Pulse className="aspect-2/3 w-(--poster-xl) shrink-0 rounded-tile" />
             <div className="flex-1 space-y-3 pb-1">
-              <div className="h-7 w-2/3 animate-pulse rounded-control bg-surface-2" />
-              <div className="h-4 w-1/3 animate-pulse rounded bg-surface-2" />
-              <div className="h-10 w-full max-w-4xl animate-pulse rounded-control bg-surface-2" />
-              <div className="h-8 w-32 animate-pulse rounded-full bg-surface-2" />
+              <Pulse className="h-7 w-2/3 rounded-control" />
+              <Pulse className="h-4 w-1/3 rounded-control" />
+              <Pulse className="h-10 w-full max-w-4xl rounded-control" />
+              <Pulse className="h-8 w-32 rounded-full" />
             </div>
           </div>
         </div>
@@ -385,7 +384,7 @@ function HeroSkeleton() {
 function SeasonsSkeleton({ w, n }: { w: string; n: number }) {
   return (
     <div>
-      <div className={`mb-3 h-4 animate-pulse rounded bg-surface-2 ${w}`} />
+      <div className={`mb-3 h-4 animate-pulse rounded-control bg-surface-2 ${w}`} />
       <div className="-mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:mx-0 sm:px-0">
         {Array.from({ length: n }, (_, j) => (
           <div
@@ -422,23 +421,23 @@ function DetailRowsSkeleton({ titleW, rows, withBadge, withAwards }: { titleW: s
   return (
     <div className="surface-quiet rounded-card">
       <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4 sm:px-5">
-        <div className={`h-4 animate-pulse rounded bg-surface-2 ${titleW}`} />
-        {withBadge && <div className="h-5 w-11 animate-pulse rounded-chip bg-surface-2" />}
+        <div className={`h-4 animate-pulse rounded-control bg-surface-2 ${titleW}`} />
+        {withBadge && <Pulse className="h-5 w-11 rounded-chip" />}
       </div>
       {withAwards && (
         <div className="flex items-start gap-2.5 border-b border-border-subtle px-4 py-3 sm:px-5">
-          <div className="mt-0.5 h-4 w-4 shrink-0 animate-pulse rounded-full bg-surface-2" />
+          <Pulse className="mt-0.5 h-4 w-4 shrink-0 rounded-full" />
           <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="h-3.5 w-2/3 animate-pulse rounded bg-surface-2" />
-            <div className="h-3 w-1/3 animate-pulse rounded bg-surface-2" />
+            <Pulse className="h-3.5 w-2/3 rounded-control" />
+            <Pulse className="h-3 w-1/3 rounded-control" />
           </div>
         </div>
       )}
       <div className="px-4 pb-4 sm:px-5 sm:pb-5">
         {Array.from({ length: rows }, (_, i) => (
           <div key={i} className="flex items-baseline justify-between gap-4 border-b border-border-subtle py-2.5 last:border-0">
-            <div className="h-3 w-20 animate-pulse rounded bg-surface-2" />
-            <div className="h-3 w-14 animate-pulse rounded bg-surface-2" />
+            <Pulse className="h-3 w-20 rounded-control" />
+            <Pulse className="h-3 w-14 rounded-control" />
           </div>
         ))}
       </div>
@@ -462,12 +461,12 @@ function MyTakeSkeleton() {
           same thing and stops the eye trying to read the placeholder. */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-baseline gap-2">
-          <div className="h-9 w-14 animate-pulse rounded bg-surface-2" />
-          <div className="h-4 w-24 animate-pulse rounded bg-surface-2" />
+          <Pulse className="h-9 w-14 rounded-control" />
+          <Pulse className="h-4 w-24 rounded-control" />
         </div>
         <div className="space-y-1.5">
-          <div className="ml-auto h-3 w-36 animate-pulse rounded bg-surface-2" />
-          <div className="ml-auto h-3 w-24 animate-pulse rounded bg-surface-2" />
+          <Pulse className="ml-auto h-3 w-36 rounded-control" />
+          <Pulse className="ml-auto h-3 w-24 rounded-control" />
         </div>
       </div>
 
@@ -477,7 +476,7 @@ function MyTakeSkeleton() {
           tell that it should not be there. One band, and the rest is reserved emptiness. */}
       <div className="mt-3 max-w-2xl">
         <div className="py-3">
-          <div className="h-2.5 w-full animate-pulse rounded-full bg-surface-2" />
+          <Pulse className="h-2.5 w-full rounded-full" />
           <div className="mt-1 h-1.5" />
         </div>
         <div className="mt-1 h-7" />
@@ -487,8 +486,8 @@ function MyTakeSkeleton() {
 
       {/* Note — real text runs at `leading-7` (28px/line); a shorter bar undercounts every line. */}
       <div className="space-y-2">
-        <div className="h-7 w-full animate-pulse rounded bg-surface-2" />
-        <div className="h-7 w-3/4 animate-pulse rounded bg-surface-2" />
+        <Pulse className="h-7 w-full rounded-control" />
+        <Pulse className="h-7 w-3/4 rounded-control" />
       </div>
     </div>
   );
@@ -532,22 +531,22 @@ export function DetailSkeleton({ isSeries }: { isSeries?: boolean } = {}) {
 
         {/* Rail — the branded status card leads, then the quiet blocks */}
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-2 lg:pr-8">
-          <div className="h-52 animate-pulse rounded-card bg-surface-2" />
+          <Pulse className="h-52 rounded-card" />
           {/* Quick Stats is series-only — `QuickStats.tsx` returns null outright on a film. Drawing
               it unconditionally here (found by screenshotting an owned FILM, not a series) meant a
               whole extra panel appeared for every film's skeleton and then had to vanish the moment
               the row confirmed it was a film — inventing a shift the real page never has. Same
               `isSeries &&` gate as Seasons on the left, same reason. */}
           {isSeries && <DetailRowsSkeleton titleW="w-24" rows={3} />}
-          <div className="h-28 animate-pulse rounded-card bg-surface-2" />
+          <Pulse className="h-28 rounded-card" />
           <div>
-            <div className="mb-3 h-4 w-14 animate-pulse rounded bg-surface-2" />
+            <Pulse className="mb-3 h-4 w-14 rounded-control" />
             {/* Matches InList's OWN `isLoading` shape (`h-44 w-2/3`) — the full-page skeleton is
                 gone before InList mounts, so the honest target is what InList shows itself while
                 ITS queries are still in flight, not a guess at its (data-dependent) resolved size. */}
-            <div className="h-28 w-full animate-pulse rounded-card bg-surface-2" />
+            <Pulse className="h-28 w-full rounded-card" />
           </div>
-          <div className="h-24 animate-pulse rounded-card bg-surface-2" />
+          <Pulse className="h-24 rounded-card" />
           <DetailRowsSkeleton titleW="w-16" rows={4} withBadge />
         </div>
       </div>
@@ -586,9 +585,9 @@ export function DiscoverSkeleton({ isSeries, isAnime = false }: { isSeries: bool
               series (Want / Start / Watched), two for a film (no "Start watching"). Same material
               as the real card: `Panel` renders `surface-quiet`, not `surface-card`. */}
           <div className="surface-quiet rounded-card p-4">
-            <div className="h-4 w-36 animate-pulse rounded bg-surface-2" />
-            <div className="mt-3 h-3 w-full animate-pulse rounded bg-surface-2" />
-            <div className="mt-1.5 h-3 w-2/3 animate-pulse rounded bg-surface-2" />
+            <Pulse className="h-4 w-36 rounded-control" />
+            <Pulse className="mt-3 h-3 w-full rounded-control" />
+            <Pulse className="mt-1.5 h-3 w-2/3 rounded-control" />
             <div className="mt-3 space-y-2.5">
               {Array.from({ length: isSeries ? 3 : 2 }, (_, i) => (
                 <div key={i} className="h-8 w-full animate-pulse rounded-control bg-surface-2" />
@@ -609,12 +608,12 @@ export function DiscoverSkeleton({ isSeries, isAnime = false }: { isSeries: bool
           {isAnime && (
             <div className="surface-quiet rounded-card">
               <div className="px-4 pb-3 pt-4 sm:px-5">
-                <div className="h-5 w-44 animate-pulse rounded bg-surface-2" />
+                <Pulse className="h-5 w-44 rounded-control" />
               </div>
               {/* h-16 is not a guess: the loading state centres a 16px spinner inside `py-6`,
                   so the block it occupies is 24 + 16 + 24. */}
               <div className="px-4 pb-4 sm:px-5 sm:pb-5">
-                <div className="h-16 animate-pulse rounded bg-surface-2" />
+                <Pulse className="h-16 rounded-control" />
               </div>
             </div>
           )}
@@ -668,7 +667,7 @@ export function LibrarySkeleton() {
       {/* Grid */}
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
         {Array.from({ length: 20 }).map((_, i) => (
-          <div key={i} className="animate-pulse space-y-2">
+          <div key={i} className="space-y-2">
             <Pulse className="aspect-2/3 w-full bg-surface-2 rounded-card" />
             <Pulse className="h-3 w-3/4 bg-surface-2" />
             <Pulse className="h-3 w-1/2 bg-surface-2" />
