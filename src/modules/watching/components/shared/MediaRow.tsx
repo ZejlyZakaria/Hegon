@@ -95,18 +95,19 @@ export function MediaRow({
         <div className="min-w-0 flex-1">
           {doors ? (
             <Link href={titleHref} className="group/title block min-w-0 after:absolute after:inset-0 after:content-['']">
-              <p className="truncate text-xs font-medium text-text-primary transition-colors group-hover/title:text-accent-watching-vivid">
-                {title}
-                {suffix && <span className="ml-1.5 font-normal text-text-tertiary">{suffix}</span>}
+              <p className={cn("text-xs font-medium text-text-primary transition-colors group-hover/title:text-accent-watching-vivid", suffix ? "flex min-w-0 items-baseline" : "truncate")}>
+                <span className="min-w-0 truncate">{title}</span>
+                {suffix && <span className="ml-1.5 shrink-0 whitespace-nowrap font-normal text-text-tertiary">{suffix}</span>}
               </p>
             </Link>
           ) : (
             <p className={cn(
-              "truncate text-xs font-medium text-text-primary transition-colors",
+              "text-xs font-medium text-text-primary transition-colors",
+              suffix ? "flex min-w-0 items-baseline" : "truncate",
               interactive && "group-hover:text-accent-watching-vivid",
             )}>
-              {title}
-              {suffix && <span className="ml-1.5 font-normal text-text-tertiary">{suffix}</span>}
+              <span className="min-w-0 truncate">{title}</span>
+              {suffix && <span className="ml-1.5 shrink-0 whitespace-nowrap font-normal text-text-tertiary">{suffix}</span>}
             </p>
           )}
           {meta && <div className="mt-0.5 flex items-center gap-1.5">{meta}</div>}

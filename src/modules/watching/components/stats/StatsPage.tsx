@@ -15,6 +15,7 @@ import type { StatsRawItem } from "../../service";
 import { displayTitle } from "../../utils";
 import { WrappedModal } from "./WrappedModal";
 import { computeStats } from "./computeStats";
+import { ScoreMark } from "../shared/Marks";
 import { activitySlots, ratingDistributionPlot } from "../../lib/stats-charts";
 import { useAchievementReceipts } from "../../hooks/useAchievementReceipts";
 import { withUnlockReceipts } from "../../lib/milestone-receipts";
@@ -272,10 +273,7 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
               meta={
                 <>
                   {rating != null && (
-                    <div className="flex items-center gap-0.5">
-                      <Star size={9} className="fill-amber-400 text-amber-400" />
-                      <span className="text-micro tabular-nums font-medium text-amber-400">{Number(rating.toFixed(2)).toString()}</span>
-                    </div>
+                    <ScoreMark source="mine" value={Number(rating.toFixed(2))} />
                   )}
                   {seasonLabel ? (
                     <span className="truncate text-micro font-medium" style={{ color: TEAL }}>{seasonLabel}</span>
@@ -289,7 +287,7 @@ function TopFavoritesCard({ items }: { items: { item: StatsRawItem; seasonLabel:
       )}
       <SlidingPanel open={open} onClose={() => setOpen(false)} title="Top Picks" icon={<Trophy size={15} />}>
         <div className="p-4">
-          {items.map(({ item, seasonLabel, rating, seasonPoster }) => <MediaRow key={item.id} href={item.id.startsWith("history:") ? undefined : `/perso/watching/${item.id}`} posterUrl={seasonPoster ?? item.poster_url} title={displayTitle(item)} meta={<span className="text-micro text-text-tertiary">{[seasonLabel, rating != null ? Number(rating.toFixed(2)).toString() : null].filter((v) => v != null).join(" / ")}</span>} right={item.favorite ? <Heart size={10} className="fill-red-400 text-red-400" /> : undefined} />)}
+          {items.map(({ item, seasonLabel, rating, seasonPoster }) => <MediaRow key={item.id} href={item.id.startsWith("history:") ? undefined : `/perso/watching/${item.id}`} posterUrl={seasonPoster ?? item.poster_url} title={displayTitle(item)} suffix={seasonLabel ? <span className="text-accent-watching-vivid">{seasonLabel}</span> : undefined} meta={rating != null ? <ScoreMark source="mine" value={Number(rating.toFixed(2))} /> : undefined} right={item.favorite ? <Heart size={10} className="fill-red-400 text-red-400" /> : undefined} />)}
         </div>
       </SlidingPanel>
     </div>
@@ -344,7 +342,7 @@ function RatingDistributionCard({ distribution }: { distribution: ReturnType<typ
 
   return (
     <div className="rounded-card surface-card p-5 h-60 w-full flex flex-col overflow-hidden">
-      <div className="mb-4 flex items-center justify-between shrink-0">
+      <div className="mb-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Star size={14} className="text-text-tertiary" />
           <p className="text-sm font-semibold text-text-primary">Rating Distribution</p>
@@ -356,7 +354,7 @@ function RatingDistributionCard({ distribution }: { distribution: ReturnType<typ
         <p className="text-sm text-text-tertiary/50">No ratings yet</p>
       ) : (
         <div className="flex flex-1 flex-col min-h-0 gap-2">
-          <div className="flex-1 min-h-0">
+          <div data-chart-plot className="flex-1 min-h-0 border-b" style={{borderColor:"color-mix(in srgb, var(--color-accent-watching-vivid) 12%, transparent)"}}>
             <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none" role="img" aria-label={`Rating distribution: ${pts.filter(p=>p.count>0).map(p=>`${p.score}: ${p.count}`).join(", ")}`}>
               <defs>
                 <linearGradient id="ratingAreaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -371,9 +369,9 @@ function RatingDistributionCard({ distribution }: { distribution: ReturnType<typ
               ))}
             </svg>
           </div>
-          <div className="relative h-3 shrink-0" aria-hidden="true">
+          <div data-chart-labels className="relative h-3 shrink-0" aria-hidden="true">
             {labels.map((p) => (
-              <span key={p.score} className="absolute -translate-x-1/2 text-[9px] tabular-nums text-text-tertiary/70" style={{left:`${p.x/W*100}%`}}>{Number(p.score.toFixed(2))}</span>
+              <span key={p.score} className="absolute -translate-x-1/2 text-[9px] leading-none tabular-nums text-text-tertiary/70" style={{left:`${p.x/W*100}%`}}>{Number(p.score.toFixed(2))}</span>
             ))}
           </div>
         </div>
@@ -410,33 +408,14 @@ function ActivityCard({ activity, selectedYear }: {
       {activity.length === 0 ? (
         <p className="text-sm text-text-tertiary/50">{selectedYear ? "No month-level activity recorded" : "No activity yet"}</p>
       ) : (
-        <div className="flex flex-1 items-end gap-1 min-h-0">
-          {slots.map((a) => {
-            const isSel = selectedYear != null && a.label.startsWith(String(selectedYear));
-            const monthLabel = a.label.length === 7 ? ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(a.label.slice(5))-1] : null;
-            return (
-              // min-w-0 is what stops the clipping: without it a flex item won't shrink below its
-              // label's intrinsic width, so on a narrow phone the 14 four-digit labels overflowed
-              // the card and `overflow-hidden` ate the most RECENT years off the right edge. With
-              // it, the bars always distribute evenly across whatever width there is.
-              <div key={a.label} className="flex min-w-0 flex-1 flex-col items-center gap-1" aria-label={`${a.label}: ${a.count} activities`}>
-                <div
-                  className="w-full rounded-t-sm transition-[height] duration-500"
-                  style={{
-                    height: a.count > 0 ? `${Math.max(6, (a.count / max) * 130)}px` : 3,
-                    backgroundColor: TEAL,
-                    opacity: a.count===0 ? 0.12 : isSel ? 1 : Math.max(0.25, (a.count / max) * 0.65),
-                  }}
-                />
-                {/* Two-digit on a phone ('13…'26), four on desktop: half the width, so every year
-                    still has a readable label where the full one would collide with its neighbour. */}
-                <span className={`text-[9px] tabular-nums leading-none ${isSel ? "font-semibold text-text-secondary" : "text-text-tertiary/70"}`}>
-                  <span className="sm:hidden">{monthLabel ?? `’${a.label.slice(2)}`}</span>
-                  <span className="hidden sm:inline">{monthLabel ?? a.label}</span>
-                </span>
-              </div>
-            );
-          })}
+        <div className="flex flex-1 flex-col min-h-0 gap-2">
+          <div data-chart-plot className="flex flex-1 items-end gap-1 min-h-0 border-b" style={{borderColor:"color-mix(in srgb, var(--color-accent-watching-vivid) 12%, transparent)"}}>
+            {slots.map(a=><div key={a.label} className="relative h-full min-w-0 flex-1" aria-label={`${a.label}: ${a.count} activities`}><div className="absolute bottom-0 w-full rounded-t-control transition-[height] duration-500" style={{height:a.count>0 ? `${Math.max(4,a.count/max*92)}%`:3,backgroundColor:TEAL,opacity:a.count===0 ? 0.12:selectedYear!=null ? 1:Math.max(0.25,a.count/max*0.65)}}/></div>)}
+          </div>
+          <div data-chart-labels className="flex h-3 shrink-0 gap-1" aria-hidden="true">{slots.map(a=>{
+            const month=a.label.length===7 ? ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(a.label.slice(5))-1]:null;
+            return <span key={a.label} className="min-w-0 flex-1 text-center text-[9px] leading-none tabular-nums text-text-tertiary/70"><span className="sm:hidden">{month ?? `’${a.label.slice(2)}`}</span><span className="hidden sm:inline">{month ?? a.label}</span></span>;
+          })}</div>
         </div>
       )}
     </div>
@@ -468,11 +447,11 @@ export function StatsPage() {
 
   // The all-time ledger also feeds achievements; share it with the unfiltered view.
   const allTime = useMemo(
-    () => computeStats(data?.items ?? [], data?.rewatches ?? [], null, data?.cours, data?.history),
+    () => computeStats(data?.items ?? [], data?.rewatches ?? [], null, data?.cours, data?.history, data?.ratingBases),
     [data],
   );
   const stats = useMemo(
-    () => selectedYear == null ? allTime : computeStats(data?.items ?? [], data?.rewatches ?? [], selectedYear, data?.cours, data?.history),
+    () => selectedYear == null ? allTime : computeStats(data?.items ?? [], data?.rewatches ?? [], selectedYear, data?.cours, data?.history, data?.ratingBases),
     [data, selectedYear, allTime],
   );
   // The "why" panel: which badge is open. The badge object is kept across the close animation.
@@ -510,13 +489,13 @@ export function StatsPage() {
       {wrappedOpen && selectedYear && (
         <WrappedModal
           year={selectedYear}
-          films={stats.counts.film}
-          seriesAnime={stats.counts.serie + stats.counts.anime}
+          films={stats.wrappedSummary.film}
+          seriesAnime={stats.wrappedSummary.seriesAnime}
           hours={stats.hours.total}
           unknownDurationEvents={stats.unknownDurationEvents}
-          topGenre={stats.topGenres[0]?.name ?? null}
+          topGenre={stats.wrappedSummary.topGenre}
           topPosters={stats.wrappedPosters}
-          total={stats.counts.total}
+          total={stats.wrappedSummary.total}
           onClose={() => setWrappedOpen(false)}
         />
       )}

@@ -45,8 +45,7 @@ export function receiptMetrics(snapshot:ReceiptSnapshot) {
   const getStrictStats=()=>strictStats ??= computeStats(bare,[],null,cours,history);
   const getCompleted=()=>{
     const stats=getStrictStats();
-    const consumed=new Set([...stats.breakdown.film,...stats.breakdown.serie,...stats.breakdown.anime,
-      ...stats.breakdown.rewatches.filter(e=>e.item.type==="film" && e.scope==="WHOLE_TITLE")].map(e=>e.item.id));
+    const consumed=new Set([...stats.breakdown.film,...stats.breakdown.serie,...stats.breakdown.anime].map(e=>e.item.id));
     return items.filter(i=>i.type==="film" ? consumed.has(i.id):finished.has(work(i)));
   };
   const finished=new Set(unique.filter(r=>!r.retracted_at && r.kind==="COMPLETION" && r.completion_basis==="FINISHED_TITLE").map(r=>r.work_key));
@@ -58,7 +57,7 @@ export function receiptMetrics(snapshot:ReceiptSnapshot) {
     {stats:accepted,history:snapshot.history}).filter(a=>!LIVE_ACHIEVEMENTS.has(a.key)).map(a=>({
       achievement_key:a.key,metric_key:`watching:${a.key}:v1`,target:a.detail.goal,actual_value:a.detail.value,rule_version:1}));
   const matchesType=(i:StatsRawItem,key:string|null)=>key==="films" ? i.type==="film":key==="series" ? i.type==="serie":key==="anime" ? i.type==="anime":true;
-  const periodIds=(s:ReturnType<typeof computeStats>)=>new Set([...s.breakdown.film,...s.breakdown.serie,...s.breakdown.anime,...s.breakdown.rewatches].map(e=>e.item.id));
+  const periodIds=(s:ReturnType<typeof computeStats>)=>new Set([...s.breakdown.film,...s.breakdown.serie,...s.breakdown.anime].map(e=>e.item.id));
   const strictPeriods=new Map<number|null,ReturnType<typeof computeStats>>();
   const goalValue=(key:string|null,year:number|null)=>{
     let s=strictPeriods.get(year);

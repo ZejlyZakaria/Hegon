@@ -15,9 +15,9 @@ export function ratingDistributionPlot(distribution:{score:number;count:number}[
   const minScore=rated[0]?.score ?? 1,maxScore=rated.at(-1)?.score ?? 10;
   const visible=distribution.filter(d=>d.score>=minScore && d.score<=maxScore).sort((a,b)=>a.score-b.score);
   const total=rated.reduce((n,d)=>n+d.count,0),max=Math.max(1,...visible.map(d=>d.count));
-  const width=200,height=72,padX=8,padY=6,plotWidth=width-padX*2,plotHeight=height-padY*2;
+  const width=200,height=72,padX=8,padY=6,plotWidth=width-padX*2,plotHeight=height-padY;
   const points=visible.map(d=>({...d,x:minScore===maxScore ? width/2 : padX+(d.score-minScore)/(maxScore-minScore)*plotWidth,
-    y:padY+plotHeight-d.count/max*plotHeight}));
+    y:height-d.count/max*plotHeight}));
   const segments=points.slice(1).map((p,index)=>{
     const from=points[index],mid=(from.x+p.x)/2;
     return {from,to:p,c1:{x:mid,y:from.y},c2:{x:mid,y:p.y}};

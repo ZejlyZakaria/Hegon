@@ -1,5 +1,6 @@
 {
   "_comment": [
+    "2026-11-08: LOCAL/PENDING period rating basis; +5 functions, 2 triggers, scope-kind constraint extended; no tables/columns/policies/indexes/crons or deployment backfill. Disposable PostgreSQL delta verified.",
     "2026-11-05: tracking intent application reported successful by owner; +1 media_items availability column; existing provider/personal/receipt-source functions replaced. No backfill or new objects.",
     "2026-11-03: LOCAL/PENDING optional animation-studio cache metadata refresh; existing observer replacement, zero schema-count delta, no backfill.",
     "2026-11-02: LOCAL/PENDING correction-stance guard; replaces existing transaction only, zero object-count delta, no backfill.",
@@ -56,11 +57,11 @@
     "2026-10-28: preserve legacy calendar on guarded date changes (existing function replacement) and one owner-authorized Bleach completion-date correction; all schema object counts unchanged.",
     "2026-10-29: restored exact archived 20261028010000 Bleach Part4 migration, already recorded remotely; data only, schema counts unchanged, no remote replay or history repair."
   ],
-  "_migrations_through": "20261104000000",
+  "_migrations_through": "20261108000000",
   "tables": 82,
   "colonnes": 868,
   "policies": 226,
-  "fonctions": 51,
+  "fonctions": 56,
   "index": 279,
   "crons": 20
 }

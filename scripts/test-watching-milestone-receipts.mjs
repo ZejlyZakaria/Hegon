@@ -122,6 +122,10 @@ try {
   const {runTrackingIntentChecks}=await import('./test-watching-tracking-intent.mjs');
   runTrackingIntentChecks({sql,db,counts});
  }
+ if(process.argv.includes('--period-ratings')) {
+  const {runPeriodRatingChecks}=await import('./test-watching-period-ratings.mjs');
+  runPeriodRatingChecks({sql,db,counts});
+ }
  if(process.argv.includes('--estimated-dates')) {
   const {runEstimatedDateChecks}=await import('./test-watching-estimated-dates.mjs');
   runEstimatedDateChecks({sql,db});

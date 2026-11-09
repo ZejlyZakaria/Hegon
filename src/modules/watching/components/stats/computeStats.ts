@@ -1,6 +1,7 @@
+import { resolvePeriodRating, type GlobalRatingBases } from "../../lib/period-rating";
 import { seasonContributions } from "../../lib/legacy-consumption";
 import { periodEpisodeLabel, ratedScopePresentation } from "../../lib/season-history";
-import { deduplicateFirstViewing, rangeCount, legacyViewingDate, calendarStats, type CalendarStats, historicalContributions, historicalRatingResult, periodMatches, recordsFor, formatHistoryDate, type HistoryAnalytics, type WatchContribution } from "../../lib/history-analytics";
+import { deduplicateFirstViewing, rangeCount, legacyViewingDate, calendarStats, type CalendarStats, historicalContributions, periodMatches, formatHistoryDate, type HistoryAnalytics, type WatchContribution } from "../../lib/history-analytics";
 import type { StatsRawItem, RewatchStatItem } from "../../service";
 import { buildMediaView, type MediaView } from "../../lib/media-view";
 import { activityBucket, isAwaitingNextSeason, requiresResume } from "../../lib/series-state";
@@ -42,6 +43,7 @@ function makeViewOf(cours: Map<number, AnimeCoursRow>): ViewOf {
  * anyone could notice was by feeling that a number looked small.
  */
 export interface HoursEntry {
+  rating?: number | null;
   source?: "HISTORY" | "LEGACY" | "MIXED";
   item: StatsRawItem;
   /** Episodes counted for the selected period. A film is one sitting. */
@@ -62,10 +64,12 @@ export interface HoursEntry {
 
 /** A rewatch is an EVENT, not an aggregate: it has a date, and it reads in time order. */
 export interface RewatchEntry {
+  rating?: number | null;
   item: StatsRawItem;
   watchedOn: string;
   minutes: number | null;
   scope?: string;
+  scopeLabel?:string;
   durationUnknown?: boolean;
 }
 
@@ -105,6 +109,7 @@ export interface ComputedStats {
   ratingDistribution: { score: number; count: number }[];
   topFavorites: { item: StatsRawItem; seasonLabel: string | null; rating: number | null; seasonPoster: string | null }[];
   wrappedPosters: StatsRawItem[];
+  wrappedSummary: { film:number; seriesAnime:number; total:number; topGenre:string|null };
   activity: { label: string; count: number }[];
   streaks: {
     bestMonth: { label: string; count: number } | null;
@@ -164,6 +169,7 @@ export function computeStats(
   /** tmdb_id → AniList cours. Omit and every title is read in its stored coordinates. */
   cours: Map<number, AnimeCoursRow> = new Map(),
   history: HistoryAnalytics = {records:[],ratings:[]},
+  ratingBases:GlobalRatingBases={},
 ): ComputedStats {
   // ONE lens per title, built once and shared by every helper below, so no two cards on this page
   // can end up reasoning in different coordinate spaces.
@@ -195,15 +201,11 @@ export function computeStats(
     return {seasonLabel,seasonPoster:poster ? poster.startsWith("http") ? poster : `https://image.tmdb.org/t/p/w500${poster}` : null};
   };
   const inPeriod=(i:StatsRawItem) => ledger.some(c => c.itemId===i.id && periodMatches(c,year));
-  const ratingContextOf=(i:StatsRawItem) => {
-    const fallback=effectiveRating(viewOf(i),i,year);
-    if (!year || i.type==="film") return {score:year && recordsFor(i,history).some(r=>r.kind==="FIRST_WATCH") ? null:fallback,scopes:[]};
-    const v=viewOf(i);
-    const votes=watchedSeasonYears(v,i).filter(([,y]) => y===year).flatMap(([number]) => {
-      const score=v.ratingMap?.[String(number)];
-      return score==null ? [] : [{kind:v.overlaid ? "COUR" : "SEASON",number,score}];
-    });
-    return historicalRatingResult(i,history,year,fallback,votes);
+  const ratingCache=new Map<string,ReturnType<typeof resolvePeriodRating>>();
+  const ratingContextOf=(i:StatsRawItem)=>{
+    let result=ratingCache.get(i.id);
+    if(!result){result=resolvePeriodRating(i,viewOf(i),year,history,ledger,ratingBases[i.id]);ratingCache.set(i.id,result);}
+    return result;
   };
   const ratingOf=(i:StatsRawItem):number|null=>ratingContextOf(i).score;
   const frozenEntries=(type:string):HoursEntry[] => items.filter(i => i.type===type).flatMap(i => {
@@ -211,17 +213,16 @@ export function computeStats(
     if (!contributions.length) return [];
     const minutes=contributions.reduce((n,c) => n+(c.minutes ?? 0),0),episodes=contributions.reduce((n,c) => n+(c.episodes ?? 0),0);
     const known=contributions.every(c => c.minutes!=null && !c.durationUnknown);
-    return [{item:i,episodes,minutes,runtime:known && episodes>0 ? minutes/episodes : null,source:contributions.every(c=>c.source==="HISTORY") ? "HISTORY" as const : contributions.every(c=>c.source==="LEGACY") ? "LEGACY" as const : "MIXED" as const,...presentation(i)}];
+    return [{item:i,rating:ratingOf(i),episodes,minutes,runtime:known && episodes>0 ? minutes/episodes : null,source:contributions.every(c=>c.source==="HISTORY") ? "HISTORY" as const : contributions.every(c=>c.source==="LEGACY") ? "LEGACY" as const : "MIXED" as const,...presentation(i)}];
   }).sort((a,b) => b.minutes-a.minutes);
 
 
   // Completed titles (used for the available-year list below).
 
-  // The titles that belong to the selected period — all-time = your library
-  // (watched OR in progress), per-year = season-aware (episodes watched that
-  // year). SINGLE source for counts, genres, ratings AND wrapped, so every card
-  // in a year view talks about the exact same set of titles.
-  const periodItems = items.filter(inPeriod);
+  // Annual title KPIs, ratings, genres and Wrapped share first-view membership.
+  // Activity and hours keep their independent event ledger, including rewatches.
+  const firstViewingIds = new Set(ledger.filter(c=>!c.rewatch && periodMatches(c,year)).map(c=>c.itemId));
+  const periodItems = items.filter(i=>year==null ? inPeriod(i):firstViewingIds.has(i.id));
   const counts = {
     film:  periodItems.filter((i) => i.type === "film").length,
     serie: periodItems.filter((i) => i.type === "serie").length,
@@ -265,7 +266,12 @@ export function computeStats(
     rewatchCount++;
     const item=itemById.get(c.itemId);
     if (!item) continue;
-    rewatchEntries.push({item,watchedOn:formatHistoryDate(c),minutes:c.minutes,scope:c.scope,durationUnknown:c.durationUnknown});
+    const numbers=c.displaySeasons ?? [],v=viewOf(item);
+    const rating=item.type==="film" || c.scope==="WHOLE_TITLE" ? effectiveRating(v,item,null)
+      : (c.scope==="SEASON" || c.scope==="COUR") && numbers.length===1 ? v.ratingMap?.[String(numbers[0])] ?? null:null;
+    const scope=c.scope==="WHOLE_TITLE" ? "Entire series" : (c.scope==="SEASON" || c.scope==="COUR") && numbers.length
+      ? `${numbers.length===1 ? "Season":"Seasons"} ${numbers.join(", ")}`:c.scope;
+    rewatchEntries.push({item,rating,watchedOn:formatHistoryDate(c),minutes:c.minutes,scope:c.scope,scopeLabel:scope,durationUnknown:c.durationUnknown});
     const type=item.type as keyof typeof rewatchMin;
     if (type in rewatchMin) rewatchMin[type]+=c.minutes ?? 0;
   }
@@ -284,7 +290,8 @@ export function computeStats(
   // Ratings — season-aware: each period title contributes the rating that applies
   // for the period (the season's rating in a year view of a multi-year show, else
   // the title rating). Same source as the counts, so avg/dist match what's shown.
-  const periodRatings = periodItems
+  const firstViewingItems = periodItems.filter(i => firstViewingIds.has(i.id));
+  const periodRatings = (year == null ? periodItems : firstViewingItems)
     .map(ratingOf)
     .filter((r): r is number => r != null);
   const avgRating = periodRatings.length > 0
@@ -327,7 +334,7 @@ export function computeStats(
         && first.reduce((sum,c)=>sum+(c.episodes ?? 0),0)===v.seasons.reduce((sum,s)=>sum+s.aired,0);
       return {item,rating:rating.score,...ratedScopePresentation(v,rating.scopes,fullInYear)};
     })
-    .filter((x) => topPickIds.has(x.item.id) && (x.item.favorite || (x.rating ?? 0) >= 8))
+    .filter((x) => topPickIds.has(x.item.id) && (year==null || x.rating!=null) && (x.item.favorite || (x.rating ?? 0) >= 8))
     .sort((a, b) => {
       // Rank by YOUR rating first — a 9.0 must beat a 7.5 even if the 7.5 is a
       // favorite. Favorite is only a tiebreaker between equal ratings.
@@ -337,16 +344,19 @@ export function computeStats(
       return a.item.id.localeCompare(b.item.id);
     });
 
-  const wrappedPosters = [...periodItems]
-    .filter((i) => i.poster_url)
-    .sort((a, b) => {
-      if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
-      return (ratingOf(b) ?? 0) - (ratingOf(a) ?? 0);
-    })
-    .slice(0, 3)
-    // Use the season's own poster for the year when it resolves to a single season (e.g. MHA S8),
-    // matching Top Picks — else fall back to the show poster. Already a full URL.
-    .map((i) => ({ ...i, poster_url: presentation(i).seasonPoster ?? i.poster_url }));
+  const wrappedGenres = new Map<string,number>();
+  firstViewingItems.forEach(item=>(item.tags ?? []).forEach(tag=>wrappedGenres.set(tag,(wrappedGenres.get(tag) ?? 0)+1)));
+  const wrappedSummary={film:firstViewingItems.filter(i=>i.type==="film").length,
+    seriesAnime:firstViewingItems.filter(i=>i.type!=="film").length,total:firstViewingItems.length,
+    topGenre:[...wrappedGenres].sort((a,b)=>b[1]-a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null};
+
+  // Stable ranking, including every title tied with the third place.
+  const wrappedCandidates = firstViewingItems.map(item=>({item,rating:ratingOf(item)}))
+    .filter((x): x is {item:StatsRawItem;rating:number} => !!x.item.poster_url && x.rating!=null)
+    .sort((a,b)=>b.rating-a.rating || Number(b.item.favorite)-Number(a.item.favorite) || a.item.id.localeCompare(b.item.id));
+  const cutoff = wrappedCandidates[Math.min(2,wrappedCandidates.length-1)]?.rating;
+  const wrappedPosters = wrappedCandidates.filter(x=>x.rating >= cutoff)
+    .map(({item,rating})=>({...item,user_rating:rating,poster_url:presentation(item).seasonPoster ?? item.poster_url}));
 
   const availableYears=[...new Set(ledger.flatMap(c=>[c.year,c.calendarDate?.year].filter((y):y is number=>y!=null)))].sort((a,b)=>b-a);
 
@@ -362,6 +372,6 @@ export function computeStats(
     unknownDurationEvents:ledger.filter(c => periodMatches(c,year) && (c.minutes==null || c.durationUnknown)).length,
     unknownScopeEvents:ledger.filter(c => periodMatches(c,year) && c.episodes==null).length,
     breakdown:{film:filmEntries,serie:serieEntries,anime:animeEntries,rewatches:rewatchEntries},avgRating,ratedCount:periodRatings.length,
-    topGenres,ratingDistribution,topFavorites,wrappedPosters,activity:year ? months : years,dailyActivity:activityRows(dailyStats),
+    topGenres,ratingDistribution,topFavorites,wrappedPosters,wrappedSummary,activity:year ? months : years,dailyActivity:activityRows(dailyStats),
     streaks:{bestMonth:best(months),activeMonthsCount:months.length,bestYear:best(years)}};
 }

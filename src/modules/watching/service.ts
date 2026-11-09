@@ -1,3 +1,4 @@
+import type { GlobalRatingBases } from "./lib/period-rating";
 import { updatesCatalogueWorkKeys } from "./lib/updates";
 import { completionDatePatch } from "./lib/completion-date";
 import { buildRewatch, emptyCatalogue, type RewatchRequest, type RewatchCatalogue } from "./lib/rewatch";
@@ -298,6 +299,7 @@ export interface StatsRawItem {
 
 /** Everything the stats page computes from: the rows, plus the overlay that makes them readable. */
 export interface StatsData {
+  ratingBases: GlobalRatingBases;
   items: StatsRawItem[];
   /** tmdb_id → its AniList cours. Empty map when nothing is overlaid. */
   cours: Map<number, import("./types").AnimeCoursRow>;
@@ -320,11 +322,13 @@ export async function getWatchingStatsData(userId: string, orgId:string): Promis
   // ONE read for every anime on the page — the same batch the rails use. Without it this page
   // reasons in TMDB's lumped coordinates while the rest of the app reasons in cours, and a lumped
   // anime's whole history lands on a single year.
-  const cours = await getAnimeCoursMany(
-    items.filter((i) => i.type === "anime").map((i) => i.tmdb_id ?? 0),
-  );
-  const history = await getHistoryAnalytics(userId,orgId);
-  return { items: includeRetainedHistory(items, history), cours, history };
+  const [cours, history, basisResult] = await Promise.all([
+    getAnimeCoursMany(items.filter((i) => i.type === "anime").map((i) => i.tmdb_id ?? 0)),
+    getHistoryAnalytics(userId,orgId),
+    supabase.schema("watching").rpc("global_rating_bases",{p_org:orgId}),
+  ]);
+  if (basisResult.error) throw basisResult.error;
+  return { items: includeRetainedHistory(items, history), cours, history, ratingBases: (basisResult.data ?? {}) as GlobalRatingBases };
 }
 
 // Recent watched activity (type + date) for the Watching→Habits bridge. Only

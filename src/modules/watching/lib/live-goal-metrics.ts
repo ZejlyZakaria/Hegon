@@ -10,7 +10,7 @@ export function createLiveGoalEvaluator(items: StatsRawItem[], cours: Map<number
   return (key: string|null, year: number|null) => {
     let stats = periods.get(year);
     if (!stats) { stats = computeStats(items, [], year, cours, history); periods.set(year, stats); }
-    const ids = new Set([...stats.breakdown.film,...stats.breakdown.serie,...stats.breakdown.anime,...stats.breakdown.rewatches].map(e=>e.item.id));
+    const ids = new Set([...stats.breakdown.film,...stats.breakdown.serie,...stats.breakdown.anime].map(e=>e.item.id));
     return items.filter(i => (key==="films" ? i.type==="film" : key==="series" ? i.type==="serie" : key==="anime" ? i.type==="anime" : true)
       && ids.has(i.id) && (i.type==="film" || i.watched || completed.has(workKeyOf(i)))).length;
   };

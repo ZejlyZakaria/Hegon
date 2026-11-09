@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarClock, Users } from "lucide-react";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { Button } from "@/shared/components/ui/button";
+import { useAlignedRail } from "../../hooks/useAlignedRail";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { Hint } from "@/shared/components/ui/tooltip";
@@ -80,29 +81,18 @@ function PagedRail<T>({ title, icon, paged, keyOf, renderTile, renderRow }: {
   renderTile: (item: T) => React.ReactNode;
   renderRow: (item: T) => React.ReactNode;
 }) {
-  const railRef = useRef<HTMLDivElement>(null);
   const n = usePerView();
-  const [page, setPage] = useState(0);
   const [open, setOpen] = useState(false);
   const shown = paged.items.slice(0, RAIL_MAX);
-  const pages = Math.max(1, Math.ceil(shown.length / n));
-  const current = Math.min(page, pages - 1);
+  const { ref: railRef, scroll, canPrev, canNext } = useAlignedRail(shown.length);
   const style = { width: `calc((100% - ${(n - 1) * GAP}px) / ${n})` };
-  const go = (to: number) => {
-    const el = railRef.current;
-    if (!el) return;
-    const next = Math.max(0, Math.min(pages - 1, to));
-    setPage(next);
-    el.scrollTo({ left: next * (el.clientWidth + GAP), behavior: "smooth" });
-  };
-
   return (
     <section>
       <SectionHeader
         title={title}
         actions={
           <>
-            {pages > 1 && <CarouselNav className="hidden lg:flex" onPrev={() => go(current - 1)} onNext={() => go(current + 1)} canPrev={current > 0} canNext={current < pages - 1} />}
+            {(canPrev || canNext) && <CarouselNav className="hidden lg:flex" onPrev={() => scroll(-1)} onNext={() => scroll(1)} canPrev={canPrev} canNext={canNext} />}
             {(paged.items.length > n || paged.hasMore) && <Button variant="quiet" size="sm" onClick={() => setOpen(true)}>See more</Button>}
           </>
         }

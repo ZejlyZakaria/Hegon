@@ -1,5 +1,6 @@
 "use client";
 
+import { ScoreMark } from "../shared/Marks";
 import { useRouter } from "next/navigation";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
 import { MediaRow } from "../shared/MediaRow";
@@ -38,6 +39,10 @@ function fmt(minutes: number): string {
  * four characters and answers a question the ordering cannot — "is this half of my year, or 4% of
  * it?". So the measure stays and the graphic goes.
  */
+function HoursRating({value}:{value:number|null|undefined}) {
+  return value==null ? null : <ScoreMark value={Number(value.toFixed(2))} source="mine" />;
+}
+
 function Contribution({ minutes, total }: { minutes: number; total: number }) {
   const pct = total > 0 ? (minutes / total) * 100 : 0;
   return (
@@ -112,8 +117,9 @@ export function HoursBreakdownPanel({
                 title={displayTitle(e.item)}
                 onClick={() => open_(e.item.id)}
                 meta={
-                  <span className="text-micro text-text-tertiary">
-                    Rewatched {e.watchedOn === "Date unknown" ? e.watchedOn : formatHistoryDate(viewingDate(parseViewingInput(e.watchedOn)))}{e.scope ? ` / ${e.scope}` : ""}{e.durationUnknown && e.minutes!=null ? " / duration partly unknown" : ""}
+                  <span className="flex flex-col gap-1 text-micro text-text-tertiary">
+                    <HoursRating value={e.rating} />
+                    Rewatched {e.watchedOn === "Date unknown" ? e.watchedOn : formatHistoryDate(viewingDate(parseViewingInput(e.watchedOn)))}{e.item.type!=="film" && e.scope ? ` / ${e.scopeLabel ?? (e.scope === "WHOLE_TITLE" ? "Entire series" : e.scope === "SEASON" ? "Season" : e.scope === "EPISODES" ? "Episodes" : e.scope === "COUR" ? "Part" : e.scope === "UNKNOWN" ? "Scope unknown" : e.scope)}` : ""}{e.durationUnknown && e.minutes!=null ? " / duration partly unknown" : ""}
                   </span>
                 }
                 right={e.minutes==null ? <span className="text-xs text-text-tertiary">Duration unknown</span> : <Contribution minutes={e.minutes} total={totalMin} />}
@@ -126,14 +132,11 @@ export function HoursBreakdownPanel({
                 // Kaisen is a cour, and it has its own artwork.
                 posterUrl={e.seasonPoster ?? e.item.poster_url}
                 title={displayTitle(e.item)}
+                suffix={e.seasonLabel ? <span className="text-accent-watching-vivid">{e.seasonLabel}</span> : undefined}
                 onClick={() => open_(e.item.id)}
                 meta={
-                  <>
-                    {e.seasonLabel && (
-                      <span className="shrink-0 text-micro font-medium" style={{ color }}>
-                        {e.seasonLabel}
-                      </span>
-                    )}
+                  <div className="flex flex-col gap-1">
+                    <HoursRating value={e.rating} />
                     {/* A FILM'S ARITHMETIC IS ITS TOTAL. Printing "120 min" here next to "2h" on the
                         right was the same fact twice, in two formats, which reads as two facts. */}
                     {e.item.type !== "film" && (
@@ -141,7 +144,7 @@ export function HoursBreakdownPanel({
                         {e.source ? `${e.episodes} ep / ${e.source === "HISTORY" ? "frozen duration" : e.source === "MIXED" ? "history + legacy estimate" : "legacy estimate"}${e.runtime==null ? " (partly unknown)" : ""}` : `${e.episodes} ep x ${e.runtime} min`}
                       </span>
                     )}
-                  </>
+                  </div>
                 }
                 right={<Contribution minutes={e.minutes} total={totalMin} />}
               />
@@ -160,10 +163,12 @@ export function HoursBreakdownPanel({
                 key={e.item.id}
                 posterUrl={e.seasonPoster ?? e.item.poster_url}
                 title={displayTitle(e.item)}
+                suffix={e.seasonLabel ? <span className="text-accent-watching-vivid">{e.seasonLabel}</span> : undefined}
                 onClick={() => open_(e.item.id)}
                 className="opacity-60"
                 meta={
                   <span className="text-micro text-text-tertiary">
+                    <HoursRating value={e.rating} />
                     {e.item.type === "film" ? "Runtime unknown" : `${e.episodes} ep · runtime unknown`}
                   </span>
                 }

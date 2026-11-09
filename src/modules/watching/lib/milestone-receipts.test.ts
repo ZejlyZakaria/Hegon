@@ -137,3 +137,10 @@ describe("Stable retained local identities",()=>{
     expect(returned.achievements.find(a=>a.achievement_key==="marathoner")?.actual_value).toBe(2);
   });
 });
+
+it("a confirmed rewatch cannot advance a film discovery goal or issue a new completion",()=>{
+ const s=snapshot();s.history.records[0].kind="REWATCH";
+ expect(receiptMetrics(s).goalValue("films",2026)).toBe(0);
+ expect(receiptMetrics(s).liveGoalValue("films",2026)).toBe(0);
+ expect(computeStats(s.items,[],2026,new Map(),s.history).rewatches).toBe(1);
+});

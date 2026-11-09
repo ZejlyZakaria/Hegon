@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useCallback } from "react";
 import { SectionImageReveal } from "../shared/SectionImageReveal";
 import { useQueryClient } from "@tanstack/react-query";
 import { TMDB_KEYS } from "@/modules/watching/hooks/query-keys";
@@ -10,6 +10,7 @@ import { X } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
 import { AddMark } from "@/modules/watching/components/shared/AddMark";
 import { ScoreMark } from "@/modules/watching/components/shared/Marks";
+import { useAlignedRail } from "../../hooks/useAlignedRail";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { Hint } from "@/shared/components/ui/tooltip";
@@ -148,11 +149,7 @@ export default function ForYouSectionClient({
     void migrateLegacyDismissals(userId, config.type).then(() =>
       queryClient.invalidateQueries({ queryKey: TMDB_KEYS.forYouDismissed(config.type) }));
   }, [userId, config.type, queryClient]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [cardsPerView, setCardsPerView] = useState(5);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const { openTitle } = useWatching();
-  const gap = 16;
 
   // Live filter against the library (handles titles added since the last 5-day
   // refresh) + dismissed, then take 10 — the stored ~20 is the reserve, so adding
@@ -160,25 +157,10 @@ export default function ForYouSectionClient({
   const owned = new Set(ownedIds);
   const items = rawItems.filter((i) => !dismissed.has(i.id) && !owned.has(i.id)).slice(0, 10);
 
-  // Reset scroll when items change (data reload or dismissal)
+  const { ref: scrollRef, scroll, canPrev: canGoPrev, canNext: canGoNext } = useAlignedRail(isLoading || dismissedLoading || ownedLoading ? 0 : items.length);
   useLayoutEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCurrentIndex(0);
-    if (scrollRef.current) scrollRef.current.scrollTo({ left: 0 });
-  }, [items.length]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      const w = window.innerWidth;
-      if (w < 768) setCardsPerView(1);
-      else if (w < 1024) setCardsPerView(2);
-      else if (w < 1280) setCardsPerView(3);
-      else setCardsPerView(5);
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    scrollRef.current?.scrollTo({ left: 0 });
+  }, [items.length, scrollRef]);
 
   const handleDismiss = useCallback((id: number) => {
     dismiss.mutate({ tmdbId: id }, {
@@ -190,21 +172,6 @@ export default function ForYouSectionClient({
   // already refused, then pull it away.
   if (isLoading || dismissedLoading || ownedLoading) return <ForYouSkeleton />;
   if (items.length === 0) return null;
-
-  const totalElements = items.length;
-  const canGoPrev = currentIndex > 0;
-  const canGoNext = currentIndex < totalElements - cardsPerView;
-
-  const scroll = (direction: "prev" | "next") => {
-    if (!scrollRef.current) return;
-    const containerWidth = scrollRef.current.clientWidth;
-    const cardWidth = (containerWidth - (cardsPerView - 1) * gap) / cardsPerView;
-    let newIndex = currentIndex;
-    if (direction === "prev" && canGoPrev) newIndex--;
-    else if (direction === "next" && canGoNext) newIndex++;
-    scrollRef.current.scrollTo({ left: newIndex * (cardWidth + gap), behavior: "smooth" });
-    setCurrentIndex(Math.min(newIndex, Math.max(0, totalElements - cardsPerView)));
-  };
 
   const handleAdd = (item: ForYouItem) => openTitle(item);
 
@@ -221,8 +188,8 @@ export default function ForYouSectionClient({
         actions={
           <CarouselNav
             className="[--hub-cards:3] xl:[--hub-cards:5] hidden lg:flex"
-            onPrev={() => scroll("prev")}
-            onNext={() => scroll("next")}
+            onPrev={() => scroll(-1)}
+            onNext={() => scroll(1)}
             canPrev={canGoPrev}
             canNext={canGoNext}
           />

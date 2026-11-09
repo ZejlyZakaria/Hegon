@@ -11,11 +11,11 @@ export function useWatchingStatsData(userId: string) {
     queryKey: WATCHING_KEYS.stats(userId,orgId),
     queryFn: async () => {
       if (!orgId) throw new Error("Organization required");
-      const [{ items, cours, history }, rewatches] = await Promise.all([
+      const [{ items, cours, history, ratingBases }, rewatches] = await Promise.all([
         getWatchingStatsData(userId,orgId),
         getRewatchStats(userId,orgId),
       ]);
-      return { items, cours, rewatches, history };
+      return { items, cours, rewatches, history, ratingBases };
     },
     enabled: !!userId && !!orgId,
   });

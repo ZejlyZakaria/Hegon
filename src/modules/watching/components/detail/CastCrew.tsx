@@ -1,9 +1,10 @@
 "use client";
+import { useAlignedRail } from "../../hooks/useAlignedRail";
 import { detailRailHover } from "../../lib/detail-rail-hover";
 
 import { creditRoleLabel, followDepartment } from "../../lib/credit-roles";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { SectionHeader } from "@/shared/components/ui/section-header";
 import { CarouselNav } from "@/shared/components/ui/carousel-nav";
 import { PersonFace } from "@/modules/watching/components/shared/PersonFace";
@@ -57,9 +58,7 @@ interface Props {
 }
 
 export function CastCrew({ cast, directors, type }: Props) {
-  const railRef = useRef<HTMLDivElement>(null);
   const [n, setN] = useState(8);
-  const [page, setPage] = useState(0);
   useEffect(() => {
     const onResize = () => setN(perView(window.innerWidth));
     onResize();
@@ -67,7 +66,6 @@ export function CastCrew({ cast, directors, type }: Props) {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  if (cast.length === 0 && directors.length === 0) return null;
 
   const crew = directors
     .filter((d, i, arr) => arr.findIndex((x) => x.name === d.name) === i)
@@ -76,25 +74,17 @@ export function CastCrew({ cast, directors, type }: Props) {
     ...crew,
     ...cast.slice(0, Math.max(0, MAX_TOTAL - crew.length)).map((p) => ({ id: p.id, name: p.name, src: p.profile_url, subtitle: p.character, knownFor: followDepartment(null, type, true) })),
   ];
-  const pages = Math.max(1, Math.ceil(people.length / n));
-  const current = Math.min(page, pages - 1);
+  const { ref: railRef, scroll, canPrev, canNext } = useAlignedRail(people.length);
   const style = { width: `calc((100% - ${(n - 1) * GAP}px) / ${n})` };
 
-  const go = (to: number) => {
-    const el = railRef.current;
-    if (!el) return;
-    const next = Math.max(0, Math.min(pages - 1, to));
-    setPage(next);
-    // One page = the rail's own width: the row scrolls by exactly what it shows.
-    el.scrollTo({ left: next * (el.clientWidth + GAP), behavior: "smooth" });
-  };
+  if (!people.length) return null;
 
   return (
     <section>
       <SectionHeader
         className="min-h-9"
         title="Cast & Crew"
-        actions={pages > 1 ? <CarouselNav className="hidden lg:flex" onPrev={() => go(current - 1)} onNext={() => go(current + 1)} canPrev={current > 0} canNext={current < pages - 1} /> : undefined}
+        actions={canPrev || canNext ? <CarouselNav className="hidden lg:flex" onPrev={() => scroll(-1)} onNext={() => scroll(1)} canPrev={canPrev} canNext={canNext} /> : undefined}
       />
       {/* Same bleed as every other rail: break out of the column gutter so a face can scroll under
           the screen edge, and start at the same x as its neighbours. py-1 is the hover scale's

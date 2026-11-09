@@ -9,7 +9,7 @@ export interface HistoricalViewing extends Omit<StoredViewingAssertion,"origin">
   recorded_at: string; retracted_at: string | null; supersedes_id?: string;
 }
 export interface HistoricalRating {
-  id: string; media_item_id: string | null; work_key: string; scope_kind: "SEASON" | "COUR"; scope_key: string;
+  id: string; media_item_id: string | null; work_key: string; scope_kind: "SEASON" | "COUR" | "WHOLE_TITLE"; scope_key: string;
   scope_number_at_recording: number; viewing_record_id: string | null; episode_ids: number[] | null;
   score: number | null; previous_rating_id: string | null; recorded_at: string;
 }
@@ -167,7 +167,7 @@ export function historicalContributions(item: StatsRawItem, view: MediaView, his
 export interface RatingScope { kind:string; number:number; scopeKey?:string; }
 export interface HistoricalRatingResult { score:number|null; scopes:RatingScope[]; }
 /** Latest assertion per scope and viewing-period context; previous assertions are history, not votes. */
-export function historicalRatingResult(item: StatsRawItem, history: HistoryAnalytics, year: number, fallback: number | null, legacyVotes: {kind:string; number:number; score:number}[] = [], month?:number, day?:number): HistoricalRatingResult {
+export function historicalRatingResult(item: StatsRawItem, history: HistoryAnalytics, year: number, fallback: number | null, legacyVotes: {kind:string; number:number; score:number}[] = [], month?:number, day?:number, ledger:WatchContribution[]=[]): HistoricalRatingResult {
   const ratings=history.ratings.filter(r => r.work_key===workKeyOf(item));
   if (!ratings.length) return {score:fallback,scopes:fallback==null ? []:legacyVotes.map(v=>({kind:v.kind,number:v.number}))};
   const records=recordsFor(item,history), byId=new Map(records.map(r => [r.id,r]));
@@ -186,10 +186,12 @@ export function historicalRatingResult(item: StatsRawItem, history: HistoryAnaly
     const dated=completion.year!=null ? completion : records.filter(r => !r.retracted_at && r.kind==="FIRST_WATCH" && r.year!=null && r.ranges.some(range =>
       terminal && range.season_number_at_recording===terminal.season_number_at_recording && range.episode_from<=terminal.episode_to && range.episode_to>=terminal.episode_to
       && (!range.episode_ids || range.episode_ids.includes(linked.episode_ids!.at(-1)!)))).sort((a,b) => b.recorded_at.localeCompare(a.recorded_at))[0];
+    const legacyDated=!dated && terminal ? ledger.find(c=>c.itemId===item.id && !c.rewatch && c.year!=null && c.ranges?.some(range=>
+      range.season_number_at_recording===terminal.season_number_at_recording && range.episode_from<=terminal.episode_to && range.episode_to>=terminal.episode_to)):undefined;
     // The caller already restricts these legacy season/cour votes to the selected viewing year.
     // An explicit scoped edit must retain that year without manufacturing a dated DB assertion.
     const legacyPeriod=!dated && month==null && day==null && legacyVotes.some(v=>v.kind===rating.scope_kind && v.number===rating.scope_number_at_recording);
-    if (dated ? periodMatches(dated,year,month,day) : legacyPeriod) {
+    if (dated ? periodMatches(dated,year,month,day) : legacyDated ? periodMatches(legacyDated,year,month,day):legacyPeriod) {
       votes.set(rating.scope_key,rating);
       voteSeasons.set(rating.id,[...new Set(completion.ranges.map(r=>r.season_number_at_recording))]);
     }
@@ -199,7 +201,8 @@ export function historicalRatingResult(item: StatsRawItem, history: HistoryAnaly
   const selected=[...votes.values()].filter(r=>r.scope_kind!=="SEASON" || !parts.some(p=>p.episode_ids?.some(id=>r.episode_ids?.includes(id))));
   const legacySelected=legacyVotes.filter(v => !ratings.some(r => r.scope_kind===v.kind && r.scope_number_at_recording===v.number)
     && !(v.kind==="SEASON" && parts.some(p=>voteSeasons.get(p.id)?.includes(v.number))));
-  const scored=selected.filter(r=>r.score!=null);
+  const precise=selected.filter(r=>r.scope_kind!=="WHOLE_TITLE");
+  const scored=(precise.some(r=>r.score!=null) || legacySelected.length ? precise:selected).filter(r=>r.score!=null);
   const scores=[...scored.map(r=>r.score!),...legacySelected.map(v=>v.score)];
   return {score:scores.length ? scores.reduce((a,b)=>a+b,0)/scores.length:null,
     scopes:[...scored.map(r=>({kind:r.scope_kind,number:r.scope_number_at_recording,scopeKey:r.scope_key})),

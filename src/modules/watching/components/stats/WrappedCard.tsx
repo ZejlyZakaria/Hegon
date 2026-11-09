@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
+import { useState } from "react";
 import type { StatsRawItem } from "../../service";
 import { displayTitle } from "../../utils";
 
@@ -23,74 +24,30 @@ interface WrappedCardProps {
 
 // All inline styles — no Tailwind classes — so html-to-image never hits oklab/oklch
 
-// Fan layout using left/top/rotate only — html-to-image handles these better than translateX/Y+scale combos
+/** A stable ranking explored as a circular, manual three-poster fan. */
 function PosterFan({ items }: { items: StatsRawItem[] }) {
-  const CW = 148; // center width
-  const CH = 222; // center height
-  const SW = 116; // side width
-  const SH = 174; // side height
-  const CONTAINER_W = 334; // card width - padding*2
-
-  // Positions: center anchor, side posters overlap inward
-  const centerLeft = (CONTAINER_W - CW) / 2; // 93px
-  const sideOffset = 52; // how much side posters show from behind center
-
-  return (
-    <div style={{ position: "relative", width: CONTAINER_W, height: 250, margin: "0 auto" }}>
-      {/* Left poster (#2) */}
-      {items[1] && (
-        <div style={{
-          position: "absolute",
-          width: SW,
-          height: SH,
-          left: centerLeft - SW + sideOffset,
-          top: 30,
-          overflow: "hidden",
-          borderRadius: 14,
-          transform: "rotate(-14deg)",
-          transformOrigin: "bottom center",
-          zIndex: 1,
-          boxShadow: "0 20px 48px rgba(0,0,0,0.75)",
-        }}>
-          <img src={proxyUrl(items[1].poster_url) ?? ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-        </div>
-      )}
-      {/* Right poster (#3) */}
-      {items[2] && (
-        <div style={{
-          position: "absolute",
-          width: SW,
-          height: SH,
-          left: centerLeft + CW - sideOffset,
-          top: 30,
-          overflow: "hidden",
-          borderRadius: 14,
-          transform: "rotate(14deg)",
-          transformOrigin: "bottom center",
-          zIndex: 1,
-          boxShadow: "0 20px 48px rgba(0,0,0,0.75)",
-        }}>
-          <img src={proxyUrl(items[2].poster_url) ?? ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-        </div>
-      )}
-      {/* Center poster (#1) */}
-      {items[0] && (
-        <div style={{
-          position: "absolute",
-          width: CW,
-          height: CH,
-          left: centerLeft,
-          top: 10,
-          overflow: "hidden",
-          borderRadius: 16,
-          zIndex: 10,
-          boxShadow: "0 0 0 2px rgba(45,212,191,0.55), 0 32px 64px rgba(0,0,0,0.85)",
-        }}>
-          <img src={proxyUrl(items[0].poster_url) ?? ""} alt={displayTitle(items[0])} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-        </div>
-      )}
+  const [center,setCenter]=useState(0);
+  if (!items.length) return <div style={{height:276,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"rgba(255,255,255,0.5)"}}>No rated first viewings yet</div>;
+  const active=center % Math.max(1,items.length);
+  const move=(step:number)=>setCenter(n=>(n+step+items.length)%items.length);
+  const slots=items.length<2 ? [0] : items.length===2 ? [0,1] : [-1,0,1];
+  return <div aria-label="Your highest-rated first viewings" aria-roledescription="carousel" style={{width:334,margin:"0 auto"}}>
+    <div style={{position:"relative",height:236}} onKeyDown={e=>{
+      if(items.length<2 || (e.key!=="ArrowRight" && e.key!=="ArrowLeft"))return;
+      e.preventDefault();move(e.key==="ArrowRight" ? 1:-1);
+      const root=e.currentTarget;
+      requestAnimationFrame(()=>root.querySelector<HTMLButtonElement>("[aria-current=true]")?.focus());
+    }}>
+      {slots.map(offset=>{
+        const index=(active+offset+items.length)%items.length,item=items[index];if(!item)return null;
+        const middle=offset===0;
+        return <button className="motion-reduce:transition-none" key={item.id} type="button" aria-label={middle ? `${displayTitle(item)}, ${item.user_rating ?? "unrated"} out of 10, ${index+1} of ${items.length}` : `Show ${displayTitle(item)}`} aria-current={middle ? "true":undefined} onClick={()=>{if(!middle)move(offset);}} style={{transition:"left 260ms ease, top 260ms ease, width 260ms ease, height 260ms ease, transform 260ms ease",position:"absolute",width:middle ? 148:116,height:middle ? 222:174,left:middle ? 93:offset<0 ? 29:189,top:middle ? 10:30,padding:0,border:0,overflow:"hidden",borderRadius:middle ? 16:12,transform:middle ? undefined:`rotate(${offset*14}deg)`,transformOrigin:"bottom center",zIndex:middle ? 10:1,cursor:middle ? "default":"pointer",background:"#1e1e22",boxShadow:middle ? "0 0 0 2px rgba(45,212,191,0.55), 0 32px 64px rgba(0,0,0,0.85)":"0 20px 48px rgba(0,0,0,0.75)"}}>
+          <img src={proxyUrl(item.poster_url) ?? ""} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+        </button>;
+      })}
     </div>
-  );
+    {items[active] && <div aria-live="polite" style={{textAlign:"center",height:40,fontSize:11,color:"rgba(255,255,255,0.65)"}}><div style={{overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",color:"#fff"}}>{displayTitle(items[active])}</div><span style={{color:"#2dd4bf"}}>{items[active].user_rating} / 10</span>{items.length>1 && <span style={{marginLeft:12}}>{active+1} / {items.length}</span>}</div>}
+  </div>;
 }
 
 function StatCard({ value, label }: { value: string | number; label: string }) {
@@ -214,7 +171,7 @@ export function WrappedCard({
 
         {/* Posters */}
         <div style={{ marginBottom: 20 }}>
-          <PosterFan items={topPosters} />
+          <PosterFan key={topPosters.map(i=>i.id).join(":")} items={topPosters} />
         </div>
 
         {/* Tagline */}

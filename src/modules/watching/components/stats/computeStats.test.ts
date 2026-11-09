@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { computeStats } from "./computeStats";
 import type { StatsRawItem, RewatchStatItem } from "../../service";
+import { assertion, viewingDate } from "../../lib/viewing-history";
+import type { HistoryAnalytics } from "../../lib/history-analytics";
 import type { AnimeCoursRow } from "../../types";
 
 /**
@@ -494,7 +496,7 @@ describe("Annual Top Picks distinguish first viewing from rewatch activity",()=>
     const rewatches=[{media_item_id:film.id,watched_on:"2026-04-07"}];
     const annual=computeStats([film],rewatches,2026);
     expect(annual.topFavorites).toEqual([]);
-    expect(annual.counts.film).toBe(1);
+    expect(annual.counts.film).toBe(0);
     expect(annual.rewatches).toBe(1);
     expect(annual.activity).toEqual([{label:"2026-04",count:1}]);
     expect(computeStats([film],rewatches,2019).topFavorites[0].item.id).toBe(film.id);
@@ -559,4 +561,102 @@ it("keeps a returned title out of active/completed counts without adding hours",
   expect(waiting.statusCounts.serie).toMatchObject({awaitingResume:1,inProgress:0,watched:0,caughtUp:0});
   expect(active.statusCounts.serie).toMatchObject({awaitingResume:0,inProgress:1});
   expect(waiting.hours).toEqual(active.hours);
+});
+
+
+describe("First viewing ratings and deterministic Wrapped",()=>{
+  const film=(id:string,score:number,year=2026)=>item({id,type:"film",watched:true,watched_at:`${year}-04-03`,user_rating:score,poster_url:`${id}.jpg`,runtime:120});
+  it("excludes a rewatch-only film from annual ratings, average and Wrapped, retaining its activity",()=>{
+    const old=film("old",10,2019),fresh=film("fresh",8);
+    const stats=computeStats([old,fresh],[{media_item_id:old.id,watched_on:"2026-06-01"}],2026);
+    expect(stats.ratedCount).toBe(1);expect(stats.avgRating).toBe(8);
+    expect(stats.ratingDistribution.filter(r=>r.count)).toEqual([{score:8,count:1}]);
+    expect(stats.wrappedPosters.map(i=>i.id)).toEqual(["fresh"]);
+    expect(stats.wrappedSummary).toMatchObject({film:1,seriesAnime:0,total:1});
+    expect(stats.rewatches).toBe(1);expect(stats.counts.film).toBe(1);
+    expect(computeStats([old,fresh],[],null).ratedCount).toBe(2);
+    expect(stats.breakdown.film[0].rating).toBe(8);
+  });
+  it("keeps all ties at the third-place score with stable order, rating ahead of favorite",()=>{
+    const rows=[film("a",10),film("b",9.5),film("c",9),film("d",9),film("e",9),{...film("f",8),favorite:true}];
+    const expected=["a","b","c","d","e"];
+    expect(computeStats(rows,[],2026).wrappedPosters.map(i=>i.id)).toEqual(expected);
+    expect(computeStats([...rows].reverse(),[],2026).wrappedPosters.map(i=>i.id)).toEqual(expected);
+  });
+  it("includes a film watched then rewatched in the same year only once in the ratings",()=>{
+    const fresh=film("f",9);const stats=computeStats([fresh],[{media_item_id:fresh.id,watched_on:"2026-07-01"}],2026);
+    expect(stats.ratedCount).toBe(1);expect(stats.wrappedPosters).toHaveLength(1);
+  });
+});
+
+
+it("annual series ratings exclude an old-season rewatch but retain a newly viewed season",()=>{
+  const series=item({id:"series",type:"serie",watched:true,watched_at:"2020-06-01",user_rating:10,
+    poster_url:"series.jpg",season_episodes:[10],season_aired:[10],season_years:{1:2020},season_ratings:{1:10}});
+  const rewatches=[{media_item_id:series.id,watched_on:"2026-08-01"}];
+  const oldOnly=computeStats([series],rewatches,2026);
+  expect(oldOnly.avgRating).toBeNull();expect(oldOnly.ratedCount).toBe(0);expect(oldOnly.wrappedPosters).toEqual([]);
+  const expanded={...series,season_episodes:[10,10],season_aired:[10,10],season_years:{1:2020,2:2026},season_ratings:{1:10,2:8}};
+  const fresh=computeStats([expanded],rewatches,2026);
+  expect(fresh.avgRating).toBe(8);expect(fresh.wrappedPosters[0].user_rating).toBe(8);
+  expect(fresh.breakdown.serie[0].rating).toBe(8);
+});
+
+
+describe("Annual global opinions have a proven, frozen scope",()=>{
+  const basis=(sizes:number[],score=8.5)=>({kind:"WHOLE_TITLE" as const,key:"whole:frozen",number:1,score,
+    snapshot_id:"snapshot",mapping_snapshot_id:null,ids:sizes.flatMap((n,s)=>Array.from({length:n},(_,ep)=>s*100+ep+1)),
+    episodes:sizes.flatMap((n,s)=>Array.from({length:n},(_,ep)=>({season_number:s+1,episode:{id:s*100+ep+1,number:ep+1}})))});
+  it("restores a whole-series opinion only when every episode was first viewed in that year",()=>{
+    const friends=item({id:"friends",poster_url:"friends.jpg",tmdb_id:42,watched:true,watched_at:"2026-06-01",current_season:2,current_episode:3,
+      season_episodes:[4,3],season_aired:[4,3],season_years:{1:2026,2:2026},user_rating:8.5});
+    const proofs={friends:basis([4,3])};
+    const stats=computeStats([friends],[],2026,new Map(),{records:[],ratings:[]},proofs);
+    expect(stats.avgRating).toBe(8.5);expect(stats.topFavorites[0]).toMatchObject({rating:8.5,seasonLabel:null});
+    expect(stats.breakdown.serie[0].rating).toBe(8.5);expect(stats.wrappedPosters[0].user_rating).toBe(8.5);
+    const mixed={...friends,season_years:{1:2025,2:2026}};
+    expect(computeStats([mixed],[],2026,new Map(),{records:[],ratings:[]},proofs).ratedCount).toBe(0);
+  });
+  it("does not guess a global scope or transfer an older season note to a new season",()=>{
+    const row=item({id:"clover",tmdb_id:43,favorite:true,in_progress:true,current_season:2,current_episode:6,
+      season_episodes:[170,26],season_aired:[170,6],season_years:{1:2022,2:2026},season_ratings:{1:8.5},user_rating:8.5});
+    const stats=computeStats([row],[],2026);
+    expect(stats.ratedCount).toBe(0);expect(stats.topFavorites).toEqual([]);
+    expect(stats.hours.total).toBeGreaterThan(0);
+  });
+  it("forty new films and four rewatches remain forty discoveries even with one overlap",()=>{
+    const fresh=Array.from({length:40},(_,n)=>item({id:`fresh${n}`,type:"film",watched:true,watched_at:"2026-03-01",runtime:120}));
+    const old=Array.from({length:3},(_,n)=>item({id:`old${n}`,type:"film",watched:true,watched_at:"2020-01-01",runtime:120}));
+    const rewatches=[fresh[0],...old].map(i=>({media_item_id:i.id,watched_on:"2026-06-01"}));
+    const stats=computeStats([...fresh,...old],rewatches,2026);
+    expect(stats.counts.film).toBe(40);expect(stats.wrappedSummary.film).toBe(40);expect(stats.rewatches).toBe(4);
+    expect(computeStats([...fresh,...old],rewatches,null).counts.film).toBe(43);
+  });
+});
+
+
+it("keeps a frozen S1 opinion after S2 arrives and does not revive it after a correction",()=>{
+ const row=item({id:"knight",tmdb_id:44,user_rating:8.5,watched:false,resume_required:true,current_season:1,current_episode:6,
+   season_episodes:[6,6],season_aired:[6,0],season_years:{1:2026},watched_at:"2026-04-06"});
+ const range={season_key:"tmdb-season:1",season_number_at_recording:1,episode_from:1,episode_to:6,episode_ids:[1,2,3,4,5,6],minutes:0,duration_basis:"MILESTONE" as const};
+ const completion={...assertion("COMPLETION",viewingDate(),[range]),id:"completion",media_item_id:row.id,work_key:"tv:44",title_snapshot:row.title,media_type_snapshot:"serie",recorded_at:"2026-11-08",retracted_at:null};
+ const rating={id:"rated",media_item_id:row.id,work_key:"tv:44",scope_kind:"SEASON" as const,scope_key:"tmdb-season:444",scope_number_at_recording:1,
+   viewing_record_id:completion.id,episode_ids:[1,2,3,4,5,6],score:8.5,previous_rating_id:null,recorded_at:"2026-11-08"};
+ const history:HistoryAnalytics={records:[completion],ratings:[rating]};
+ const before=computeStats([row],[],2026,new Map(),history);
+ expect(before.topFavorites[0]).toMatchObject({rating:8.5,seasonLabel:"S1"});expect(before.breakdown.serie[0].rating).toBe(8.5);
+ const cleared={...rating,id:"clear",viewing_record_id:null,episode_ids:null,score:null,previous_rating_id:rating.id,recorded_at:"2026-11-09"};
+ expect(computeStats([row],[],2026,new Map(),{...history,ratings:[rating,cleared]}).ratedCount).toBe(0);
+});
+
+it("whole-title rating tombstones retain their lineage and suppress old scores",()=>{
+ const row=item({id:"friends",tmdb_id:45,user_rating:8.5,watched:true,current_season:2,current_episode:2,season_episodes:[2,2],season_aired:[2,2],season_years:{1:2026,2:2026}});
+ const ranges=[1,2].map(n=>({season_key:`tmdb-season:${n}`,season_number_at_recording:n,episode_from:1,episode_to:2,episode_ids:[n*10+1,n*10+2],minutes:0,duration_basis:"MILESTONE" as const}));
+ const completion={...assertion("COMPLETION",viewingDate(),ranges),id:"completed",media_item_id:row.id,work_key:"tv:45",title_snapshot:row.title,media_type_snapshot:"serie",recorded_at:"2026-11-08",retracted_at:null};
+ const rated={id:"rating",media_item_id:row.id,work_key:"tv:45",scope_kind:"WHOLE_TITLE" as const,scope_key:"whole:frozen",scope_number_at_recording:1,viewing_record_id:completion.id,episode_ids:[11,12,21,22],score:8.5,previous_rating_id:null,recorded_at:"2026-11-08"};
+ const history:HistoryAnalytics={records:[completion],ratings:[rated]};
+ expect(computeStats([row],[],2026,new Map(),history).avgRating).toBe(8.5);
+ expect(computeStats([{...row,season_years:{1:2025,2:2026}}],[],2026,new Map(),history).avgRating).toBeNull();
+ const clear={...rated,id:"clear",score:null,viewing_record_id:null,episode_ids:null,previous_rating_id:rated.id,recorded_at:"2026-11-09"};
+ expect(computeStats([row],[],2026,new Map(),{...history,ratings:[rated,clear]}).avgRating).toBeNull();
 });

@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useEffect } from "react";
+import { useAlignedRail } from "../../hooks/useAlignedRail";
 import { SectionImageReveal } from "./SectionImageReveal";
 import { CarouselSkeleton } from "./WatchingSkeletons";
 import { useRouter } from "next/navigation";
@@ -340,24 +341,8 @@ function MediaCarouselLayout<T>({ title, subtitle, staticSkeletonTitle, items, g
   // Add IS shown in the read-only demo — clicking it runs the full add flow, then
   // the guarded mutation shows the friendly read-only toast.
   const canAdd = !!onAddClick;
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [cardsPerView, setCardsPerView] = useState(5);
+  const { ref: scrollRef, scroll, canPrev: canGoPrev, canNext: canGoNext } = useAlignedRail(items.length);
   const prevFirstIdRef = useRef<string | null>(null);
-  const gap = 16;
-
-  useEffect(() => {
-    const handleResize = () => {
-      const w = window.innerWidth;
-      if (w < 768) setCardsPerView(1);
-      else if (w < 1024) setCardsPerView(2);
-      else if (w < 1280) setCardsPerView(3);
-      else setCardsPerView(5);
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   // NO client-side re-sort. Each section already arrives in the order it MEANS: Recently Watched by
   // watched_at, Top Rated by rank, In Progress by recency. A blanket `sort by priority` here quietly
@@ -373,35 +358,13 @@ function MediaCarouselLayout<T>({ title, subtitle, staticSkeletonTitle, items, g
     const firstId = sortedItems.length ? getItemKey(sortedItems[0]) : null;
     if (prevFirstIdRef.current !== null && firstId && firstId !== prevFirstIdRef.current) {
       const frame = requestAnimationFrame(() => {
-        setCurrentIndex(0);
         scrollRef.current?.scrollTo({ left: 0, behavior: "smooth" });
       });
       prevFirstIdRef.current = firstId;
       return () => cancelAnimationFrame(frame);
     }
     prevFirstIdRef.current = firstId;
-  }, [sortedItems, getItemKey]);
-
-  const totalElements = sortedItems.length;
-  const canGoPrev = currentIndex > 0;
-  const canGoNext = currentIndex < totalElements - cardsPerView;
-
-  const scroll = (direction: "prev" | "next") => {
-    if (!scrollRef.current) return;
-    const containerWidth = scrollRef.current.clientWidth;
-    const cardWidth =
-      (containerWidth - (cardsPerView - 1) * gap) / cardsPerView;
-    let newIndex = currentIndex;
-    if (direction === "prev" && canGoPrev) newIndex--;
-    else if (direction === "next" && canGoNext) newIndex++;
-    scrollRef.current.scrollTo({
-      left: newIndex * (cardWidth + gap),
-      behavior: "smooth",
-    });
-    setCurrentIndex(
-      Math.min(newIndex, Math.max(0, totalElements - cardsPerView)),
-    );
-  };
+  }, [sortedItems, getItemKey, scrollRef]);
 
   const itemWidthStyle = {
     width: "calc((100% - (var(--hub-cards) - 1) * 16px) / var(--hub-cards))",
@@ -459,8 +422,8 @@ function MediaCarouselLayout<T>({ title, subtitle, staticSkeletonTitle, items, g
             {actions}
             <CarouselNav
               className="hidden lg:flex"
-              onPrev={() => scroll("prev")}
-              onNext={() => scroll("next")}
+              onPrev={() => scroll(-1)}
+              onNext={() => scroll(1)}
               canPrev={canGoPrev}
               canNext={canGoNext}
             />

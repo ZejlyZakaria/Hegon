@@ -12,9 +12,9 @@ describe("shared live goal contribution",()=>{
     expect(evaluator("anime",2026)).toBe(1);
     expect(evaluator("films",2026)).toBe(0);
   });
-  it("counts a finished work only once, including canonical rewatches, without counting an unfinished series",()=>{
+  it("excludes rewatch-only years from discovery goals and keeps unfinished series excluded",()=>{
     const records=[record("REWATCH",2026),{...record("REWATCH",2026),id:"again"}];
-    expect(createLiveGoalEvaluator([media],new Map(),{records,ratings:[]})("titles",2026)).toBe(1);
+    expect(createLiveGoalEvaluator([media],new Map(),{records,ratings:[]})("titles",2026)).toBe(0);
     expect(createLiveGoalEvaluator([{...media,watched:false,in_progress:true}],new Map(),{records,ratings:[]})("anime",2026)).toBe(0);
   });
   it("recognizes a canonical finished-title completion despite stale posture, but ignores retracted completion",()=>{
@@ -23,4 +23,11 @@ describe("shared live goal contribution",()=>{
     expect(createLiveGoalEvaluator([m],new Map(),{records:[record("FIRST_WATCH",2026),completion],ratings:[]})("anime",2026)).toBe(1);
     expect(createLiveGoalEvaluator([m],new Map(),{records:[record("FIRST_WATCH",2026),{...completion,retracted_at:"2026-10-29"}],ratings:[]})("anime",2026)).toBe(0);
   });
+});
+
+it("film goals count discoveries once, including same-year first watch plus rewatch",()=>{
+ const items=Array.from({length:43},(_,n)=>({...media,id:`film${n}`,tmdb_id:n+1,type:"film" as const,watched_at:n<40?"2026-05-01":"2020-01-01",runtime:120}));
+ const records=[items[0],...items.slice(40)].map(i=>({...record("REWATCH",2026),id:`rw${i.id}`,media_item_id:i.id,work_key:`movie:${i.tmdb_id}`,media_type_snapshot:"film"}));
+ expect(createLiveGoalEvaluator(items,new Map(),{records,ratings:[]})("films",2026)).toBe(40);
+ expect(createLiveGoalEvaluator(items,new Map(),{records,ratings:[]})("films",null)).toBe(43);
 });
