@@ -2,20 +2,47 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Check, Clock, ImageOff, MoreHorizontal, Pencil, Star, Tv } from "lucide-react";
+import {
+  Check,
+  Clock,
+  ImageOff,
+  MoreHorizontal,
+  Pencil,
+  Star,
+  Tv,
+} from "lucide-react";
 import { SlidingPanel } from "@/shared/components/ui/sliding-panel";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/shared/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { Badge } from "@/shared/components/ui/badge";
 import { cn } from "@/shared/utils/utils";
 import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import type { SeasonPart } from "../../lib/season-history";
-import { partDisplayScore, partMatchesView, scopeDisplayScore, scopeMatchesView, type ScopeRatingContext } from "../../lib/scope-ratings";
+import {
+  partDisplayScore,
+  partMatchesView,
+  scopeDisplayScore,
+  scopeMatchesView,
+  type ScopeRatingContext,
+} from "../../lib/scope-ratings";
 import { StarRating } from "../shared/StarRating";
 import { ScoreMark } from "../shared/Marks";
 import { tmdbImage, tmdbImageFor, tmdbImageSrcSet } from "../../lib/tmdb-image";
-import { useSeasonEpisodes, type EpisodeInfo } from "../../hooks/useSeasonEpisodes";
+import {
+  useSeasonEpisodes,
+  type EpisodeInfo,
+} from "../../hooks/useSeasonEpisodes";
 import {
   useAddEpisodeHighlight,
   useEpisodeHighlights,
@@ -57,17 +84,29 @@ const MAX_HIGHLIGHTS = 20;
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (d: string) =>
-  new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  new Date(d).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 const fmtMonth = (d: string) =>
   new Date(d).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
 const fmtWeekday = (d: string) =>
   new Date(d + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long" });
 const fmtDayShort = (d: string) =>
-  new Date(d + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  new Date(d + "T00:00:00").toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 /** Not aired = no date at all, or a date still ahead of us. An unknown date is not a past date. */
 const isUnaired = (airDate: string | null) => !airDate || airDate > TODAY();
 const daysUntil = (d: string) =>
-  Math.ceil((new Date(d + "T00:00:00").getTime() - new Date(TODAY() + "T00:00:00").getTime()) / 86400000);
+  Math.ceil(
+    (new Date(d + "T00:00:00").getTime() -
+      new Date(TODAY() + "T00:00:00").getTime()) /
+      86400000,
+  );
 
 /** "In 3 days" while it's useful; the date once it isn't. Same rule as the episode rail. */
 function airLabel(d: string): string {
@@ -99,7 +138,12 @@ function cadence(aired: EpisodeInfo[]): "weekly" | null {
   if (dates.length < 3) return null;
   const gaps: number[] = [];
   for (let i = 1; i < dates.length; i++) {
-    gaps.push(Math.round((new Date(dates[i]).getTime() - new Date(dates[i - 1]).getTime()) / 86400000));
+    gaps.push(
+      Math.round(
+        (new Date(dates[i]).getTime() - new Date(dates[i - 1]).getTime()) /
+          86400000,
+      ),
+    );
   }
   const weekly = gaps.filter((g) => g === 7).length;
   return weekly >= Math.max(2, Math.floor(gaps.length * 0.6)) ? "weekly" : null;
@@ -119,7 +163,7 @@ interface Props {
   onYearChange: (season: number, year: number) => void;
   ratingContexts?: ScopeRatingContext[];
   seasonPeriod?: string;
-  onPartRatingChange?: (part:SeasonPart,value:number|null)=>void;
+  onPartRatingChange?: (part: SeasonPart, value: number | null) => void;
   ratingSaving?: boolean;
   onRefreshRatings?: () => void;
   onRatingChange: (season: number, value: number | null) => void;
@@ -128,8 +172,21 @@ interface Props {
 }
 
 export function SeasonPanel({
-  open, onClose, media, view, season: s, position, readOnly,
-  onYearChange, onRatingChange, ratingContexts, ratingSaving, onRefreshRatings, onSetPosition, seasonPeriod, onPartRatingChange,
+  open,
+  onClose,
+  media,
+  view,
+  season: s,
+  position,
+  readOnly,
+  onYearChange,
+  onRatingChange,
+  ratingContexts,
+  ratingSaving,
+  onRefreshRatings,
+  onSetPosition,
+  seasonPeriod,
+  onPartRatingChange,
 }: Props) {
   const idx = s - 1;
   const info = view.seasons[idx];
@@ -139,20 +196,30 @@ export function SeasonPanel({
   // The world's facts in DISPLAY space, plus where YOU stand right now. Same construction as the
   // StatusCard — the steppers may be ahead of the row for half a second, and the panel must agree
   // with the card next to it, not with the database.
-  const facts = { ...view.seriesFacts, watched: media.watched, current_season: position.season, current_episode: position.episode };
+  const facts = {
+    ...view.seriesFacts,
+    watched: media.watched,
+    current_season: position.season,
+    current_episode: position.episode,
+  };
   const comingSoon = aired === 0;
   const complete = isSeasonComplete(facts, s);
   const fullyWatched = !readOnly && hasFullyWatchedSeason(facts, s);
   const datable = !readOnly && isSeasonDatable(facts, s);
-  const availableSeen = !readOnly && aired > 0 && info?.airedKnown !== false
-    && (position.season > s || (position.season === s && position.episode >= aired));
+  const availableSeen =
+    !readOnly &&
+    aired > 0 &&
+    info?.airedKnown !== false &&
+    (position.season > s ||
+      (position.season === s && position.episode >= aired));
   // "Now" is a season you are ACTIVELY inside — the strip gates its badge on `in_progress` and so
   // does this. A paused or dropped show is inside a season too, but the word for that is the
   // show's word (Paused / Dropped), not "Now" — the StatusCard next to this panel says so.
   const here = position.season === s;
   const live = !readOnly && media.in_progress && isSeasonLive(facts, s);
   // Stopped inside this season — paused or dropped — and not through it.
-  const stoppedIn = !readOnly && here && !media.in_progress && (media.paused || media.dropped);
+  const stoppedIn =
+    !readOnly && here && !media.in_progress && (media.paused || media.dropped);
   // "Watched through" — offered on any fully aired season that isn't exactly where you stand.
   const standingAt = here && position.episode >= announced;
   const canJump = !readOnly && complete && !standingAt;
@@ -170,23 +237,65 @@ export function SeasonPanel({
    */
   const first = view.toStorage(s, 1);
   const cour = view.overlaid ? view.cours?.[idx] : null;
-  const { data: episodesRaw = [], isLoading } = useSeasonEpisodes(media.tmdb_id ?? 0, first.season, open && !!media.tmdb_id);
+  const { data: episodesRaw = [], isLoading } = useSeasonEpisodes(
+    media.tmdb_id ?? 0,
+    first.season,
+    open && !!media.tmdb_id,
+  );
   const episodes = useMemo(
-    () => cour
-      ? episodesRaw.filter((e) => e.number >= cour.start_episode && (cour.end_episode == null || e.number <= cour.end_episode))
-      : episodesRaw,
+    () =>
+      cour
+        ? episodesRaw.filter(
+            (e) =>
+              e.number >= cour.start_episode &&
+              (cour.end_episode == null || e.number <= cour.end_episode),
+          )
+        : episodesRaw,
     [episodesRaw, cour],
   );
   // Display number is per-season (a cour starts at "E1"); the mark stays in storage coordinates.
-  const dispNum = (e: EpisodeInfo) => e.number - first.episode + 1;
+  // TMDB normally numbers episodes from 1 inside each season, but some long-running
+  // shows (notably One Piece) keep absolute episode numbers across seasons.
+  // Storage keeps TMDB's native coordinate; the UI/progress model speaks season-local numbers.
+  const dispNum = (e: EpisodeInfo) => {
+    // AniList overlay: the TMDB episode belongs to a flat range.
+    if (view.overlaid) {
+      return e.number - first.episode + 1;
+    }
+
+    const seasonSize = view.seasons[idx]?.episodes ?? 0;
+
+    // Normal TMDB numbering:
+    // S3E9 comes back as episode_number = 9.
+    if (s <= 1 || e.number <= seasonSize) {
+      return e.number;
+    }
+
+    // Some long-running shows such as One Piece use absolute
+    // episode numbers across TMDB seasons.
+    const previousEpisodes = view.seasons
+      .slice(0, idx)
+      .reduce((sum, season) => sum + season.episodes, 0);
+
+    const local = e.number - previousEpisodes;
+
+    return local >= 1 && local <= seasonSize ? local : e.number;
+  };
 
   // The season's own dates — from its episodes once they're here, else the sync's per-season facts.
   const airedEps = episodes.filter((e) => !isUnaired(e.air_date));
-  const startDate = airedEps[0]?.air_date ?? (view.overlaid ? null : media.season_air_dates?.[idx]) ?? null;
-  const endDate = complete ? (airedEps[airedEps.length - 1]?.air_date ?? info?.endDate ?? null) : null;
+  const startDate =
+    airedEps[0]?.air_date ??
+    (view.overlaid ? null : media.season_air_dates?.[idx]) ??
+    null;
+  const endDate = complete
+    ? (airedEps[airedEps.length - 1]?.air_date ?? info?.endDate ?? null)
+    : null;
   // The next one to AIR — shown, never acted on. This is the Watching half of the "new episode"
   // notification: the panel of a season still coming out tells you when to come back.
-  const nextToAir = !complete ? episodes.find((e) => isUnaired(e.air_date)) ?? null : null;
+  const nextToAir = !complete
+    ? (episodes.find((e) => isUnaired(e.air_date)) ?? null)
+    : null;
   const rhythm = nextToAir ? cadence(airedEps) : null;
 
   /* ── Marks ─────────────────────────────────────────────────────────────────────────────── */
@@ -195,26 +304,51 @@ export function SeasonPanel({
   const addHighlight = useAddEpisodeHighlight(media.id);
   const removeHighlight = useRemoveEpisodeHighlight(media.id);
   const highlightMap = useMemo(
-    () => new Map(marks.filter((h) => h.highlighted).map((h) => [`${h.season}-${h.episode}`, h.id])),
+    () =>
+      new Map(
+        marks
+          .filter((h) => h.highlighted)
+          .map((h) => [`${h.season}-${h.episode}`, h.id]),
+      ),
     [marks],
   );
   const highlightCount = highlightMap.size;
 
   const toggleHighlight = async (e: EpisodeInfo) => {
-    const key = `${first.season}-${e.number}`;
+    const displayEpisode = dispNum(e);
+
+    // DISPLAY → canonical HEGON storage coordinates.
+    const storage = view.toStorage(s, displayEpisode);
+
+    const key = `${storage.season}-${storage.episode}`;
     const existingId = highlightMap.get(key);
+
     if (!existingId && highlightCount >= MAX_HIGHLIGHTS) {
       toast.error(`You can pin up to ${MAX_HIGHLIGHTS} best episodes.`);
       return;
     }
+
     try {
-      if (existingId) await removeHighlight.mutateAsync(existingId);
-      else await addHighlight.mutateAsync({
-        tmdbId: media.tmdb_id!, userId: media.user_id, orgId: media.org_id, season: first.season, episode: e.number,
-        meta: { title: e.name, still_path: e.still_path, air_date: e.air_date, overview: e.overview || null },
-      });
+      if (existingId) {
+        await removeHighlight.mutateAsync(existingId);
+      } else {
+        await addHighlight.mutateAsync({
+          tmdbId: media.tmdb_id!,
+          userId: media.user_id,
+          orgId: media.org_id,
+          season: storage.season,
+          episode: storage.episode,
+          meta: {
+            title: e.name,
+            still_path: e.still_path,
+            air_date: e.air_date,
+            overview: e.overview || null,
+          },
+        });
+      }
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
+
       toast.error(err instanceof Error ? err.message : "Failed to update.");
     }
   };
@@ -225,25 +359,36 @@ export function SeasonPanel({
   // or dropped the show before it). The data stays; we stop reading it — the strip's rule, applied
   // here too, so the card and the panel never disagree about the same number.
   const reachedSeason = media.watched || s <= position.season;
-  const candidateContext = ratingContexts?.find((r) => r.kind === (view.overlaid ? "COUR" : "SEASON") && r.number === s);
+  const candidateContext = ratingContexts?.find(
+    (r) => r.kind === (view.overlaid ? "COUR" : "SEASON") && r.number === s,
+  );
   const matchingScope = scopeMatchesView(candidateContext, view, s);
-  const rating = reachedSeason ? scopeDisplayScore(candidateContext,view,s) ?? 0:0;
+  const rating = reachedSeason
+    ? (scopeDisplayScore(candidateContext, view, s) ?? 0)
+    : 0;
 
   // Year options — never before the season finished airing, never after now.
   const currentYear = new Date().getFullYear();
-  const floor = (info?.endDate ? new Date(info.endDate).getFullYear() : null) ?? media.year ?? 1900;
+  const floor =
+    (info?.endDate ? new Date(info.endDate).getFullYear() : null) ??
+    media.year ??
+    1900;
   const years: number[] = [];
-  for (let y = currentYear; y >= Math.min(floor, currentYear); y--) years.push(y);
-
+  for (let y = currentYear; y >= Math.min(floor, currentYear); y--)
+    years.push(y);
 
   /* ── Header facts ──────────────────────────────────────────────────────────────────────── */
   const posterPath = info?.poster ?? null;
   const poster = posterPath
-    ? (posterPath.startsWith("http") ? posterPath : `${TMDB_IMG}${posterPath}`)
+    ? posterPath.startsWith("http")
+      ? posterPath
+      : `${TMDB_IMG}${posterPath}`
     : (media.poster_url ?? null);
 
   const span = startDate
-    ? (endDate && endDate !== startDate ? `${fmtMonth(startDate)} – ${fmtMonth(endDate)}` : fmtMonth(startDate))
+    ? endDate && endDate !== startDate
+      ? `${fmtMonth(startDate)} – ${fmtMonth(endDate)}`
+      : fmtMonth(startDate)
     : null;
 
   // ONE status line, derived — the same words the StatusCard would use for this season.
@@ -255,15 +400,23 @@ export function SeasonPanel({
       : fullyWatched
         ? { label: "Watched", color: TEAL }
         : live && position.episode >= aired
-          ? { label: caughtUpOn(facts) === "episode" ? "Caught up" : "Watched", color: TEAL }
+          ? {
+              label: caughtUpOn(facts) === "episode" ? "Caught up" : "Watched",
+              color: TEAL,
+            }
           : live
             ? { label: `Now · E${position.episode} of ${aired}`, color: TEAL }
             : stoppedIn
-              ? { label: `${media.dropped ? "Dropped" : "Paused"} · E${position.episode} of ${aired}`, color: QUIET }
+              ? {
+                  label: `${media.dropped ? "Dropped" : "Paused"} · E${position.episode} of ${aired}`,
+                  color: QUIET,
+                }
               : here
                 ? { label: `E${position.episode} of ${aired}`, color: QUIET }
                 : { label: "Not started", color: QUIET };
-  const bestHere = episodes.filter((e) => highlightMap.has(`${first.season}-${e.number}`)).length;
+  const bestHere = episodes.filter((e) =>
+    highlightMap.has(`${first.season}-${e.number}`),
+  ).length;
 
   /* ── The pieces every layout composes ─────────────────────────────────────────────────── */
   // No cour title here, on purpose: the chrome names the season, and one panel with a two-line
@@ -271,14 +424,15 @@ export function SeasonPanel({
   const factsLine = (
     <>
       {announced} episode{announced !== 1 ? "s" : ""}
-      {!complete && aired > 0 && <span className="font-normal text-white/60"> · {aired} aired</span>}
+      {!complete && aired > 0 && (
+        <span className="font-normal text-white/60"> · {aired} aired</span>
+      )}
     </>
   );
   const statusRow = status ? (
     <>
       <Badge variant="flag" size="md" color={status.color}>
         {status.label}
-
       </Badge>
       {bestHere > 0 && (
         <span className="flex items-center gap-1 text-micro text-white/70 tabular-nums">
@@ -290,53 +444,75 @@ export function SeasonPanel({
   ) : null;
   // THE YEAR, edited the way the StatusCard edits "Finished": the value with a pen, a small menu.
   const yearEdit = datable ? (
-    <YearPen value={year ?? null} label={seasonPeriod} years={years} onChange={(y) => onYearChange(s, y)} />
+    <YearPen
+      value={year ?? null}
+      label={seasonPeriod}
+      years={years}
+      onChange={(y) => onYearChange(s, y)}
+    />
   ) : null;
-  const stars = availableSeen && matchingScope && !ratingSaving ? (
-    <StarRating size="sm" value={rating} onChange={(v) => onRatingChange(s, v)} />
-  ) : null;
-  const jump = canJump && !behind ? (
-    <button
-      type="button"
-      onClick={() => onSetPosition(s, announced)}
-      className="flex w-full items-center justify-center gap-1.5 rounded-control bg-white/10 py-1.5 text-xs font-medium text-white/85 transition-colors hover:bg-white/15 hover:text-white"
-    >
-      <Check size={13} />
-      Watched through season {s}
-    </button>
-  ) : null;
+  const stars =
+    availableSeen && matchingScope && !ratingSaving ? (
+      <StarRating
+        size="sm"
+        value={rating}
+        onChange={(v) => onRatingChange(s, v)}
+      />
+    ) : null;
+  const jump =
+    canJump && !behind ? (
+      <button
+        type="button"
+        onClick={() => onSetPosition(s, announced)}
+        className="flex w-full items-center justify-center gap-1.5 rounded-control bg-white/10 py-1.5 text-xs font-medium text-white/85 transition-colors hover:bg-white/15 hover:text-white"
+      >
+        <Check size={13} />
+        Watched through season {s}
+      </button>
+    ) : null;
   // THE "…" — corrections, not actions. The same grammar as the StatusCard and the poster cards:
   // what changes a claim you already made lives behind the dots, and the card stays about the
   // season. Rendered only when it has something to offer; room for more later.
   const corrections = [
-    ...(canJump && behind ? [{ label: "I stopped after this season", onPick: () => onSetPosition(s, announced) }] : []),
+    ...(canJump && behind
+      ? [
+          {
+            label: "I stopped after this season",
+            onPick: () => onSetPosition(s, announced),
+          },
+        ]
+      : []),
   ];
-  const menu = corrections.length > 0 ? (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="More"
-          className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-control text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary"
-        >
-          <MoreHorizontal size={14} />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-56 overflow-hidden rounded-card border-border-default bg-surface-3 p-0 shadow-md">
-        {corrections.map((c) => (
+  const menu =
+    corrections.length > 0 ? (
+      <Popover>
+        <PopoverTrigger asChild>
           <button
-            key={c.label}
             type="button"
-            onClick={c.onPick}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            aria-label="More"
+            className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-control text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary"
           >
-            <Check size={13} />
-            {c.label}
+            <MoreHorizontal size={14} />
           </button>
-        ))}
-      </PopoverContent>
-    </Popover>
-  ) : null;
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          className="w-56 overflow-hidden rounded-card border-border-default bg-surface-3 p-0 shadow-md"
+        >
+          {corrections.map((c) => (
+            <button
+              key={c.label}
+              type="button"
+              onClick={c.onPick}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            >
+              <Check size={13} />
+              {c.label}
+            </button>
+          ))}
+        </PopoverContent>
+      </Popover>
+    ) : null;
 
   return (
     <SlidingPanel
@@ -347,45 +523,109 @@ export function SeasonPanel({
       title={
         <h2 className="flex min-w-0 items-baseline gap-2 text-sm font-semibold text-text-primary">
           <span className="shrink-0">Season {s}</span>
-          <span className="truncate font-normal text-text-tertiary">{media.title}</span>
+          <span className="truncate font-normal text-text-tertiary">
+            {media.title}
+          </span>
         </h2>
       }
     >
       <div className="space-y-5 px-4 py-4">
-
         {/* Catalogue facts stay beside a fixed-ratio poster. Personal controls have their own space. */}
         <div className="relative isolate grid grid-cols-[96px_minmax(0,1fr)] items-start gap-4 overflow-hidden rounded-card border border-border-subtle bg-surface-1 p-3 sm:grid-cols-[120px_minmax(0,1fr)] sm:p-4">
-          {poster && <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-            <img src={tmdbImage(poster,"w92") ?? poster} alt="" className="h-full w-full scale-150 object-cover opacity-50 blur-3xl"/>
-            <div className="absolute inset-0 bg-black/45"/>
-          </div>}
-          <div className="aspect-2/3 w-full self-start overflow-hidden rounded-tile bg-surface-2" data-season-poster>
-            {poster ? <img src={tmdbImageFor(poster,120) ?? poster} srcSet={tmdbImageSrcSet(poster,undefined,500)} sizes="(min-width: 640px) 120px, 96px" alt={`Season ${s}`} className="h-full w-full object-cover"/>:
-              <div className="flex h-full w-full items-center justify-center"><Tv size={22} className="text-text-tertiary"/></div>}
+          {poster && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+            >
+              <img
+                src={tmdbImage(poster, "w92") ?? poster}
+                alt=""
+                className="h-full w-full scale-150 object-cover opacity-50 blur-3xl"
+              />
+              <div className="absolute inset-0 bg-black/45" />
+            </div>
+          )}
+          <div
+            className="aspect-2/3 w-full self-start overflow-hidden rounded-tile bg-surface-2"
+            data-season-poster
+          >
+            {poster ? (
+              <img
+                src={tmdbImageFor(poster, 120) ?? poster}
+                srcSet={tmdbImageSrcSet(poster, undefined, 500)}
+                sizes="(min-width: 640px) 120px, 96px"
+                alt={`Season ${s}`}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <Tv size={22} className="text-text-tertiary" />
+              </div>
+            )}
           </div>
           <div className="min-w-0 py-1">
-            <p className="pr-6 text-sm font-semibold text-text-primary tabular-nums">{factsLine}</p>
-            {span && <p className="mt-1 text-xs leading-relaxed text-text-secondary">Aired {span}</p>}
-            {statusRow && <div className="mt-3 flex flex-wrap items-center gap-2">{statusRow}</div>}
+            <p className="pr-6 text-sm font-semibold text-text-primary tabular-nums">
+              {factsLine}
+            </p>
+            {span && (
+              <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+                Aired {span}
+              </p>
+            )}
+            {statusRow && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {statusRow}
+              </div>
+            )}
           </div>
           {menu}
         </div>
 
-        {!readOnly && <section aria-label="Your season record" className="rounded-card border border-border-subtle bg-surface-1 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <h4 className="text-xs font-medium text-text-secondary">Your rating</h4>
-            {stars ?? (rating>0 ? <ScoreMark value={rating} source="mine" size="md"/>:
-              <span className="text-xs text-text-tertiary">{candidateContext?.validity==="NEEDS_RECONFIRMATION" ? "Rate the updated season":"Not rated"}</span>)}
-          </div>
-          <ScopeRatingReceipt context={candidateContext} score={candidateContext?.score ?? 0} canConfirm={availableSeen && matchingScope}
-            saving={ratingSaving} onConfirm={()=>onRatingChange(s,candidateContext?.score ?? null)}
-            onRefresh={!matchingScope && !ratingSaving ? onRefreshRatings:undefined}/>
-          {(datable || seasonPeriod || year) && <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-3">
-            <span className="text-xs text-text-secondary">Watched in</span>
-            {yearEdit ?? <span className="text-xs font-medium text-text-primary tabular-nums">{seasonPeriod ?? year}</span>}
-          </div>}
-          {jump && <div className="mt-3">{jump}</div>}
-        </section>}
+        {!readOnly && (
+          <section
+            aria-label="Your season record"
+            className="rounded-card border border-border-subtle bg-surface-1 p-4"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <h4 className="text-xs font-medium text-text-secondary">
+                Your rating
+              </h4>
+              {stars ??
+                (rating > 0 ? (
+                  <ScoreMark value={rating} source="mine" size="md" />
+                ) : (
+                  <span className="text-xs text-text-tertiary">
+                    {candidateContext?.validity === "NEEDS_RECONFIRMATION"
+                      ? "Rate the updated season"
+                      : "Not rated"}
+                  </span>
+                ))}
+            </div>
+            <ScopeRatingReceipt
+              context={candidateContext}
+              score={candidateContext?.score ?? 0}
+              canConfirm={availableSeen && matchingScope}
+              saving={ratingSaving}
+              onConfirm={() =>
+                onRatingChange(s, candidateContext?.score ?? null)
+              }
+              onRefresh={
+                !matchingScope && !ratingSaving ? onRefreshRatings : undefined
+              }
+            />
+            {(datable || seasonPeriod || year) && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-3">
+                <span className="text-xs text-text-secondary">Watched in</span>
+                {yearEdit ?? (
+                  <span className="text-xs font-medium text-text-primary tabular-nums">
+                    {seasonPeriod ?? year}
+                  </span>
+                )}
+              </div>
+            )}
+            {jump && <div className="mt-3">{jump}</div>}
+          </section>
+        )}
 
         {/* ── Next to air — two lines on their own ground. Read, never written: this is the
             Watching half of the "new episode" notification. Weekday and distance (what you want
@@ -394,26 +634,47 @@ export function SeasonPanel({
           <div className="rounded-card bg-surface-2 px-3.5 py-2.5">
             <p className="truncate text-xs font-semibold text-text-primary">
               <span className="text-accent-watching-vivid">Next episode</span>
-              <span className="text-text-tertiary"> · </span>
-              E{dispNum(nextToAir)}{nextToAir.name ? ` · ${nextToAir.name}` : ""}
+              <span className="text-text-tertiary"> · </span>E
+              {dispNum(nextToAir)}
+              {nextToAir.name ? ` · ${nextToAir.name}` : ""}
             </p>
             <p className="mt-0.5 text-micro text-text-tertiary">
-              {nextToAir.air_date
-                ? <>{fmtDayShort(nextToAir.air_date)} · {waitLabel(nextToAir.air_date)}{rhythm === "weekly" && ` · every ${fmtWeekday(nextToAir.air_date)}`}</>
-                : "Not scheduled yet"}
+              {nextToAir.air_date ? (
+                <>
+                  {fmtDayShort(nextToAir.air_date)} ·{" "}
+                  {waitLabel(nextToAir.air_date)}
+                  {rhythm === "weekly" &&
+                    ` · every ${fmtWeekday(nextToAir.air_date)}`}
+                </>
+              ) : (
+                "Not scheduled yet"
+              )}
             </p>
           </div>
         )}
 
-        {(info?.parts?.length ?? 0)>1 && <SeasonParts parts={info!.parts!} view={view} season={s}
-          contexts={ratingContexts} readOnly={readOnly} saving={ratingSaving} onRate={onPartRatingChange}/>}
+        {(info?.parts?.length ?? 0) > 1 && (
+          <SeasonParts
+            parts={info!.parts!}
+            view={view}
+            season={s}
+            contexts={ratingContexts}
+            readOnly={readOnly}
+            saving={ratingSaving}
+            onRate={onPartRatingChange}
+          />
+        )}
 
         {/* ── Episodes ── */}
         <section>
           <div className="mb-2 flex items-baseline justify-between">
-            <h4 className="text-caption font-semibold uppercase tracking-wide text-text-tertiary">Episodes</h4>
+            <h4 className="text-caption font-semibold uppercase tracking-wide text-text-tertiary">
+              Episodes
+            </h4>
             {!isLoading && episodes.length > 0 && !complete && (
-              <span className="text-micro text-text-tertiary tabular-nums">{aired} of {announced} aired</span>
+              <span className="text-micro text-text-tertiary tabular-nums">
+                {aired} of {announced} aired
+              </span>
             )}
           </div>
 
@@ -431,16 +692,28 @@ export function SeasonPanel({
               ))}
             </ul>
           ) : episodes.length === 0 ? (
-            <p className="py-6 text-center text-xs text-text-tertiary">No episodes listed yet.</p>
+            <p className="py-6 text-center text-xs text-text-tertiary">
+              No episodes listed yet.
+            </p>
           ) : (
             <ul className="-mx-2">
               {episodes.map((ep) => {
                 const n = dispNum(ep);
                 const unaired = isUnaired(ep.air_date);
                 const reached = !readOnly && hasReached(facts, s, n);
-                const upNext = !readOnly && !media.dropped && !unaired && here && n === position.episode + 1;
+                const upNext =
+                  !readOnly &&
+                  !media.dropped &&
+                  !unaired &&
+                  here &&
+                  n === position.episode + 1;
                 const actionable = !readOnly && !unaired && reached;
-                const highlighted = highlightMap.has(`${first.season}-${ep.number}`);
+                const displayEpisode = dispNum(ep);
+                const storageEpisode = view.toStorage(s, displayEpisode);
+
+                const highlighted = highlightMap.has(
+                  `${storageEpisode.season}-${storageEpisode.episode}`,
+                );
                 return (
                   <EpisodeRow
                     key={ep.number}
@@ -450,7 +723,9 @@ export function SeasonPanel({
                     reached={reached || readOnly}
                     upNext={upNext}
                     highlighted={highlighted}
-                    onToggle={actionable ? () => toggleHighlight(ep) : undefined}
+                    onToggle={
+                      actionable ? () => toggleHighlight(ep) : undefined
+                    }
                     backdrop={media.backdrop_url ?? null}
                   />
                 );
@@ -466,7 +741,14 @@ export function SeasonPanel({
 /* ── One episode ─────────────────────────────────────────────────────────────────────────────── */
 
 function EpisodeRow({
-  ep, number, unaired, reached, upNext, highlighted, onToggle, backdrop,
+  ep,
+  number,
+  unaired,
+  reached,
+  upNext,
+  highlighted,
+  onToggle,
+  backdrop,
 }: {
   ep: EpisodeInfo;
   number: number;
@@ -480,21 +762,49 @@ function EpisodeRow({
   backdrop: string | null;
 }) {
   return (
-    <li className={cn("group flex items-start gap-3 rounded-card px-2 py-2", !reached && "opacity-60")}>
+    <li
+      className={cn(
+        "group flex items-start gap-3 rounded-card px-2 py-2",
+        !reached && "opacity-60",
+      )}
+    >
       {/* Still — lazy, 16:9, the show's backdrop standing in when TMDB has none. `self-start` so
           the row's text can grow (More) without stretching the picture out of its ratio. */}
       <div className="relative aspect-video w-36 shrink-0 self-start overflow-hidden rounded-chip border border-border-subtle bg-surface-2">
         {ep.still_path && !unaired ? (
-          <img src={`${TMDB_STILL}${ep.still_path}`} alt="" loading="lazy" className="h-full w-full object-cover" />
+          <img
+            src={`${TMDB_STILL}${ep.still_path}`}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
         ) : (
           /* No still (TMDB is late) or not out yet: the show's backdrop, blurred — plainly this
              show, plainly not a photo of the episode. Heavier blur + a clock for the unaired. */
           <>
             {backdrop && (
-              <img src={backdrop} alt="" aria-hidden loading="lazy" className={cn("h-full w-full scale-110 object-cover opacity-80", unaired ? "blur-xs saturate-50" : "blur-[2px] saturate-75")} />
+              <img
+                src={backdrop}
+                alt=""
+                aria-hidden
+                loading="lazy"
+                className={cn(
+                  "h-full w-full scale-110 object-cover opacity-80",
+                  unaired ? "blur-xs saturate-50" : "blur-[2px] saturate-75",
+                )}
+              />
             )}
-            <div className={cn("absolute inset-0 flex items-center justify-center", unaired && "bg-black/40")}>
-              {unaired ? <Clock size={13} className="text-white/80" /> : <ImageOff size={14} className="text-white/45" />}
+            <div
+              className={cn(
+                "absolute inset-0 flex items-center justify-center",
+                unaired && "bg-black/40",
+              )}
+            >
+              {unaired ? (
+                <Clock size={13} className="text-white/80" />
+              ) : (
+                <ImageOff size={14} className="text-white/45" />
+              )}
             </div>
           </>
         )}
@@ -505,9 +815,17 @@ function EpisodeRow({
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-micro font-medium text-text-tertiary tabular-nums">
               <span>E{number}</span>
-              {ep.air_date && <span>· {unaired ? airLabel(ep.air_date) : fmtDate(ep.air_date)}</span>}
+              {ep.air_date && (
+                <span>
+                  · {unaired ? airLabel(ep.air_date) : fmtDate(ep.air_date)}
+                </span>
+              )}
               {!ep.air_date && unaired && <span>· Not scheduled</span>}
-              {upNext && <Badge variant="tint" size="sm" color={TEAL}>Up next</Badge>}
+              {upNext && (
+                <Badge variant="tint" size="sm" color={TEAL}>
+                  Up next
+                </Badge>
+              )}
             </p>
             <p className="text-xs font-semibold text-text-primary">{ep.name}</p>
           </div>
@@ -517,14 +835,24 @@ function EpisodeRow({
             <button
               type="button"
               onClick={onToggle}
-              aria-label={highlighted ? "Remove from best episodes" : "Mark as best episode"}
+              aria-label={
+                highlighted
+                  ? "Remove from best episodes"
+                  : "Mark as best episode"
+              }
               aria-pressed={highlighted}
               className={cn(
                 "-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-[opacity,background-color] duration-150 ease-out hover:bg-surface-2",
-                highlighted ? "opacity-100" : "opacity-100 can-hover:opacity-0 can-hover:group-hover:opacity-100",
+                highlighted
+                  ? "opacity-100"
+                  : "opacity-100 can-hover:opacity-0 can-hover:group-hover:opacity-100",
               )}
             >
-              <Star size={14} style={highlighted ? { color: GOLD, fill: GOLD } : undefined} className={highlighted ? undefined : "text-text-tertiary"} />
+              <Star
+                size={14}
+                style={highlighted ? { color: GOLD, fill: GOLD } : undefined}
+                className={highlighted ? undefined : "text-text-tertiary"}
+              />
             </button>
           ) : highlighted ? (
             <span className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center">
@@ -552,7 +880,15 @@ function Overview({ text }: { text: string }) {
   }, []);
   return (
     <div className="relative mt-1">
-      <p ref={expanded ? undefined : measure} className={cn("text-micro leading-relaxed text-text-tertiary", !expanded && "line-clamp-2")}>{text}</p>
+      <p
+        ref={expanded ? undefined : measure}
+        className={cn(
+          "text-micro leading-relaxed text-text-tertiary",
+          !expanded && "line-clamp-2",
+        )}
+      >
+        {text}
+      </p>
       {clamped && !expanded && (
         <button
           type="button"
@@ -580,7 +916,17 @@ function Overview({ text }: { text: string }) {
  * the pen says it can change, the menu holds the picker. A dropdown sitting in the row would make
  * the record read as a form; this reads as a fact you may correct.
  */
-function YearPen({ value, label, years, onChange }: { value: number | null; label?:string; years: number[]; onChange: (y: number) => void }) {
+function YearPen({
+  value,
+  label,
+  years,
+  onChange,
+}: {
+  value: number | null;
+  label?: string;
+  years: number[];
+  onChange: (y: number) => void;
+}) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -589,19 +935,44 @@ function YearPen({ value, label, years, onChange }: { value: number | null; labe
           aria-label="Change viewing year"
           className="group inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-text-primary tabular-nums transition-colors hover:text-text-secondary"
         >
-          {label ?? value ?? <span className="font-medium text-text-tertiary">Set year</span>}
-          <Pencil size={11} className="text-text-tertiary transition-colors group-hover:text-text-secondary" />
+          {label ?? value ?? (
+            <span className="font-medium text-text-tertiary">Set year</span>
+          )}
+          <Pencil
+            size={11}
+            className="text-text-tertiary transition-colors group-hover:text-text-secondary"
+          />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-44 border-border-strong bg-surface-3 p-3">
-        <label className="mb-1.5 block text-micro text-text-tertiary">When did you watch it?</label>
-        <Select value={value ? String(value) : undefined} onValueChange={(v) => onChange(Number(v))}>
-          <SelectTrigger variant="legacy" className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0">
+      <PopoverContent
+        align="end"
+        className="w-44 border-border-strong bg-surface-3 p-3"
+      >
+        <label className="mb-1.5 block text-micro text-text-tertiary">
+          When did you watch it?
+        </label>
+        <Select
+          value={value ? String(value) : undefined}
+          onValueChange={(v) => onChange(Number(v))}
+        >
+          <SelectTrigger
+            variant="legacy"
+            className="h-8 w-full border-border-subtle bg-surface-1 text-xs text-text-primary focus:ring-0"
+          >
             <SelectValue placeholder="Pick a year" />
           </SelectTrigger>
-          <SelectContent variant="legacy" className="border-border-strong bg-surface-3">
+          <SelectContent
+            variant="legacy"
+            className="border-border-strong bg-surface-3"
+          >
             {years.map((yr) => (
-              <SelectItem key={yr} value={String(yr)} className="text-xs focus:bg-surface-2 focus:text-text-primary">{yr}</SelectItem>
+              <SelectItem
+                key={yr}
+                value={String(yr)}
+                className="text-xs focus:bg-surface-2 focus:text-text-primary"
+              >
+                {yr}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -610,49 +981,141 @@ function YearPen({ value, label, years, onChange }: { value: number | null; labe
   );
 }
 
-
 /** Saved opinions remain visible; only demonstrated growth makes a rating historical. */
-export function ScopeRatingReceipt({context,score,canConfirm,saving,onConfirm,onRefresh}:{
-  context?:ScopeRatingContext;score:number;canConfirm:boolean;saving?:boolean;onConfirm:()=>void;onRefresh?:()=>void;
+export function ScopeRatingReceipt({
+  context,
+  score,
+  canConfirm,
+  saving,
+  onConfirm,
+  onRefresh,
+}: {
+  context?: ScopeRatingContext;
+  score: number;
+  canConfirm: boolean;
+  saving?: boolean;
+  onConfirm: () => void;
+  onRefresh?: () => void;
 }) {
-  if(context?.validity==="CURRENT" && !onRefresh) return null;
-  if(score<=0 && !onRefresh) return null;
-  const grown=context?.validity==="NEEDS_RECONFIRMATION";
-  return <details className="mt-3 text-xs text-text-secondary">
-    <summary className="w-fit cursor-pointer py-1 transition-colors hover:text-text-primary">{grown ? "Previous rating":"About this rating"}</summary>
-    <div className="mt-1 space-y-2 leading-relaxed">
-      {grown ? <>
-        <p>{score} / 10{context?.covered_episodes!=null ? ` · ${context.covered_episodes} episodes`:""}</p>
-        <p>New episodes are outside this rating.</p>
-        {canConfirm && !saving && <button type="button" className="min-h-11 rounded-control bg-surface-3 px-3 py-2 font-medium text-text-primary hover:bg-surface-4" onClick={onConfirm}>Keep {score} for the updated season</button>}
-      </>:<p>{score>0 ? "Your saved rating is kept. Its original episode coverage is not available.":"Episode details are needed before you can rate this season."}</p>}
-      {onRefresh && <button type="button" className="min-h-9 rounded-control px-2 py-1 font-medium text-text-primary hover:bg-surface-2" onClick={onRefresh}>Refresh details</button>}
-    </div>
-  </details>;
+  if (context?.validity === "CURRENT" && !onRefresh) return null;
+  if (score <= 0 && !onRefresh) return null;
+  const grown = context?.validity === "NEEDS_RECONFIRMATION";
+  return (
+    <details className="mt-3 text-xs text-text-secondary">
+      <summary className="w-fit cursor-pointer py-1 transition-colors hover:text-text-primary">
+        {grown ? "Previous rating" : "About this rating"}
+      </summary>
+      <div className="mt-1 space-y-2 leading-relaxed">
+        {grown ? (
+          <>
+            <p>
+              {score} / 10
+              {context?.covered_episodes != null
+                ? ` · ${context.covered_episodes} episodes`
+                : ""}
+            </p>
+            <p>New episodes are outside this rating.</p>
+            {canConfirm && !saving && (
+              <button
+                type="button"
+                className="min-h-11 rounded-control bg-surface-3 px-3 py-2 font-medium text-text-primary hover:bg-surface-4"
+                onClick={onConfirm}
+              >
+                Keep {score} for the updated season
+              </button>
+            )}
+          </>
+        ) : (
+          <p>
+            {score > 0
+              ? "Your saved rating is kept. Its original episode coverage is not available."
+              : "Episode details are needed before you can rate this season."}
+          </p>
+        )}
+        {onRefresh && (
+          <button
+            type="button"
+            className="min-h-9 rounded-control px-2 py-1 font-medium text-text-primary hover:bg-surface-2"
+            onClick={onRefresh}
+          >
+            Refresh details
+          </button>
+        )}
+      </div>
+    </details>
+  );
 }
 
-function SeasonParts({parts,view,season,contexts,readOnly,saving,onRate}:{
-  parts:SeasonPart[];view:MediaView;season:number;contexts?:ScopeRatingContext[];readOnly:boolean;saving?:boolean;
-  onRate?: (part:SeasonPart,value:number|null)=>void;
+function SeasonParts({
+  parts,
+  view,
+  season,
+  contexts,
+  readOnly,
+  saving,
+  onRate,
+}: {
+  parts: SeasonPart[];
+  view: MediaView;
+  season: number;
+  contexts?: ScopeRatingContext[];
+  readOnly: boolean;
+  saving?: boolean;
+  onRate?: (part: SeasonPart, value: number | null) => void;
 }) {
-  return <section aria-label="Season parts" className="space-y-2">
-    <h4 className="text-caption font-semibold uppercase tracking-wide text-text-tertiary">Parts</h4>
-    {parts.map(part=>{
-      const context=contexts?.find(r=>r.kind==="COUR" && r.scope_key===`anilist-cour:${part.id}`);
-      const matches=partMatchesView(context,view,part);
-      const seen=view.position.season>season || view.position.season===season && view.position.episode>=part.to;
-      const released=(view.seasons[season-1]?.aired ?? 0)>=part.to;
-      const canRate=!readOnly && !!onRate && matches && seen && released;
-      const score=partDisplayScore(context,view,part) ?? 0;
-      return <div key={part.id} className="rounded-card bg-surface-2 p-3">
-        <p className="text-xs font-medium text-text-primary">Part {part.number} · EP{part.from}–{part.to}</p>
-        <p className="mt-1 text-xs text-text-secondary">{part.title}</p>
-        {!readOnly && <div className="mt-2">
-          {canRate && !saving ? <StarRating size="sm" value={score} onChange={v=>onRate!(part,v)}/>:
-            score>0 ? <ScoreMark value={score} source="mine"/>:<p className="text-xs text-text-tertiary">{released ? seen ? "Episode mapping awaiting sync":"Watch this part to rate it":"Not fully released"}</p>}
-          <ScopeRatingReceipt context={context} score={context?.score ?? 0} canConfirm={canRate} saving={saving} onConfirm={()=>onRate?.(part,context!.score)}/>
-        </div>}
-      </div>;
-    })}
-  </section>;
+  return (
+    <section aria-label="Season parts" className="space-y-2">
+      <h4 className="text-caption font-semibold uppercase tracking-wide text-text-tertiary">
+        Parts
+      </h4>
+      {parts.map((part) => {
+        const context = contexts?.find(
+          (r) => r.kind === "COUR" && r.scope_key === `anilist-cour:${part.id}`,
+        );
+        const matches = partMatchesView(context, view, part);
+        const seen =
+          view.position.season > season ||
+          (view.position.season === season && view.position.episode >= part.to);
+        const released = (view.seasons[season - 1]?.aired ?? 0) >= part.to;
+        const canRate = !readOnly && !!onRate && matches && seen && released;
+        const score = partDisplayScore(context, view, part) ?? 0;
+        return (
+          <div key={part.id} className="rounded-card bg-surface-2 p-3">
+            <p className="text-xs font-medium text-text-primary">
+              Part {part.number} · EP{part.from}–{part.to}
+            </p>
+            <p className="mt-1 text-xs text-text-secondary">{part.title}</p>
+            {!readOnly && (
+              <div className="mt-2">
+                {canRate && !saving ? (
+                  <StarRating
+                    size="sm"
+                    value={score}
+                    onChange={(v) => onRate!(part, v)}
+                  />
+                ) : score > 0 ? (
+                  <ScoreMark value={score} source="mine" />
+                ) : (
+                  <p className="text-xs text-text-tertiary">
+                    {released
+                      ? seen
+                        ? "Episode mapping awaiting sync"
+                        : "Watch this part to rate it"
+                      : "Not fully released"}
+                  </p>
+                )}
+                <ScopeRatingReceipt
+                  context={context}
+                  score={context?.score ?? 0}
+                  canConfirm={canRate}
+                  saving={saving}
+                  onConfirm={() => onRate?.(part, context!.score)}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </section>
+  );
 }

@@ -13,7 +13,10 @@ import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import { Hint } from "@/shared/components/ui/tooltip";
 import { SectionHeader } from "@/shared/components/ui/section-header";
-import { useEpisodeHighlights, useRemoveEpisodeHighlight } from "../../hooks/useEpisodeHighlights";
+import {
+  useEpisodeHighlights,
+  useRemoveEpisodeHighlight,
+} from "../../hooks/useEpisodeHighlights";
 import type { WatchingMedia, AnimeCour, EpisodeHighlight } from "../../types";
 
 /**
@@ -31,7 +34,11 @@ const GOLD = "var(--color-gold)";
 // Fallback only. The native img chooses a still variant for its actual screen density.
 const TMDB_STILL = "https://image.tmdb.org/t/p/w500";
 const fmtAir = (d: string) =>
-  new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  new Date(d).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 
 /**
  * One best episode: still + the star, with number · title · overview below (like the IMDb episode
@@ -41,7 +48,12 @@ const fmtAir = (d: string) =>
  * IS a best episode); hovering it says what a click does, and a click does it: one gesture.
  */
 function StillCard({
-  still, line1, line2, overview, onRemove, backdrop,
+  still,
+  line1,
+  line2,
+  overview,
+  onRemove,
+  backdrop,
 }: {
   still: string | null;
   line1: string;
@@ -55,15 +67,26 @@ function StillCard({
     <div className="group relative w-66 shrink-0">
       <div className="relative aspect-video overflow-hidden rounded-card ring-1 ring-inset ring-border-subtle transition-transform duration-300 ease-out group-hover:z-10 group-hover:scale-[1.03]">
         {still ? (
-          <img src={still}
+          <img
+            src={still}
             // 264px (272px on hover): w300 covers 1x. Original is TMDB's published
             // higher-detail still source and never upscales a small native asset.
-            srcSet={`${tmdbImage(still,"w300")} 1x, ${tmdbImage(still,"original")} 2x`}
-            alt={line2} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            srcSet={`${tmdbImage(still, "w300")} 1x, ${tmdbImage(still, "original")} 2x`}
+            alt={line2}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
         ) : (
           <>
             {backdrop ? (
-              <img src={backdrop} alt="" aria-hidden loading="lazy" className="absolute inset-0 h-full w-full scale-105 object-cover opacity-80 blur-[2px] saturate-75" />
+              <img
+                src={backdrop}
+                alt=""
+                aria-hidden
+                loading="lazy"
+                className="absolute inset-0 h-full w-full scale-105 object-cover opacity-80 blur-[2px] saturate-75"
+              />
             ) : (
               <div className="absolute inset-0 bg-surface-2" />
             )}
@@ -86,17 +109,31 @@ function StillCard({
       {/* Number · title · overview. The number is an EYEBROW: it belongs to the title, so it sits
           closer to it (2px) than the overview does (4px). */}
       <div className="mt-2">
-        <p className="mb-0.5 text-micro font-medium text-text-tertiary">{line1}</p>
-        <p className="truncate text-xs font-semibold text-text-primary">{line2}</p>
+        <p className="mb-0.5 text-micro font-medium text-text-tertiary">
+          {line1}
+        </p>
+        <p className="truncate text-xs font-semibold text-text-primary">
+          {line2}
+        </p>
         {overview && (
-          <p className="mt-1 line-clamp-2 text-micro leading-relaxed text-text-tertiary">{overview}</p>
+          <p className="mt-1 line-clamp-2 text-micro leading-relaxed text-text-tertiary">
+            {overview}
+          </p>
         )}
       </div>
     </div>
   );
 }
 
-export function Episodes({ media, readOnly = false, cours }: { media: WatchingMedia; readOnly?: boolean; cours?: AnimeCour[] }) {
+export function Episodes({
+  media,
+  readOnly = false,
+  cours,
+}: {
+  media: WatchingMedia;
+  readOnly?: boolean;
+  cours?: AnimeCour[];
+}) {
   // Anime v2: marks are stored in TMDB coordinates (season 1 + the FLAT episode number) while the
   // cours are what you say out loud. The cours are the lens for this rail.
   const overlayOn = !!cours && cours.length > 0;
@@ -110,11 +147,19 @@ export function Episodes({ media, readOnly = false, cours }: { media: WatchingMe
    * the day you get there, and it comes back by itself when you do. Same rule as season years.
    */
   const rows = useMemo(
-    () => marks.filter((h) => h.highlighted && isEpisodeActionable(media, h.season, h.episode)),
+    () =>
+      marks.filter(
+        (h) => h.highlighted && isEpisodeActionable(media, h.season, h.episode),
+      ),
     [marks, media],
   );
 
-  const { ref: scrollRef, scroll, canPrev, canNext } = useAlignedRail(rows.length);
+  const {
+    ref: scrollRef,
+    scroll,
+    canPrev,
+    canNext,
+  } = useAlignedRail(rows.length);
 
   const remove = async (h: EpisodeHighlight) => {
     try {
@@ -129,23 +174,42 @@ export function Episodes({ media, readOnly = false, cours }: { media: WatchingMe
   // an empty rail with a hint is chrome around nothing, and the star lives in the season panel.
   if (readOnly || !media.tmdb_id || rows.length === 0) return null;
 
-
   return (
     <section>
       <SectionHeader
         className="min-h-9"
         title="Best Episodes"
-        actions={canPrev || canNext ? <CarouselNav size="md" canPrev={canPrev} canNext={canNext} onPrev={() => scroll(-1)} onNext={() => scroll(1)} /> : undefined}
+        actions={
+          canPrev || canNext ? (
+            <CarouselNav
+              size="md"
+              canPrev={canPrev}
+              canNext={canNext}
+              onPrev={() => scroll(-1)}
+              onNext={() => scroll(1)}
+            />
+          ) : undefined
+        }
       />
-      <div ref={scrollRef} {...detailRailHover} className="watching-detail-rail watching-detail-rail--episodes -mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5">
+      <div
+        ref={scrollRef}
+        {...detailRailHover}
+        className="watching-detail-rail watching-detail-rail--episodes -mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5"
+      >
         {rows.map((h) => {
           // The coordinate people SAY: a cour and its own number under the overlay, else the row.
-          const at = overlayOn ? flatToCour(h.episode, cours!) : { season: h.season, episode: h.episode };
+          const at = overlayOn
+            ? flatToCour(h.episode, cours!)
+            : { season: h.season, episode: h.episode };
           return (
             <StillCard
               key={h.id}
               still={h.still_path ? `${TMDB_STILL}${h.still_path}` : null}
-              line1={h.air_date ? `S${at.season}.E${at.episode} · ${fmtAir(h.air_date)}` : `S${at.season}.E${at.episode}`}
+              line1={
+                h.air_date
+                  ? `S${at.season}.E${at.episode} · ${fmtAir(h.air_date)}`
+                  : `S${at.season}.E${at.episode}`
+              }
               line2={h.title ?? `Episode ${at.episode}`}
               overview={h.overview}
               backdrop={media.backdrop_url ?? null}
