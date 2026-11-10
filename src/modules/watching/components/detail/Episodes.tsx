@@ -197,20 +197,25 @@ export function Episodes({
         className="watching-detail-rail watching-detail-rail--episodes -mx-4 flex gap-3 overflow-x-auto scroll-px-4 px-4 py-1.5 scrollbar-hide sm:-mx-1.5 sm:px-1.5 sm:scroll-px-1.5"
       >
         {rows.map((h) => {
-          // The coordinate people SAY: a cour and its own number under the overlay, else the row.
           const at = overlayOn
             ? flatToCour(h.episode, cours!)
-            : { season: h.season, episode: h.episode };
+            : {
+                season: h.season,
+                episode: h.episode,
+              };
+
+          const displayedEpisode = h.source_episode ?? at.episode;
+
           return (
             <StillCard
               key={h.id}
               still={h.still_path ? `${TMDB_STILL}${h.still_path}` : null}
               line1={
                 h.air_date
-                  ? `S${at.season}.E${at.episode} · ${fmtAir(h.air_date)}`
-                  : `S${at.season}.E${at.episode}`
+                  ? `S${at.season}.E${displayedEpisode} · ${fmtAir(h.air_date)}`
+                  : `S${at.season}.E${displayedEpisode}`
               }
-              line2={h.title ?? `Episode ${at.episode}`}
+              line2={h.title ?? `Episode ${displayedEpisode}`}
               overview={h.overview}
               backdrop={media.backdrop_url ?? null}
               onRemove={() => remove(h)}

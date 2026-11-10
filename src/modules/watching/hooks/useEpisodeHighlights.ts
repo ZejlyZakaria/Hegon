@@ -18,7 +18,8 @@ export interface EpisodeMeta {
 }
 
 const KEYS = {
-  byMedia: (mediaItemId: string) => ["watching", "episode-highlights", mediaItemId] as const,
+  byMedia: (mediaItemId: string) =>
+    ["watching", "episode-highlights", mediaItemId] as const,
 };
 
 export function useEpisodeHighlights(mediaItemId: string) {
@@ -39,6 +40,7 @@ export function useAddEpisodeHighlight(mediaItemId: string) {
       orgId,
       season,
       episode,
+      sourceEpisode,
       meta,
     }: {
       tmdbId: number;
@@ -46,6 +48,7 @@ export function useAddEpisodeHighlight(mediaItemId: string) {
       orgId: string;
       season: number;
       episode: number;
+      sourceEpisode: number;
       /** The caller already holds the episode (the season panel does) → no TMDB round trip. */
       meta?: EpisodeMeta;
     }) => {
@@ -56,11 +59,18 @@ export function useAddEpisodeHighlight(mediaItemId: string) {
       } else {
         try {
           const e = await getTmdbEpisode(tmdbId, season, episode);
-          ep = { title: e.name ?? null, still_path: e.still_path ?? null, air_date: e.air_date ?? null, overview: e.overview ?? null };
+          ep = {
+            title: e.name ?? null,
+            still_path: e.still_path ?? null,
+            air_date: e.air_date ?? null,
+            overview: e.overview ?? null,
+          };
         } catch (err) {
           const msg = err instanceof Error ? err.message : "";
           if (msg.includes("404")) {
-            throw new Error("Episode not found on TMDB. Check the season and episode numbers.");
+            throw new Error(
+              "Episode not found on TMDB. Check the season and episode numbers.",
+            );
           }
           throw new Error("TMDB unavailable. Try again.");
         }
@@ -71,6 +81,7 @@ export function useAddEpisodeHighlight(mediaItemId: string) {
         org_id: orgId,
         season,
         episode,
+        source_episode: sourceEpisode,
         ...ep,
       });
     },

@@ -104,6 +104,9 @@ export interface EpisodeHighlight {
   user_id: string;
   season: number;
   episode: number;
+  // Original provider/global number.
+  // Example: One Piece S3 E9 internally = provider episode 86.
+  source_episode: number | null;
   title: string | null;
   still_path: string | null;
   /** A photo of the moment you starred it — so the rail can READ the episode without TMDB. */

@@ -315,43 +315,51 @@ export function SeasonPanel({
   const highlightCount = highlightMap.size;
 
   const toggleHighlight = async (e: EpisodeInfo) => {
-    const displayEpisode = dispNum(e);
+  const localEpisode = dispNum(e);
 
-    // DISPLAY → canonical HEGON storage coordinates.
-    const storage = view.toStorage(s, displayEpisode);
+  const storage = view.toStorage(s, localEpisode);
 
-    const key = `${storage.season}-${storage.episode}`;
-    const existingId = highlightMap.get(key);
+  const key = `${storage.season}-${storage.episode}`;
+  const existingId = highlightMap.get(key);
 
-    if (!existingId && highlightCount >= MAX_HIGHLIGHTS) {
-      toast.error(`You can pin up to ${MAX_HIGHLIGHTS} best episodes.`);
-      return;
+  if (!existingId && highlightCount >= MAX_HIGHLIGHTS) {
+    toast.error(`You can pin up to ${MAX_HIGHLIGHTS} best episodes.`);
+    return;
+  }
+
+  try {
+    if (existingId) {
+      await removeHighlight.mutateAsync(existingId);
+    } else {
+      await addHighlight.mutateAsync({
+        tmdbId: media.tmdb_id!,
+        userId: media.user_id,
+        orgId: media.org_id,
+
+        season: storage.season,
+        episode: storage.episode,
+
+        // Keep the real provider/global episode number for display.
+        sourceEpisode: e.number,
+
+        meta: {
+          title: e.name,
+          still_path: e.still_path,
+          air_date: e.air_date,
+          overview: e.overview || null,
+        },
+      });
     }
+  } catch (err) {
+    if (isDemoReadOnlyError(err)) return;
 
-    try {
-      if (existingId) {
-        await removeHighlight.mutateAsync(existingId);
-      } else {
-        await addHighlight.mutateAsync({
-          tmdbId: media.tmdb_id!,
-          userId: media.user_id,
-          orgId: media.org_id,
-          season: storage.season,
-          episode: storage.episode,
-          meta: {
-            title: e.name,
-            still_path: e.still_path,
-            air_date: e.air_date,
-            overview: e.overview || null,
-          },
-        });
-      }
-    } catch (err) {
-      if (isDemoReadOnlyError(err)) return;
-
-      toast.error(err instanceof Error ? err.message : "Failed to update.");
-    }
-  };
+    toast.error(
+      err instanceof Error
+        ? err.message
+        : "Failed to update.",
+    );
+  }
+};
 
   /* ── Your record ───────────────────────────────────────────────────────────────────────── */
   const year = view.yearMap?.[String(s)];
@@ -718,7 +726,7 @@ export function SeasonPanel({
                   <EpisodeRow
                     key={ep.number}
                     ep={ep}
-                    number={n}
+                    number={ep.number}
                     unaired={unaired}
                     reached={reached || readOnly}
                     upNext={upNext}
