@@ -79,7 +79,7 @@ const TMDB_IMG = "https://image.tmdb.org/t/p/w300";
 const TMDB_STILL = "https://image.tmdb.org/t/p/w500";
 const TEAL = "var(--color-accent-watching-vivid)";
 const GOLD = "var(--color-gold)";
-const MAX_HIGHLIGHTS = 20;
+const MAX_HIGHLIGHTS = 30;
 // The header poster: between the strip card and a cover — the card takes its height from it.
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
@@ -257,29 +257,21 @@ export function SeasonPanel({
   // TMDB normally numbers episodes from 1 inside each season, but some long-running
   // shows (notably One Piece) keep absolute episode numbers across seasons.
   // Storage keeps TMDB's native coordinate; the UI/progress model speaks season-local numbers.
+  const firstSourceEpisode = episodes[0]?.number ?? 1;
+
+  const usesAbsoluteEpisodeNumbers =
+    !view.overlaid && s > 1 && firstSourceEpisode > 1;
+
   const dispNum = (e: EpisodeInfo) => {
-    // AniList overlay: the TMDB episode belongs to a flat range.
     if (view.overlaid) {
       return e.number - first.episode + 1;
     }
 
-    const seasonSize = view.seasons[idx]?.episodes ?? 0;
-
-    // Normal TMDB numbering:
-    // S3E9 comes back as episode_number = 9.
-    if (s <= 1 || e.number <= seasonSize) {
-      return e.number;
+    if (usesAbsoluteEpisodeNumbers) {
+      return e.number - firstSourceEpisode + 1;
     }
 
-    // Some long-running shows such as One Piece use absolute
-    // episode numbers across TMDB seasons.
-    const previousEpisodes = view.seasons
-      .slice(0, idx)
-      .reduce((sum, season) => sum + season.episodes, 0);
-
-    const local = e.number - previousEpisodes;
-
-    return local >= 1 && local <= seasonSize ? local : e.number;
+    return e.number;
   };
 
   // The season's own dates — from its episodes once they're here, else the sync's per-season facts.
@@ -315,51 +307,47 @@ export function SeasonPanel({
   const highlightCount = highlightMap.size;
 
   const toggleHighlight = async (e: EpisodeInfo) => {
-  const localEpisode = dispNum(e);
+    const localEpisode = dispNum(e);
 
-  const storage = view.toStorage(s, localEpisode);
+    const storage = view.toStorage(s, localEpisode);
 
-  const key = `${storage.season}-${storage.episode}`;
-  const existingId = highlightMap.get(key);
+    const key = `${storage.season}-${storage.episode}`;
+    const existingId = highlightMap.get(key);
 
-  if (!existingId && highlightCount >= MAX_HIGHLIGHTS) {
-    toast.error(`You can pin up to ${MAX_HIGHLIGHTS} best episodes.`);
-    return;
-  }
-
-  try {
-    if (existingId) {
-      await removeHighlight.mutateAsync(existingId);
-    } else {
-      await addHighlight.mutateAsync({
-        tmdbId: media.tmdb_id!,
-        userId: media.user_id,
-        orgId: media.org_id,
-
-        season: storage.season,
-        episode: storage.episode,
-
-        // Keep the real provider/global episode number for display.
-        sourceEpisode: e.number,
-
-        meta: {
-          title: e.name,
-          still_path: e.still_path,
-          air_date: e.air_date,
-          overview: e.overview || null,
-        },
-      });
+    if (!existingId && highlightCount >= MAX_HIGHLIGHTS) {
+      toast.error(`You can pin up to ${MAX_HIGHLIGHTS} best episodes.`);
+      return;
     }
-  } catch (err) {
-    if (isDemoReadOnlyError(err)) return;
 
-    toast.error(
-      err instanceof Error
-        ? err.message
-        : "Failed to update.",
-    );
-  }
-};
+    try {
+      if (existingId) {
+        await removeHighlight.mutateAsync(existingId);
+      } else {
+        await addHighlight.mutateAsync({
+          tmdbId: media.tmdb_id!,
+          userId: media.user_id,
+          orgId: media.org_id,
+
+          season: storage.season,
+          episode: storage.episode,
+
+          // Keep the real provider/global episode number for display.
+          sourceEpisode: e.number,
+
+          meta: {
+            title: e.name,
+            still_path: e.still_path,
+            air_date: e.air_date,
+            overview: e.overview || null,
+          },
+        });
+      }
+    } catch (err) {
+      if (isDemoReadOnlyError(err)) return;
+
+      toast.error(err instanceof Error ? err.message : "Failed to update.");
+    }
+  };
 
   /* ── Your record ───────────────────────────────────────────────────────────────────────── */
   const year = view.yearMap?.[String(s)];

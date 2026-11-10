@@ -57,9 +57,9 @@
     "2026-10-28: preserve legacy calendar on guarded date changes (existing function replacement) and one owner-authorized Bleach completion-date correction; all schema object counts unchanged.",
     "2026-10-29: restored exact archived 20261028010000 Bleach Part4 migration, already recorded remotely; data only, schema counts unchanged, no remote replay or history repair."
   ],
-  "_migrations_through": "20261108000000",
+  "_migrations_through": "20261109235126",
   "tables": 82,
-  "colonnes": 868,
+  "colonnes": 869,
   "policies": 226,
   "fonctions": 56,
   "index": 279,

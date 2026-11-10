@@ -3148,22 +3148,30 @@ export async function getWatchlistPage(
     return query.order("updated_at", { ascending: false }).order("id");
   };
   if (options.sort === "priority" && options.level === "all") {
-    const { data, count, error } = await build();
-    if (error) throw error;
-    const priority = { high: 0, medium: 1, low: 2 } as const;
-    const items = (data ?? []) as unknown as WatchingMedia[];
-    items.sort(
-      (a, b) =>
-        (a.priority_level == null
-          ? 3
-          : priority[a.priority_level as keyof typeof priority] ?? 3) -
-        (b.priority_level == null
-          ? 3
-          : priority[b.priority_level as keyof typeof priority] ?? 3),
-    );
+    const fetchPriorityBucket = (level: "high" | "medium" | "low" | null) =>
+      fetchAllRows<WatchingMedia>((from, to) => {
+        let query = build();
+
+        query =
+          level === null
+            ? query.is("priority_level", null)
+            : query.eq("priority_level", level);
+
+        return query.range(from, to);
+      });
+
+    const [high, medium, low, none] = await Promise.all([
+      fetchPriorityBucket("high"),
+      fetchPriorityBucket("medium"),
+      fetchPriorityBucket("low"),
+      fetchPriorityBucket(null),
+    ]);
+
+    const items = [...high, ...medium, ...low, ...none];
+
     return {
       items: items.slice(offset, offset + 50),
-      total: count ?? 0,
+      total: items.length,
     };
   }
   const query = build();

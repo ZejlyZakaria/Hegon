@@ -136,13 +136,19 @@ const eslintConfig = defineConfig([
     // is the same disease as the Deno case above: a wall of red nobody can act on teaches everyone
     // to stop reading it. The 26 warnings that remain are ours, deliberate, and one rule.
     ".claude/**",
+    // Local screenshot / audit fixtures.
+    "scripts/.shots/**",
   ]),
 
   // ── Le plus large : toute l'app ──────────────────────────────────────────────
   {
     files: ["src/**/*.{ts,tsx}"],
     rules: {
-      "no-restricted-syntax": ["error", STALE_TIME_IS_A_TIER, STALE_DEFAULT_IS_INHERITED],
+      "no-restricted-syntax": [
+        "error",
+        STALE_TIME_IS_A_TIER,
+        STALE_DEFAULT_IS_INHERITED,
+      ],
     },
   },
 
@@ -151,10 +157,18 @@ const eslintConfig = defineConfig([
   // either space) and indexes by TMDB season on purpose, because that is what the Stats page has
   // always meant. Putting it through the lens would change its numbers, not fix them.
   {
-    files: ["src/modules/watching/components/**/*.{ts,tsx}", "src/app/(main)/perso/watching/**/*.tsx"],
+    files: [
+      "src/modules/watching/components/**/*.{ts,tsx}",
+      "src/app/(main)/perso/watching/**/*.tsx",
+    ],
     ignores: ["src/modules/watching/components/stats/**"],
     rules: {
-      "no-restricted-syntax": ["error", NO_RAW_COORDINATE_READ, STALE_TIME_IS_A_TIER, STALE_DEFAULT_IS_INHERITED],
+      "no-restricted-syntax": [
+        "error",
+        NO_RAW_COORDINATE_READ,
+        STALE_TIME_IS_A_TIER,
+        STALE_DEFAULT_IS_INHERITED,
+      ],
     },
   },
 
@@ -162,7 +176,12 @@ const eslintConfig = defineConfig([
   {
     files: ["src/modules/**/service.ts", "src/app/api/**/*.ts"],
     rules: {
-      "no-restricted-syntax": ["error", NO_N_PLUS_ONE_IN_SERVICES, STALE_TIME_IS_A_TIER, STALE_DEFAULT_IS_INHERITED],
+      "no-restricted-syntax": [
+        "error",
+        NO_N_PLUS_ONE_IN_SERVICES,
+        STALE_TIME_IS_A_TIER,
+        STALE_DEFAULT_IS_INHERITED,
+      ],
     },
   },
 ]);
