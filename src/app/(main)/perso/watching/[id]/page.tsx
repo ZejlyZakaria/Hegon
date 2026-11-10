@@ -24,7 +24,10 @@ import { TrailerModal } from "@/modules/watching/components/detail/TrailerModal"
 import { StatusCard } from "@/modules/watching/components/detail/StatusCard";
 import { MyTake } from "@/modules/watching/components/detail/MyTake";
 import { MoreLikeThis } from "@/modules/watching/components/detail/MoreLikeThis";
-import { CastCrew, CastCrewSkeleton } from "@/modules/watching/components/detail/CastCrew";
+import {
+  CastCrew,
+  CastCrewSkeleton,
+} from "@/modules/watching/components/detail/CastCrew";
 import DeleteConfirmModal from "@/modules/watching/components/modals/DeleteConfirmModal";
 import { useDeleteMedia } from "@/modules/watching/hooks/useDeleteMedia";
 import { CaptureSheet } from "@/modules/watching/components/shared/CaptureSheet";
@@ -34,12 +37,26 @@ import { Episodes } from "@/modules/watching/components/detail/Episodes";
 import { SeasonPanel } from "@/modules/watching/components/detail/SeasonPanel";
 import { useScopeRatings } from "@/modules/watching/hooks/useScopeRatings";
 import { useMediaHistory } from "@/modules/watching/hooks/useMediaHistory";
-import { seasonViewingPeriods, type SeasonPart } from "@/modules/watching/lib/season-history";
-import { partMatchesView, ratingAction, scopeMatchesView, scopeDisplayScores } from "@/modules/watching/lib/scope-ratings";
+import {
+  seasonViewingPeriods,
+  type SeasonPart,
+} from "@/modules/watching/lib/season-history";
+import {
+  partMatchesView,
+  ratingAction,
+  scopeMatchesView,
+  scopeDisplayScores,
+} from "@/modules/watching/lib/scope-ratings";
 import { useMediaView } from "@/modules/watching/hooks/useMediaView";
-import { yearsPatch, type StatusPatch } from "@/modules/watching/lib/watch-status";
+import {
+  yearsPatch,
+  type StatusPatch,
+} from "@/modules/watching/lib/watch-status";
 import type { WatchingMedia } from "@/modules/watching/types";
-import { buildWatchedAtProjection, type WatchDateParts } from "@/modules/watching/lib/watched-date";
+import {
+  buildWatchedAtProjection,
+  type WatchDateParts,
+} from "@/modules/watching/lib/watched-date";
 import { MediaDetails } from "@/modules/watching/components/detail/MediaDetails";
 import { Accolades } from "@/modules/watching/components/detail/Accolades";
 import { QuickStats } from "@/modules/watching/components/detail/QuickStats";
@@ -47,7 +64,10 @@ import { InList } from "@/modules/watching/components/detail/InList";
 import { TopTenRank } from "@/modules/watching/components/detail/TopTenRank";
 import { useCurrentUserId } from "@/shared/hooks/useCurrentUserId";
 import { useRewatches } from "@/modules/watching/hooks/useRewatches";
-import { useListsForMedia, useListsWithThumbnails } from "@/modules/watching/hooks/useMediaLists";
+import {
+  useListsForMedia,
+  useListsWithThumbnails,
+} from "@/modules/watching/hooks/useMediaLists";
 import { AnimeThemes } from "@/modules/watching/components/detail/AnimeThemes";
 import { DetailSkeleton } from "@/modules/watching/components/shared/WatchingSkeletons";
 import { toast } from "@/shared/utils/toast";
@@ -64,8 +84,13 @@ import { toast } from "@/shared/utils/toast";
  * makes the coordinate guard readable: one suppression with one reason, instead of six that a
  * reader would learn to skip past.
  */
-// eslint-disable-next-line no-restricted-syntax -- the page's single sanctioned storage-space read; see above.
-const storedPosition = (m: WatchingMedia) => ({ season: m.current_season ?? 1, episode: m.current_episode ?? 0 });
+const storedPosition = (m: WatchingMedia) => ({
+  // eslint-disable-next-line no-restricted-syntax -- sanctioned raw storage-space read; this helper is the page's single boundary for stored coordinates.
+  season: m.current_season ?? 1,
+
+  // eslint-disable-next-line no-restricted-syntax -- sanctioned raw storage-space read; this helper is the page's single boundary for stored coordinates.
+  episode: m.current_episode ?? 0,
+});
 
 export default function MediaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -101,26 +126,61 @@ export default function MediaDetailPage() {
 
   useEffect(() => {
     if (!media) return;
-    const section = media.type === "film" ? "Movies" : media.type === "serie" ? "TV Shows" : "Animes";
+    const section =
+      media.type === "film"
+        ? "Movies"
+        : media.type === "serie"
+          ? "TV Shows"
+          : "Animes";
     setPageLabel({ section, title: media.title });
     return () => setPageLabel(null);
   }, [media, setPageLabel]);
   const isSeries = media?.type === "serie" || media?.type === "anime";
 
-  const { data: similar = [], isLoading: similarLoading } = useSimilarTitles(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
+  const { data: similar = [], isLoading: similarLoading } = useSimilarTitles(
+    media?.tmdb_id ?? 0,
+    media?.type ?? "film",
+    !!media,
+  );
   // Cast is cached in the DB (stored at add time / backfilled) → render straight
   // from there and skip the TMDB credits call. Only fall back to TMDB when absent.
   const hasStoredCast = (media?.cast_members?.length ?? 0) > 0;
-  const { data: credits, isLoading: creditsLoading } = useMediaCredits(media?.tmdb_id ?? 0, media?.type ?? "film", !!media && !hasStoredCast);
-  const { data: ownedIds = [] } = useOwnedTmdbIds(media?.user_id ?? "", media?.type ?? "film", !!media);
-  const { data: trailer, isLoading: trailerLoading } = useMediaTrailer(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
-  const { data: providers } = useWatchProviders(media?.tmdb_id ?? 0, media?.type ?? "film", !!media);
+  const { data: credits, isLoading: creditsLoading } = useMediaCredits(
+    media?.tmdb_id ?? 0,
+    media?.type ?? "film",
+    !!media && !hasStoredCast,
+  );
+  const { data: ownedIds = [] } = useOwnedTmdbIds(
+    media?.user_id ?? "",
+    media?.type ?? "film",
+    !!media,
+  );
+  const { data: trailer, isLoading: trailerLoading } = useMediaTrailer(
+    media?.tmdb_id ?? 0,
+    media?.type ?? "film",
+    !!media,
+  );
+  const { data: providers } = useWatchProviders(
+    media?.tmdb_id ?? 0,
+    media?.type ?? "film",
+    !!media,
+  );
   // THE LENS — the one object that knows which coordinate space this title lives in. It fetches the
   // AniList cours itself when they matter, and hands back everything in DISPLAY space.
   const view = useMediaView(media);
   const personalHistory = useMediaHistory(id, !!media && media.type !== "film");
-  const seasonPeriods = useMemo(() => view ? seasonViewingPeriods(view, personalHistory.data?.records ?? []) : {}, [view, personalHistory.data]);
-  const scopedRatings = useScopeRatings(id, !!media && media.type !== "film", media?.tmdb_id ?? 0);
+  const seasonPeriods = useMemo(
+    () =>
+      view
+        ? seasonViewingPeriods(view, personalHistory.data?.records ?? [])
+        : {},
+    [view, personalHistory.data],
+  );
+  const scopedRatings = useScopeRatings(
+    id,
+    !!media && media.type !== "film",
+    media?.tmdb_id ?? 0,
+  );
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [imagesOpen, setImagesOpen] = useState(false);
   const [dropSheetOpen, setDropSheetOpen] = useState(false);
@@ -129,7 +189,10 @@ export default function MediaDetailPage() {
   // slide-out instead of blanking the moment you click away.
   const [panelSeason, setPanelSeason] = useState(1);
   const [seasonOpen, setSeasonOpen] = useState(false);
-  const openSeason = (s: number) => { setPanelSeason(s); setSeasonOpen(true); };
+  const openSeason = (s: number) => {
+    setPanelSeason(s);
+    setSeasonOpen(true);
+  };
 
   // "More Like This" — drop titles already in the library (like For You), then
   // keep 6. Over-fetched upstream so this still yields 6 addable recommendations.
@@ -144,7 +207,12 @@ export default function MediaDetailPage() {
   const deleteMedia = useDeleteMedia();
   const progressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mediaIdRef = useRef<string | null>(null);
-  useEffect(() => () => { if (progressTimerRef.current) clearTimeout(progressTimerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
+    },
+    [],
+  );
   const [currentSeason, setCurrentSeason] = useState(1);
   const [currentEpisode, setCurrentEpisode] = useState(0);
 
@@ -180,10 +248,17 @@ export default function MediaDetailPage() {
   // The steppers hold their own state so they feel instant; a transition that MOVES the position
   // (finishing a show, catching up) has to bring them along.
   const follow = (patch: StatusPatch | null) => {
-    // A PATCH, not a row — and a patch is written in storage units by construction (positionPatch
-    // takes storage coordinates), which is the same space this state lives in. No lens to apply.
-    // eslint-disable-next-line no-restricted-syntax -- reading a storage-space patch into storage-space state.
-    if (patch?.current_season != null) { setCurrentSeason(patch.current_season); setCurrentEpisode(patch.current_episode ?? 0); }
+    // This patch is already in STORAGE coordinates. The local stepper state
+    // also lives in STORAGE coordinates, so no MediaView conversion is needed.
+
+    // eslint-disable-next-line no-restricted-syntax -- storage-space patch compared/read into storage-space local state.
+    if (patch?.current_season != null) {
+      // eslint-disable-next-line no-restricted-syntax -- storage-space patch copied into storage-space local state.
+      setCurrentSeason(patch.current_season);
+
+      // eslint-disable-next-line no-restricted-syntax -- storage-space patch copied into storage-space local state.
+      setCurrentEpisode(patch.current_episode ?? 0);
+    }
   };
 
   const toggleFavorite = async () => {
@@ -191,7 +266,11 @@ export default function MediaDetailPage() {
     const next = !favorite;
     setFavorite(next);
     try {
-      await updateMedia.mutateAsync({ id: media.id, expected_revision: media.personal_revision, favorite: next });
+      await updateMedia.mutateAsync({
+        id: media.id,
+        expected_revision: media.personal_revision,
+        favorite: next,
+      });
       toast(next ? "Added to favorites." : "Removed from favorites.");
     } catch (err) {
       setFavorite(!next);
@@ -211,26 +290,37 @@ export default function MediaDetailPage() {
   const updateProgress = (displaySeason: number, displayEpisode: number) => {
     if (!media) return;
     // The steppers speak DISPLAY units; storage speaks TMDB. One conversion, at the boundary.
-    const to = view ? view.toStorage(displaySeason, displayEpisode) : { season: displaySeason, episode: displayEpisode };
+    const to = view
+      ? view.toStorage(displaySeason, displayEpisode)
+      : { season: displaySeason, episode: displayEpisode };
     // Both sides in storage units — comparing a converted target against the row is only meaningful
     // in one space, and mixing them is precisely what the guard exists to catch.
     const at = storedPosition(media);
-    const forward = to.season > at.season || (to.season === at.season && to.episode > at.episode);
+    const forward =
+      to.season > at.season ||
+      (to.season === at.season && to.episode > at.episode);
 
     setCurrentSeason(to.season);
     setCurrentEpisode(to.episode);
 
     if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
     progressTimerRef.current = setTimeout(() => {
-      void actions.setPosition(to.season, to.episode, forward ? "viewing" : "correction");
+      void actions.setPosition(
+        to.season,
+        to.episode,
+        forward ? "viewing" : "correction",
+      );
     }, 500);
   };
 
-  const correctPosition = (displaySeason:number,displayEpisode:number) => {
-    if(progressTimerRef.current) clearTimeout(progressTimerRef.current);
-    const to=view ? view.toStorage(displaySeason,displayEpisode):{season:displaySeason,episode:displayEpisode};
-    setCurrentSeason(to.season);setCurrentEpisode(to.episode);
-    void actions.setPosition(to.season,to.episode,"correction");
+  const correctPosition = (displaySeason: number, displayEpisode: number) => {
+    if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
+    const to = view
+      ? view.toStorage(displaySeason, displayEpisode)
+      : { season: displaySeason, episode: displayEpisode };
+    setCurrentSeason(to.season);
+    setCurrentEpisode(to.episode);
+    void actions.setPosition(to.season, to.episode, "correction");
   };
 
   /**
@@ -245,14 +335,28 @@ export default function MediaDetailPage() {
    * landing on the end of a finished one completes it) and it stamps NO years, because claiming a
    * season today does not mean you watched it today.
    */
-  const handleSetPosition = async (displaySeason: number, displayEpisode: number) => {
-    // The strip speaks DISPLAY units too — cours for an overlaid anime, plain seasons otherwise.
-    const to = view ? view.toStorage(displaySeason, displayEpisode) : { season: displaySeason, episode: displayEpisode };
+  const handleSetPosition = async (
+    displaySeason: number,
+    displayEpisode: number,
+    kind: "viewing" | "correction",
+  ) => {
+    const to = view
+      ? view.toStorage(displaySeason, displayEpisode)
+      : { season: displaySeason, episode: displayEpisode };
+
     setCurrentSeason(to.season);
     setCurrentEpisode(to.episode);
-    const patch = await actions.setPosition(to.season, to.episode, "correction", `Watched through season ${displaySeason}.`);
+
+    const patch = await actions.setPosition(
+      to.season,
+      to.episode,
+      kind,
+      kind === "viewing"
+        ? `Watched through season ${displaySeason}.`
+        : `Stopped after season ${displaySeason}.`,
+    );
+
     if (!patch && media) {
-      // The write was refused — put the steppers back where the row still says they are.
       const at = storedPosition(media);
       setCurrentSeason(at.season);
       setCurrentEpisode(at.episode);
@@ -270,7 +374,8 @@ export default function MediaDetailPage() {
       // marking it watched used to leave the date at today, so Last Watched claimed you finished it
       // this afternoon.
       await updateMedia.mutateAsync({
-        id: media.id, expected_revision: media.personal_revision,
+        id: media.id,
+        expected_revision: media.personal_revision,
         type: media.type,
         ...yearsPatch(media, next, view.writeYears),
       });
@@ -284,35 +389,78 @@ export default function MediaDetailPage() {
   // made by the lens; `yearsPatch` moves `watched_at` along with it exactly as before.
   const handleSeasonYear = async (season: number, year: number) => {
     if (!view) return;
-    await handleYearsChange({ ...(view.yearMap ?? {}), [String(season)]: year });
+    await handleYearsChange({
+      ...(view.yearMap ?? {}),
+      [String(season)]: year,
+    });
   };
 
   // Both doors submit the same snapshot/revision-bound rating command.
-  const saveRating = async (previous: NonNullable<typeof scopedRatings.data>[number], value:number|null) => {
-    if(!media) return;
-    await scopedRatings.save({media_id:media.id,expected_revision:media.personal_revision ?? 0,
-      scope_kind:previous.kind,scope_number:previous.number,score:value,action:ratingAction(previous,value),
-      previous_rating_id:previous.rating_id,expected_scope_key:previous.scope_key,
-      expected_snapshot_id:previous.provider_snapshot_id,expected_mapping_snapshot_id:previous.mapping_snapshot_id});
+  const saveRating = async (
+    previous: NonNullable<typeof scopedRatings.data>[number],
+    value: number | null,
+  ) => {
+    if (!media) return;
+    await scopedRatings.save({
+      media_id: media.id,
+      expected_revision: media.personal_revision ?? 0,
+      scope_kind: previous.kind,
+      scope_number: previous.number,
+      score: value,
+      action: ratingAction(previous, value),
+      previous_rating_id: previous.rating_id,
+      expected_scope_key: previous.scope_key,
+      expected_snapshot_id: previous.provider_snapshot_id,
+      expected_mapping_snapshot_id: previous.mapping_snapshot_id,
+    });
   };
-  const handleRating = async (value:number|null, season?:number, part?:SeasonPart) => {
-    if(!view) return;
-    const kind=part || view.overlaid ? "COUR":"SEASON";
-    const previous=scopedRatings.data?.find(r=>r.kind===kind && (part ? r.scope_key===`anilist-cour:${part.id}`:r.number===season));
-    if(!previous || !(part ? partMatchesView(previous,view,part):scopeMatchesView(previous,view,season!))) {
-      void scopedRatings.refresh();toast.error("Season details changed. Review them before rating.");return;
+  const handleRating = async (
+    value: number | null,
+    season?: number,
+    part?: SeasonPart,
+  ) => {
+    if (!view) return;
+    const kind = part || view.overlaid ? "COUR" : "SEASON";
+    const previous = scopedRatings.data?.find(
+      (r) =>
+        r.kind === kind &&
+        (part
+          ? r.scope_key === `anilist-cour:${part.id}`
+          : r.number === season),
+    );
+    if (
+      !previous ||
+      !(part
+        ? partMatchesView(previous, view, part)
+        : scopeMatchesView(previous, view, season!))
+    ) {
+      void scopedRatings.refresh();
+      toast.error("Season details changed. Review them before rating.");
+      return;
     }
-    try {await saveRating(previous,value);}
-    catch(err) {if(!isDemoReadOnlyError(err)) toast.error("Failed to update.");}
+    try {
+      await saveRating(previous, value);
+    } catch (err) {
+      if (!isDemoReadOnlyError(err)) toast.error("Failed to update.");
+    }
   };
-  const handleSeasonRating = (season:number,value:number|null) => handleRating(value,season);
-  const handlePartRating = (part:SeasonPart,value:number|null) => handleRating(value,undefined,part);
+  const handleSeasonRating = (season: number, value: number | null) =>
+    handleRating(value, season);
+  const handlePartRating = (part: SeasonPart, value: number | null) =>
+    handleRating(value, undefined, part);
 
   // The watchlist urgency — the one fact of a want-to-watch entry, now editable where you read it.
-  const handlePriorityChange = async (level: "high" | "medium" | "low" | null) => {
+  const handlePriorityChange = async (
+    level: "high" | "medium" | "low" | null,
+  ) => {
     if (!media) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, expected_revision: media.personal_revision, type: media.type, priority_level: level });
+      await updateMedia.mutateAsync({
+        id: media.id,
+        expected_revision: media.personal_revision,
+        type: media.type,
+        priority_level: level,
+      });
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
       toast.error("Failed to update.");
@@ -324,7 +472,14 @@ export default function MediaDetailPage() {
   const handleWatchedDateChange = async (parts: WatchDateParts) => {
     if (!media) return;
     try {
-      await updateMedia.mutateAsync({ id: media.id, expected_revision: media.personal_revision, type: media.type, watched_at: buildWatchedAtProjection(parts), history_date: parts, history_intent: "correction" });
+      await updateMedia.mutateAsync({
+        id: media.id,
+        expected_revision: media.personal_revision,
+        type: media.type,
+        watched_at: buildWatchedAtProjection(parts),
+        history_date: parts,
+        history_intent: "correction",
+      });
       toast("Date updated.");
     } catch (err) {
       if (isDemoReadOnlyError(err)) return;
@@ -344,11 +499,27 @@ export default function MediaDetailPage() {
     if (!media) return;
     try {
       await updateMedia.mutateAsync({
-        id: media.id, expected_revision: media.personal_revision,
+        id: media.id,
+        expected_revision: media.personal_revision,
         type: media.type,
-        // eslint-disable-next-line no-restricted-syntax -- explicit `view ? lens : raw` fallback; the raw side only runs when there is no overlay.
-        ...(view ? view.writeYear(1, yr) : { season_years: { ...(media.season_years ?? {}), "1": yr } }),
-        ...(media.watched ? { watched_at: buildWatchedAtProjection({ year: yr, month: null, day: null }) } : {}),
+        ...(view
+          ? view.writeYear(1, yr)
+          : {
+              season_years: {
+                // eslint-disable-next-line no-restricted-syntax -- no MediaView is available here, so this is the explicit raw fallback for a non-overlaid single-season title.
+                ...(media.season_years ?? {}),
+                "1": yr,
+              },
+            }),
+        ...(media.watched
+          ? {
+              watched_at: buildWatchedAtProjection({
+                year: yr,
+                month: null,
+                day: null,
+              }),
+            }
+          : {}),
       });
       toast("Year updated.");
     } catch (err) {
@@ -359,7 +530,11 @@ export default function MediaDetailPage() {
 
   const typeLabel = useMemo(() => {
     if (!media) return "";
-    return media.type === "film" ? "Movie" : media.type === "serie" ? "TV Show" : "Anime";
+    return media.type === "film"
+      ? "Movie"
+      : media.type === "serie"
+        ? "TV Show"
+        : "Anime";
   }, [media]);
 
   // Hold the skeleton until the LENS is resolved too, not just the row. Painting with the flat
@@ -372,7 +547,9 @@ export default function MediaDetailPage() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
         <Clapperboard size={32} className="text-text-tertiary" />
-        <p className="text-sm text-text-secondary">This title could not be found.</p>
+        <p className="text-sm text-text-secondary">
+          This title could not be found.
+        </p>
         <button
           type="button"
           onClick={() => router.back()}
@@ -386,16 +563,31 @@ export default function MediaDetailPage() {
 
   const directors =
     credits?.directors ??
-    media.directors?.map((d) => ({ id: d.id ?? -1, name: d.name, role: d.role === "director" || d.role === "creator" || d.role === "production" ? d.role : media.type === "film" ? "director" as const : undefined, profile_url: d.profile_url ?? null })) ??
+    media.directors?.map((d) => ({
+      id: d.id ?? -1,
+      name: d.name,
+      role:
+        d.role === "director" || d.role === "creator" || d.role === "production"
+          ? d.role
+          : media.type === "film"
+            ? ("director" as const)
+            : undefined,
+      profile_url: d.profile_url ?? null,
+    })) ??
     [];
-  const cast = hasStoredCast ? (media.cast_members ?? []) : (credits?.cast ?? []);
+  const cast = hasStoredCast
+    ? (media.cast_members ?? [])
+    : (credits?.cast ?? []);
   const hasCastCrew = cast.length > 0 || directors.length > 0;
 
   // A recommendation opens on ITS OWN discover page — the home of a title you don't own.
   const handleAddSimilar = (sim: { id: number }) =>
     router.push(`/perso/watching/discover/${media.type}/${sim.id}`);
 
-  const isUnwatched = !!(media.is_reference || (media.want_to_watch && !media.watched && !media.in_progress));
+  const isUnwatched = !!(
+    media.is_reference ||
+    (media.want_to_watch && !media.watched && !media.in_progress)
+  );
 
   // Where you stand, in the space the UI speaks. The local stepper state stays in STORAGE units (it
   // mirrors the row); the lens translates for display, and back again on write.
@@ -435,7 +627,6 @@ export default function MediaDetailPage() {
 
   return (
     <div className="min-h-screen bg-surface-0">
-
       <MediaHero
         media={media}
         isSeries={isSeries}
@@ -447,16 +638,12 @@ export default function MediaDetailPage() {
       />
 
       {/* Mobile slot — the StatusCard right after the hero, before everything */}
-      <div className="px-4 pt-4 lg:hidden">
-        {statusCard}
-      </div>
+      <div className="px-4 pt-4 lg:hidden">{statusCard}</div>
 
       {/* Content rises slightly into the hero's lower gradient — magazine overlap. */}
       <div className="relative z-10 grid grid-cols-1 lg:-mt-6 lg:grid-cols-[2fr_1fr]">
-
         {/* ── LEFT — primary column ─────────────────────────────────── */}
         <div className="min-w-0 space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-8 lg:pr-2">
-
           {/* Left = you & the work: verdict → memory → progress → catalogue (people, recos) */}
           <MyTake media={media} forceNoteOpen={forceTakeOpen} />
 
@@ -470,7 +657,9 @@ export default function MediaDetailPage() {
               seasonAired={view?.seasons.map((s) => s.aired)}
               currentEpisode={shown.episode}
               seasonPosters={view?.seasons.map((s) => s.poster)}
-              seasonAirDates={view?.overlaid ? undefined : media.season_air_dates}
+              seasonAirDates={
+                view?.overlaid ? undefined : media.season_air_dates
+              }
               seasonEndDates={view?.seasons.map((s) => s.endDate)}
               seasonYears={view?.yearMap}
               seasonPeriods={seasonPeriods}
@@ -490,7 +679,11 @@ export default function MediaDetailPage() {
           {/* Curation on the page, navigation in the panel: your best episodes across every
               season stay here; the season-by-season catalogue opens from a card above. */}
           {isSeries && media.tmdb_id && (
-            <Episodes media={media} readOnly={isUnwatched} cours={view?.cours ?? undefined} />
+            <Episodes
+              media={media}
+              readOnly={isUnwatched}
+              cours={view?.cours ?? undefined}
+            />
           )}
 
           {/* A title whose cast we stored renders instantly and never shifts. One we have to ask
@@ -502,19 +695,20 @@ export default function MediaDetailPage() {
           ) : null}
 
           {recommendations.length > 0 && (
-            <MoreLikeThis items={recommendations} type={media.type} loading={similarLoading} onAddClick={handleAddSimilar} />
+            <MoreLikeThis
+              items={recommendations}
+              type={media.type}
+              loading={similarLoading}
+              onAddClick={handleAddSimilar}
+            />
           )}
-
         </div>
 
         {/* ── RIGHT — quiet utility rail (flows with the page, one natural scroll) ── */}
         <div className="min-w-0">
           <div className="space-y-5 px-4 py-6 lg:space-y-6 lg:py-8 lg:pl-2 lg:pr-8">
-
             {/* Desktop slot — the branded hero card leads the rail */}
-            <div className="hidden lg:block">
-              {statusCard}
-            </div>
+            <div className="hidden lg:block">{statusCard}</div>
 
             <QuickStats media={media} view={view} />
 
@@ -523,23 +717,23 @@ export default function MediaDetailPage() {
                 you're mid-way through, caught up on, paused, or stopped-but-loved (Prison Break after
                 a poor final season; a True Detective anthology season) can all be a favourite. Only
                 want-to-watch is out — a Top 10 is a verdict, and you cannot rank what you've not seen. */}
-            {(hasViewingEngagement(media)) && (
-              <TopTenRank media={media} />
-            )}
+            {hasViewingEngagement(media) && <TopTenRank media={media} />}
 
             <InList mediaItemId={media.id} userId={media.user_id} />
 
             <Accolades media={media} />
-            <MediaDetails media={media} typeLabel={typeLabel} isSeries={isSeries} />
+            <MediaDetails
+              media={media}
+              typeLabel={typeLabel}
+              isSeries={isSeries}
+            />
             <AnimeThemes media={media} />
 
             {/* The link out to another module closes the rail — it's the least "about this
                 title" thing here, so it earns the last slot, not a middle one. */}
             <ContributingToGoals media={media} view={view} />
-
           </div>
         </div>
-
       </div>
 
       <TrailerModal
@@ -551,7 +745,12 @@ export default function MediaDetailPage() {
 
       {/* Artwork gallery — a wide sliding panel (4 posters / 2 backdrops) rather than a route, so it
           opens over the fiche without losing context. */}
-      <SlidingPanel open={imagesOpen} onClose={() => setImagesOpen(false)} title="Artwork" width="gallery">
+      <SlidingPanel
+        open={imagesOpen}
+        onClose={() => setImagesOpen(false)}
+        title="Artwork"
+        width="gallery"
+      >
         <div className="p-4">
           <ImageGallery media={media} />
         </div>
@@ -567,7 +766,9 @@ export default function MediaDetailPage() {
           position={shown}
           readOnly={isUnwatched}
           onYearChange={handleSeasonYear}
-          onRefreshRatings={() => { void scopedRatings.refresh(); }}
+          onRefreshRatings={() => {
+            void scopedRatings.refresh();
+          }}
           ratingContexts={scopedRatings.data}
           seasonPeriod={seasonPeriods[String(panelSeason)]}
           onPartRatingChange={handlePartRating}

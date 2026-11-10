@@ -50,9 +50,20 @@ import type { ListType, MediaType, WatchingMedia, WatchStatus } from "../types";
 /** Everything a transition needs to know about the row. A subset, so cards can call these too. */
 export type StatusFacts = Pick<
   WatchingMedia,
-  | "type" | "status" | "watched" | "in_progress" | "paused" | "dropped" | "favorite"
-  | "current_season" | "current_episode"
-  | "season_episodes" | "season_aired" | "season_years" | "caught_up_at" | "resume_required"
+  | "type"
+  | "status"
+  | "watched"
+  | "in_progress"
+  | "paused"
+  | "dropped"
+  | "favorite"
+  | "current_season"
+  | "current_episode"
+  | "season_episodes"
+  | "season_aired"
+  | "season_years"
+  | "caught_up_at"
+  | "resume_required"
 > & {
   /** Release year — optional so card-level callers and tests need not always supply it. */
   year?: number | null;
@@ -64,12 +75,24 @@ export type StatusPatch = Omit<UpdateMediaInput, "id">;
 
 /** A position correction changes the record, never the intention to resume watching. */
 export function preserveCorrectionStance<T extends Record<string, unknown>>(
-  before: { paused?: boolean; dropped?: boolean; drop_reason?: string | null }, patch: T, intent?: string,
+  before: { paused?: boolean; dropped?: boolean; drop_reason?: string | null },
+  patch: T,
+  intent?: string,
 ): T {
-  if (intent !== "correction" || !(before.paused || before.dropped) ||
-      !("current_season" in patch || "current_episode" in patch)) return patch;
-  const kept: Record<string, unknown> = { ...patch, watched: false, in_progress: false, want_to_watch: false,
-    paused: !!before.paused, dropped: !!before.dropped };
+  if (
+    intent !== "correction" ||
+    !(before.paused || before.dropped) ||
+    !("current_season" in patch || "current_episode" in patch)
+  )
+    return patch;
+  const kept: Record<string, unknown> = {
+    ...patch,
+    watched: false,
+    in_progress: false,
+    want_to_watch: false,
+    paused: !!before.paused,
+    dropped: !!before.dropped,
+  };
   if (before.drop_reason !== undefined) kept.drop_reason = before.drop_reason;
   else delete kept.drop_reason;
   delete kept.watched_at;
@@ -81,18 +104,34 @@ export function preserveCorrectionStance<T extends Record<string, unknown>>(
 
 /** Progress correction edits evidence, not the date or intention of consuming it. */
 export function preserveCorrectionEvidence<T extends Record<string, unknown>>(
-  before: {caught_up_at?: string | null; last_watched_at?: string | null; resume_required?: boolean},
-  patch: T, intent?: string,
+  before: {
+    caught_up_at?: string | null;
+    last_watched_at?: string | null;
+    resume_required?: boolean;
+  },
+  patch: T,
+  intent?: string,
 ): T {
-  if (intent !== "correction" || !("current_season" in patch || "current_episode" in patch)) return patch;
-  const kept: Record<string, unknown> = {...patch};
+  if (
+    intent !== "correction" ||
+    !("current_season" in patch || "current_episode" in patch)
+  )
+    return patch;
+  const kept: Record<string, unknown> = { ...patch };
   if (kept.caught_up_at && !before.caught_up_at) kept.caught_up_at = null;
-  if (kept.caught_up_at && before.caught_up_at) kept.caught_up_at = before.caught_up_at;
-  if ("last_watched_at" in kept && kept.last_watched_at &&
-      (!before.last_watched_at || Date.parse(String(kept.last_watched_at)) > Date.parse(before.last_watched_at))) {
+  if (kept.caught_up_at && before.caught_up_at)
+    kept.caught_up_at = before.caught_up_at;
+  if (
+    "last_watched_at" in kept &&
+    kept.last_watched_at &&
+    (!before.last_watched_at ||
+      Date.parse(String(kept.last_watched_at)) >
+        Date.parse(before.last_watched_at))
+  ) {
     kept.last_watched_at = before.last_watched_at ?? null;
   }
-  if ("resume_required" in kept) kept.resume_required = before.resume_required ?? false;
+  if ("resume_required" in kept)
+    kept.resume_required = before.resume_required ?? false;
   return kept as T;
 }
 
@@ -109,8 +148,13 @@ export function preserveCorrectionEvidence<T extends Record<string, unknown>>(
  * show is something you DID, and it must not be silently outranked by a stale flag.
  */
 export function deriveWatchStatus(item: {
-  is_reference?: boolean; dropped?: boolean; paused?: boolean;
-  watched?: boolean; in_progress?: boolean; want_to_watch?: boolean; resume_required?: boolean;
+  is_reference?: boolean;
+  dropped?: boolean;
+  paused?: boolean;
+  watched?: boolean;
+  in_progress?: boolean;
+  want_to_watch?: boolean;
+  resume_required?: boolean;
 }): WatchStatus {
   if (item.is_reference) return "reference";
   if (item.dropped) return "dropped";
@@ -138,20 +182,31 @@ export function canComplete(m: {
   year?: number | null;
   release_date?: string | null;
 }): boolean {
-  if (m.type == null) return true;                       // unknown type → don't block on ignorance
+  if (m.type == null) return true; // unknown type → don't block on ignorance
   if (m.type !== "film") return isFinished(m.status);
-  return !isAwaitingRelease({ type: "film", release_date: m.release_date, status: m.status, year: m.year });
+  return !isAwaitingRelease({
+    type: "film",
+    release_date: m.release_date,
+    status: m.status,
+    year: m.year,
+  });
 }
 
 /** The latest year stamped across a season-years map — the year you finished the show. */
-export function maxYear(map: Record<string, number> | null | undefined): number | null {
-  const years = Object.values(map ?? {}).filter((y): y is number => typeof y === "number");
+export function maxYear(
+  map: Record<string, number> | null | undefined,
+): number | null {
+  const years = Object.values(map ?? {}).filter(
+    (y): y is number => typeof y === "number",
+  );
   return years.length ? Math.max(...years) : null;
 }
 
 /** `watched_at` for a series, from its finish year — or `now` when we have no year (finishing live). */
 function dateFromFinishYear(year: number | null): string {
-  return year ? buildWatchedAtProjection({ year, month: null, day: null }) : new Date().toISOString();
+  return year
+    ? buildWatchedAtProjection({ year, month: null, day: null })
+    : new Date().toISOString();
 }
 
 /**
@@ -159,8 +214,9 @@ function dateFromFinishYear(year: number | null): string {
  * claim to have watched. Passed to `stampSeasons` so a fresh claim re-dates them instead of
  * inheriting a viewing you had retracted. Read against the position BEFORE the write.
  */
-const staleStamp = (m: SeriesFacts & { watched?: boolean }) => (season: number) =>
-  !hasReachedSeason(m, season);
+const staleStamp =
+  (m: SeriesFacts & { watched?: boolean }) => (season: number) =>
+    !hasReachedSeason(m, season);
 
 /**
  * WHERE THE SEASON MATH HAPPENS — the one thing that differs between the two coordinate spaces.
@@ -182,10 +238,14 @@ function stampSpace(m: StatusFacts, view?: MediaView | null) {
     return {
       facts: m as SeriesFacts & { watched?: boolean },
       count: (m.season_episodes ?? []).length,
-      position: { season: m.current_season ?? 1, episode: m.current_episode ?? 0 },
+      position: {
+        season: m.current_season ?? 1,
+        episode: m.current_episode ?? 0,
+      },
       map: m.season_years,
       toView: (season: number, episode: number) => ({ season, episode }),
-      write: (next: Record<string, number>) => ({ season_years: next }) as StatusPatch,
+      write: (next: Record<string, number>) =>
+        ({ season_years: next }) as StatusPatch,
     };
   }
   return {
@@ -193,8 +253,10 @@ function stampSpace(m: StatusFacts, view?: MediaView | null) {
     count: view.seasons.length,
     position: view.position,
     map: view.yearMap,
-    toView: (season: number, episode: number) => view.fromStorage(season, episode),
-    write: (next: Record<string, number>) => view.writeYears(next) as StatusPatch,
+    toView: (season: number, episode: number) =>
+      view.fromStorage(season, episode),
+    write: (next: Record<string, number>) =>
+      view.writeYears(next) as StatusPatch,
   };
 }
 
@@ -212,7 +274,10 @@ function stampSpace(m: StatusFacts, view?: MediaView | null) {
  * And it stamps only the seasons that have FULLY AIRED. Stamping every ANNOUNCED season put
  * "2026" on a season with four of its eight episodes out.
  */
-export function markWatchedPatch(m: StatusFacts, view?: MediaView | null): StatusPatch {
+export function markWatchedPatch(
+  m: StatusFacts,
+  view?: MediaView | null,
+): StatusPatch {
   const isSeries = m.type !== "film";
   const last = isSeries ? lastAiredPosition(m) : null;
   const sp = stampSpace(m, view);
@@ -220,21 +285,30 @@ export function markWatchedPatch(m: StatusFacts, view?: MediaView | null): Statu
   // With no airing data (a row the sync has never reached) we keep the old behaviour rather than
   // silently stamping nothing — a loose stamp beats an empty history.
   const hasAiring = (m.season_aired?.length ?? 0) > 0;
-  const stampable = Array.from({ length: sp.count }, (_, idx) => idx + 1)
-    .filter((s) => !hasAiring || isSeasonComplete(sp.facts, s));
+  const stampable = Array.from(
+    { length: sp.count },
+    (_, idx) => idx + 1,
+  ).filter((s) => !hasAiring || isSeasonComplete(sp.facts, s));
 
   // ⚠️ `stampSeasons` MERGES. Merging into `undefined` and writing the result would REPLACE the
   // jsonb column with a single entry and wipe every year you had set by hand. If the column was
   // not loaded, we do not touch it. (This is why SECTION_COLUMNS carries `season_years`.)
   const seasonYears =
     stampable.length > 0 && sp.map !== undefined
-      ? stampSeasons(sp.map, stampable, new Date().getFullYear(), staleStamp(sp.facts))
+      ? stampSeasons(
+          sp.map,
+          stampable,
+          new Date().getFullYear(),
+          staleStamp(sp.facts),
+        )
       : undefined;
 
   // Coarse legacy fallback only. The atomic personal-command boundary resolves a dated
   // canonical terminal viewing before storing completion; an old aggregate-season stamp
   // must not override that evidence. Undated historical claims retain their legacy year.
-  const watchedAt = isSeries ? dateFromFinishYear(maxYear(seasonYears ?? sp.map)) : new Date().toISOString();
+  const watchedAt = isSeries
+    ? dateFromFinishYear(maxYear(seasonYears ?? sp.map))
+    : new Date().toISOString();
 
   return {
     watched: true,
@@ -245,7 +319,18 @@ export function markWatchedPatch(m: StatusFacts, view?: MediaView | null): Statu
     ...RESET_STATUS,
     watched_at: watchedAt,
     ...(last
-      ? { current_season: last.season, current_episode: last.episode, caught_up_at: caughtUpAt({ ...m, current_season: last.season, current_episode: last.episode }, m.caught_up_at) }
+      ? {
+          current_season: last.season,
+          current_episode: last.episode,
+          caught_up_at: caughtUpAt(
+            {
+              ...m,
+              current_season: last.season,
+              current_episode: last.episode,
+            },
+            m.caught_up_at,
+          ),
+        }
       : {}),
     ...(seasonYears ? sp.write(seasonYears) : {}),
   };
@@ -261,17 +346,31 @@ export function markWatchedPatch(m: StatusFacts, view?: MediaView | null): Statu
  *
  * Returns null when we don't know what has aired — we do not guess, and the caller must say so.
  */
-export function markCaughtUpPatch(m: StatusFacts, view?: MediaView | null): StatusPatch | null {
+export function markCaughtUpPatch(
+  m: StatusFacts,
+  view?: MediaView | null,
+): StatusPatch | null {
   const last = lastAiredPosition(m);
   if (!last) return null;
 
-  const facts = { ...m, current_season: last.season, current_episode: last.episode };
+  const facts = {
+    ...m,
+    current_season: last.season,
+    current_episode: last.episode,
+  };
   const sp = stampSpace(m, view);
-  const stampable = Array.from({ length: sp.count }, (_, idx) => idx + 1)
-    .filter((s) => isSeasonComplete(sp.facts, s));
+  const stampable = Array.from(
+    { length: sp.count },
+    (_, idx) => idx + 1,
+  ).filter((s) => isSeasonComplete(sp.facts, s));
   const seasonYears =
     stampable.length > 0 && sp.map !== undefined
-      ? stampSeasons(sp.map, stampable, new Date().getFullYear(), staleStamp(sp.facts))
+      ? stampSeasons(
+          sp.map,
+          stampable,
+          new Date().getFullYear(),
+          staleStamp(sp.facts),
+        )
       : undefined;
 
   return {
@@ -310,7 +409,11 @@ export function claimedStatus(
 ): StatusPatch | null {
   if (!position) return null;
 
-  const facts = { ...m, current_season: position.season, current_episode: position.episode };
+  const facts = {
+    ...m,
+    current_season: position.season,
+    current_episode: position.episode,
+  };
   const state = seriesState(facts);
   const watched = state === "completed";
 
@@ -350,6 +453,7 @@ export interface AddStatus {
   drop_reason: string | null;
   watched_at: string | null;
   caught_up_at: string | null;
+  last_watched_at?: string | null;
   current_season: number | null;
   current_episode: number | null;
   /** Only when the claim dates seasons — a fresh row has no map to merge into. */
@@ -370,10 +474,17 @@ export interface AddClaim {
 
 /** Nothing true. Every add starts here, so no column is left to a default. */
 const NO_STATUS: AddStatus = {
-  watched: false, in_progress: false, want_to_watch: false, is_reference: false,
-  paused: false, dropped: false, drop_reason: null,
-  watched_at: null, caught_up_at: null,
-  current_season: null, current_episode: null,
+  watched: false,
+  in_progress: false,
+  want_to_watch: false,
+  is_reference: false,
+  paused: false,
+  dropped: false,
+  drop_reason: null,
+  watched_at: null,
+  caught_up_at: null,
+  current_season: null,
+  current_episode: null,
 };
 
 /**
@@ -415,10 +526,18 @@ export function addStatusPatch(
   if (type === "film") {
     // A film cannot be half-watched, so "In Progress" is the only door that isn't a completion.
     if (door === "inProgress") return { ...NO_STATUS, in_progress: true };
-    return { ...NO_STATUS, watched: true, watched_at: claim.watchedAt ?? now() };
+    return {
+      ...NO_STATUS,
+      watched: true,
+      watched_at: claim.watchedAt ?? now(),
+    };
   }
 
-  const claimed = claimedStatus({ ...claim.facts, type }, claim.position ?? null, claim.stance);
+  const claimed = claimedStatus(
+    { ...claim.facts, type },
+    claim.position ?? null,
+    claim.stance,
+  );
   if (!claimed || !claim.position) return null;
 
   // THE YEAR YOU GIVE BELONGS TO THE SEASONS YOU CLAIM — and only to the ones that are over, in
@@ -438,24 +557,43 @@ export function addStatusPatch(
   // Which seasons this claim just finished — answered in DISPLAY space, so a claim of "through
   // cour 1" dates cour 1 rather than nothing (a lumped anime has a single TMDB season, which is
   // only ever datable once the WHOLE show is watched).
-  const posV = view ? view.fromStorage(claim.position.season, claim.position.episode) : claim.position;
+  const posV = view
+    ? view.fromStorage(claim.position.season, claim.position.episode)
+    : claim.position;
   const facts = view ? view.seriesFacts : claim.facts;
-  const count = view ? view.seasons.length : (claim.facts.season_episodes ?? []).length;
-  const stamped = { ...facts, current_season: posV.season, current_episode: posV.episode };
+  const count = view
+    ? view.seasons.length
+    : (claim.facts.season_episodes ?? []).length;
+  const stamped = {
+    ...facts,
+    current_season: posV.season,
+    current_episode: posV.episode,
+  };
   const years = Object.fromEntries(
     Array.from({ length: count }, (_, idx) => idx + 1)
       .filter((season) => isSeasonDatable(stamped, season))
       .map((season) => [String(season), claimedYear]),
   );
   const seasonYears = Object.keys(years).length
-    ? (view ? view.writeYears(years) : { season_years: years })
+    ? view
+      ? view.writeYears(years)
+      : { season_years: years }
     : null;
 
   return {
     ...NO_STATUS,
     ...claimed,
+
+    // Any series/anime added with an actual watched position represents
+    // viewing activity and should therefore appear in Last Watched.
+    last_watched_at:
+      claim.position && claim.position.episode > 0 ? now() : null,
+
     // `claimedStatus` dates a completion "now"; a door that asked WHEN overrules it.
-    watched_at: claimed.watched ? (claim.watchedAt ?? claimed.watched_at ?? now()) : null,
+    watched_at: claimed.watched
+      ? (claim.watchedAt ?? claimed.watched_at ?? now())
+      : null,
+
     ...(seasonYears ?? {}),
   };
 }
@@ -479,23 +617,54 @@ export function yearsPatch(
 }
 
 export function startWatchingPatch(): StatusPatch {
-  return { in_progress: true, watched: false, want_to_watch: false, is_reference: false, resume_required: false, ...RESET_STATUS };
+  return {
+    in_progress: true,
+    watched: false,
+    want_to_watch: false,
+    is_reference: false,
+    resume_required: false,
+    ...RESET_STATUS,
+  };
 }
 
 export function wantToWatchPatch(): StatusPatch {
-  return { want_to_watch: true, watched: false, in_progress: false, is_reference: false, resume_required: false, ...RESET_STATUS };
+  return {
+    want_to_watch: true,
+    watched: false,
+    in_progress: false,
+    is_reference: false,
+    resume_required: false,
+    ...RESET_STATUS,
+  };
 }
 
 export function pausePatch(): StatusPatch {
-  return { paused: true, dropped: false, drop_reason: null, in_progress: false };
+  return {
+    paused: true,
+    dropped: false,
+    drop_reason: null,
+    in_progress: false,
+  };
 }
 
 export function dropPatch(reason: string | null): StatusPatch {
-  return { dropped: true, drop_reason: reason, paused: false, in_progress: false };
+  return {
+    dropped: true,
+    drop_reason: reason,
+    paused: false,
+    in_progress: false,
+  };
 }
 
 export function resumePatch(): StatusPatch {
-  return { dropped: false, drop_reason: null, paused: false, in_progress: true, watched: false, resume_required: false };
+  return {
+    dropped: false,
+    drop_reason: null,
+    paused: false,
+    in_progress: true,
+    watched: false,
+    resume_required: false,
+  };
 }
 
 /**
@@ -527,14 +696,19 @@ export function positionPatch(
    */
   view?: MediaView | null,
 ): StatusPatch {
-  const from = { season: m.current_season ?? 1, episode: m.current_episode ?? 0 };
-  const forward = season > from.season || (season === from.season && episode > from.episode);
+  const from = {
+    season: m.current_season ?? 1,
+    episode: m.current_episode ?? 0,
+  };
+  const forward =
+    season > from.season || (season === from.season && episode > from.episode);
   const facts = { ...m, current_season: season, current_episode: episode };
   const completed = m.type === "film" || seriesState(facts) === "completed";
 
   // An active record correction may complete; Paused/Dropped require an explicit Finish. A viewing may not: "+1"
   // hands you off to a deliberate "Finish" instead. Revocation applies to both.
-  const completes = kind === "correction" && completed && !m.watched && !m.paused && !m.dropped;
+  const completes =
+    kind === "correction" && completed && !m.watched && !m.paused && !m.dropped;
   const revokes = !!m.watched && !completed;
 
   // ── THE YEAR, DECIDED IN DISPLAY SPACE ───────────────────────────────────────────────────────
@@ -544,7 +718,11 @@ export function positionPatch(
   const sp = stampSpace(m, view);
   const fromV = sp.toView(from.season, from.episode);
   const toV = sp.toView(season, episode);
-  const factsV = { ...sp.facts, current_season: toV.season, current_episode: toV.episode };
+  const factsV = {
+    ...sp.facts,
+    current_season: toV.season,
+    current_episode: toV.episode,
+  };
 
   /**
    * ── WHAT THE APP MAY HONESTLY CLAIM A DATE FOR ──────────────────────────────────────────────
@@ -555,37 +733,68 @@ export function positionPatch(
    * Stamping them with this year would be an invention, and a wrong year is worse than a blank
    * because it LOOKS authoritative — you would have to notice it to fix it.
    */
-  const crossed = kind === "viewing" && forward && toV.season > fromV.season
-    ? seasonRange(fromV.season, toV.season - 1).filter((s) => isSeasonComplete(sp.facts, s))
-    : [];
+  const crossed =
+    kind === "viewing" && forward && toV.season > fromV.season
+      ? seasonRange(fromV.season, toV.season - 1).filter((s) =>
+          isSeasonComplete(sp.facts, s),
+        )
+      : [];
 
   // Only a new viewing can assign today's year. Corrections retain existing dates;
   // explicit historical date edits are handled by the history command.
-  const landed = kind === "viewing" && forward && isSeasonDatable(factsV, toV.season) ? [toV.season] : [];
+  const landed =
+    kind === "viewing" && forward && isSeasonDatable(factsV, toV.season)
+      ? [toV.season]
+      : [];
 
   const toStamp = [...crossed, ...landed];
   const seasonYears =
     toStamp.length > 0 && sp.map !== undefined
-      ? stampSeasons(sp.map, toStamp, new Date().getFullYear(), staleStamp(sp.facts))
+      ? stampSeasons(
+          sp.map,
+          toStamp,
+          new Date().getFullYear(),
+          staleStamp(sp.facts),
+        )
       : undefined;
 
-  return preserveCorrectionStance(m, {
-    current_season: season,
-    current_episode: episode,
-    caught_up_at: caughtUpAt(facts, m.caught_up_at, kind === "viewing" && forward),
-    ...(kind === "viewing" && forward && m.resume_required && !m.paused && !m.dropped ? { resume_required: false, in_progress: true, watched: false } : {}),
-    ...(kind === "viewing" && forward ? { last_watched_at: new Date().toISOString() } : {}),
-    ...(seasonYears ? sp.write(seasonYears) : {}),
-    ...(completes
-      ? {
-          watched: true, in_progress: false, want_to_watch: false, is_reference: false, ...RESET_STATUS,
-          // A correction acknowledges completion; its existing calendar stays at the command boundary.
-        }
-      : {}),
-    ...(revokes
-      // It was "finished". It isn't any more — and it must leave the finished rails too (its
-      // watched_at stops mattering because `watched` is false), or it keeps surfacing as completed.
-      ? { watched: false, in_progress: !m.paused && !m.dropped }
-      : {}),
-  }, kind);
+  return preserveCorrectionStance(
+    m,
+    {
+      current_season: season,
+      current_episode: episode,
+      caught_up_at: caughtUpAt(
+        facts,
+        m.caught_up_at,
+        kind === "viewing" && forward,
+      ),
+      ...(kind === "viewing" &&
+      forward &&
+      m.resume_required &&
+      !m.paused &&
+      !m.dropped
+        ? { resume_required: false, in_progress: true, watched: false }
+        : {}),
+      ...(kind === "viewing" && forward
+        ? { last_watched_at: new Date().toISOString() }
+        : {}),
+      ...(seasonYears ? sp.write(seasonYears) : {}),
+      ...(completes
+        ? {
+            watched: true,
+            in_progress: false,
+            want_to_watch: false,
+            is_reference: false,
+            ...RESET_STATUS,
+            // A correction acknowledges completion; its existing calendar stays at the command boundary.
+          }
+        : {}),
+      ...(revokes
+        ? // It was "finished". It isn't any more — and it must leave the finished rails too (its
+          // watched_at stops mattering because `watched` is false), or it keeps surfacing as completed.
+          { watched: false, in_progress: !m.paused && !m.dropped }
+        : {}),
+    },
+    kind,
+  );
 }

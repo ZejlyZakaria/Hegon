@@ -7,7 +7,14 @@ import { z } from "zod";
 const updateMediaFields = z.object({
   id: z.string(),
   expected_revision: z.number().int().nonnegative().optional(),
-  history_date: z.object({ year: z.number().int(), month: z.number().int().nullable(), day: z.number().int().nullable() }).nullable().optional(),
+  history_date: z
+    .object({
+      year: z.number().int(),
+      month: z.number().int().nullable(),
+      day: z.number().int().nullable(),
+    })
+    .nullable()
+    .optional(),
   history_intent: z.enum(["viewing", "correction", "claim"]).optional(),
   /**
    * ROUTING METADATA — never written to the database, and stripped before the update.
@@ -100,7 +107,8 @@ function refuseCoursOnFilm(
   for (const key of ["cour_years", "cour_ratings"] as const) {
     const value = v[key];
     // `null` and `{}` are fine — they say "nothing here", which is true of a film.
-    const carriesData = value != null && Object.keys(value as object).length > 0;
+    const carriesData =
+      value != null && Object.keys(value as object).length > 0;
     if (carriesData) {
       ctx.addIssue({
         code: "custom",
@@ -163,13 +171,21 @@ const insertMediaFields = z.looseObject({
   is_reference: z.boolean().optional(),
   current_season: z.number().nullable().optional(),
   current_episode: z.number().nullable().optional(),
+  last_watched_at: z.string().nullable().optional(),
   caught_up_at: z.string().nullable().optional(),
   resume_required: z.boolean().optional(),
   watched_at: z.string().nullable().optional(),
 });
 
 export const insertMediaSchema = insertMediaFields.superRefine((v, ctx) => {
-  const statuses = ["watched", "in_progress", "want_to_watch", "paused", "dropped", "is_reference"] as const;
+  const statuses = [
+    "watched",
+    "in_progress",
+    "want_to_watch",
+    "paused",
+    "dropped",
+    "is_reference",
+  ] as const;
   const live = statuses.filter((k) => v[k] === true);
   if (live.length !== 1) {
     ctx.addIssue({
@@ -177,7 +193,7 @@ export const insertMediaSchema = insertMediaFields.superRefine((v, ctx) => {
       path: ["watched"],
       message:
         live.length === 0
-          ? "This row has no status: it would be in your library and in none of its rails, and its detail page would read \"Want to Watch\". Derive the status with addStatusPatch() (lib/watch-status.ts) — for a series it comes from the position, never from the list you came through."
+          ? 'This row has no status: it would be in your library and in none of its rails, and its detail page would read "Want to Watch". Derive the status with addStatusPatch() (lib/watch-status.ts) — for a series it comes from the position, never from the list you came through.'
           : `A row cannot be ${live.join(" and ")} at once. Build the patch with addStatusPatch() (lib/watch-status.ts); it clears what it does not set.`,
     });
   }
@@ -192,7 +208,11 @@ export const insertMediaSchema = insertMediaFields.superRefine((v, ctx) => {
     });
   }
 
-  const claimsViewing = v.watched === true || v.in_progress === true || v.paused === true || v.dropped === true;
+  const claimsViewing =
+    v.watched === true ||
+    v.in_progress === true ||
+    v.paused === true ||
+    v.dropped === true;
   if (v.type !== "film" && claimsViewing && v.current_episode == null) {
     ctx.addIssue({
       code: "custom",

@@ -167,8 +167,12 @@ interface Props {
   ratingSaving?: boolean;
   onRefreshRatings?: () => void;
   onRatingChange: (season: number, value: number | null) => void;
-  /** "I watched through this season" — the page re-derives the status. */
-  onSetPosition: (season: number, episode: number) => void;
+  /** Move to the end of a season, either as a new viewing or a correction. */
+  onSetPosition: (
+    season: number,
+    episode: number,
+    kind: "viewing" | "correction",
+  ) => void;
 }
 
 export function SeasonPanel({
@@ -459,7 +463,7 @@ export function SeasonPanel({
     canJump && !behind ? (
       <button
         type="button"
-        onClick={() => onSetPosition(s, announced)}
+        onClick={() => onSetPosition(s, announced, "viewing")}
         className="flex w-full items-center justify-center gap-1.5 rounded-control bg-white/10 py-1.5 text-xs font-medium text-white/85 transition-colors hover:bg-white/15 hover:text-white"
       >
         <Check size={13} />
@@ -474,7 +478,7 @@ export function SeasonPanel({
       ? [
           {
             label: "I stopped after this season",
-            onPick: () => onSetPosition(s, announced),
+            onPick: () => onSetPosition(s, announced, "correction"),
           },
         ]
       : []),
