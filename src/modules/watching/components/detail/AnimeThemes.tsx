@@ -11,7 +11,8 @@ import { Hint } from "@/shared/components/ui/tooltip";
 import { LOVE } from "../shared/Marks";
 import { Panel } from "@/shared/components/ui/panel";
 import { WATCHING_ACCENT } from "../../ui";
-import { useAnimeThemes, useThemeCovers } from "../../hooks/useAnimeThemes";
+import { useAnimeThemes } from "../../hooks/useAnimeThemes";
+import { useThemeCovers } from "../../hooks/useThemeCovers";
 import { useThemeFavorites, useToggleThemeFavorite } from "../../hooks/useThemeFavorites";
 import { useThemePlayer, type PlayerTrack } from "../../store/theme-player";
 import { themeTrackKey } from "../../service";
@@ -105,7 +106,7 @@ function ThemeRow({
 
 export function AnimeThemes({ media }: { media: WatchingMedia }) {
   const isAnime = media.type === "anime";
-  const { data: groups = [], isLoading } = useAnimeThemes(media.title, media.year ?? null, isAnime, !!media.title);
+  const { data: groups = [], isLoading, isError, refetch, isFetching } = useAnimeThemes(media.title, media.year ?? null, isAnime, !!media.title);
   // Covers come second: the list paints, the art lands. Until then the row shows its note glyph —
   // never the poster, so nothing swaps under the eye; the poster is the fallback once looked up.
   const coverTracks = useMemo(() => groups.flatMap((g) => g.tracks.map((t) => ({ title: t.title, artist: t.artist }))), [groups]);
@@ -119,9 +120,9 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
 
   const flat: PlayerTrack[] = useMemo(
     () =>
-      groups.flatMap((g, gi) =>
+      groups.flatMap((g) =>
         g.tracks.map((t) => ({
-          id: `${media.tmdb_id}-${gi}-${t.label}`,
+          id: themeTrackKey({ animeName: g.name, label: t.label, title: t.title }),
           label: t.label,
           title: t.title,
           artist: t.artist,
@@ -132,7 +133,7 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
           animePoster: media.poster_url,
         })),
       ),
-    [groups, covers, media.tmdb_id, media.poster_url],
+    [groups, covers, media.poster_url],
   );
   const indexOf = useMemo(() => new Map(flat.map((t, i) => [t.id, i])), [flat]);
 
@@ -146,10 +147,10 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
     return best;
   }, [groups, media.year]);
   const [part, setPart] = useState<number | null>(null);
-  const activePart = part ?? defaultPart;
+  const activePart = part != null && part < groups.length ? part : defaultPart;
 
   if (!isAnime) return null;
-  if (!isLoading && groups.length === 0) return null;
+  if (!isLoading && !isError && groups.length === 0) return null;
 
   const group = groups[activePart];
   const shuffle = () => {
@@ -161,12 +162,12 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
     }
     play(q, 0);
   };
-  const partOf = (label: string) => flat.find((t) => t.id === `${media.tmdb_id}-${activePart}-${label}`);
+  const partOf = (label: string, title: string) => flat.find((t) => t.id === themeTrackKey({animeName:group?.name ?? "",label,title}));
 
   return (
     <Panel
       title="Openings & Endings"
-      subtitle={flat.length > 0 ? `${flat.length} themes` : undefined}
+      subtitle={flat.length > 0 ? `${flat.length} ${flat.length === 1 ? "theme" : "themes"}` : undefined}
       actions={
         flat.length > 0 ? (
           <>
@@ -183,7 +184,12 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
         ) : null
       }
     >
-      {isLoading ? (
+      {isError && groups.length === 0 ? (
+        <div className="flex items-center justify-between gap-3 py-2" role="status">
+          <p className="text-xs text-text-tertiary">Themes are temporarily unavailable.</p>
+          <Button variant="quiet" size="sm" disabled={isFetching} onClick={() => void refetch()}>Try again</Button>
+        </div>
+      ) : isLoading ? (
         <div className="flex items-center justify-center py-6"><Loader2 size={16} className="animate-spin text-text-tertiary" /></div>
       ) : (
         <>
@@ -203,7 +209,7 @@ export function AnimeThemes({ media }: { media: WatchingMedia }) {
 
           <div className="max-h-72 space-y-1 overflow-y-auto scrollbar-hide">
             {group?.tracks.map((t) => {
-              const track = partOf(t.label);
+              const track = partOf(t.label,t.title);
               if (!track) return null;
               const active = currentId === track.id;
               const faved = favKeys.has(themeTrackKey(track));

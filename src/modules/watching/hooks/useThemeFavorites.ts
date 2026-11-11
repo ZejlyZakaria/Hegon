@@ -1,5 +1,6 @@
 "use client";
 
+import { useOrgStore } from "@/shared/stores/useOrgStore";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getThemeFavorites, addThemeFavorite, removeThemeFavorite, themeTrackKey } from "../service";
 import type { ThemeFavorite } from "../types";
@@ -16,10 +17,11 @@ import { DemoReadOnlyError, handledDemoError } from "@/shared/utils/demo-guard";
 // loads out of 6 — even though it renders nothing at all until a track is playing. The three
 // surfaces that actually SHOW themes keep asking unconditionally; they display the list.
 export function useThemeFavorites(enabled = true) {
+  const orgId=useOrgStore(s=>s.orgId);
   return useQuery({
-    queryKey: WATCHING_KEYS.themeFavorites(),
-    queryFn: getThemeFavorites,
-    enabled,
+    queryKey: WATCHING_KEYS.themeFavorites(orgId),
+    queryFn: () => { if (!orgId) throw new Error("Organization required"); return getThemeFavorites(orgId); },
+    enabled: enabled && !!orgId,
   });
 }
 
@@ -28,17 +30,19 @@ export function useThemeFavorites(enabled = true) {
 export function useToggleThemeFavorite() {
   const queryClient = useQueryClient();
   const isDemo = useIsDemo();
-  const key = WATCHING_KEYS.themeFavorites();
-
-  return useMutation({
-    mutationFn: async ({ track, faved }: { track: PlayerTrack; faved: boolean }) => {
+  const orgId=useOrgStore(s=>s.orgId);
+  const mutation = useMutation({
+    mutationFn: async ({ track, faved, organizationId }: { track: PlayerTrack; faved: boolean; organizationId: string|null }) => {
       if (isDemo) throw new DemoReadOnlyError();
-      if (faved) await removeThemeFavorite(themeTrackKey(track));
-      else await addThemeFavorite(track);
+      if (!organizationId) throw new Error("Organization required");
+      if (faved) await removeThemeFavorite(themeTrackKey(track),organizationId);
+      else await addThemeFavorite(track,organizationId);
     },
-    onMutate: async ({ track, faved }) => {
+    onMutate: async ({ track, faved, organizationId }) => {
+      const key=WATCHING_KEYS.themeFavorites(organizationId);
       await queryClient.cancelQueries({ queryKey: key });
-      const prev = queryClient.getQueryData<ThemeFavorite[]>(key) ?? [];
+      const prev = queryClient.getQueryData<ThemeFavorite[]>(key);
+      if (!prev) return { prev, key };
       const tk = themeTrackKey(track);
       const next: ThemeFavorite[] = faved
         ? prev.filter((f) => f.track_key !== tk)
@@ -60,14 +64,20 @@ export function useToggleThemeFavorite() {
             ...prev,
           ];
       queryClient.setQueryData(key, next);
-      return { prev };
+      return { prev, key };
     },
     onError: (e, _vars, ctx) => {
-      if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
+      if (ctx?.prev) queryClient.setQueryData(ctx.key, ctx.prev);
       handledDemoError(e);
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: key });
+    onSettled: (_data, _error, variables, ctx) => {
+      queryClient.invalidateQueries({ queryKey: ctx?.key ?? WATCHING_KEYS.themeFavorites(variables.organizationId) });
     },
   });
+  // Freeze the workspace in mutation variables, including while another workspace is selected.
+  return {
+    ...mutation,
+    mutate: (input: {track:PlayerTrack;faved:boolean}) => mutation.mutate({...input,organizationId:orgId}),
+    mutateAsync: (input: {track:PlayerTrack;faved:boolean}) => mutation.mutateAsync({...input,organizationId:orgId}),
+  };
 }

@@ -5,6 +5,8 @@
 import type { MediaType, WatchStatus } from "../types";
 
 export const WATCHING_KEYS = {
+  animeThemes: (title:string,year:number|null) => ["watching", "anime-themes", title, year] as const,
+  themeCovers: (keys:string[]) => ["watching", "theme-covers", ...keys] as const,
   all: ['watching'] as const,
   history: (id: string) => [...WATCHING_KEYS.all, "viewing-history", id] as const,
   
@@ -69,8 +71,8 @@ export const WATCHING_KEYS = {
     [...WATCHING_KEYS.all, 'list-items', listId] as const,
 
   // Theme favorites ("My Themes")
-  themeFavorites: () =>
-    [...WATCHING_KEYS.all, 'theme-favorites'] as const,
+  themeFavorites: (orgId: string | null) =>
+    [...WATCHING_KEYS.all, 'theme-favorites', orgId] as const,
 
   // Rewatches (per media item)
   rewatches: (mediaItemId: string) =>

@@ -323,18 +323,7 @@ export default function MediaDetailPage() {
     void actions.setPosition(to.season, to.episode, "correction");
   };
 
-  /**
-   * "I watched through season 3." — the edit the app never had, from the Watch History strip.
-   *
-   * You marked Seven Deadly Sins as watched because that was the only word on offer, and you had in
-   * fact seen three of its four seasons. Or you dropped a show and want to say you left after
-   * season 2, not season 3. Both are the SAME gesture — move where you stand — and neither was
-   * possible: the steppers walk one episode at a time, and the strip was read-only.
-   *
-   * It is a CORRECTION, always: it re-derives the status (a "watched" show stops being watched, and
-   * landing on the end of a finished one completes it) and it stamps NO years, because claiming a
-   * season today does not mean you watched it today.
-   */
+  // The panel supplies intent: Watched through is a viewing; I stopped after is a correction.
   const handleSetPosition = async (
     displaySeason: number,
     displayEpisode: number,

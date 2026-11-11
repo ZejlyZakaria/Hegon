@@ -260,7 +260,7 @@ export function SeasonPanel({
   // Display number is per-season (a cour starts at "E1"); the mark stays in storage coordinates.
   // TMDB normally numbers episodes from 1 inside each season, but some long-running
   // shows (notably One Piece) keep absolute episode numbers across seasons.
-  // Storage keeps TMDB's native coordinate; the UI/progress model speaks season-local numbers.
+  // Highlights/progress keep normalized storage coordinates; source_episode retains the provider number.
   const firstSourceEpisode = episodes[0]?.number ?? 1;
 
   const usesAbsoluteEpisodeNumbers =
@@ -415,7 +415,7 @@ export function SeasonPanel({
                 ? { label: `E${position.episode} of ${aired}`, color: QUIET }
                 : { label: "Not started", color: QUIET };
   const bestHere = episodes.filter((e) =>
-    highlightMap.has(`${first.season}-${e.number}`),
+    highlightMap.has(`${view.toStorage(s, dispNum(e)).season}-${view.toStorage(s, dispNum(e)).episode}`),
   ).length;
 
   /* ── The pieces every layout composes ─────────────────────────────────────────────────── */

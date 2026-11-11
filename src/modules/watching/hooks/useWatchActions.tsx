@@ -272,9 +272,8 @@ export function useWatchActions(media: Target, presetView?: MediaView | null) {
 
     /**
      * `kind` is the fact only the caller knows: "+1" and the steppers are a VIEWING (they date it,
-     * and stamp the year of a season you have just finished); "I watched through season 3" is a
-     * CORRECTION of the record, and dating a memory from 2018 with today's year would swap one
-     * false claim for another.
+     * and stamp the year of a season you have just finished). "Watched through" is a viewing;
+     * "I stopped after" and the position editor are corrections that retain existing dates.
      */
     setPosition: (
       season: number,

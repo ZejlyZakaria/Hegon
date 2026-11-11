@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { searchItunesArtwork } from "../service";
+import { resolveThemeCovers } from "../service";
+import { WATCHING_KEYS } from "./query-keys";
 import { STALE } from "@/shared/lib/stale";
 
 // Resolves the square cover for a set of themes (title+artist) in one query, using
@@ -13,19 +14,15 @@ export function useThemeCovers(items: { title: string; artist: string }[]) {
   const unique = useMemo(() => {
     const map = new Map<string, { title: string; artist: string }>();
     for (const i of items) map.set(`${i.title}|${i.artist}`, i);
-    return [...map.values()];
+    return [...map.values()].sort((a,b)=>`${a.title}|${a.artist}`.localeCompare(`${b.title}|${b.artist}`));
   }, [items]);
 
   return useQuery({
-    queryKey: ["theme-covers", unique.map((i) => `${i.title}|${i.artist}`)],
-    queryFn: async () => {
-      const entries = await Promise.all(
-        unique.map(async (i) => [`${i.title}|${i.artist}`, await searchItunesArtwork(i.title, i.artist)] as const),
-      );
-      return Object.fromEntries(entries) as Record<string, string | null>;
-    },
+    queryKey: WATCHING_KEYS.themeCovers(unique.map((i) => `${i.title}|${i.artist}`)),
+    queryFn: () => resolveThemeCovers(unique),
+    retry: false,
     enabled: unique.length > 0,
-    staleTime: STALE.WEEK,
-    gcTime: STALE.WEEK,
+    staleTime: STALE.DAY,
+    gcTime: STALE.DAY,
   });
 }

@@ -91,6 +91,7 @@ export function ThemePlayer() {
   const [duration, setDuration] = useState(0);
   const [buffering, setBuffering] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [failedTrack, setFailedTrack] = useState<string | null>(null);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -162,14 +163,14 @@ export function ThemePlayer() {
         onLoadStart={() => { setTime(0); setDuration(0); setBuffering(true); }}
         onWaiting={() => setBuffering(true)}
         onCanPlay={() => setBuffering(false)}
-        onPlaying={() => setBuffering(false)}
+        onPlaying={() => { setBuffering(false); setFailedTrack(null); }}
         onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
         // The browser gives a rough duration at loadedmetadata and REFINES it as more of the Ogg/WebM
         // is parsed. Take the refined value too — but only when it's sane, so a transient Infinity
         // during a seek can never blank the bar.
         onDurationChange={(e) => { const d = e.currentTarget.duration; if (Number.isFinite(d) && d > 0 && d < 15 * 60) setDuration(d); }}
-        onError={() => { setBuffering(false); next(); }}
+        onError={() => { setBuffering(false); setPlaying(false); setFailedTrack(current.id); }}
         onEnded={next}
       />
 
@@ -203,7 +204,7 @@ export function ThemePlayer() {
                 <p className="truncate text-label font-semibold text-white">
                   <span className="text-accent-watching-vivid">{current.label}</span> · {current.title}
                 </p>
-                <p className="truncate text-micro text-white/50">{current.artist || current.animeName}</p>
+                <p role={failedTrack === current.id ? "status" : undefined} className="truncate text-micro text-white/50">{failedTrack === current.id ? "Playback unavailable. Try another theme." : current.artist || current.animeName}</p>
               </button>
 
               <div className="flex items-center gap-0.5">
@@ -325,7 +326,7 @@ export function ThemePlayer() {
           <DialogTitle className="sr-only">{current.title}</DialogTitle>
           <DialogDescription className="sr-only">{current.label} — {current.animeName}</DialogDescription>
           {showVideo && current.videoUrl && (
-            <video src={current.videoUrl} controls autoPlay className="aspect-video w-full bg-black" />
+            <video src={current.videoUrl} onError={() => { setPlaying(false); setFailedTrack(current.id); closeVideo(); }} controls autoPlay className="aspect-video w-full bg-black" />
           )}
         </DialogContent>
       </Dialog>

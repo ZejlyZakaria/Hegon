@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { insertMediaSchema, updateMediaSchema } from "../schemas/media.schema";
 import {
   addStatusPatch,
@@ -551,4 +551,21 @@ it("actual forward viewing resumes a returned title without treating corrections
   const old=hotd({resume_required:true,in_progress:false,watched:false,current_season:1,current_episode:3,season_aired:[4],season_episodes:[8]});
   expect(positionPatch(old,1,4,"viewing")).toMatchObject({resume_required:false,in_progress:true,watched:false});
   const corrected=positionPatch(old,1,4,"correction");expect(corrected).not.toHaveProperty("resume_required");expect(corrected).not.toHaveProperty("in_progress");
+});
+
+
+it("season viewing stamps recency/year while a historical position correction does not",()=>{
+ vi.useFakeTimers();vi.setSystemTime(new Date("2026-11-11T12:00:00Z"));
+ try {
+  const old={...hotd({current_season:1,current_episode:3,season_years:{1:2024}}),last_watched_at:"2024-03-01T12:00:00Z"};
+  const viewing=positionPatch(old,2,8,"viewing");
+  expect(viewing.last_watched_at).toBe("2026-11-11T12:00:00.000Z");expect(viewing.season_years?.["2"]).toBe(2026);
+  const corrected=positionPatch({...old,current_season:3,current_episode:1},2,8,"correction");
+  expect(corrected).not.toHaveProperty("last_watched_at");expect(corrected).not.toHaveProperty("season_years");
+ } finally {vi.useRealTimers();}
+});
+it("Discover caught-up adds real-position recency but a watchlist-only add does not",()=>{
+ const patch=addStatusPatch("library",{position:{season:3,episode:3},facts:{season_episodes:[10,8,8],season_aired:[10,8,3],status:"ongoing",current_season:3,current_episode:3,caught_up_at:null}},"serie")!;
+ expect(patch.last_watched_at).toMatch(/^\d{4}-/);
+ expect(addStatusPatch("wantToWatch",{position:null,facts:{season_episodes:[10,8,8],season_aired:[10,8,3],status:"ongoing",current_season:3,current_episode:3,caught_up_at:null}},"serie")).not.toHaveProperty("last_watched_at");
 });

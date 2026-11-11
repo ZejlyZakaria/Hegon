@@ -58,7 +58,7 @@ export function useAddEpisodeHighlight(mediaItemId: string) {
         ep = meta;
       } else {
         try {
-          const e = await getTmdbEpisode(tmdbId, season, episode);
+          const e = await getTmdbEpisode(tmdbId, season, sourceEpisode);
           ep = {
             title: e.name ?? null,
             still_path: e.still_path ?? null,

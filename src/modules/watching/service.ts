@@ -1892,105 +1892,15 @@ export interface AnimeThemeGroup {
   tracks: AnimeThemeTrack[];
 }
 
-function mapThemes(anime: any): AnimeThemeTrack[] {
-  return (anime.animethemes ?? [])
-    .map((t: any) => {
-      const video = t.animethemeentries?.[0]?.videos?.[0];
-      return {
-        id: t.id,
-        label: t.slug,
-        type: t.type,
-        title: t.song?.title ?? t.slug,
-        artist: (t.song?.artists ?? []).map((a: any) => a.name).join(", "),
-        audioUrl: video?.audio?.link ?? null,
-        videoUrl: video?.link ?? null,
-        cover: null,
-      } as AnimeThemeTrack;
-    })
-    .filter((t: AnimeThemeTrack) => t.audioUrl || t.videoUrl);
-}
-
-const normName = (s: string) => s.toLowerCase().trim();
-
-// Base franchise name — the anchor's name cut at the first season/part/movie/colon
-// marker, so "Shingeki no Kyojin Season 2" and "…: The Final Season" both reduce to
-// "shingeki no kyojin" and match every official TV season.
-function franchiseBase(name: string): string {
-  const n = normName(name);
-  const cut = n.search(
-    /(:|\s+season|\s+part|\s+movie|\s+ova|\s+the final|\s+\d)/,
-  );
-  return (cut > 0 ? n.slice(0, cut) : n).trim();
-}
-
-// Only the official TV seasons' OP/ED. Search is fuzzy ("hunter" matches City
-// Hunter…), so we anchor on the TV entry whose year matches the title, take its
-// base name, and keep only TV entries under that franchise. `year` = media.year.
-export async function searchAnimeThemes(
-  title: string,
-  year?: number | null,
-): Promise<AnimeThemeGroup[]> {
-  const url =
-    `https://api.animethemes.moe/search?q=${encodeURIComponent(title)}` +
-    `&fields[search]=anime&include[anime]=animesynonyms,animethemes.song.artists,animethemes.animethemeentries.videos.audio`;
-  const res = await fetch(url);
-  if (!res.ok) return [];
-  const data = await res.json();
-  const animeList: any[] = data?.search?.anime ?? [];
-
-  const tv = animeList.filter((a) => a.media_format === "TV");
-  if (tv.length === 0) return [];
-
-  // IDENTITY CHECK. AnimeThemes' fuzzy search returns *an* anime even for a title it doesn't have —
-  // so "Idaten Jump" (absent from its library) came back as the look-alike "Heion Sedai no
-  // Idaten-tachi". Only trust a result whose NAME or one of its SYNONYMS genuinely matches the title:
-  // the English title lives in the synonyms, which is how a romaji-named show (Shingeki no Kyojin)
-  // still matches "Attack on Titan". No verified match → show nothing, not the wrong show.
-  const key = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const wanted = key(title);
-  const matchesTitle = (a: any) =>
-    [a.name, ...(a.animesynonyms ?? []).map((s: any) => s.text)]
-      .filter(Boolean)
-      .map(key)
-      // Exact title (covers short names like "Air"), or a length-guarded substring either way
-      // (covers "Demon Slayer: Kimetsu no Yaiba" ⊇ "Kimetsu no Yaiba"), never a 2-letter coincidence.
-      .some(
-        (c: string) =>
-          c === wanted ||
-          (c.length >= 5 && (c.includes(wanted) || wanted.includes(c))),
-      );
-
-  const verified = tv.filter(matchesTitle);
-  if (verified.length === 0) return [];
-
-  // Anchor = the VERIFIED entry closest to the media's year (the season being viewed).
-  const anchor =
-    year != null
-      ? [...verified].sort(
-          (a, b) =>
-            Math.abs((a.year ?? 9999) - year) -
-            Math.abs((b.year ?? 9999) - year),
-        )[0]
-      : verified[0];
-  const base = franchiseBase(anchor.name);
-  const floor = anchor.year ?? 0; // the adaptation you're viewing — exclude older remakes
-
-  const groups = tv
-    .filter(
-      (a) => normName(a.name).startsWith(base) && (a.year ?? 9999) >= floor,
-    )
-    .map((anime) => ({
-      name: anime.name as string,
-      year: (anime.year as number) ?? null,
-      tracks: mapThemes(anime),
-    }))
-    .filter((g) => g.tracks.length > 0)
-    .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999));
-
-  // The covers are NOT resolved here any more (17/09): they gated the whole section behind the
-  // slowest of N iTunes lookups, which is why Openings & Endings was the last thing on the page.
-  // The list returns at once; `resolveThemeCovers` fills the art in a second query.
-  return groups;
+/** Same-origin enrichment; upstream outages are errors, never a cached empty catalogue. */
+export async function searchAnimeThemes(title: string, year?: number | null): Promise<AnimeThemeGroup[]> {
+  const params = new URLSearchParams({ title });
+  if (year != null) params.set("year", String(year));
+  const res = await fetch(`/api/watching/anime-themes?${params}`, { signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error("Themes temporarily unavailable");
+  const body = await res.json();
+  if (body.status !== "ok" || !Array.isArray(body.groups)) throw new Error("Themes temporarily unavailable");
+  return body.groups;
 }
 
 /** The iTunes art of a batch of tracks, keyed `title|artist` — one query, N lookups inside, cached. */
@@ -1998,15 +1908,17 @@ export async function resolveThemeCovers(
   tracks: { title: string; artist: string }[],
 ): Promise<Record<string, string | null>> {
   const out: Record<string, string | null> = {};
-  await Promise.all(
-    // eslint-disable-next-line no-restricted-syntax -- N+1 connu — un appel iTunes PAR MORCEAU (API externe, quota), amorti par le cache localStorage ; ne bloque plus l'affichage de la liste.
-    tracks.map(async (t) => {
-      out[`${t.title}|${t.artist}`] = await searchItunesArtwork(
-        t.title,
-        t.artist,
-      );
-    }),
-  );
+  const unique = [...new Map(tracks.map(t=>[`${t.title}|${t.artist}`,t])).values()];
+  let index=0;
+  // iTunes exposes only per-song search: four workers bound this optional enrichment.
+  const worker = async () => {
+    // eslint-disable-next-line no-restricted-syntax -- iTunes has no batch endpoint; four bounded workers, shared positive/in-flight cache; Themes audit 2026-11-11.
+    while (index < unique.length) {
+      const t = unique[index++];
+      out[`${t.title}|${t.artist}`] = await searchItunesArtwork(t.title,t.artist);
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(4,unique.length)},worker));
   return out;
 }
 
@@ -2014,7 +1926,7 @@ export async function resolveThemeCovers(
 // resolved they're instant on every later visit (and dedupe repeats in a session).
 // Hydrated once into an in-memory Map (fast, sync reads); writes to localStorage are
 // debounced into a single blob so we never parse/serialize the whole cache per call.
-function createUrlCache(storageKey: string) {
+function createUrlCache(storageKey: string, positiveOnly = false) {
   let mem: Map<string, string | null> | null = null;
   let flush: ReturnType<typeof setTimeout> | null = null;
   const store = (): Map<string, string | null> => {
@@ -2024,7 +1936,7 @@ function createUrlCache(storageKey: string) {
       try {
         const raw = JSON.parse(localStorage.getItem(storageKey) || "{}");
         for (const [k, v] of Object.entries(raw))
-          mem.set(k, v as string | null);
+          if (typeof v === "string" || v === null && !positiveOnly) mem.set(k, v as string | null);
       } catch {
         /* corrupt / unavailable — start empty */
       }
@@ -2048,12 +1960,13 @@ function createUrlCache(storageKey: string) {
   return { store, persistSoon };
 }
 
-const itunesCache = createUrlCache("hegon-itunes-art");
+const itunesCache = createUrlCache("hegon-itunes-art", true);
+const pendingArtwork = new Map<string, Promise<string | null>>();
 
 // Per-song artwork via the iTunes Search API (free, no key) — AnimeThemes has no
 // song art, so we look each theme up by title+artist and use the single's cover
 // (square). Light cleaning of the title (~…ver.~ suffixes) improves matching.
-export async function searchItunesArtwork(
+async function fetchItunesArtwork(
   title: string,
   artist: string,
 ): Promise<string | null> {
@@ -2071,24 +1984,33 @@ export async function searchItunesArtwork(
   try {
     const res = await fetch(
       `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=song&limit=1`,
+      { signal: AbortSignal.timeout(5000) },
     );
-    if (res.ok) {
-      const data = await res.json();
-      const raw: string | undefined = data?.results?.[0]?.artworkUrl100;
-      art = raw ? raw.replace("100x100bb", "400x400bb") : null; // upscale
-    }
+    if (!res.ok) return null;
+    const data = await res.json();
+    const raw: string | undefined = data?.results?.[0]?.artworkUrl100;
+    art = raw ? raw.replace("100x100bb", "400x400bb") : null;
   } catch {
     /* network — leave null, don't poison cache with a transient failure */
     return null;
   }
-  store.set(key, art);
-  itunesCache.persistSoon();
+  if (art) { store.set(key, art); itunesCache.persistSoon(); }
   return art;
 }
 
+/** Shared in-flight lookup across detail/My Themes, in addition to the positive URL cache. */
+export async function searchItunesArtwork(title: string, artist: string): Promise<string|null> {
+  const key=`${title}|${artist}`;
+  const existing=pendingArtwork.get(key);
+  if(existing)return existing;
+  const request=fetchItunesArtwork(title,artist).finally(()=>pendingArtwork.delete(key));
+  pendingArtwork.set(key,request);
+  return request;
+}
+
 // ── Theme favorites ("My Themes") ────────────────────────────────────────────
-// Stable natural key for a theme — independent of the in-app track id (which
-// embeds a season index). One favorite per (anime, label, song) per org.
+// Stable natural key shared by the player and durable favorites.
+// One favorite per (anime, label, song) per org.
 export function themeTrackKey(t: {
   animeName: string;
   label: string;
@@ -2097,24 +2019,21 @@ export function themeTrackKey(t: {
   return `${t.animeName}|${t.label}|${t.title}`.toLowerCase().trim();
 }
 
-export async function getThemeFavorites(): Promise<ThemeFavorite[]> {
+export async function getThemeFavorites(organizationId?: string): Promise<ThemeFavorite[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .schema("watching")
-    .from("theme_favorites")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as ThemeFavorite[];
+  const orgId = organizationId ?? await getCurrentOrgId();
+  return fetchAllRows<ThemeFavorite>((from,to) => supabase.schema("watching").from("theme_favorites")
+    .select("*").eq("org_id",orgId).order("created_at", { ascending: false }).order("id").range(from,to));
 }
 
 export async function addThemeFavorite(
   track: ThemeFavoriteInput,
+  organizationId?: string,
 ): Promise<void> {
   const supabase = createClient();
   const userId = await getCurrentUserId();
   if (!userId) throw new Error("Not authenticated");
-  const orgId = await getCurrentOrgId();
+  const orgId = organizationId ?? await getCurrentOrgId();
   const { error } = await supabase
     .schema("watching")
     .from("theme_favorites")
@@ -2137,13 +2056,14 @@ export async function addThemeFavorite(
   if (error) throw error;
 }
 
-export async function removeThemeFavorite(trackKey: string): Promise<void> {
+export async function removeThemeFavorite(trackKey: string, organizationId?: string): Promise<void> {
   const supabase = createClient();
+  const orgId = organizationId ?? await getCurrentOrgId();
   const { error } = await supabase
     .schema("watching")
     .from("theme_favorites")
     .delete()
-    .eq("track_key", trackKey);
+    .eq("track_key", trackKey).eq("org_id",orgId);
   if (error) throw error;
 }
 
