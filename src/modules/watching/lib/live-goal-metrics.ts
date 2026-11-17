@@ -1,10 +1,11 @@
 import { computeStats } from "../components/stats/computeStats";
-import { deduplicateFirstViewing, workKeyOf, type HistoryAnalytics } from "./history-analytics";
+import { activeHistoryForItems, deduplicateFirstViewing, workKeyOf, type HistoryAnalytics } from "./history-analytics";
 import type { StatsRawItem } from "../service";
 import type { AnimeCoursRow } from "../types";
 
 /** One evaluator for live goal counters and the detail-page contribution explanation. */
 export function createLiveGoalEvaluator(items: StatsRawItem[], cours: Map<number, AnimeCoursRow>, history: HistoryAnalytics) {
+  history = activeHistoryForItems(items, history);
   const completed = new Set(deduplicateFirstViewing(history.records.filter(r=>r.origin==="USER_ACTION" || r.origin==="USER_CORRECTION")).filter(r => !r.retracted_at && r.kind === "COMPLETION" && r.completion_basis === "FINISHED_TITLE").map(r => r.work_key));
   const periods = new Map<number|null, ReturnType<typeof computeStats>>();
   return (key: string|null, year: number|null) => {

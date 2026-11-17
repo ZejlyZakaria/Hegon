@@ -1,7 +1,7 @@
 import { buildMediaView } from "./media-view";
 import { describe, expect, it } from "vitest";
 import { compactSeason } from "../../../../supabase/functions/_shared/provider-evidence";
-import { ratingValidity, ratingAction, scopeMatchesView, scopeDisplayScore, scopeDisplayScores, partMatchesView, partDisplayScore } from "./scope-ratings";
+import { canRateSeason, canRatePart, ratingValidity, ratingAction, scopeMatchesView, scopeDisplayScore, scopeDisplayScores, partMatchesView, partDisplayScore } from "./scope-ratings";
 
 describe("compact provider evidence", () => {
   const season = { id: 2002, season_number: 2, episode_count: 2 };
@@ -152,5 +152,32 @@ describe("nested part rating identity",()=>{
     const part=view.seasons[1].parts![3];
     expect(partMatchesView(undefined,view,part)).toBe(false);
     expect(partDisplayScore(undefined,view,part)).toBeNull();
+  });
+});
+
+describe("Only complete consumed scopes can be rated",()=>{
+  const context={kind:"SEASON" as const,number:1,scope_key:"tmdb-season:2002",rating_id:null,score:null,
+    validity:"UNRATED" as const,covered_episodes:null,provider_snapshot_id:"snap",mapping_snapshot_id:null,
+    available_episodes:8,range_start:1,range_end:null};
+  const source={type:"serie" as const,season_episodes:[12],season_aired:[8],current_season:1,current_episode:8};
+  it("rejects caught-up on an unfinished season, including later-season progress",()=>{
+    expect(canRateSeason(context,buildMediaView(source,null),1)).toBe(false);
+    expect(canRateSeason(context,buildMediaView({...source,current_season:2,current_episode:1},null),1)).toBe(false);
+  });
+  it("requires all announced episodes both aired and watched, not just a completion flag",()=>{
+    const aired={...source,season_aired:[12]};
+    expect(canRateSeason({...context,available_episodes:12},buildMediaView(aired,null),1)).toBe(false);
+    expect(canRateSeason({...context,available_episodes:12},buildMediaView({...aired,current_episode:12},null),1)).toBe(true);
+    expect(canRateSeason({...context,available_episodes:null},buildMediaView({...aired,current_episode:12},null),1)).toBe(false);
+  });
+  it("permits a fully released and seen anime part while its parent season continues",()=>{
+    const part={id:501,scopeNumber:1,number:1,title:"Part",from:1,to:8,flatFrom:1,flatTo:8};
+    const base=buildMediaView(source,null);
+    const view={...base,seasons:base.seasons.map(s=>({...s,parts:[part]}))};
+    const ctx={...context,kind:"COUR" as const,scope_key:"anilist-cour:501",range_end:8};
+    expect(canRatePart(ctx,view,part)).toBe(true);
+    expect(canRatePart(ctx,{...view,position:{season:1,episode:7}},part)).toBe(false);
+    expect(canRatePart({...ctx,available_episodes:7},{...view,seasons:view.seasons.map(s=>({...s,aired:7}))},part)).toBe(false);
+    expect(canRatePart({...ctx,scope_key:"anilist-cour:502"},view,part)).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 import { resolvePeriodRating, type GlobalRatingBases } from "../../lib/period-rating";
 import { seasonContributions } from "../../lib/legacy-consumption";
 import { periodEpisodeLabel, ratedScopePresentation } from "../../lib/season-history";
-import { deduplicateFirstViewing, rangeCount, legacyViewingDate, calendarStats, type CalendarStats, historicalContributions, periodMatches, formatHistoryDate, type HistoryAnalytics, type WatchContribution } from "../../lib/history-analytics";
+import { activeHistoryForItems, deduplicateFirstViewing, rangeCount, legacyViewingDate, calendarStats, type CalendarStats, historicalContributions, periodMatches, formatHistoryDate, type HistoryAnalytics, type WatchContribution } from "../../lib/history-analytics";
 import type { StatsRawItem, RewatchStatItem } from "../../service";
 import { buildMediaView, type MediaView } from "../../lib/media-view";
 import { activityBucket, isAwaitingNextSeason, requiresResume } from "../../lib/series-state";
@@ -174,6 +174,10 @@ export function computeStats(
   // ONE lens per title, built once and shared by every helper below, so no two cards on this page
   // can end up reasoning in different coordinate spaces.
   const viewOf = makeViewOf(cours);
+  items=items.filter(i=>!i.id.startsWith("history:"));
+  const ownedIds=new Set(items.map(i=>i.id));
+  rewatches=rewatches.filter(r=>ownedIds.has(r.media_item_id));
+  history=activeHistoryForItems(items,history);
   history={...history,records:deduplicateFirstViewing(history.records)};
   const ledger: WatchContribution[] = items.flatMap(i => historicalContributions(i,viewOf(i),history,seasonContributions(viewOf(i),i)));
   {

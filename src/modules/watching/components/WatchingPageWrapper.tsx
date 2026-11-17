@@ -1,5 +1,6 @@
 "use client";
 
+import { GridPageSkeleton } from "./shared/WatchingSkeletons";
 import WatchingClient from "@/modules/watching/components/WatchingClient";
 import DontMissSectionClient from "./sections/DontMissSectionClient";
 import ForYouSectionClient from "./sections/ForYouSectionClient";
@@ -17,7 +18,7 @@ export default function WatchingPageWrapper({ type }: { type: MediaType }) {
   const config = WATCHING_CONFIGS[type];
   const userId = useCurrentUserId();
 
-  if (!userId) return null;
+  if (!userId) return <GridPageSkeleton type={type} />;
 
   return (
     <WatchingClient config={config}>

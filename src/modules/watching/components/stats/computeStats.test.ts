@@ -412,7 +412,9 @@ describe("Wave 1 analytical contracts", () => {
     expect(computeStats(rows.reverse(), [], null).topFavorites.map((r) => r.item.id)).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
   });
   it("includes a rewatch-only year in the selector", () => {
-    expect(computeStats([], [{ media_item_id: "gone", watched_on: "2025-01-01" }], null).availableYears).toContain(2025);
+    const row=item({watched:false,in_progress:false,watched_at:null});
+    expect(computeStats([row], [{ media_item_id: row.id, watched_on: "2025-01-01" }], null).availableYears).toContain(2025);
+    expect(computeStats([], [{ media_item_id: "gone", watched_on: "2025-01-01" }], null).availableYears).not.toContain(2025);
   });
 });
 

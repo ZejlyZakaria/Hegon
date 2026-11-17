@@ -245,7 +245,7 @@ describe("Organization scope shared by Stats, its cache and receipt observations
       cache.clear();
     }
   });
-  it("retains stable local work identity in the actual service after deletion", async () => {
+  it("keeps deleted local work in audit only, without synthetic Stats rows", async () => {
     const local = {
       ...records[0],
       work_key: "local:deleted",
@@ -271,10 +271,12 @@ describe("Organization scope shared by Stats, its cache and receipt observations
     );
     const data = await getWatchingStatsData("owner", "A"),
       rewatches = await getRewatchStats("owner", "A");
+    expect(data.items).toEqual([]);
+    expect(data.history.records).toHaveLength(1);
     expect(
       computeStats(data.items, rewatches, null, data.cours, data.history).hours
         .total,
-    ).toBe(100);
+    ).toBe(0);
     expect(
       receiptMetrics({
         ...data,
@@ -283,7 +285,7 @@ describe("Organization scope shared by Stats, its cache and receipt observations
         source_hash: "fixture",
         measured_at: "2026-10-21",
       }).goalValue("films", null),
-    ).toBe(1);
+    ).toBe(0);
   });
   it("shows a saved Marathoner receipt while observation is pending or fails", async () => {
     const receipt = {

@@ -30,6 +30,7 @@ import { toast } from "@/shared/utils/toast";
 import { isDemoReadOnlyError } from "@/shared/utils/demo-guard";
 import type { SeasonPart } from "../../lib/season-history";
 import {
+  canRateSeason,
   partDisplayScore,
   partMatchesView,
   scopeDisplayScore,
@@ -210,12 +211,6 @@ export function SeasonPanel({
   const complete = isSeasonComplete(facts, s);
   const fullyWatched = !readOnly && hasFullyWatchedSeason(facts, s);
   const datable = !readOnly && isSeasonDatable(facts, s);
-  const availableSeen =
-    !readOnly &&
-    aired > 0 &&
-    info?.airedKnown !== false &&
-    (position.season > s ||
-      (position.season === s && position.episode >= aired));
   // "Now" is a season you are ACTIVELY inside — the strip gates its badge on `in_progress` and so
   // does this. A paused or dropped show is inside a season too, but the word for that is the
   // show's word (Paused / Dropped), not "Now" — the StatusCard next to this panel says so.
@@ -363,6 +358,7 @@ export function SeasonPanel({
     (r) => r.kind === (view.overlaid ? "COUR" : "SEASON") && r.number === s,
   );
   const matchingScope = scopeMatchesView(candidateContext, view, s);
+  const rateable = !readOnly && canRateSeason(candidateContext, {...view, position}, s);
   const rating = reachedSeason
     ? (scopeDisplayScore(candidateContext, view, s) ?? 0)
     : 0;
@@ -452,10 +448,11 @@ export function SeasonPanel({
     />
   ) : null;
   const stars =
-    availableSeen && matchingScope && !ratingSaving ? (
+    rateable ? (
       <StarRating
         size="sm"
         value={rating}
+        disabled={ratingSaving}
         onChange={(v) => onRatingChange(s, v)}
       />
     ) : null;
@@ -604,7 +601,7 @@ export function SeasonPanel({
             <ScopeRatingReceipt
               context={candidateContext}
               score={candidateContext?.score ?? 0}
-              canConfirm={availableSeen && matchingScope}
+              canConfirm={rateable}
               saving={ratingSaving}
               onConfirm={() =>
                 onRatingChange(s, candidateContext?.score ?? null)
@@ -1015,10 +1012,11 @@ export function ScopeRatingReceipt({
                 : ""}
             </p>
             <p>New episodes are outside this rating.</p>
-            {canConfirm && !saving && (
+            {canConfirm && (
               <button
                 type="button"
                 className="min-h-11 rounded-control bg-surface-3 px-3 py-2 font-medium text-text-primary hover:bg-surface-4"
+                disabled={saving}
                 onClick={onConfirm}
               >
                 Keep {score} for the updated season
@@ -1087,10 +1085,11 @@ function SeasonParts({
             <p className="mt-1 text-xs text-text-secondary">{part.title}</p>
             {!readOnly && (
               <div className="mt-2">
-                {canRate && !saving ? (
+                {canRate ? (
                   <StarRating
                     size="sm"
                     value={score}
+                    disabled={saving}
                     onChange={(v) => onRate!(part, v)}
                   />
                 ) : score > 0 ? (

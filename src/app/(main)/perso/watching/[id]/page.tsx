@@ -42,9 +42,9 @@ import {
   type SeasonPart,
 } from "@/modules/watching/lib/season-history";
 import {
-  partMatchesView,
+  canRatePart,
   ratingAction,
-  scopeMatchesView,
+  canRateSeason,
   scopeDisplayScores,
 } from "@/modules/watching/lib/scope-ratings";
 import { useMediaView } from "@/modules/watching/hooks/useMediaView";
@@ -420,8 +420,8 @@ export default function MediaDetailPage() {
     if (
       !previous ||
       !(part
-        ? partMatchesView(previous, view, part)
-        : scopeMatchesView(previous, view, season!))
+        ? canRatePart(previous, view, part)
+        : canRateSeason(previous, view, season!))
     ) {
       void scopedRatings.refresh();
       toast.error("Season details changed. Review them before rating.");

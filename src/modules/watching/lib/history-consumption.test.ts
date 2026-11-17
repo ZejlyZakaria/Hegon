@@ -616,7 +616,7 @@ describe("Wave2C blocker regressions", () => {
     expect(result.episodes).toBe(10);
     expect(result.hours.total).toBe(200 / 60);
   });
-  it("retains completion-only consumption without legacy or current metadata", () => {
+  it("retains linked completion-only consumption without legacy or current metadata", () => {
     const completion = {
       ...record(
         "1",
@@ -624,7 +624,7 @@ describe("Wave2C blocker regressions", () => {
         null,
         "COMPLETION",
       ),
-      media_item_id: null,
+      media_item_id: "item",
     };
     const result = stats(
       item({

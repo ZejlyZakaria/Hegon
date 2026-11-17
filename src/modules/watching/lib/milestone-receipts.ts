@@ -1,7 +1,7 @@
 import { createLiveGoalEvaluator } from "./live-goal-metrics";
 import { computeStats } from "../components/stats/computeStats";
 import { computeWatchingAchievements, type WatchingAchievement } from "../components/stats/achievements";
-import { workKeyOf, deduplicateFirstViewing, type HistoryAnalytics } from "./history-analytics";
+import { activeHistoryForItems, workKeyOf, deduplicateFirstViewing, type HistoryAnalytics } from "./history-analytics";
 import type { StatsRawItem, RewatchStatItem } from "../service";
 import type { AnimeCoursRow } from "../types";
 
@@ -29,15 +29,11 @@ export function rawThresholdMet(value:number,target:number):boolean {
 
 /** Fresh server snapshot: one accepted achievement evaluator; Goals keep explicit-history completion. */
 export function receiptMetrics(snapshot:ReceiptSnapshot) {
-  const unique=deduplicateFirstViewing(snapshot.history.records.filter(r=>r.origin==="USER_ACTION" || r.origin==="USER_CORRECTION"));
+  const active=activeHistoryForItems(snapshot.items,snapshot.history);
+  const unique=deduplicateFirstViewing(active.records.filter(r=>r.origin==="USER_ACTION" || r.origin==="USER_CORRECTION"));
   const confirmed=unique.map(r=>r.date_confidence==="CONFIRMED" ? r:{...r,year:null,month:null,day:null,date_precision:"UNKNOWN" as const});
-  const history={...snapshot.history,records:confirmed};
-  const items=[...snapshot.items],known=new Set(items.map(workKeyOf));
-  for(const r of snapshot.history.records) if(!known.has(r.work_key)) {
-    known.add(r.work_key);
-    items.push({id:`history:${r.work_key}`,tmdb_id:r.work_key.startsWith("local:") ? null:Number(r.work_key.split(":")[1]),
-      type:r.media_type_snapshot,title:r.title_snapshot} as StatsRawItem);
-  }
+  const history={...active,records:confirmed};
+  const items=snapshot.items;
   const work=workKeyOf;
   const bare=items.map(i=>({...i,watched:false,in_progress:false,paused:false,dropped:false}));
   const cours=new Map(snapshot.cours.map(c=>[c.tmdb_id,c]));
@@ -51,10 +47,10 @@ export function receiptMetrics(snapshot:ReceiptSnapshot) {
   const finished=new Set(unique.filter(r=>!r.retracted_at && r.kind==="COMPLETION" && r.completion_basis==="FINISHED_TITLE").map(r=>r.work_key));
   // The server and UI evaluate the SAME accepted consumption ledger and rules.
   // Goal completion below deliberately retains its stricter explicit-history contract.
-  const accepted=computeStats(items,snapshot.rewatches,null,cours,snapshot.history);
+  const accepted=computeStats(items,snapshot.rewatches,null,cours,active);
   const achievements=computeWatchingAchievements(items,accepted.hours.total,
     [...accepted.breakdown.film,...accepted.breakdown.serie,...accepted.breakdown.anime],accepted.breakdown.rewatches,
-    {stats:accepted,history:snapshot.history}).filter(a=>!LIVE_ACHIEVEMENTS.has(a.key)).map(a=>({
+    {stats:accepted,history:active}).filter(a=>!LIVE_ACHIEVEMENTS.has(a.key)).map(a=>({
       achievement_key:a.key,metric_key:`watching:${a.key}:v1`,target:a.detail.goal,actual_value:a.detail.value,rule_version:1}));
   const matchesType=(i:StatsRawItem,key:string|null)=>key==="films" ? i.type==="film":key==="series" ? i.type==="serie":key==="anime" ? i.type==="anime":true;
   const periodIds=(s:ReturnType<typeof computeStats>)=>new Set([...s.breakdown.film,...s.breakdown.serie,...s.breakdown.anime].map(e=>e.item.id));
@@ -67,6 +63,6 @@ export function receiptMetrics(snapshot:ReceiptSnapshot) {
     return getCompleted().filter(i=>matchesType(i,key) && ids.has(i.id) && (year==null || i.type==="film" ||
       confirmed.some(r=>r.work_key===work(i) && !r.retracted_at && r.kind==="COMPLETION" && r.completion_basis==="FINISHED_TITLE" && r.year===year))).length;
   };
-  const liveGoalValue=createLiveGoalEvaluator(items,cours,snapshot.history);
+  const liveGoalValue=createLiveGoalEvaluator(items,cours,active);
   return {achievements,goalValue,liveGoalValue,get stats(){return getStrictStats();}};
 }

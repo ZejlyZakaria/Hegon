@@ -14,6 +14,13 @@ export interface HistoricalRating {
   score: number | null; previous_rating_id: string | null; recorded_at: string;
 }
 export interface HistoryAnalytics { records: HistoricalViewing[]; ratings: HistoricalRating[] }
+/** The audit outlives deletion; active metrics belong to the current owned row only.
+ * A re-added work has a different row identity and cannot revive the removed consumption. */
+export function activeHistoryForItems(items: Pick<StatsRawItem,"id"|"tmdb_id"|"type">[], history: HistoryAnalytics): HistoryAnalytics {
+  const owned = new Map(items.filter(i => !i.id.startsWith("history:")).map(i => [i.id,workKeyOf(i)]));
+  const active = (r: {media_item_id:string|null;work_key:string}) => r.media_item_id != null && owned.get(r.media_item_id) === r.work_key;
+  return {records:history.records.filter(active),ratings:history.ratings.filter(active)};
+}
 export interface WatchContribution extends ViewingDate {
   id: string; itemId: string; episodes: number | null; minutes: number | null; rewatch: boolean;
   source: "HISTORY" | "LEGACY"; scope: string;
@@ -46,7 +53,7 @@ export function workKeyOf(item: Pick<StatsRawItem,"id"|"tmdb_id"|"type">):string
   return item.tmdb_id ? `${item.type==="film" ? "movie" : "tv"}:${item.tmdb_id}` : `local:${item.id}`;
 }
 export function recordsFor(item: StatsRawItem, history: HistoryAnalytics): HistoricalViewing[] {
-  return history.records.filter(r => r.work_key===workKeyOf(item));
+  return history.records.filter(r => r.media_item_id===item.id && r.work_key===workKeyOf(item));
 }
 /** Shared receipt/Stats guard: first consumption is counted once; rewatches remain separate events. */
 export function deduplicateFirstViewing(records:HistoricalViewing[]):HistoricalViewing[] {

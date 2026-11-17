@@ -1,3 +1,4 @@
+import { isSeasonComplete, hasFullyWatchedSeason } from "./series-state";
 import type { SeasonPart } from "./season-history";
 import type { MediaView } from "./media-view";
 export type RatingValidity =
@@ -197,4 +198,16 @@ export function partDisplayScore(
   )
     return null;
   return savedOpinionScore(context);
+}
+
+/** Caught-up is insufficient: the complete announced season must have aired and been seen. */
+export function canRateSeason(context:ScopeRatingContext|undefined, view:MediaView, season:number):boolean {
+  return scopeMatchesView(context,view,season) && isSeasonComplete(view.seriesFacts,season)
+    && hasFullyWatchedSeason({...view.seriesFacts,current_season:view.position.season,current_episode:view.position.episode},season);
+}
+/** A complete part is independently rateable even while its parent season is still airing. */
+export function canRatePart(context:ScopeRatingContext|undefined, view:MediaView, part:SeasonPart):boolean {
+  const season=view.seasons.find(s=>s.parts?.some(p=>p.id===part.id));
+  return partMatchesView(context,view,part) && !!season && season.aired>=part.to
+    && (view.position.season>season.season || view.position.season===season.season && view.position.episode>=part.to);
 }

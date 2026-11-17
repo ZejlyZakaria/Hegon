@@ -126,6 +126,10 @@ try {
   const {runPeriodRatingChecks}=await import('./test-watching-period-ratings.mjs');
   runPeriodRatingChecks({sql,db,counts});
  }
+ if(process.argv.includes('--complete-ratings')) {
+  const {runCompleteRatingChecks}=await import('./test-watching-complete-ratings.mjs');
+  runCompleteRatingChecks({sql,db,counts});
+ }
  if(process.argv.includes('--estimated-dates')) {
   const {runEstimatedDateChecks}=await import('./test-watching-estimated-dates.mjs');
   runEstimatedDateChecks({sql,db});

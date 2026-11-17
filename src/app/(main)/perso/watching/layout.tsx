@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useWatchingScrollRestoration } from "@/modules/watching/hooks/useWatchingScrollRestoration";
 import { usePathname } from "next/navigation";
 import SectionHeader from "@/shared/components/layout/SectionHeader";
 import { useWatchingUIStore } from "@/modules/watching/hooks/useWatchingUIStore";
@@ -26,16 +26,13 @@ const TAB_HREFS = new Set([...TABS, ...MORE_TABS].map((t) => t.href));
 
 export default function WatchingLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const scrollContent=useWatchingScrollRestoration(pathname);
   const isDetailOpen = useWatchingUIStore((s) => s.isDetailOpen);
 
-  useEffect(() => {
-    const main = document.querySelector("main");
-    if (main) main.scrollTop = 0;
-  }, [pathname]);
   const isDetail = isDetailOpen || (pathname.startsWith("/perso/watching/") && !TAB_HREFS.has(pathname));
 
   return (
-    <div className="min-h-screen bg-surface-0">
+    <div ref={scrollContent} className="min-h-screen bg-surface-0">
       {!isDetail && (
         <SectionHeader
           accent="var(--color-accent-watching-vivid)"

@@ -50,9 +50,10 @@ describe("Wave2D authoritative milestone observations",()=>{
     s.history.records=s.history.records.slice(1);
     expect(receiptMetrics(s).goalValue("films",null)).toBe(1);expect(receiptMetrics(s).stats.hours.total).toBe(0);
   });
-  it("keeps history through library deletion without fabricating metadata",()=>{
+  it("keeps deletion audit without counting it in active metrics",()=>{
     const s=snapshot();s.items=[];s.history.records[0].media_item_id=null;
-    expect(receiptMetrics(s).goalValue("films",null)).toBe(1);
+    expect(receiptMetrics(s).goalValue("films",null)).toBe(0);
+    expect(s.history.records).toHaveLength(1);
   });
   it("retains permanent unlock/date after live corrections and provider drops",()=>{
     const live=computeWatchingAchievements(snapshot(349).items,0,[]);
@@ -121,20 +122,19 @@ describe("Marathoner shares the canonical Stats hours contract",()=>{
   });
 });
 
-describe("Stable retained local identities",()=>{
-  it.each(["film","serie","anime"])("retains %s consumption after deletion and counts a returning local identity once",type=>{
-    const s=snapshot();s.items=[];
-    const range={...s.history.records[0].ranges[0],season_number_at_recording:type==="film" ? 0:1,minutes:120};
-    s.history.records[0]={...s.history.records[0],work_key:"local:original-id",media_item_id:null,media_type_snapshot:type,ranges:[range]};
-    if(type!=="film") s.history.records.push({...s.history.records[0],id:"completion",kind:"COMPLETION",completion_basis:"FINISHED_TITLE",ranges:[{...range,minutes:0,duration_basis:"MILESTONE"}]});
+describe("Deleted consumption stays audit-only",()=>{
+  it.each(["film","serie","anime"])("excludes removed %s and cannot revive it on re-add",type=>{
+    const s=snapshot();const original=s.items[0];s.items=[];
+    s.history.records[0]={...s.history.records[0],media_item_id:null,media_type_snapshot:type};
     const key=type==="film" ? "films":type==="serie" ? "series":"anime";
-    const before=receiptMetrics(s);
-    expect(before.stats.hours.total).toBe(2);expect(before.goalValue(key,null)).toBe(1);
-    expect(before.achievements.find(a=>a.achievement_key==="marathoner")?.actual_value).toBe(2);
-    s.items=[{...snapshot().items[0],id:"original-id",tmdb_id:null,type,runtime:999}];
+    expect(receiptMetrics(s).stats.hours.total).toBe(0);
+    expect(receiptMetrics(s).goalValue(key,null)).toBe(0);
+    s.items=[{...original,id:"new-owned-row",type,watched:false,watched_at:null}];
     const returned=receiptMetrics(s);
-    expect(returned.stats.hours.total).toBe(2);expect(returned.goalValue(key,null)).toBe(1);
-    expect(returned.achievements.find(a=>a.achievement_key==="marathoner")?.actual_value).toBe(2);
+    expect(returned.stats.hours.total).toBe(0);
+    expect(returned.goalValue(key,null)).toBe(0);
+    expect(returned.liveGoalValue(key,null)).toBe(0);
+    expect(s.history.records).toHaveLength(1);
   });
 });
 
@@ -143,4 +143,18 @@ it("a confirmed rewatch cannot advance a film discovery goal or issue a new comp
  expect(receiptMetrics(s).goalValue("films",2026)).toBe(0);
  expect(receiptMetrics(s).liveGoalValue("films",2026)).toBe(0);
  expect(computeStats(s.items,[],2026,new Map(),s.history).rewatches).toBe(1);
+});
+
+it("keeps legitimate consumption while excluding deleted, stale-row and orphan rewatch evidence",()=>{
+  const s=snapshot();const real=s.history.records[0];
+  s.history.records.push({...real,id:"orphan",media_item_id:null},
+    {...real,id:"old-owned-row",media_item_id:"deleted-row"});
+  s.rewatches=[{id:"legacy-orphan",media_item_id:"deleted-row",watched_on:"2026-01-01"} as ReceiptSnapshot["rewatches"][number]];
+  const before=JSON.stringify(s.history);
+  const stats=computeStats(s.items,s.rewatches,2026,new Map(),s.history);
+  expect(stats.hours.total).toBe(2);
+  expect(stats.counts.film).toBe(1);
+  expect(stats.rewatches).toBe(0);
+  expect(receiptMetrics(s).goalValue("films",2026)).toBe(1);
+  expect(JSON.stringify(s.history)).toBe(before);
 });

@@ -26,6 +26,7 @@ export function StarRating({
   className,
   size = "md",
   onArtwork = false,
+  disabled = false,
 }: {
   /** 0 = unrated. */
   value: number;
@@ -35,11 +36,12 @@ export function StarRating({
   size?: "sm" | "md";
   /** Sitting on artwork (the season card): white ink instead of the page's text tokens. */
   onArtwork?: boolean;
+  disabled?: boolean;
 }) {
   const px = size === "sm" ? 14 : 17;
   // What the pointer is over — previewed on a hover device, never written.
   const [hover, setHover] = useState<number | null>(null);
-  const shown = hover ?? value;
+  const shown = disabled ? value : hover ?? value;
 
   const pick = (n: number, e: React.MouseEvent<HTMLButtonElement>) => {
     const { left, width } = e.currentTarget.getBoundingClientRect();
@@ -52,6 +54,7 @@ export function StarRating({
         className="flex items-center"
         role="radiogroup"
         aria-label="Rating out of ten"
+        aria-busy={disabled}
         onMouseLeave={() => setHover(null)}
       >
         {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
@@ -60,13 +63,15 @@ export function StarRating({
             <button
               key={n}
               type="button"
+              disabled={disabled}
               role="radio"
               aria-checked={value === n || value === n - 0.5}
               aria-label={`${n} out of 10`}
               className={cn("relative flex h-7 items-center justify-center", size === "sm" ? "w-4" : "w-5")}
-              onMouseMove={(e) => setHover(pick(n, e))}
+              onMouseMove={(e) => { if (!disabled) setHover(pick(n, e)); }}
               onClick={(e) => {
                 const v = pick(n, e);
+                setHover(null);
                 onChange(v === value ? null : v);
               }}
             >

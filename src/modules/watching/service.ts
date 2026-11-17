@@ -8,7 +8,6 @@ import {
   type RewatchCatalogue,
 } from "./lib/rewatch";
 import {
-  workKeyOf,
   rangeCount,
   frozenMinutes,
   formatHistoryDate,
@@ -428,7 +427,7 @@ export async function getWatchingStatsData(
   ]);
   if (basisResult.error) throw basisResult.error;
   return {
-    items: includeRetainedHistory(items, history),
+    items,
     cours,
     history,
     ratingBases: (basisResult.data ?? {}) as GlobalRatingBases,
@@ -3187,56 +3186,6 @@ export async function getHistoryAnalytics(
     ratings,
   };
 }
-function includeRetainedHistory(
-  items: StatsRawItem[],
-  history: HistoryAnalytics,
-): StatsRawItem[] {
-  const result = [...items],
-    seen = new Set(items.map(workKeyOf));
-  for (const r of history.records) {
-    if (seen.has(r.work_key)) continue;
-    seen.add(r.work_key);
-    result.push({
-      id: r.media_item_id ?? `history:${r.work_key}`,
-      tmdb_id:
-        r.work_key.startsWith("tv:") || r.work_key.startsWith("movie:")
-          ? Number(r.work_key.split(":")[1])
-          : null,
-      type: r.media_type_snapshot,
-      title: r.title_snapshot,
-      original_title: null,
-      poster_url: null,
-      backdrop_url: null,
-      year: 0,
-      runtime: null,
-      season_episodes: null,
-      season_aired: null,
-      episodes: null,
-      user_rating: null,
-      favorite: false,
-      watched_at: null,
-      tags: null,
-      directors: null,
-      watched: false,
-      in_progress: false,
-      paused: false,
-      dropped: false,
-      current_season: null,
-      current_episode: null,
-      updated_at: null,
-      season_years: null,
-      season_ratings: null,
-      season_posters: null,
-      cour_years: null,
-      cour_ratings: null,
-      season_end_dates: null,
-      status: null,
-      caught_up_at: null,
-    });
-  }
-  return result;
-}
-
 /** Small receipt read; never triggers an observation, goal sync or write. */
 export async function getAchievementReceipts(userId: string, orgId: string) {
   const db = createClient();

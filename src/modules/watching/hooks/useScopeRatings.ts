@@ -27,5 +27,11 @@ export function useScopeRatings(mediaId: string, enabled = true, tmdbId = 0) {
     cache.invalidateQueries({ queryKey: WATCHING_KEYS.animeCours(tmdbId) }),
     cache.invalidateQueries({ queryKey: [...WATCHING_KEYS.all, "scope-ratings", mediaId] }),
   ]);
-  return { ...query, refresh, save: mutation.mutateAsync, isSaving: mutation.isPending };
+  // A pending score is a UI preview only; canonical assertion IDs stay server-owned.
+  const command = mutation.isPending ? mutation.variables : undefined;
+  const data = query.data?.map(context => command && context.kind === command.scope_kind
+    && context.scope_key === command.expected_scope_key
+    ? {...context, score: command.score, validity: command.score == null ? "UNRATED" as const : "CURRENT" as const}
+    : context);
+  return { ...query, data, refresh, save: mutation.mutateAsync, isSaving: mutation.isPending };
 }
