@@ -84,8 +84,11 @@ export function SeasonHistoryStrip({
   // A season nothing has aired from is not watchable — whatever TMDB has announced about it.
   // (The air-date check is kept as a fallback for rows the sync hasn't reached yet.)
   const comingSoonAt = (idx: number) => {
-    if (seasonAired) return airedIn(idx) === 0;
     const d = seasonAirDates?.[idx];
+    // `season_aired` can briefly lag the provider's first-air date. A season whose
+    // premiere is already in the past must not remain covered by "Coming soon";
+    // episode-level availability still controls what can be watched inside it.
+    if (seasonAired) return airedIn(idx) === 0 && (!d || new Date(d).getTime() > nowMs);
     return !!d && new Date(d).getTime() > nowMs;
   };
   // Ahead of you = a season after the one you stopped in, on a show you haven't finished.

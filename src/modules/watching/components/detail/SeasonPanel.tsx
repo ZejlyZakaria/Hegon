@@ -207,7 +207,11 @@ export function SeasonPanel({
     current_season: position.season,
     current_episode: position.episode,
   };
-  const comingSoon = aired === 0;
+  // The airing count is authoritative for episode progress, but it can lag the
+  // cached premiere date for a short period. Do not label a season "Coming soon"
+  // after its premiere has already passed; episode dates still decide each episode.
+  const premiereDate = view.overlaid ? null : media.season_air_dates?.[idx] ?? null;
+  const comingSoon = aired === 0 && (!premiereDate || premiereDate > TODAY());
   const complete = isSeasonComplete(facts, s);
   const fullyWatched = !readOnly && hasFullyWatchedSeason(facts, s);
   const datable = !readOnly && isSeasonDatable(facts, s);
